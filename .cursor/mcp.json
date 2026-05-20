@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "n8n-mcp": {
+      "type": "http",
+      "url": "https://agent-ia.innotechlabssas.lat/mcp-server/http",
+      "headers": {
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI5YWE3M2UyNS1iNmZhLTQxZTEtYTEyOC1mNjYwZDcwN2JjNDYiLCJpc3MiOiJuOG4iLCJhdWQiOiJtY3Atc2VydmVyLWFwaSIsImp0aSI6IjU1NTBiMDM5LTExNTgtNGFlOS1iM2Y5LTY0OTAwMjM3NzgxYiIsImlhdCI6MTc3ODk2MTYwNn0.CcUkMY7Md_5XbBvHLLnvO6KziKXXmjZ7dlRWD0kvCpM"
+      }
+    }
+  }
+}
