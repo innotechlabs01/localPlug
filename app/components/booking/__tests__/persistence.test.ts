@@ -34,7 +34,7 @@ afterEach(() => {
 function makeMockBooking(overrides?: Partial<Booking>): Booking {
   return {
     id: 'test-uuid',
-    flight: { flightNumber: 'AA123', airline: 'American', arrivalDate: '2026-06-15', arrivalTime: '14:30' },
+    flight: { flightNumber: 'AA123', airline: 'American', arrivalDate: '2026-06-15', arrivalTime: '14:30', needReturn: false, returnDate: '', returnTime: '' },
     profile: 'nomad',
     destination: { hasPlace: true, address: 'Hotel Medellín', wantsGuatape: false },
     package: 'first-24',

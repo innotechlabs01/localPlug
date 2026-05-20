@@ -4,7 +4,7 @@ import type { Booking } from '../lib/types'
 
 const makeBooking = (overrides: Partial<Booking> = {}): Booking => ({
   id: 'test-id',
-  flight: { flightNumber: 'AA1123', airline: 'American Airlines', arrivalDate: '2026-07-01', arrivalTime: '14:00' },
+  flight: { flightNumber: 'AA1123', airline: 'American Airlines', arrivalDate: '2026-07-01', arrivalTime: '14:00', needReturn: false, returnDate: '', returnTime: '' },
   profile: 'nomad',
   destination: { hasPlace: true, address: 'Hotel Medellín', wantsGuatape: false },
   package: 'first-24',
