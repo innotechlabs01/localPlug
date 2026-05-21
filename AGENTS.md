@@ -31,4 +31,8 @@ For context about WhatsApp n8n communication implementation plan, data model, co
 specs/010-whatsapp-n8n-communication/plan.md
 specs/010-whatsapp-n8n-communication/data-model.md
 specs/010-whatsapp-n8n-communication/quickstart.md
+
+For context about admin reservations implementation, refer to:
+specs/011-admin-reservations-functionality/plan.md
+
 <!-- SPECKIT END -->
