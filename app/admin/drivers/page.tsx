@@ -4,36 +4,16 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useI18n } from '@/lib/i18n'
 
 interface Driver {
-  id: number
-  name: string | null
-  phone: string | null
-  photo: string | null
-  email: string | null
-  vehicle: string | null
-  plate: string | null
-  category: string | null
-  status: string | null
-  rating: number | null
-  languages: string | null
-  experience_level: string | null
-  total_trips: number | null
-  vip_compatible: number | null
-  notes: string | null
-  created_at: string
-  license_expiry?: string | null
-  soat_expiry?: string | null
-  soat_date?: string | null
-  tech_inspection_expiry?: string | null
-  tech_inspection_date?: string | null
-  insurance_expiry?: string | null
-  insurance_date?: string | null
-  year?: string | null
-  capacity?: string | null
-  emergency_contact?: string | null
-  emergency_phone?: string | null
-  city?: string | null
-  doc_status?: string | null
-  active_orders?: number
+  id: number; name: string | null; phone: string | null; photo: string | null
+  photo_url: string | null; email: string | null; vehicle: string | null; plate: string | null
+  category: string | null; status: string | null; rating: number | null
+  languages: string | null; experience_level: string | null
+  total_trips: number | null; vip_compatible: number | null
+  notes: string | null; created_at: string; active_orders?: number
+  license_expiry?: string | null; soat_expiry?: string | null
+  tech_inspection_expiry?: string | null; insurance_expiry?: string | null
+  year?: string | null; capacity?: string | null; emergency_contact?: string | null
+  emergency_phone?: string | null; city?: string | null; doc_status?: string | null
 }
 
 const catColors: Record<string, string> = {
@@ -70,6 +50,9 @@ export default function DriversPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [createStep, setCreateStep] = useState(1)
   const [formData, setFormData] = useState<Record<string, string>>({})
+  const [editDriver, setEditDriver] = useState<Driver | null>(null)
+  const [timeline, setTimeline] = useState<{ type: string; title: string; description: string; timestamp: string }[]>([])
+  const [timelineLoading, setTimelineLoading] = useState(false)
   const [notif, setNotif] = useState<{ id: number; msg: string }[]>([])
 
   const showToast = (msg: string) => {
@@ -92,6 +75,10 @@ export default function DriversPage() {
   }, [])
 
   useEffect(() => { fetchDrivers() }, [fetchDrivers])
+
+  useEffect(() => {
+    if (selectedId !== null) loadTimeline(selectedId)
+  }, [selectedId])
 
   const selected = useMemo(() => drivers.find(d => d.id === selectedId), [drivers, selectedId])
 
@@ -160,31 +147,84 @@ export default function DriversPage() {
   const filteredAlerts = useMemo(() =>
     alertDrivers.filter(d => d.id !== selectedId).slice(0, 3), [alertDrivers, selectedId])
 
-  const handleCreate = async () => {
+  const openCreateModal = () => {
+    setEditDriver(null)
+    setFormData({})
+    setCreateStep(1)
+    setModalOpen(true)
+  }
+
+  const openEditModal = (d: Driver) => {
+    setEditDriver(d)
+    setFormData({
+      name: d.name || '',
+      phone: d.phone || '',
+      email: d.email || '',
+      languages: d.languages || '',
+      vehicle: d.vehicle || '',
+      plate: d.plate || '',
+      category: d.category || '',
+      experienceLevel: d.experience_level || '',
+      notes: d.notes || '',
+      license_expiry: d.license_expiry || '',
+      soat_expiry: d.soat_expiry || '',
+      tech_inspection_expiry: d.tech_inspection_expiry || '',
+      insurance_expiry: d.insurance_expiry || '',
+      year: d.year || '',
+      capacity: d.capacity || '',
+      emergency_contact: d.emergency_contact || '',
+      emergency_phone: d.emergency_phone || '',
+      city: d.city || '',
+      photo_url: d.photo_url || '',
+    })
+    setCreateStep(1)
+    setModalOpen(true)
+  }
+
+  const loadTimeline = async (driverId: number) => {
+    setTimelineLoading(true)
     try {
-      const res = await fetch('/api/admin/drivers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.name, phone: formData.phone, email: formData.email,
-          vehicle: formData.vehicle, plate: formData.plate,
-          category: formData.category || 'standard',
-          languages: formData.languages || 'Spanish',
-          experience_level: formData.experienceLevel || 'Standard',
-          notes: formData.notes,
-        }),
-      })
+      const res = await fetch(`/api/admin/drivers/${driverId}/history`)
       if (res.ok) {
-        showToast('Driver created successfully')
-        setModalOpen(false)
-        setCreateStep(1)
-        setFormData({})
-        fetchDrivers()
+        const data = await res.json()
+        setTimeline(data.timeline || [])
+      }
+    } catch { /* ignore */ }
+    setTimelineLoading(false)
+  }
+
+  const handleSubmit = async () => {
+    try {
+      if (editDriver) {
+        const res = await fetch('/api/admin/drivers', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: editDriver.id, ...formData }),
+        })
+        if (res.ok) {
+          showToast('Driver updated successfully')
+          setModalOpen(false)
+          fetchDrivers()
+        } else {
+          showToast('Failed to update driver')
+        }
       } else {
-        showToast('Failed to create driver')
+        const res = await fetch('/api/admin/drivers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData),
+        })
+        if (res.ok) {
+          showToast('Driver created successfully')
+          setModalOpen(false)
+          setFormData({})
+          fetchDrivers()
+        } else {
+          showToast('Failed to create driver')
+        }
       }
     } catch {
-      showToast('Error creating driver')
+      showToast('Error saving driver')
     }
   }
 
@@ -210,7 +250,7 @@ export default function DriversPage() {
           <button className="px-3 py-2 border border-[#282b38] text-[12px] text-[#9ca0b0] rounded-lg hover:bg-[#202330] transition-all font-medium" onClick={() => showToast('Compliance report queued')}>
             Export compliance
           </button>
-          <button className="px-4 py-2 bg-[#10b981] text-white text-[13px] font-medium rounded-lg hover:bg-[#059669] transition-all" onClick={() => { setModalOpen(true); setCreateStep(1); setFormData({}) }}>
+          <button className="px-4 py-2 bg-[#10b981] text-white text-[13px] font-medium rounded-lg hover:bg-[#059669] transition-all" onClick={openCreateModal}>
             Create Driver
           </button>
         </div>
@@ -311,6 +351,9 @@ export default function DriversPage() {
         </div>
       </div>
 
+      {/* ── RANKING BOARD ── */}
+      <RankingBoard drivers={drivers} />
+
       {/* ── MAIN LAYOUT ── */}
       <div className="grid grid-cols-1 xl:grid-cols-[1.28fr_0.72fr] gap-4 items-start">
         {/* ── LEFT: DRIVER GRID ── */}
@@ -410,10 +453,16 @@ export default function DriversPage() {
           <div className="bg-[#181b25] border border-[#282b38] rounded-xl overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2130]">
               <span className="text-[14px] font-bold text-[#f0f2f5]">Driver profile</span>
-              <button className="px-2 py-1 text-[11px] text-[#9ca0b0] border border-[#282b38] rounded-lg hover:bg-[#202330] transition-all"
-                onClick={() => showToast('Driver status updated and audit log recorded')}>
-                Actions
-              </button>
+              <div className="flex gap-1.5">
+                <button className="px-2 py-1 text-[11px] text-[#9ca0b0] border border-[#282b38] rounded-lg hover:bg-[#202330] transition-all"
+                  onClick={() => selected && openEditModal(selected)}>
+                  Edit
+                </button>
+                <button className="px-2 py-1 text-[11px] text-[#9ca0b0] border border-[#282b38] rounded-lg hover:bg-[#202330] transition-all"
+                  onClick={() => showToast('Driver status updated and audit log recorded')}>
+                  Actions
+                </button>
+              </div>
             </div>
             <div className="p-4">
               {!selected ? (
@@ -421,9 +470,15 @@ export default function DriversPage() {
               ) : (
                 <>
                   <div className="flex items-center gap-3.5 mb-4">
-                    <div className="w-[68px] h-[68px] rounded-[20px] flex items-center justify-center text-white font-extrabold text-[21px] flex-shrink-0"
-                      style={{ background: getAvatarColor(selected.name, selected.vip_compatible || undefined) }}>
-                      {getInit(selected.name)}
+                    <div className="relative group">
+                      {selected.photo_url ? (
+                        <img src={selected.photo_url} alt={selected.name || ''} className="w-[68px] h-[68px] rounded-[20px] object-cover" />
+                      ) : (
+                        <div className="w-[68px] h-[68px] rounded-[20px] flex items-center justify-center text-white font-extrabold text-[21px] flex-shrink-0"
+                          style={{ background: getAvatarColor(selected.name, selected.vip_compatible || undefined) }}>
+                          {getInit(selected.name)}
+                        </div>
+                      )}
                     </div>
                     <div>
                       <h2 className="text-[18px] font-bold text-[#f0f2f5]">{selected.name}</h2>
@@ -475,9 +530,9 @@ export default function DriversPage() {
                 <div className="space-y-2.5">
                   {[
                     ['Driver license', selected.license_expiry || 'Valid'],
-                    ['SOAT insurance', selected.soat_expiry || selected.soat_date || 'Valid'],
-                    ['Technical inspection', selected.tech_inspection_expiry || selected.tech_inspection_date || 'Valid'],
-                    ['Vehicle insurance', selected.insurance_expiry || selected.insurance_date || 'Valid'],
+                    ['SOAT insurance', selected.soat_expiry || 'Valid'],
+                    ['Technical inspection', selected.tech_inspection_expiry || 'Valid'],
+                    ['Vehicle insurance', selected.insurance_expiry || 'Valid'],
                   ].map(([name, value]) => {
                     const lower = value.toLowerCase()
                     const s = lower.includes('expir') ? 'warning' : lower.includes('expired') || lower.includes('missing') ? 'expired' : 'valid'
@@ -555,6 +610,39 @@ export default function DriversPage() {
               )}
             </div>
           </div>
+
+          {/* Timeline */}
+          <div className="bg-[#181b25] border border-[#282b38] rounded-xl overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2130]">
+              <span className="text-[14px] font-bold text-[#f0f2f5]">Activity Timeline</span>
+            </div>
+            <div className="p-4">
+              {!selected ? (
+                <p className="text-[13px] text-[#646880] text-center py-4">No driver selected</p>
+              ) : timelineLoading ? (
+                <p className="text-[13px] text-[#646880] text-center py-4">Loading timeline...</p>
+              ) : timeline.length === 0 ? (
+                <p className="text-[13px] text-[#646880] text-center py-4">No activity recorded yet</p>
+              ) : (
+                <div className="space-y-3">
+                  {timeline.slice(0, 8).map((item, idx) => (
+                    <div key={idx} className="flex items-start gap-3">
+                      <div className={`w-2 h-2 mt-1.5 rounded-full ${
+                        item.type === 'created' ? 'bg-[#10b981]' :
+                        item.type === 'order' ? 'bg-[#3b82f6]' :
+                        'bg-[#646880]'
+                      }`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] text-[#f0f2f5] font-medium">{item.title}</p>
+                        <p className="text-[11px] text-[#646880] truncate">{item.description}</p>
+                        <p className="text-[10px] text-[#646880] mt-0.5">{new Date(item.timestamp).toLocaleString()}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -565,8 +653,8 @@ export default function DriversPage() {
           <div className="relative w-full max-w-[900px] max-h-[90vh] overflow-auto bg-[#0b0d14] border border-[#282b38] rounded-2xl shadow-2xl">
             <div className="flex items-center justify-between p-5 border-b border-[#282b38]">
               <div>
-                <h2 className="text-[18px] font-bold text-[#f0f2f5]">Create driver</h2>
-                <p className="text-[12px] text-[#646880] mt-1">Guided registration for driver, vehicle, documents, and compliance review.</p>
+                <h2 className="text-[18px] font-bold text-[#f0f2f5]">{editDriver ? 'Edit driver' : 'Create driver'}</h2>
+                <p className="text-[12px] text-[#646880] mt-1">{editDriver ? 'Update driver information and documents.' : 'Guided registration for driver, vehicle, documents, and compliance review.'}</p>
               </div>
               <button className="text-[#646880] hover:text-[#f0f2f5] text-2xl" onClick={() => setModalOpen(false)}>×</button>
             </div>
@@ -624,6 +712,11 @@ export default function DriversPage() {
                   <option value="luxury">Luxury</option>
                   <option value="van">Van</option>
                 </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold text-[#646880]">Photo URL</label>
+                <input className="w-full px-3 py-2 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none" placeholder="https://example.com/photo.jpg"
+                  value={formData.photo_url || ''} onChange={e => setFormData(p => ({ ...p, photo_url: e.target.value }))} />
               </div>
               <div className="space-y-1.5">
                 <label className="text-[11px] font-semibold text-[#646880]">Experience level</label>
@@ -697,7 +790,9 @@ export default function DriversPage() {
             <div className="flex justify-end gap-2.5 px-5 py-4 border-t border-[#282b38]">
               <button className="px-4 py-2 border border-[#282b38] text-[13px] text-[#9ca0b0] rounded-lg hover:bg-[#202330] transition-all" onClick={() => setModalOpen(false)}>Cancel</button>
               <button className="px-4 py-2 border border-[#282b38] text-[13px] text-[#9ca0b0] rounded-lg hover:bg-[#202330] transition-all" onClick={() => showToast('Draft saved')}>Save draft</button>
-              <button className="px-4 py-2 bg-[#10b981] text-white text-[13px] font-medium rounded-lg hover:bg-[#059669] transition-all" onClick={handleCreate}>Submit for review</button>
+              <button className="px-4 py-2 bg-[#10b981] text-white text-[13px] font-medium rounded-lg hover:bg-[#059669] transition-all" onClick={handleSubmit}>
+                {editDriver ? 'Update Driver' : 'Submit for review'}
+              </button>
             </div>
           </div>
         </div>
@@ -719,6 +814,51 @@ export default function DriversPage() {
         }
         .animate-slide-up { animation: slide-up 300ms ease; }
       `}</style>
+    </div>
+  )
+}
+
+function RankingBoard({ drivers }: { drivers: Driver[] }) {
+  const ranked = useMemo(() =>
+    [...drivers]
+      .filter(d => d.rating && d.total_trips)
+      .sort((a, b) => (b.rating || 0) - (a.rating || 0))
+      .slice(0, 6),
+    [drivers]
+  )
+
+  const maxTrips = useMemo(() => Math.max(...ranked.map(d => d.total_trips || 0), 1), [ranked])
+
+  if (ranked.length === 0) return null
+
+  const medals = ['🥇', '🥈', '🥉']
+
+  return (
+    <div className="bg-[#181b25] border border-[#282b38] rounded-xl overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2130]">
+        <div className="flex items-center gap-2.5">
+          <span className="text-[14px] font-bold text-[#f0f2f5]">Driver Ranking</span>
+          <span className="text-[12px] text-[#646880] font-medium">Top performers</span>
+        </div>
+      </div>
+      <div className="p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        {ranked.map((d, idx) => (
+          <div key={d.id} className="bg-[#0b0d14] border border-[#1e2130] rounded-xl p-3 text-center">
+            <div className="text-2xl mb-1">{medals[idx] || '🏅'}</div>
+            <p className="text-[13px] font-bold text-[#f0f2f5] truncate">{d.name}</p>
+            <div className="flex justify-center gap-3 mt-2 text-[11px] text-[#646880]">
+              <span>★ {d.rating}</span>
+              <span>{d.total_trips} trips</span>
+            </div>
+            <div className="mt-2 h-1.5 rounded-full bg-[#1e2130] overflow-hidden">
+              <div className="h-full rounded-full bg-[#10b981] transition-all" style={{ width: `${((d.total_trips || 0) / maxTrips) * 100}%` }} />
+            </div>
+            {d.vip_compatible === 1 && (
+              <span className="mt-1.5 inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(212,168,75,0.15)] text-[#d4a84b]">VIP</span>
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

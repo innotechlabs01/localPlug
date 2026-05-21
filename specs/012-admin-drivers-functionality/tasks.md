@@ -64,68 +64,68 @@ description: "Task list for Admin Drivers functionality — 5 phases, 3 user sto
 
 ---
 
-## Phase 3: Extended Driver Management 🟡 (NEXT)
+## Phase 3: Extended Driver Management ✅ (COMPLETE)
 
 **Purpose**: Editar driver, subir documentos/fotos, historial de cambios
 
 ### API
 
-- [ ] T016 [P] [US2] Create `PUT /api/admin/drivers/[id]/photo` endpoint
-- [ ] T017 [P] [US2] Create `POST /api/admin/drivers/[id]/documents` endpoint
-- [ ] T018 [P] [US2] Create `GET /api/admin/drivers/[id]/history` endpoint
+- [x] T016 [P] [US2] Create `PUT /api/admin/drivers/[id]/photo` endpoint
+- [x] T017 [P] [US2] Create `POST /api/admin/drivers/[id]/documents` endpoint
+- [x] T018 [P] [US2] Create `GET /api/admin/drivers/[id]/history` endpoint
 
 ### UI
 
-- [ ] T019 [P] [US2] Edit driver modal with preloaded data (reuse create modal pattern)
-- [ ] T020 [P] [US2] Drag & drop document upload in create/edit modal
-- [ ] T021 [P] [US2] Driver photo upload with avatar preview
-- [ ] T022 [US2] History timeline section in side panel
+- [x] T019 [P] [US2] Edit driver modal with preloaded data (reuse create modal pattern)
+- [x] T020 [P] [US2] Drag & drop document upload in create/edit modal
+- [x] T021 [P] [US2] Driver photo upload with avatar preview
+- [x] T022 [US2] History timeline section in side panel
 
 ---
 
-## Phase 4: Performance & Analytics ⬜
+## Phase 4: Performance & Analytics ✅ (COMPLETE)
 
 **Purpose**: Revenue tracking, ratings, ranking board
 
 ### Database
 
-- [ ] T023 Create `driver_performance` table (trips, revenue, VIP, cancellations, ratings)
+- [x] T023 Create `driver_performance` table (trips, revenue, VIP, cancellations, ratings)
 
 ### API
 
-- [ ] T024 [P] [US3] Create `GET /api/admin/drivers/[id]/performance` endpoint
-- [ ] T025 [P] [US3] Create `GET /api/admin/drivers/ranking` endpoint
+- [x] T024 [P] [US3] Create `GET /api/admin/drivers/[id]/performance` endpoint
+- [x] T025 [P] [US3] Create `GET /api/admin/drivers/ranking` endpoint
 
 ### UI
 
-- [ ] T026 [P] [US3] Revenue chart per driver in side panel
-- [ ] T027 [P] [US3] Ranking board section in main view
-- [ ] T028 [P] [US3] Customer reviews breakdown
-- [ ] T029 [US3] Cancellation rate & on-time performance meters
+- [x] T026 [P] [US3] Revenue chart per driver in side panel
+- [x] T027 [P] [US3] Ranking board section in main view
+- [x] T028 [P] [US3] Customer reviews breakdown
+- [x] T029 [US3] Cancellation rate & on-time performance meters
 
 ---
 
-## Phase 5: Fleet Integration ⬜
+## Phase 5: Fleet Integration 🟡 (STRUCTURE READY)
 
 **Purpose**: Mantenimiento de vehículos, GPS, zonas, turnos
 
 ### Database
 
-- [ ] T030 Create `vehicle_maintenance` table
-- [ ] T031 Create `driver_shifts` table
+- [x] T030 Create `vehicle_maintenance` table
+- [x] T031 Create `driver_shifts` table
 
 ### API
 
-- [ ] T032 [P] Create vehicle maintenance endpoints
-- [ ] T033 [P] Create shift scheduling endpoints
-- [ ] T034 Create GPS tracking endpoint (integrates with n8n/external)
+- [x] T032 [P] Create vehicle maintenance endpoints (via existing PUT)
+- [x] T033 [P] Create shift scheduling endpoints (via existing PUT)
+- [ ] T034 Create GPS tracking endpoint (requires external GPS service)
 
 ### UI
 
 - [ ] T035 [P] Vehicle maintenance calendar in side panel
 - [ ] T036 [P] Shift scheduling view
-- [ ] T037 Zone coverage map
-- [ ] T038 Live GPS tracking widget
+- [ ] T037 Zone coverage map (requires map API)
+- [ ] T038 Live GPS tracking widget (requires GPS service)
 
 ---
 
