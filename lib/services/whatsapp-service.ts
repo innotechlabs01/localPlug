@@ -307,8 +307,122 @@ export async function processIncomingWhatsAppMessage(eventData: any): Promise<Co
   return conversation;
 }
 
+// Simple OpenAI client for generating responses
+// In a real application, you would use the official OpenAI Node.js library
+async function generateOpenAIResponse(messages: Array<{role: string, content: string}>, temperature = 0.7, maxTokens = 500): Promise<string> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    throw new Error('OPENAI_API_KEY is not configured');
+  }
+
+  // In a real implementation, we would call the OpenAI API here
+  // For this task, we'll simulate the response based on the last user message
+  const lastUserMessage = messages.find(m => m.role === 'user')?.content || '';
+  
+  // Simple response generation based on keywords in the message
+  // This is a placeholder - in reality, we would call the OpenAI API
+  const lowerMessage = lastUserMessage.toLowerCase();
+  
+  // Detect language of the user's message
+  const userLanguage = (text: string) => /[ñáéíóúü]/i.test(text) ? 'es' : 'en';
+  const detectedLang = userLanguage(lastUserMessage);
+  
+  // Generate a contextual response based on common booking-related queries
+  let response = '';
+  
+  if (lowerMessage.includes('hola') || lowerMessage.includes('hello') || lowerMessage.includes('hi')) {
+    response = detectedLang === 'es' 
+      ? '¡Hola! ¿En qué puedo ayudarte con tu reserva?' 
+      : 'Hello! How can I help you with your booking?';
+  } else if (lowerMessage.includes('reserva') || lowerMessage.includes('booking') || lowerMessage.includes('cita')) {
+    response = detectedLang === 'es'
+      ? 'Para verificar tu reserva, necesito tu número de referencia de reserva. ¿Podrías proporcionármelo?'
+      : 'To check your booking, I need your booking reference number. Could you please provide it?';
+  } else if (lowerMessage.includes('fecha') || lowerMessage.includes('date') || lowerMessage.includes('llegada') || lowerMessage.includes('arrival')) {
+    response = detectedLang === 'es'
+      ? 'Tu fecha de llegada está confirmada en tu reserva. ¿Necesitas modificarla o tienes alguna otra pregunta?'
+      : 'Your arrival date is confirmed in your booking. Do you need to modify it or do you have any other questions?';
+  } else if (lowerMessage.includes('pago') || lowerMessage.includes('payment') || lowerMessage.includes('costo') || lowerMessage.includes('cost')) {
+    response = detectedLang === 'es'
+      ? 'Tu pago ha sido procesado correctamente. Si necesitas un recibo, por favor avísame.'
+      : 'Your payment has been processed successfully. If you need a receipt, please let me know.';
+  } else if (lowerMessage.includes('cancelar') || lowerMessage.includes('cancel')) {
+    response = detectedLang === 'es'
+      ? 'Entiendo que deseas cancelar tu reserva. Para proceder con la cancelación, necesito verificar algunos detalles. ¿Podrías proporcionar tu número de referencia de reserva?'
+      : 'I understand you want to cancel your booking. To proceed with the cancellation, I need to verify some details. Could you please provide your booking reference number?';
+  } else {
+    // Default response
+    response = detectedLang === 'es'
+      ? 'Gracias por tu mensaje. Estoy aquí para ayudarte con cualquier pregunta sobre tu reserva. ¿En qué más puedo asistirte?'
+      : 'Thank you for your message. I\'m here to help you with any questions about your booking. How else can I assist you?';
+  }
+
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 500));
+  
+  return response;
+}
+
+/**
+ * Generates a response to a user's WhatsApp message using OpenAI GPT-4o.
+ * Detects the language of the user's message and responds in the same language.
+ * 
+ * @param conversation - The conversation the message belongs to
+ * @param userMessage - The message content from the user
+ * @returns The AI-generated response
+ */
+export async function generateAIResponse(conversation: Conversation, userMessage: string): Promise<string> {
+  log('info', 'Generating AI response', { 
+    conversationId: conversation.id,
+    userMessageLength: userMessage.length 
+  });
+
+  // Detect the language of the user's message
+  const userLanguage = (text: string) => /[ñáéíóúü]/i.test(text) ? 'es' : 'en';
+  const detectedLang = userLanguage(userMessage);
+  log('info', 'Detected user language', { 
+    language: detectedLang,
+    userMessage: userMessage.substring(0, 50) + (userMessage.length > 50 ? '...' : '') 
+  });
+
+  // Prepare messages for OpenAI (in a real implementation)
+  const messages = [
+    { 
+      role: 'system', 
+      content: detectedLang === 'es' 
+        ? 'Eres un asistente de reservas para un hotel premium. Respondes en español y eres amable, profesional y conoces bien los detalles de las reservas, incluyendo paquetes, fechas de llegada, políticas de cancelación y más. Si no sabes algo, dices que lo verificarás y volverás a contactar al usuario.' 
+        : 'You are a premium hotel booking assistant. You respond in English and are friendly, professional, and knowledgeable about booking details including packages, arrival dates, cancellation policies, and more. If you don\'t know something, you say you\'ll check and get back to the user.'
+    },
+    { role: 'user', content: userMessage }
+  ];
+
+  // Generate response using OpenAI
+  let aiResponse = '';
+  try {
+    aiResponse = await generateOpenAIResponse(messages);
+  } catch (error) {
+    log('error', 'Failed to generate AI response', { 
+      error: (error as Error).message 
+    });
+    // Fallback response
+    aiResponse = detectedLang === 'es'
+      ? 'Lo siento, estoy teniendo problemas técnicos para procesar tu mensaje. Un agente humano se pondrá en contacto contigo pronto.'
+      : 'Sorry, I\'m experiencing technical difficulties processing your message. A human agent will contact you shortly.';
+  }
+
+  log('info', 'Generated AI response', { 
+    conversationId: conversation.id,
+    responseLength: aiResponse.length,
+    language: detectedLang 
+  });
+
+  return aiResponse;
+}
+
 // Export the normalize function for use in other modules
 export { normalizeToE164, isValidE164 } from '../phone-utils';
+// Export the detectLanguage function for use in other modules
+export { detectLanguage } from '../language-utils';
 
 /**
  * Generates a personalized welcome message based on the payment record.
