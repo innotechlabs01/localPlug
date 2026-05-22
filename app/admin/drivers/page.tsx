@@ -647,153 +647,132 @@ export default function DriversPage() {
         </div>
       </div>
 
-      {/* ── CREATE DRIVER MODAL ── */}
+      {/* ── CREATE DRIVER MODAL (wizard) ── */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
-          <div className="absolute inset-0 bg-black/62" onClick={() => setModalOpen(false)} />
-          <div className="relative w-full max-w-[900px] max-h-[90vh] overflow-auto bg-[#0b0d14] border border-[#282b38] rounded-2xl shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6" style={{ background: 'rgba(0,0,0,0.62)' }} onClick={() => setModalOpen(false)}>
+          <div className="relative w-full max-w-[900px] max-h-[90vh] overflow-auto bg-[#0b0d14] border border-[#282b38] rounded-2xl shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-5 border-b border-[#282b38]">
               <div>
                 <h2 className="text-[18px] font-bold text-[#f0f2f5]">{editDriver ? (d.modalEdit || 'Edit driver') : (d.modalCreate || 'Create driver')}</h2>
-                <p className="text-[12px] text-[#646880] mt-1">{editDriver ? (d.modalEditDesc || 'Update driver information and documents.') : (d.modalCreateDesc || 'Guided registration for driver, vehicle, documents, and compliance review.')}</p>
+                <p className="text-[12px] text-[#646880] mt-1">{editDriver ? (d.modalEditDesc || 'Update driver information.') : (d.modalCreateDesc || 'Register a new driver.')}</p>
               </div>
-              <button className="text-[#646880] hover:text-[#f0f2f5] text-2xl" onClick={() => setModalOpen(false)}>×</button>
-            </div>
-
-            {/* Stepper */}
-            <div className="grid grid-cols-6 gap-2 p-5 pb-0">
-              {[d.modalStep1 || '1 Personal', d.modalStep2 || '2 Emergency', d.modalStep3 || '3 License', d.modalStep4 || '4 Vehicle', d.modalStep5 || '5 Docs', d.modalStep6 || '6 Review'].map((s, i) => (
-                <div key={s} className={`border rounded-lg p-2.5 text-[11px] font-bold text-center transition-all ${
-                  createStep === i + 1
-                    ? 'border-[#10b981] bg-[rgba(16,185,129,0.12)] text-[#10b981]'
-                    : 'border-[#282b38] text-[#646880]'
-                }`}>{s}</div>
-              ))}
-            </div>
-
-            <div className="p-5 grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-[#646880]">{d.modalName || 'Full name'}</label>
-                <input className="w-full px-3 py-2 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none" placeholder={d.modalNamePlace || 'e.g. Alejandro Restrepo'}
-                  value={formData.name || ''} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))} />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-[#646880]">{d.modalPhone || 'Phone'}</label>
-                <input className="w-full px-3 py-2 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none" placeholder={d.modalPhonePlace || '+57 300 000 0000'}
-                  value={formData.phone || ''} onChange={e => setFormData(p => ({ ...p, phone: e.target.value }))} />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-[#646880]">{d.modalEmail || 'Email'}</label>
-                <input className="w-full px-3 py-2 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none" placeholder={d.modalEmailPlace || 'driver@company.com'}
-                  value={formData.email || ''} onChange={e => setFormData(p => ({ ...p, email: e.target.value }))} />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-[#646880]">{d.modalLang || 'Languages'}</label>
-                <input className="w-full px-3 py-2 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none" placeholder={d.modalLangPlace || 'Spanish, English, Portuguese'}
-                  value={formData.languages || ''} onChange={e => setFormData(p => ({ ...p, languages: e.target.value }))} />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-[#646880]">{d.modalVehicle || 'Vehicle'}</label>
-                <input className="w-full px-3 py-2 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none" placeholder={d.modalVehiclePlace || 'e.g. Mercedes V-Class'}
-                  value={formData.vehicle || ''} onChange={e => setFormData(p => ({ ...p, vehicle: e.target.value }))} />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-[#646880]">{d.modalPlate || 'Plate'}</label>
-                <input className="w-full px-3 py-2 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none" placeholder={d.modalPlatePlace || 'e.g. ABC-123'}
-                  value={formData.plate || ''} onChange={e => setFormData(p => ({ ...p, plate: e.target.value }))} />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-[#646880]">{d.modalVehicleType || 'Vehicle type'}</label>
-                <select className="w-full px-3 py-2 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none"
-                  value={formData.category || ''} onChange={e => setFormData(p => ({ ...p, category: e.target.value }))}>
-                  <option value="">{d.modalTypePlace || 'Select type...'}</option>
-                  <option value="standard">{d.modalTypeStandard || 'Standard'}</option>
-                  <option value="suv">{d.modalTypeSuv || 'SUV'}</option>
-                  <option value="vip">{d.modalTypeVip || 'VIP SUV'}</option>
-                  <option value="luxury">{d.modalTypeLuxury || 'Luxury'}</option>
-                  <option value="van">{d.modalTypeVan || 'Van'}</option>
-                </select>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-[#646880]">{d.modalPhotoUrl || 'Photo URL'}</label>
-                <input className="w-full px-3 py-2 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none" placeholder={d.modalPhotoPlace || 'https://example.com/photo.jpg'}
-                  value={formData.photo_url || ''} onChange={e => setFormData(p => ({ ...p, photo_url: e.target.value }))} />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-[#646880]">{d.modalExpLevel || 'Experience level'}</label>
-                <select className="w-full px-3 py-2 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none"
-                  value={formData.experienceLevel || ''} onChange={e => setFormData(p => ({ ...p, experienceLevel: e.target.value }))}>
-                  <option value="">{d.modalExpPlace || 'Select...'}</option>
-                  <option value="Standard">{d.modalExpStd || 'Standard'}</option>
-                  <option value="Senior">{d.modalExpSenior || 'Senior'}</option>
-                  <option value="Lead">{d.modalExpLead || 'Lead'}</option>
-                </select>
-              </div>
-
-              {/* Emergency Contact */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-[#646880]">{d.modalEmergContact || 'Emergency contact'}</label>
-                <input className="w-full px-3 py-2 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none" placeholder={d.modalEmergPlace || 'Contact name'}
-                  value={formData.emergency_contact || ''} onChange={e => setFormData(p => ({ ...p, emergency_contact: e.target.value }))} />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-[#646880]">{d.modalEmergPhone || 'Emergency phone'}</label>
-                <input className="w-full px-3 py-2 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none" placeholder={d.modalEmergPhonePlace || '+57 300 000 0000'}
-                  value={formData.emergency_phone || ''} onChange={e => setFormData(p => ({ ...p, emergency_phone: e.target.value }))} />
-              </div>
-
-              {/* Vehicle details */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-[#646880]">{d.modalYear || 'Vehicle year'}</label>
-                <input className="w-full px-3 py-2 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none" placeholder={d.modalYearPlace || 'e.g. 2024'}
-                  value={formData.year || ''} onChange={e => setFormData(p => ({ ...p, year: e.target.value }))} />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-[#646880]">{d.modalCapacity || 'Capacity'}</label>
-                <input className="w-full px-3 py-2 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none" placeholder={d.modalCapacityPlace || 'e.g. 4 pax / 5 bags'}
-                  value={formData.capacity || ''} onChange={e => setFormData(p => ({ ...p, capacity: e.target.value }))} />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-[#646880]">{d.modalCity || 'City'}</label>
-                <input className="w-full px-3 py-2 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none" placeholder={d.modalCityPlace || 'e.g. Medellín'}
-                  value={formData.city || ''} onChange={e => setFormData(p => ({ ...p, city: e.target.value }))} />
-              </div>
-
-              {/* Document Expirations */}
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-[#646880]">{d.modalLicense || 'License expiry'}</label>
-                <input type="date" className="w-full px-3 py-2 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none"
-                  value={formData.license_expiry || ''} onChange={e => setFormData(p => ({ ...p, license_expiry: e.target.value }))} />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-[#646880]">{d.modalSoat || 'SOAT expiry'}</label>
-                <input type="date" className="w-full px-3 py-2 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none"
-                  value={formData.soat_expiry || ''} onChange={e => setFormData(p => ({ ...p, soat_expiry: e.target.value }))} />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-[#646880]">{d.modalInspection || 'Tech inspection expiry'}</label>
-                <input type="date" className="w-full px-3 py-2 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none"
-                  value={formData.tech_inspection_expiry || ''} onChange={e => setFormData(p => ({ ...p, tech_inspection_expiry: e.target.value }))} />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-[#646880]">{d.modalInsurance || 'Insurance expiry'}</label>
-                <input type="date" className="w-full px-3 py-2 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none"
-                  value={formData.insurance_expiry || ''} onChange={e => setFormData(p => ({ ...p, insurance_expiry: e.target.value }))} />
-              </div>
-
-              <div className="col-span-2 space-y-1.5">
-                <label className="text-[11px] font-semibold text-[#646880]">{d.modalNotes || 'Operational notes'}</label>
-                <textarea className="w-full px-3 py-2 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none resize-none" rows={3} placeholder={d.modalNotesPlace || 'VIP handling notes, airport authorization, language preferences...'}
-                  value={formData.notes || ''} onChange={e => setFormData(p => ({ ...p, notes: e.target.value }))} />
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2.5 px-5 py-4 border-t border-[#282b38]">
-              <button className="px-4 py-2 border border-[#282b38] text-[13px] text-[#9ca0b0] rounded-lg hover:bg-[#202330] transition-all" onClick={() => setModalOpen(false)}>{d.modalCancel || 'Cancel'}</button>
-              <button className="px-4 py-2 border border-[#282b38] text-[13px] text-[#9ca0b0] rounded-lg hover:bg-[#202330] transition-all" onClick={() => showToast(d.toastDraft || 'Draft saved')}>{d.modalDraft || 'Save draft'}</button>
-              <button className="px-4 py-2 bg-[#10b981] text-white text-[13px] font-medium rounded-lg hover:bg-[#059669] transition-all" onClick={handleSubmit}>
-                {editDriver ? (d.modalUpdate || 'Update Driver') : (d.modalSubmit || 'Submit for review')}
+              <button className="text-[#646880] hover:text-[#f0f2f5]" onClick={() => setModalOpen(false)}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
               </button>
+            </div>
+            <div className="p-5">
+              {/* Stepper */}
+              <div className="flex gap-2 mb-4">
+                {[1,2,3,4,5,6].map(s => (
+                  <div key={s} className={`h-1 flex-1 rounded-full ${createStep >= s ? 'bg-[#10b981]' : 'bg-[#282b38]'}`} />
+                ))}
+              </div>
+              <p className="text-[12px] text-[#646880] mb-4">Step {createStep} of 6 - {(d.modalStep1 || '1 Personal')}</p>
+
+              {/* Step 1: Personal Info */}
+              {createStep === 1 && (
+                <div className="grid grid-cols-2 gap-3 mt-3.5">
+                  <div className="space-y-1"><label className="text-[11px] font-semibold text-[#646880]">{d.modalName || 'Full name'}</label><input className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981]" placeholder={d.modalNamePlace || 'e.g. Alejandro Restrepo'} value={formData.name || ''} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))} /></div>
+                  <div className="space-y-1"><label className="text-[11px] font-semibold text-[#646880]">{d.modalPhone || 'Phone'}</label><input className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981]" placeholder={d.modalPhonePlace || '+57 300 000 0000'} value={formData.phone || ''} onChange={e => setFormData(p => ({ ...p, phone: e.target.value }))} /></div>
+                  <div className="space-y-1"><label className="text-[11px] font-semibold text-[#646880]">{d.modalEmail || 'Email'}</label><input className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981]" placeholder={d.modalEmailPlace || 'driver@company.com'} value={formData.email || ''} onChange={e => setFormData(p => ({ ...p, email: e.target.value }))} /></div>
+                  <div className="space-y-1"><label className="text-[11px] font-semibold text-[#646880]">{d.modalLang || 'Languages'}</label><input className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981]" placeholder={d.modalLangPlace || 'Spanish, English'} value={formData.languages || ''} onChange={e => setFormData(p => ({ ...p, languages: e.target.value }))} /></div>
+                </div>
+              )}
+
+              {/* Step 2: Emergency */}
+              {createStep === 2 && (
+                <div className="grid grid-cols-2 gap-3 mt-3.5">
+                  <div className="space-y-1"><label className="text-[11px] font-semibold text-[#646880]">{d.modalEmergContact || 'Emergency contact'}</label><input className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981]" placeholder={d.modalEmergPlace || 'Contact name'} value={formData.emergency_contact || ''} onChange={e => setFormData(p => ({ ...p, emergency_contact: e.target.value }))} /></div>
+                  <div className="space-y-1"><label className="text-[11px] font-semibold text-[#646880]">{d.modalEmergPhone || 'Emergency phone'}</label><input className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981]" placeholder={d.modalEmergPhonePlace || '+57 300 000 0000'} value={formData.emergency_phone || ''} onChange={e => setFormData(p => ({ ...p, emergency_phone: e.target.value }))} /></div>
+                  <div className="space-y-1"><label className="text-[11px] font-semibold text-[#646880]">{d.modalExpLevel || 'Experience level'}</label>
+                    <select className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981]"
+                      value={formData.experienceLevel || ''} onChange={e => setFormData(p => ({ ...p, experienceLevel: e.target.value }))}>
+                      <option value="">{d.modalExpPlace || 'Select...'}</option>
+                      <option value="Standard">{d.modalExpStd || 'Standard'}</option>
+                      <option value="Senior">{d.modalExpSenior || 'Senior'}</option>
+                      <option value="Lead">{d.modalExpLead || 'Lead'}</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3: License */}
+              {createStep === 3 && (
+                <div className="grid grid-cols-2 gap-3 mt-3.5">
+                  <div className="space-y-1"><label className="text-[11px] font-semibold text-[#646880]">{d.modalLicense || 'License expiry'}</label><input type="date" className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981]" value={formData.license_expiry || ''} onChange={e => setFormData(p => ({ ...p, license_expiry: e.target.value }))} /></div>
+                  <div className="space-y-1"><label className="text-[11px] font-semibold text-[#646880]">{d.modalSoat || 'SOAT expiry'}</label><input type="date" className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981]" value={formData.soat_expiry || ''} onChange={e => setFormData(p => ({ ...p, soat_expiry: e.target.value }))} /></div>
+                  <div className="space-y-1"><label className="text-[11px] font-semibold text-[#646880]">{d.modalInspection || 'Tech inspection expiry'}</label><input type="date" className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981]" value={formData.tech_inspection_expiry || ''} onChange={e => setFormData(p => ({ ...p, tech_inspection_expiry: e.target.value }))} /></div>
+                  <div className="space-y-1"><label className="text-[11px] font-semibold text-[#646880]">{d.modalInsurance || 'Insurance expiry'}</label><input type="date" className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981]" value={formData.insurance_expiry || ''} onChange={e => setFormData(p => ({ ...p, insurance_expiry: e.target.value }))} /></div>
+                </div>
+              )}
+
+              {/* Step 4: Vehicle */}
+              {createStep === 4 && (
+                <div className="grid grid-cols-2 gap-3 mt-3.5">
+                  <div className="space-y-1"><label className="text-[11px] font-semibold text-[#646880]">{d.modalVehicle || 'Vehicle'}</label><input className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981]" placeholder={d.modalVehiclePlace || 'e.g. Mercedes V-Class'} value={formData.vehicle || ''} onChange={e => setFormData(p => ({ ...p, vehicle: e.target.value }))} /></div>
+                  <div className="space-y-1"><label className="text-[11px] font-semibold text-[#646880]">{d.modalPlate || 'Plate'}</label><input className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981]" placeholder={d.modalPlatePlace || 'e.g. ABC-123'} value={formData.plate || ''} onChange={e => setFormData(p => ({ ...p, plate: e.target.value }))} /></div>
+                  <div className="space-y-1"><label className="text-[11px] font-semibold text-[#646880]">{d.modalVehicleType || 'Vehicle type'}</label>
+                    <select className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981]"
+                      value={formData.category || ''} onChange={e => setFormData(p => ({ ...p, category: e.target.value }))}>
+                      <option value="">{d.modalTypePlace || 'Select type...'}</option>
+                      <option value="standard">{d.modalTypeStandard || 'Standard'}</option>
+                      <option value="suv">{d.modalTypeSuv || 'SUV'}</option>
+                      <option value="vip">{d.modalTypeVip || 'VIP SUV'}</option>
+                      <option value="luxury">{d.modalTypeLuxury || 'Luxury'}</option>
+                      <option value="van">{d.modalTypeVan || 'Van'}</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1"><label className="text-[11px] font-semibold text-[#646880]">{d.modalYear || 'Vehicle year'}</label><input className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981]" placeholder={d.modalYearPlace || 'e.g. 2024'} value={formData.year || ''} onChange={e => setFormData(p => ({ ...p, year: e.target.value }))} /></div>
+                  <div className="space-y-1"><label className="text-[11px] font-semibold text-[#646880]">{d.modalCapacity || 'Capacity'}</label><input className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981]" placeholder={d.modalCapacityPlace || 'e.g. 4 pax'} value={formData.capacity || ''} onChange={e => setFormData(p => ({ ...p, capacity: e.target.value }))} /></div>
+                  <div className="space-y-1"><label className="text-[11px] font-semibold text-[#646880]">{d.modalCity || 'City'}</label><input className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981]" placeholder={d.modalCityPlace || 'e.g. Medellín'} value={formData.city || ''} onChange={e => setFormData(p => ({ ...p, city: e.target.value }))} /></div>
+                  <div className="space-y-1"><label className="text-[11px] font-semibold text-[#646880]">{d.modalPhotoUrl || 'Photo URL'}</label><input className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981]" placeholder={d.modalPhotoPlace || 'https://example.com/photo.jpg'} value={formData.photo_url || ''} onChange={e => setFormData(p => ({ ...p, photo_url: e.target.value }))} /></div>
+                </div>
+              )}
+
+              {/* Step 5: Docs */}
+              {createStep === 5 && (
+                <div className="grid grid-cols-2 gap-3 mt-3.5">
+                  <div className="col-span-2 space-y-1"><label className="text-[11px] font-semibold text-[#646880]">{d.modalNotes || 'Operational notes'}</label>
+                    <textarea rows={3} className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] resize-none" placeholder={d.modalNotesPlace || 'VIP handling notes...'} value={formData.notes || ''} onChange={e => setFormData(p => ({ ...p, notes: e.target.value }))} /></div>
+                </div>
+              )}
+
+              {/* Step 6: Review */}
+              {createStep === 6 && (
+                <div className="p-4 bg-[#181b25] border border-[#282b38] rounded-lg mt-3.5 text-[13px] text-[#9ca0b0] leading-relaxed">
+                  Review all driver information before saving. All actions will be logged.
+                  <div className="grid grid-cols-2 gap-3 mt-4">
+                    {[
+                      ['Name', formData.name], ['Phone', formData.phone], ['Email', formData.email],
+                      ['Languages', formData.languages], ['Vehicle', formData.vehicle], ['Plate', formData.plate],
+                      ['Type', formData.category], ['City', formData.city],
+                    ].map(([label, value]) => (
+                      <div key={label}>
+                        <label className="block text-[10px] text-[#646880] uppercase tracking-wider mb-1">{label}</label>
+                        <div className="text-[13px] text-[#f0f2f5]">{value || '—'}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="flex justify-between gap-2.5 px-5 py-4 border-t border-[#282b38]">
+              <button className="px-4 py-2 border border-[#282b38] text-[13px] text-[#9ca0b0] rounded-lg hover:bg-[#202330] transition-all"
+                style={{ display: createStep > 1 ? 'block' : 'none' }}
+                onClick={() => setCreateStep(s => s - 1)}>Back</button>
+              <div className="flex gap-2.5 ml-auto">
+                {createStep < 6 ? (
+                  <button className="px-6 py-2 bg-[#10b981] text-white text-[13px] font-medium rounded-lg hover:bg-[#059669] transition-all" onClick={() => setCreateStep(s => s + 1)}>Next</button>
+                ) : (
+                  <>
+                    <button className="px-4 py-2 border border-[#282b38] text-[13px] text-[#9ca0b0] rounded-lg hover:bg-[#202330] transition-all" onClick={() => setModalOpen(false)}>{d.modalCancel || 'Cancel'}</button>
+                    <button className="px-4 py-2 border border-[#282b38] text-[13px] text-[#9ca0b0] rounded-lg hover:bg-[#202330] transition-all" onClick={() => showToast(d.toastDraft || 'Draft saved')}>{d.modalDraft || 'Save draft'}</button>
+                    <button className="px-4 py-2 bg-[#10b981] text-white text-[13px] font-medium rounded-lg hover:bg-[#059669] transition-all" onClick={handleSubmit}>{editDriver ? (d.modalUpdate || 'Update') : (d.modalSubmit || 'Submit')}</button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>
