@@ -1,11 +1,15 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useI18n } from '@/lib/i18n'
 
 interface TeamMember {
   id: number; name: string; email: string; roles: string
   status: string; orders_assigned: number; last_login_at: string; created_at: string
+}
+
+interface Role {
+  id: number; name: string; description: string
 }
 
 const theme = {
@@ -27,12 +31,26 @@ export default function TeamPage() {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState('all')
   const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [roles, setRoles] = useState<Role[]>([])
+  const [form, setForm] = useState<Record<string, string>>({})
+  const [notif, setNotif] = useState<{ id: number; msg: string }[]>([])
+
+  const showToast = (msg: string) => {
+    const id = Date.now()
+    setNotif(p => [...p, { id, msg }])
+    setTimeout(() => setNotif(p => p.filter(n => n.id !== id)), 3000)
+  }
 
   useEffect(() => {
-    fetch('/api/admin/team')
-      .then(r => r.json())
-      .then(data => { setMembers(data); setLoading(false) })
-      .catch(() => setLoading(false))
+    Promise.all([
+      fetch('/api/admin/team').then(r => r.json()),
+      fetch('/api/admin/team/roles').then(r => r.json()).catch(() => []),
+    ]).then(([data, roleData]) => {
+      setMembers(data)
+      setRoles(roleData.roles || roleData || [])
+      setLoading(false)
+    }).catch(() => setLoading(false))
   }, [])
 
   const selected = useMemo(() => members.find(m => m.id === selectedId), [members, selectedId])
@@ -56,6 +74,32 @@ export default function TeamPage() {
   }), [members, search, filter])
 
   const getInit = (name: string) => name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+
+  const handleCreate = async () => {
+    try {
+      if (!form.name || !form.email || !form.role_id) {
+        showToast('Name, email, and role are required')
+        return
+      }
+      const res = await fetch('/api/admin/team', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: form.name, email: form.email, role_id: Number(form.role_id) }),
+      })
+      if (res.ok) {
+        showToast('Member created')
+        setModalOpen(false)
+        setForm({})
+        const data = await fetch('/api/admin/team').then(r => r.json())
+        setMembers(data)
+      } else {
+        const err = await res.json()
+        showToast(err.error || 'Failed to create member')
+      }
+    } catch {
+      showToast('Error creating member')
+    }
+  }
 
   const getAvatarColor = (name: string) => {
     const hash = name.charCodeAt(0) || 0
@@ -85,7 +129,7 @@ export default function TeamPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <button className="px-4 py-2 bg-[#10b981] text-white text-[13px] font-medium rounded-lg hover:bg-[#059669] transition-all">
+          <button className="px-4 py-2 bg-[#10b981] text-white text-[13px] font-medium rounded-lg hover:bg-[#059669] transition-all" onClick={() => setModalOpen(true)}>
             {d.addMember || '+ Add Member'}
           </button>
         </div>
@@ -269,6 +313,62 @@ export default function TeamPage() {
           </div>
         </div>
       </div>
+
+      {/* ── Create Modal ── */}
+      {modalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+          <div className="absolute inset-0 bg-black/62" onClick={() => setModalOpen(false)} />
+          <div className="relative w-full max-w-[500px] bg-[#0b0d14] border border-[#282b38] rounded-2xl shadow-2xl">
+            <div className="flex items-center justify-between p-5 border-b border-[#282b38]">
+              <div>
+                <h2 className="text-[18px] font-bold text-[#f0f2f5]">Add Team Member</h2>
+                <p className="text-[12px] text-[#646880] mt-1">Register a new team member with role assignment.</p>
+              </div>
+              <button className="text-[#646880] hover:text-[#f0f2f5] text-2xl" onClick={() => setModalOpen(false)}>×</button>
+            </div>
+            <div className="p-5 grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold text-[#646880]">Full name</label>
+                <input className="w-full px-3 py-2 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none" placeholder="e.g. John Doe"
+                  value={form.name || ''} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-semibold text-[#646880]">Email</label>
+                <input className="w-full px-3 py-2 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none" placeholder="email@company.com"
+                  value={form.email || ''} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} />
+              </div>
+              <div className="col-span-2 space-y-1.5">
+                <label className="text-[11px] font-semibold text-[#646880]">Role</label>
+                <select className="w-full px-3 py-2 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none"
+                  value={form.role_id || ''} onChange={e => setForm(p => ({ ...p, role_id: e.target.value }))}>
+                  <option value="">Select role...</option>
+                  {roles.map(r => (
+                    <option key={r.id} value={r.id}>{r.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2.5 px-5 py-4 border-t border-[#282b38]">
+              <button className="px-4 py-2 border border-[#282b38] text-[13px] text-[#9ca0b0] rounded-lg hover:bg-[#202330] transition-all" onClick={() => setModalOpen(false)}>Cancel</button>
+              <button className="px-4 py-2 bg-[#10b981] text-white text-[13px] font-medium rounded-lg hover:bg-[#059669] transition-all" onClick={handleCreate}>Create</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Toasts ── */}
+      <div className="fixed bottom-6 right-6 space-y-2 z-[800]">
+        {notif.map(n => (
+          <div key={n.id} className="bg-[#181b25] border border-[#282b38] text-[#f0f2f5] px-4 py-3 rounded-xl shadow-2xl text-[13px] animate-slide-up">
+            {n.msg}
+          </div>
+        ))}
+      </div>
+
+      <style>{`
+        @keyframes slide-up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-slide-up { animation: slide-up 300ms ease; }
+      `}</style>
     </div>
   )
 }
