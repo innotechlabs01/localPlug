@@ -45,6 +45,12 @@ export default function ReservationDetailModal({
             </button>
             
             <div className="space-y-6">
+              {/* Booking Reference / Order Number */}
+              <div className="flex items-center justify-between text-sm mb-2">
+                <span><span className="font-medium text-gray-700">Booking Ref:</span> <span className="font-mono">{reservation.bookingReference || '—'}</span></span>
+                <span><span className="font-medium text-gray-700">Order #:</span> <span className="font-mono">{reservation.orderNumber || '—'}</span></span>
+              </div>
+
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div>
                   <h3 className="text-lg font-medium text-gray-900 mb-2">{t.admin.reservations.touristProfile || 'Tourist Profile'}</h3>
@@ -68,6 +74,7 @@ export default function ReservationDetailModal({
                       <p>🌐 {reservation.guest.country || (t.admin.reservations.unknown || 'Unknown')}</p>
                       <p>💬 {reservation.guest.language || (t.admin.reservations.notSpecified || 'Not specified')}</p>
                       <p>⭐ {reservation.vipStatus !== 'none' ? reservation.vipStatus : (t.admin.reservations.filters?.all || 'Standard')}</p>
+                      {reservation.travelerProfile && <p>🎒 Traveler Profile: {reservation.travelerProfile}</p>}
                     </div>
                   </div>
                 </div>
@@ -79,6 +86,14 @@ export default function ReservationDetailModal({
                     <p><span className="font-medium text-gray-700">{t.admin.reservations.flight || 'Flight'}:</span> {reservation.flightInfo || (t.admin.reservations.notSpecified || 'Not specified')}</p>
                     <p><span className="font-medium text-gray-700">{t.admin.reservations.arrival || 'Arrival'}:</span> {formatDate(reservation.arrivalDate)} {reservation.arrivalTime}</p>
                     <p><span className="font-medium text-gray-700">{t.admin.reservations.status || 'Status'}:</span> <span className={getStatusBadgeClass(reservation.status)}>{getStatusText(reservation.status)}</span></p>
+                    {/* Destination address */}
+                    {reservation.destinationAddress && (
+                      <p><span className="font-medium text-gray-700">Destination:</span> {reservation.destinationAddress}</p>
+                    )}
+                    {/* Return flight */}
+                    {reservation.returnDate && (
+                      <p><span className="font-medium text-gray-700">Return Flight:</span> {reservation.returnDate} {reservation.returnTime || ''}</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -97,6 +112,27 @@ export default function ReservationDetailModal({
                 <div className="border-t border-gray-200 pt-4">
                   <h3 className="text-lg font-medium text-gray-900 mb-2">{t.admin.reservations.specialRequests || 'Special Requests'}</h3>
                   <p className="text-sm text-gray-500">{reservation.specialRequests}</p>
+                </div>
+              )}
+
+              {/* Dispatch Status */}
+              {reservation.dispatchStatus && (
+                <div className="border-t border-gray-200 pt-4">
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Dispatch Status</h3>
+                  <div className="space-y-1 text-sm text-gray-500">
+                    <p><span className="font-medium text-gray-700">Status:</span> <span className={getStatusBadgeClass(reservation.dispatchStatus)}>{reservation.dispatchStatus}</span></p>
+                  </div>
+                </div>
+              )}
+
+              {/* Driver Info */}
+              {reservation.driverAssigned && (
+                <div className="border-t border-gray-200 pt-4">
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Driver</h3>
+                  <div className="space-y-1 text-sm text-gray-500">
+                    <p><span className="font-medium text-gray-700">Name:</span> {reservation.driverAssigned.name}</p>
+                    <p><span className="font-medium text-gray-700">Phone:</span> {reservation.driverAssigned.phone}</p>
+                  </div>
                 </div>
               )}
               

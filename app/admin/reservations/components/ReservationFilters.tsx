@@ -1,46 +1,55 @@
-import { Reservation } from '@/lib/reservations-api'
+import { useMemo } from 'react'
+import { useI18n } from '@/lib/i18n'
+import { Reservation, ReservationStatus } from '@/lib/reservations-api'
 
 interface ReservationFiltersProps {
-  selectedFilter: 'all' | 'pending' | 'confirmed' | 'awaiting_payment' | 'assigned' | 'in_progress' | 'completed' | 'cancelled'
-  onFilterChange: (filter: 'all' | 'pending' | 'confirmed' | 'awaiting_payment' | 'assigned' | 'in_progress' | 'completed' | 'cancelled') => void
-  reservationsCount: number
+  selectedFilter: ReservationStatus | 'all'
+  onFilterChange: (filter: ReservationStatus | 'all') => void
+  reservations: Reservation[]
 }
+
+const STATUS_ORDER: ReservationStatus[] = ['pending', 'confirmed', 'awaiting_payment', 'assigned', 'in_progress', 'completed', 'cancelled']
 
 export default function ReservationFilters({ 
   selectedFilter, 
   onFilterChange, 
-  reservationsCount 
+  reservations
 }: ReservationFiltersProps) {
-  const filters = [
-    { id: 'all', label: 'All', count: reservationsCount },
-    { id: 'pending', label: 'Pending', count: 0 }, // Will be calculated
-    { id: 'confirmed', label: 'Confirmed', count: 0 },
-    { id: 'awaiting_payment', label: 'Awaiting Payment', count: 0 },
-    { id: 'assigned', label: 'Assigned', count: 0 },
-    { id: 'in_progress', label: 'In Progress', count: 0 },
-    { id: 'completed', label: 'Completed', count: 0 },
-    { id: 'cancelled', label: 'Cancelled', count: 0 }
-  ]
+  const { t } = useI18n()
+  const labels = t.admin?.reservations?.filters || {}
+  
+  const getLabel = (status: ReservationStatus | 'all'): string => {
+    if (status === 'all') return labels.all || 'All'
+    if (status === 'awaiting_payment') return labels.awaitingPayment || 'Awaiting Payment'
+    if (status === 'in_progress') return labels.inProgress || 'In Progress'
+    return labels[status] || status
+  }
 
-  // Calculate counts for each filter (in a real app, this would come from the API)
-  const filteredCounts = filters.map(filter => {
-    if (filter.id === 'all') return { ...filter, count: reservationsCount }
-    return {
-      ...filter,
-      count: reservations.filter(r => r.status === filter.id).length
-    }
-  })
+  const counts = useMemo(() => {
+    const c: Record<string, number> = { all: reservations.length }
+    STATUS_ORDER.forEach(status => {
+      c[status] = reservations.filter(r => r.status === status).length
+    })
+    return c
+  }, [reservations])
 
   return (
     <div className="filter-tabs" id="filterTabs">
-      {filteredCounts.map(filter => (
+      <button
+        className={`filter-tab ${selectedFilter === 'all' ? 'active' : ''}`}
+        onClick={() => onFilterChange('all')}
+        data-filter="all"
+      >
+        {labels.all || 'All'} <span className="count">{counts.all}</span>
+      </button>
+      {STATUS_ORDER.map(status => (
         <button
-          key={filter.id}
-          className={`filter-tab ${selectedFilter === filter.id ? 'active' : ''}`}
-          onClick={() => onFilterChange(filter.id as any)}
-          data-filter={filter.id}
+          key={status}
+          className={`filter-tab ${selectedFilter === status ? 'active' : ''}`}
+          onClick={() => onFilterChange(status)}
+          data-filter={status}
         >
-          {filter.label} <span className="count">{filter.count}</span>
+          {getLabel(status)} <span className="count">{counts[status]}</span>
         </button>
       ))}
     </div>

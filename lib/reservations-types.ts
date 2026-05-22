@@ -15,6 +15,12 @@ export interface Service {
   includes?: string[]
 }
 
+export interface DriverInfo {
+  id: string
+  name: string
+  phone: string
+}
+
 export interface Reservation {
   id: string
   guest: Guest
@@ -31,6 +37,19 @@ export interface Reservation {
   vipStatus: VIPStatus
   createdAt: string // ISO timestamp
   updatedAt: string // ISO timestamp
+  // Extended fields
+  bookingReference?: string
+  orderNumber?: string
+  destinationAddress?: string
+  returnDate?: string
+  returnTime?: string
+  travelerProfile?: string
+  additionalTrips?: string[]
+  dispatchStatus?: string
+  driverAssigned?: DriverInfo
+  assignedAt?: string
+  priority?: number
+  internalNotes?: string
 }
 
 export type ReservationStatus = 

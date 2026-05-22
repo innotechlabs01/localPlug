@@ -12,6 +12,10 @@ interface StepTravelerProfileProps {
   onNameChange: (name: string) => void
   phone: string
   onPhoneChange: (phone: string) => void
+  country: string
+  onCountryChange: (country: string) => void
+  language: string
+  onLanguageChange: (language: string) => void
 }
 
 const profileIcons: Record<string, ReactNode> = {
@@ -53,6 +57,10 @@ export default function StepTravelerProfile({
   onNameChange,
   phone,
   onPhoneChange,
+  country,
+  onCountryChange,
+  language,
+  onLanguageChange,
 }: StepTravelerProfileProps) {
   const { t } = useI18n()
   const profileT = t.booking.steps.profile
@@ -113,6 +121,41 @@ export default function StepTravelerProfile({
           <p className="text-body-sm text-[var(--text-muted)] mt-1">
             {t.booking.steps.profile.phoneHint}
           </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-label-md text-[var(--text-primary)] font-semibold mb-1.5">Country</label>
+            <select value={country} onChange={(e) => onCountryChange(e.target.value)}
+              className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-elevated)] text-body-md text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-gold)]/40 focus:border-[var(--accent-gold)] transition-all">
+              <option value="">Select country...</option>
+              <option value="USA">🇺🇸 USA</option>
+              <option value="Colombia">🇨🇴 Colombia</option>
+              <option value="Mexico">🇲🇽 Mexico</option>
+              <option value="Argentina">🇦🇷 Argentina</option>
+              <option value="Spain">🇪🇸 Spain</option>
+              <option value="UK">🇬🇧 UK</option>
+              <option value="Canada">🇨🇦 Canada</option>
+              <option value="Brazil">🇧🇷 Brazil</option>
+              <option value="Chile">🇨🇱 Chile</option>
+              <option value="France">🇫🇷 France</option>
+              <option value="Germany">🇩🇪 Germany</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-label-md text-[var(--text-primary)] font-semibold mb-1.5">Language</label>
+            <select value={language} onChange={(e) => onLanguageChange(e.target.value)}
+              className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-elevated)] text-body-md text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-gold)]/40 focus:border-[var(--accent-gold)] transition-all">
+              <option value="">Select language...</option>
+              <option value="English">English</option>
+              <option value="Spanish">Español</option>
+              <option value="Portuguese">Português</option>
+              <option value="French">Français</option>
+              <option value="German">Deutsch</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
         </div>
       </div>
 

@@ -165,7 +165,7 @@ export default function StepPayment({
             <p className="text-body-md text-[#f87171] font-medium">{error}</p>
             <button
               type="button"
-              onClick={() => { setError(null); setLoading(true); fetchClientSecret() }}
+              onClick={() => { setError(null); setLoading(true); setClientSecret(null); fetchClientSecret() }}
               className="text-body-md text-[var(--accent-gold)] underline mt-1 hover:text-[var(--accent-gold-light)]"
             >
               {paymentT.tryAgain}
@@ -196,7 +196,7 @@ export default function StepPayment({
       )}
 
       {clientSecret && (
-        <Elements stripe={stripePromise} options={{ clientSecret }}>
+        <Elements key={clientSecret} stripe={stripePromise} options={{ clientSecret }}>
           <PaymentForm
             onError={handleError}
             onPaymentSuccess={onPaymentSuccess}

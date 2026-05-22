@@ -86,7 +86,7 @@ export default function PaymentForm({ onError, onPaymentSuccess, bookingReferenc
 
     setPhase('confirming')
 
-    const { error } = await stripe.confirmPayment({
+    const { error, paymentIntent } = await stripe.confirmPayment({
       elements,
       confirmParams: {
         return_url: window.location.href,
@@ -97,6 +97,16 @@ export default function PaymentForm({ onError, onPaymentSuccess, bookingReferenc
     if (error) {
       onError(error.message || t.common.paymentFailed)
       setPhase('idle')
+      return
+    }
+
+    if (paymentIntent?.status === 'succeeded') {
+      await fetch('/api/payments/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingReference, paymentIntentId: paymentIntent.id }),
+      }).catch(() => {})
+      onPaymentSuccess()
       return
     }
 

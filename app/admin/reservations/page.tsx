@@ -104,7 +104,9 @@ export default function AdminReservations() {
           reservation.guest.email.toLowerCase().includes(query) ||
           reservation.guest.country?.toLowerCase().includes(query) ||
           reservation.service.name.toLowerCase().includes(query) ||
-          reservation.flightInfo?.toLowerCase().includes(query)
+          reservation.flightInfo?.toLowerCase().includes(query) ||
+          reservation.bookingReference?.toLowerCase().includes(query) ||
+          reservation.orderNumber?.toLowerCase().includes(query)
         )
       }
       

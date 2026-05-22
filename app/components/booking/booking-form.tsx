@@ -114,6 +114,9 @@ function BookingFormInner() {
   const [customerEmail, setCustomerEmail] = useState('')
   const [customerName, setCustomerName] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
+  const [customerCountry, setCustomerCountry] = useState('')
+  const [customerLanguage, setCustomerLanguage] = useState('')
+  const [customerNotes, setCustomerNotes] = useState('')
   const [destination, setDestination] = useState<DestinationData>({
     hasPlace: true,
     address: '',
@@ -172,6 +175,14 @@ function BookingFormInner() {
       status: 'submitted' as const,
       createdAt: new Date().toISOString(),
       submittedAt: new Date().toISOString(),
+      customer: {
+        name: customerName,
+        email: customerEmail,
+        phone: customerPhone,
+        country: customerCountry,
+        language: customerLanguage,
+        notes: customerNotes,
+      },
     }
 
     logBookingEvent('Submitting booking', { id: booking.id })
@@ -288,10 +299,19 @@ function BookingFormInner() {
                     onNameChange={setCustomerName}
                     phone={customerPhone}
                     onPhoneChange={setCustomerPhone}
+                    country={customerCountry}
+                    onCountryChange={setCustomerCountry}
+                    language={customerLanguage}
+                    onLanguageChange={setCustomerLanguage}
                   />
                 )}
                 {step === 2 && (
-                  <StepDestination data={destination} onChange={setDestination} />
+                  <StepDestination
+                    data={destination}
+                    onChange={setDestination}
+                    customerNotes={customerNotes}
+                    onCustomerNotesChange={setCustomerNotes}
+                  />
                 )}
                 {step === 3 && (
                   <StepPackages
