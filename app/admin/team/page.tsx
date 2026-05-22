@@ -34,6 +34,7 @@ export default function TeamPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [roles, setRoles] = useState<Role[]>([])
   const [form, setForm] = useState<Record<string, string>>({})
+  const [wizardStep, setWizardStep] = useState(1)
   const [notif, setNotif] = useState<{ id: number; msg: string }[]>([])
 
   const showToast = (msg: string) => {
@@ -314,10 +315,10 @@ export default function TeamPage() {
         </div>
       </div>
 
-      {/* ── Create Modal (matching admin-employees.html) ── */}
+      {/* ── Create Modal (matching admin-employees.html wizard) ── */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6" style={{ background: 'rgba(0,0,0,0.62)' }}>
-          <div className="w-full max-w-[760px] max-h-[90vh] overflow-y-auto bg-[#0b0d14] border border-[#282b38] rounded-2xl shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6" style={{ background: 'rgba(0,0,0,0.62)' }} onClick={() => setModalOpen(false)}>
+          <div className="w-full max-w-[760px] max-h-[90vh] overflow-y-auto bg-[#0b0d14] border border-[#282b38] rounded-2xl shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-5 border-b border-[#282b38]">
               <h2 className="text-[18px] font-bold text-[#f0f2f5]">Add Team Member</h2>
               <button className="text-[#646880] hover:text-[#f0f2f5]" onClick={() => setModalOpen(false)}>
@@ -329,48 +330,126 @@ export default function TeamPage() {
             <div className="p-5">
               {/* Stepper */}
               <div className="flex gap-2 mb-4">
-                <div className="h-1 flex-1 rounded-full bg-[#10b981]" />
-                <div className="h-1 flex-1 rounded-full bg-[#282b38]" />
-                <div className="h-1 flex-1 rounded-full bg-[#282b38]" />
-                <div className="h-1 flex-1 rounded-full bg-[#282b38]" />
+                <div className={`h-1 flex-1 rounded-full ${wizardStep >= 1 ? 'bg-[#10b981]' : 'bg-[#282b38]'}`} />
+                <div className={`h-1 flex-1 rounded-full ${wizardStep >= 2 ? 'bg-[#10b981]' : 'bg-[#282b38]'}`} />
+                <div className={`h-1 flex-1 rounded-full ${wizardStep >= 3 ? 'bg-[#10b981]' : 'bg-[#282b38]'}`} />
+                <div className={`h-1 flex-1 rounded-full ${wizardStep >= 4 ? 'bg-[#10b981]' : 'bg-[#282b38]'}`} />
               </div>
-              <p className="text-[12px] text-[#646880] mb-4">Step 1 of 4 - Personal Information</p>
+              <p className="text-[12px] text-[#646880] mb-4">Step {wizardStep} of 4 - {['Personal Information', 'Role & Department', 'Permissions', 'Review'][wizardStep - 1]}</p>
 
               {/* Step 1: Personal Info */}
-              <div className="grid grid-cols-2 gap-3 mt-3.5">
-                <div className="space-y-1">
-                  <label className="text-[11px] font-semibold text-[#646880]">Full name</label>
-                  <input className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-colors" placeholder="e.g. Laura Giraldo"
-                    value={form.name || ''} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} />
+              {wizardStep === 1 && (
+                <div className="grid grid-cols-2 gap-3 mt-3.5">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-[#646880]">Full name</label>
+                    <input className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-colors" placeholder="e.g. Laura Giraldo"
+                      value={form.name || ''} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-[#646880]">Email</label>
+                    <input className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-colors" placeholder="laura@company.com" type="email"
+                      value={form.email || ''} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-[#646880]">Phone number</label>
+                    <input className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-colors" placeholder="+57 300 123 4567"
+                      value={form.phone || ''} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-[#646880]">Address</label>
+                    <input className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-colors" placeholder="El Poblado, Medellín"
+                      value={form.address || ''} onChange={e => setForm(p => ({ ...p, address: e.target.value }))} />
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[11px] font-semibold text-[#646880]">Email</label>
-                  <input className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-colors" placeholder="laura@company.com" type="email"
-                    value={form.email || ''} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} />
+              )}
+
+              {/* Step 2: Role & Department */}
+              {wizardStep === 2 && (
+                <div className="grid grid-cols-2 gap-3 mt-3.5">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-[#646880]">Department</label>
+                    <select className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-colors"
+                      value={form.department || ''} onChange={e => setForm(p => ({ ...p, department: e.target.value }))}>
+                      <option value="">Select department...</option>
+                      <option>Operations</option><option>Support</option><option>Finance</option><option>Marketing</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-[#646880]">Role</label>
+                    <select className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-colors"
+                      value={form.role_id || ''} onChange={e => setForm(p => ({ ...p, role_id: e.target.value }))}>
+                      <option value="">Select role...</option>
+                      {roles.map(r => (
+                        <option key={r.id} value={r.id}>{r.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-[#646880]">Work status</label>
+                    <select className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-colors"
+                      value={form.employee_status || 'active'} onChange={e => setForm(p => ({ ...p, employee_status: e.target.value }))}>
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                      <option value="suspended">Suspended</option>
+                      <option value="leave">On Leave</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-[#646880]">Office location</label>
+                    <input className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-colors" placeholder="El Poblado HQ"
+                      value={form.location || ''} onChange={e => setForm(p => ({ ...p, location: e.target.value }))} />
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[11px] font-semibold text-[#646880]">Role</label>
-                  <select className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-colors"
-                    value={form.role_id || ''} onChange={e => setForm(p => ({ ...p, role_id: e.target.value }))}>
-                    <option value="">Select role...</option>
-                    {roles.map(r => (
-                      <option key={r.id} value={r.id}>{r.name}</option>
+              )}
+
+              {/* Step 3: Permissions */}
+              {wizardStep === 3 && (
+                <div className="grid grid-cols-2 gap-3 mt-3.5">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-[#646880]">Role template</label>
+                    <input className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-colors" placeholder="Operations Manager Template"
+                      value={form.role_template || ''} onChange={e => setForm(p => ({ ...p, role_template: e.target.value }))} />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-semibold text-[#646880]">Last login policy</label>
+                    <input className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-colors" placeholder="Require 90 day audit"
+                      value={form.login_policy || ''} onChange={e => setForm(p => ({ ...p, login_policy: e.target.value }))} />
+                  </div>
+                </div>
+              )}
+
+              {/* Step 4: Review */}
+              {wizardStep === 4 && (
+                <div className="p-4 bg-[#181b25] border border-[#282b38] rounded-lg mt-3.5 text-[13px] text-[#9ca0b0] leading-relaxed">
+                  Review employee profile, department, permissions, and status before creating the account. All actions will be logged in the audit trail.
+                  <div className="grid grid-cols-2 gap-3 mt-4">
+                    {[
+                      ['Name', form.name || '—'],
+                      ['Email', form.email || '—'],
+                      ['Phone', form.phone || '—'],
+                      ['Role', roles.find(r => r.id === Number(form.role_id))?.name || form.role_id || '—'],
+                      ['Department', form.department || '—'],
+                      ['Status', form.employee_status || 'active'],
+                    ].map(([label, value]) => (
+                      <div key={label}>
+                        <label className="block text-[10px] text-[#646880] uppercase tracking-wider mb-1">{label}</label>
+                        <div className="text-[13px] text-[#f0f2f5]">{value}</div>
+                      </div>
                     ))}
-                  </select>
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[11px] font-semibold text-[#646880]">Phone</label>
-                  <input className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-colors" placeholder="+57 300 123 4567"
-                    value={form.phone || ''} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} />
-                </div>
-              </div>
+              )}
             </div>
             <div className="flex justify-between gap-2.5 px-5 py-4 border-t border-[#282b38]">
-              <button className="px-4 py-2 border border-[#282b38] text-[13px] text-[#9ca0b0] rounded-lg hover:bg-[#202330] transition-all">Back</button>
-              <div className="flex gap-2.5">
-                <button className="px-4 py-2 border border-[#282b38] text-[13px] text-[#9ca0b0] rounded-lg hover:bg-[#202330] transition-all" onClick={() => setModalOpen(false)}>Cancel</button>
-                <button className="px-4 py-2 bg-[#10b981] text-white text-[13px] font-medium rounded-lg hover:bg-[#059669] transition-all" onClick={handleCreate}>Create</button>
-              </div>
+              <button className="px-4 py-2 border border-[#282b38] text-[13px] text-[#9ca0b0] rounded-lg hover:bg-[#202330] transition-all"
+                style={{ display: wizardStep > 1 ? 'block' : 'none' }}
+                onClick={() => setWizardStep(s => s - 1)}>Back</button>
+              <div style={{ flex: 1 }} />
+              {wizardStep < 4 ? (
+                <button className="px-6 py-2 bg-[#10b981] text-white text-[13px] font-medium rounded-lg hover:bg-[#059669] transition-all" onClick={() => setWizardStep(s => s + 1)}>Next</button>
+              ) : (
+                <button className="px-6 py-2 bg-[#10b981] text-white text-[13px] font-medium rounded-lg hover:bg-[#059669] transition-all" onClick={handleCreate}>Save</button>
+              )}
             </div>
           </div>
         </div>
