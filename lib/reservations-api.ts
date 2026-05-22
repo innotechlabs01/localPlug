@@ -1,4 +1,5 @@
-import { Reservation } from './reservations-types'
+import type { Reservation, ReservationStatus, PaymentStatus, VIPStatus, DriverInfo } from './reservations-types';
+export type { Reservation, ReservationStatus, PaymentStatus, VIPStatus, DriverInfo };
 
 // Mock data for development - in production this would call actual APIs
 const mockReservations: Reservation[] = [
@@ -111,8 +112,8 @@ const mockReservations: Reservation[] = [
     status: 'pending',
     paymentStatus: 'pending',
     totalAmount: 95,
-    paymentMethod: null,
-    transactionId: null,
+    paymentMethod: undefined,
+    transactionId: undefined,
     specialRequests: '',
     vipStatus: 'none',
     createdAt: '2026-05-20T16:30:00Z',
@@ -140,14 +141,14 @@ const mockReservations: Reservation[] = [
     status: 'awaiting_payment',
     paymentStatus: 'pending',
     totalAmount: 150,
-    paymentMethod: null,
-    transactionId: null,
+    paymentMethod: undefined,
+    transactionId: undefined,
     specialRequests: '',
     vipStatus: 'gold',
     createdAt: '2026-05-20T15:45:00Z',
     updatedAt: '2026-05-20T15:45:00Z'
   }
-]
+];
 
 // Simulate API delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
@@ -171,26 +172,27 @@ export async function fetchReservationById(id: string): Promise<Reservation | nu
 
 // These would be implemented with actual API calls in production
 export async function assignDriverToReservation(reservationId: string, driverId: string): Promise<void> {
-  await delay(500)
-  // Simulate API call
-  // await fetch(`/api/reservations/${reservationId}/assign-driver`, {
-  //   method: 'POST',
-  //   body: JSON.stringify({ driverId })
-  // })
+  const response = await fetch(`/api/admin/reservations/${reservationId}/assign-driver`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ driverId })
+  })
+  if (!response.ok) throw new Error('Failed to assign driver')
 }
 
-export async function sendWhatsAppMessage(reservationId: string): Promise<void> {
-  await delay(500)
-  // Simulate API call
-  // await fetch(`/api/reservations/${reservationId}/whatsapp`, {
-  //   method: 'POST'
-  // })
+export async function sendWhatsAppMessage(reservationId: string, driverId?: string, driverName?: string, driverPhone?: string): Promise<void> {
+  const response = await fetch(`/api/admin/reservations/${reservationId}/whatsapp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ driverId, driverName, driverPhone })
+  })
+  if (!response.ok) throw new Error('Failed to send WhatsApp')
 }
 
 export async function cancelReservation(reservationId: string): Promise<void> {
-  await delay(500)
-  // Simulate API call
-  // await fetch(`/api/reservations/${reservationId}`, {
-  //   method: 'DELETE'
-  // })
+  const response = await fetch(`/api/admin/reservations/${reservationId}`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' }
+  })
+  if (!response.ok) throw new Error('Failed to cancel reservation')
 }

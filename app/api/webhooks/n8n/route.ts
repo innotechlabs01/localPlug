@@ -206,27 +206,35 @@ export async function POST(request: Request) {
         break
       }
 
-      case 'whatsapp-ai-response': {
-        const { conversationId: aiConvId, message: aiMsg, confidence: aiConf } = data as {
-          conversationId: number
-          message: string
-          confidence: number
-        }
-
-        if (aiConvId && aiMsg) {
-          await db.execute({
-            sql: `INSERT INTO messages (conversation_id, sender_type, content, message_type, metadata)
-                  VALUES (?, 'ai', ?, 'text', ?)`,
-            args: [aiConvId, aiMsg, JSON.stringify({ confidence: aiConf, source: 'n8n-whatsapp' })],
-          })
-
-          await db.execute({
-            sql: `UPDATE conversations SET ai_confidence = ?, last_message_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`,
-            args: [aiConf || 1.0, aiConvId],
-          })
-        }
-        break
-      }
+       case 'whatsapp-ai-response': {
+         const { conversationId: aiConvId, message: aiMsg, confidence: aiConf } = data as {
+           conversationId: number
+           message: string
+           confidence: number
+         }
+ 
+         if (aiConvId && aiMsg) {
+           await db.execute({
+             sql: `INSERT INTO messages (conversation_id, sender_type, content, message_type, metadata)
+                   VALUES (?, 'ai', ?, 'text', ?)`,
+             args: [aiConvId, aiMsg, JSON.stringify({ confidence: aiConf, source: 'n8n-whatsapp' })],
+           })
+ 
+           await db.execute({
+             sql: `UPDATE conversations SET ai_confidence = ?, last_message_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`,
+             args: [aiConf || 1.0, aiConvId],
+           })
+ 
+           // If confidence is low, escalate the conversation
+           if (aiConf && aiConf < 0.5) {
+             await db.execute({
+               sql: `UPDATE conversations SET status = 'escalated', updated_at = datetime('now') WHERE id = ? AND status = 'ai_active'`,
+               args: [aiConvId],
+             })
+           }
+         }
+         break
+       }
 
       case 'whatsapp-sent': {
         const { conversationId: sentConvId, whatsappMessageId: sentMsgId, status: sentStatus } = data as {

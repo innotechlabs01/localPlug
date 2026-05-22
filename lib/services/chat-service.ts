@@ -80,12 +80,14 @@ export async function takeOverConversation(conversationId: number, agentId: numb
  * 
  * @param conversationId - The ID of the conversation to release
  * @param agentId - The ID of the agent releasing the conversation (for verification)
+ * @param closedBy - Optional identifier of who closed the conversation (for audit)
  * @returns The updated conversation
  */
-export async function releaseToAIMode(conversationId: number, agentId: number): Promise<Conversation | null> {
+export async function releaseToAIMode(conversationId: number, agentId: number, closedBy?: string): Promise<Conversation | null> {
   log('info', 'Admin releasing conversation to AI mode', { 
     conversationId,
-    agentId 
+    agentId,
+    closedBy 
   });
 
   // Update the conversation status to ai_active and remove the agent assignment
@@ -104,7 +106,8 @@ export async function releaseToAIMode(conversationId: number, agentId: number): 
   if (result.rowsAffected === 0) {
     log('warn', 'Failed to release conversation to AI mode - not found, not assigned to this agent, or not in human_active status', { 
       conversationId,
-      agentId 
+      agentId,
+      closedBy 
     });
     return null;
   }
@@ -127,6 +130,7 @@ export async function releaseToAIMode(conversationId: number, agentId: number): 
   log('info', 'Successfully released conversation to AI mode', { 
     conversationId,
     agentId,
+    closedBy,
     newStatus: conversation.status 
   });
 
