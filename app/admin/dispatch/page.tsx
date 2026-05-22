@@ -42,6 +42,7 @@ const dispatchStatuses = ['pending', 'assigned', 'enroute', 'pickedup', 'complet
 
 export default function DispatchPage() {
   const { t } = useI18n()
+  const d = t.admin.dispatch
   const [data, setData] = useState<DispatchData | null>(null)
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('all')
@@ -106,7 +107,7 @@ export default function DispatchPage() {
       body: JSON.stringify({ action: 'assign', orderId, driverId }),
     })
     if (res.ok) {
-      addNotif('assign', 'Driver Assigned', `Driver assigned to order #${orderId}`)
+      addNotif('assign', d.notifAssigned, `${d.notifAssignedDesc}${orderId}`)
       setAssignedDrivers(p => ({ ...p, [orderId]: driverId }))
       setModalOpen(false)
       fetchData()
@@ -119,7 +120,7 @@ export default function DispatchPage() {
       body: JSON.stringify({ action: 'unassign', orderId }),
     })
     if (res.ok) {
-      addNotif('unassign', 'Driver Unassigned', `Order #${orderId} is now pending`)
+      addNotif('unassign', d.notifUnassigned, `${d.notifUnassignedDesc} ${orderId}`)
       const newMap = { ...assignedDrivers }
       delete newMap[orderId]
       setAssignedDrivers(newMap)
@@ -133,13 +134,13 @@ export default function DispatchPage() {
       body: JSON.stringify({ action: 'status', orderId, status }),
     })
     if (res.ok) {
-      addNotif('status', `Status → ${status}`, `Order #${orderId} updated`)
+      addNotif('status', `${d.notifStatus}${status}`, `${d.notifStatusDesc}${orderId}`)
       fetchData()
     }
   }
 
   if (loading) {
-    return <div className="flex items-center justify-center h-full text-[#646880]">Loading dispatch center...</div>
+    return <div className="flex items-center justify-center h-full text-[#646880]">{d.selectRequest}...</div>
   }
 
   const orders = data?.orders || []
@@ -346,23 +347,23 @@ export default function DispatchPage() {
       <div className="dispatch-layout">
         {/* ── Left Panel: Requests ── */}
         <div className="dispatch-panel dispatch-left">
-          <div className="dp-header">
+            <div className="dp-header">
             <div className="dp-header-title">
-              Requests
+              {d.requests}
               <span className="dp-header-count">{orders.length}</span>
             </div>
-            <button onClick={fetchData} style={{ background: 'none', border: 'none', color: theme.fgSecondary, cursor: 'pointer', fontSize: '18px', padding: '4px' }} title="Refresh">↻</button>
+            <button onClick={fetchData} style={{ background: 'none', border: 'none', color: theme.fgSecondary, cursor: 'pointer', fontSize: '18px', padding: '4px' }} title={d.refresh}>↻</button>
           </div>
 
           <div className="dp-search-bar">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-            <input placeholder="Search name, flight, hotel..." value={query} onChange={e => setQuery(e.target.value)} />
+            <input placeholder={d.searchPlaceholder} value={query} onChange={e => setQuery(e.target.value)} />
           </div>
 
           <div className="dp-filter-tabs">
             {(['all', 'pending', 'assigned', 'enroute', 'pickedup', 'completed', 'vip'] as const).map(t => (
               <button key={t} className={`dp-filter-tab ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
-                {t === 'all' ? 'All' : t.charAt(0).toUpperCase() + t.slice(1)}
+                {t === 'all' ? d.all : t === 'pending' ? d.pending : t === 'assigned' ? d.assigned : t === 'enroute' ? d.enroute : t === 'pickedup' ? d.pickedup : t === 'completed' ? d.completed : t === 'vip' ? d.vIP : t.charAt(0).toUpperCase() + t.slice(1)}
               </button>
             ))}
           </div>
@@ -373,7 +374,7 @@ export default function DispatchPage() {
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.3">
                   <circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/>
                 </svg>
-                <p style={{ fontSize: 13 }}>No requests match the current filter.</p>
+                <p style={{ fontSize: 13 }}>{d.noRequests}</p>
               </div>
             ) : filteredOrders.map(order => (
               <div
@@ -384,8 +385,8 @@ export default function DispatchPage() {
                 <div className={`dp-request-priority ${order.priority === 'urgent' ? 'high' : order.priority === 'high' ? 'medium' : 'low'}`} />
                 <div className="dp-request-body">
                   <div className="dp-request-name">
-                    {order.customer_name || 'Guest'}
-                    {isVip(order) && <span className="dp-vip-badge">VIP</span>}
+                    {order.customer_name || d.customer}
+                    {isVip(order) && <span className="dp-vip-badge">{d.vIP}</span>}
                     {order.assigned_to && <span className="dp-flight" style={{ fontFamily: theme.fontMono, background: theme.surface, padding: '0 5px', borderRadius: 3, fontSize: 10, color: theme.info }}>#{order.id}</span>}
                   </div>
                   <div className="dp-request-meta">
@@ -418,8 +419,8 @@ export default function DispatchPage() {
               <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.3">
                 <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
               </svg>
-              <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.fgSecondary }}>Select a Request</h3>
-              <p style={{ fontSize: 13, maxWidth: 260, textAlign: 'center', lineHeight: 1.5 }}>Choose a request from the left panel to view details and assign a driver.</p>
+              <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.fgSecondary }}>{d.selectRequest}</h3>
+              <p style={{ fontSize: 13, maxWidth: 260, textAlign: 'center', lineHeight: 1.5 }}>{d.selectRequestDesc}</p>
             </div>
           ) : (
             <>
@@ -429,7 +430,7 @@ export default function DispatchPage() {
                     {(selectedOrder.customer_name || 'G')[0]}
                   </div>
                   <div className="dp-detail-guest-info">
-                    <h2>{selectedOrder.customer_name || 'Guest'}</h2>
+                    <h2>{selectedOrder.customer_name || d.customer}</h2>
                     <div className="guest-sub">
                       <span>{selectedOrder.customer_country || ''}</span>
                       {selectedOrder.customer_phone && <><span>·</span><span>{selectedOrder.customer_phone}</span></>}
@@ -440,7 +441,7 @@ export default function DispatchPage() {
                   {selectedOrder.assigned_to ? (
                     <button className="dp-assign-btn" style={{ width: 'auto', padding: '8px 14px', fontSize: 12, background: theme.bg, color: theme.danger, border: `1px solid ${theme.danger}` }}
                       onClick={() => doUnassign(selectedOrder.id)}>
-                      Unassign
+                      {d.unassign}
                     </button>
                   ) : null}
                 </div>
@@ -457,7 +458,7 @@ export default function DispatchPage() {
                       <div>
                         <div className={`dp-timeline-dot ${completed && (s === 'completed' || currentStep === dispatchStatuses.length - 1) ? 'completed' : active ? 'active' : ''}`} />
                         <div className={`dp-timeline-label ${completed && (s === 'completed' || currentStep === dispatchStatuses.length - 1) ? 'completed' : active ? 'active' : ''}`}>
-                          {s === 'pickedup' ? 'Pickup' : s.charAt(0).toUpperCase() + s.slice(1)}
+                          {s === 'pickedup' ? d.pickedup : s === 'assigned' ? d.assigned : s === 'completed' ? d.completed : s === 'enroute' ? d.enroute : s === 'pending' ? d.pending : s.charAt(0).toUpperCase() + s.slice(1)}
                         </div>
                       </div>
                       {i < dispatchStatuses.length - 1 && <div className={`dp-timeline-connector ${completed ? 'completed' : ''}`} />}
@@ -473,16 +474,16 @@ export default function DispatchPage() {
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5"/><path d="M18 12v5"/><path d="M10 14l2 1 2-1"/>
                     </svg>
-                    Flight & Service
+                    {d.flightService}
                   </div>
                   <div className="dp-section-body">
                     <div className="dp-info-grid">
-                      <div className="dp-info-item"><span className="dp-info-label">Flight</span><span className="dp-info-value mono">{selectedOrder.flight_number || '—'}</span></div>
-                      <div className="dp-info-item"><span className="dp-info-label">Airline</span><span className="dp-info-value">{selectedOrder.airline || '—'}</span></div>
-                      <div className="dp-info-item"><span className="dp-info-label">Arrival</span><span className="dp-info-value mono">{selectedOrder.arrival_date} {selectedOrder.arrival_time || ''}</span></div>
-                      <div className="dp-info-item"><span className="dp-info-label">Service</span><span className="dp-info-value">{selectedOrder.package_name || '—'}</span></div>
-                      <div className="dp-info-item"><span className="dp-info-label">Destination</span><span className="dp-info-value">{selectedOrder.destination_address || '—'}</span></div>
-                      <div className="dp-info-item"><span className="dp-info-label">Priority</span><span className="dp-info-value" style={{ color: selectedOrder.priority === 'urgent' ? theme.danger : selectedOrder.priority === 'high' ? theme.warning : theme.fg }}>{selectedOrder.priority || 'Normal'}</span></div>
+                      <div className="dp-info-item"><span className="dp-info-label">{d.flight}</span><span className="dp-info-value mono">{selectedOrder.flight_number || '—'}</span></div>
+                      <div className="dp-info-item"><span className="dp-info-label">{d.airline}</span><span className="dp-info-value">{selectedOrder.airline || '—'}</span></div>
+                      <div className="dp-info-item"><span className="dp-info-label">{d.arrival}</span><span className="dp-info-value mono">{selectedOrder.arrival_date} {selectedOrder.arrival_time || ''}</span></div>
+                      <div className="dp-info-item"><span className="dp-info-label">{d.service}</span><span className="dp-info-value">{selectedOrder.package_name || '—'}</span></div>
+                      <div className="dp-info-item"><span className="dp-info-label">{d.destination}</span><span className="dp-info-value">{selectedOrder.destination_address || '—'}</span></div>
+                      <div className="dp-info-item"><span className="dp-info-label">{d.priority}</span><span className="dp-info-value" style={{ color: selectedOrder.priority === 'urgent' ? theme.danger : selectedOrder.priority === 'high' ? theme.warning : theme.fg }}>{selectedOrder.priority === 'urgent' ? d.urgent : selectedOrder.priority === 'high' ? d.high : d.normal}</span></div>
                     </div>
                   </div>
                 </div>
@@ -493,12 +494,12 @@ export default function DispatchPage() {
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
                     </svg>
-                    Payment
+                    {d.payment}
                   </div>
                   <div className="dp-section-body">
                     <div className="dp-info-grid">
-                      <div className="dp-info-item"><span className="dp-info-label">Status</span><span className={`dp-payment-badge ${selectedOrder.payment_status || 'pending'}`}>{(selectedOrder.payment_status || 'pending').toUpperCase()}</span></div>
-                      <div className="dp-info-item"><span className="dp-info-label">Customer</span><span className="dp-info-value">{selectedOrder.customer_email || '—'}</span></div>
+                      <div className="dp-info-item"><span className="dp-info-label">{d.status}</span><span className={`dp-payment-badge ${selectedOrder.payment_status || 'pending'}`}>{(selectedOrder.payment_status || 'pending').toUpperCase()}</span></div>
+                      <div className="dp-info-item"><span className="dp-info-label">{d.customer}</span><span className="dp-info-value">{selectedOrder.customer_email || '—'}</span></div>
                     </div>
                   </div>
                 </div>
@@ -510,7 +511,7 @@ export default function DispatchPage() {
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
                       </svg>
-                      Notes
+                      {d.notes}
                     </div>
                     <div className="dp-section-body">
                       <div className="dp-note-text">{selectedOrder.customer_notes}</div>
@@ -525,7 +526,7 @@ export default function DispatchPage() {
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M19 17h2l-2-6H5l-2 6h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M5 11l1.5-4h11L19 11"/>
                       </svg>
-                      Assign Driver
+                      {d.assignDriver}
                     </div>
                     <div className="dp-section-body">
                       <div className="dp-assign-area">
@@ -533,16 +534,16 @@ export default function DispatchPage() {
                           <>
                             <div className="dp-suggested-label">
                               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-                              Suggested
+                              {d.suggested}
                             </div>
-                            {suggestedDrivers.slice(0, 3).map(d => (
-                              <div key={d.id} className="dp-driver-suggestion" onClick={() => setModalOpen(true) || setModalDriverId(d.id)}>
-                                <div className="d-photo">{d.name[0]}</div>
+                            {suggestedDrivers.slice(0, 3).map(drv => (
+                              <div key={drv.id} className="dp-driver-suggestion" onClick={() => { setModalOpen(true); setModalDriverId(drv.id) }}>
+                                <div className="d-photo">{drv.name[0]}</div>
                                 <div className="d-info">
-                                  <div className="d-name">{d.name}</div>
-                                  <div className="d-detail">{d.vehicle} · {d.languages}</div>
+                                  <div className="d-name">{drv.name}</div>
+                                  <div className="d-detail">{drv.vehicle} · {drv.languages}</div>
                                 </div>
-                                <span className="d-badge match">{d.experience_level}</span>
+                                <span className="d-badge match">{drv.experience_level}</span>
                               </div>
                             ))}
                           </>
@@ -550,22 +551,22 @@ export default function DispatchPage() {
                         {otherDrivers.length > 0 && (
                           <>
                             <div className="dp-other-label" style={{ marginTop: suggestedDrivers.length > 0 ? 12 : 0 }}>
-                              {suggestedDrivers.length > 0 ? 'Other available drivers' : 'Available drivers'}
+                              {suggestedDrivers.length > 0 ? d.otherAvailable : d.availableDrivers}
                             </div>
-                            {otherDrivers.slice(0, 3).map(d => (
-                              <div key={d.id} className="dp-other-driver" onClick={() => { setModalOpen(true); setModalDriverId(d.id) }}>
-                                <div className="d-photo">{d.name[0]}</div>
+                            {otherDrivers.slice(0, 3).map(drv => (
+                              <div key={drv.id} className="dp-other-driver" onClick={() => { setModalOpen(true); setModalDriverId(drv.id) }}>
+                                <div className="d-photo">{drv.name[0]}</div>
                                 <div style={{ flex: 1, minWidth: 0 }}>
-                                  <div style={{ fontSize: 13, fontWeight: 600 }}>{d.name}</div>
-                                  <div style={{ fontSize: 11, color: theme.fgMuted, marginTop: 1 }}>{d.vehicle} · {d.languages}</div>
+                                  <div style={{ fontSize: 13, fontWeight: 600 }}>{drv.name}</div>
+                                  <div style={{ fontSize: 11, color: theme.fgMuted, marginTop: 1 }}>{drv.vehicle} · {drv.languages}</div>
                                 </div>
                               </div>
                             ))}
                           </>
                         )}
-                        <button className="dp-assign-btn" onClick={() => setModalOpen(true)} disabled={drivers.filter(d => d.status === 'available').length === 0}>
+                        <button className="dp-assign-btn" onClick={() => setModalOpen(true)} disabled={drivers.filter(drv => drv.status === 'available').length === 0}>
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
-                          {drivers.filter(d => d.status === 'available').length > 0 ? 'Assign a driver' : 'No drivers available'}
+                          {drivers.filter(drv => drv.status === 'available').length > 0 ? d.assignButton : d.noDriversAvailable}
                         </button>
                       </div>
                     </div>
@@ -579,18 +580,18 @@ export default function DispatchPage() {
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <path d="M5 17h14M5 17a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2"/><circle cx="7" cy="14" r="2"/><circle cx="17" cy="14" r="2"/>
                       </svg>
-                      Driver
+                      {d.driver}
                     </div>
                     <div className="dp-section-body">
                       <div className="dp-info-grid">
-                        <div className="dp-info-item"><span className="dp-info-label">Name</span><span className="dp-info-value" style={{ color: theme.accent }}>{selectedOrder.driver_name}</span></div>
-                        <div className="dp-info-item"><span className="dp-info-label">Vehicle</span><span className="dp-info-value">{selectedOrder.driver_vehicle || '—'}</span></div>
+                        <div className="dp-info-item"><span className="dp-info-label">{d.name}</span><span className="dp-info-value" style={{ color: theme.accent }}>{selectedOrder.driver_name}</span></div>
+                        <div className="dp-info-item"><span className="dp-info-label">{d.vehicle}</span><span className="dp-info-value">{selectedOrder.driver_vehicle || '—'}</span></div>
                       </div>
                       <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                         {['enroute', 'pickedup', 'completed'].map(s => (
                           <button key={s} className="dp-assign-btn" style={{ width: 'auto', padding: '6px 12px', fontSize: 11, background: theme.surface, color: theme.fg, border: `1px solid ${theme.border}` }}
-                            onClick={() => doStatus(selectedOrder.id, s)}>
-                            Mark {s.charAt(0).toUpperCase() + s.slice(1)}
+                            onClick={() => doStatus(selectedOrder!.id, s)}>
+                            {s === 'enroute' ? d.markEnroute : s === 'pickedup' ? d.markPickup : d.markCompleted}
                           </button>
                         ))}
                       </div>
@@ -606,7 +607,7 @@ export default function DispatchPage() {
         <div className="dispatch-panel dispatch-right">
           <div className="dp-header">
             <div className="dp-header-title">
-              Drivers
+              {d.drivers}
               <span className="dp-header-count">{drivers.length}</span>
             </div>
             <button onClick={fetchData} style={{ background: 'none', border: 'none', color: theme.fgSecondary, cursor: 'pointer', fontSize: '18px', padding: '4px' }}>↻</button>
@@ -615,7 +616,7 @@ export default function DispatchPage() {
           <div className="dp-cat-tabs">
             {['all', 'standard', 'suv', 'vip', 'luxury', 'van'].map(cat => (
               <button key={cat} className={`dp-cat-tab ${driverCat === cat ? 'active' : ''}`} onClick={() => setDriverCat(cat)}>
-                {cat === 'all' ? 'All' : cat.charAt(0).toUpperCase() + cat.slice(1)}
+                {cat === 'all' ? d.allCategories : cat === 'standard' ? d.standard : cat === 'suv' ? d.suv : cat === 'vip' ? d.vIPSuv : cat === 'luxury' ? d.luxury : cat === 'van' ? d.van : cat.charAt(0).toUpperCase() + cat.slice(1)}
               </button>
             ))}
           </div>
@@ -623,32 +624,32 @@ export default function DispatchPage() {
           <div className="dp-driver-list">
             {drivers.length === 0 ? (
               <div style={{ padding: '48px 24px', textAlign: 'center', color: theme.fgMuted, fontSize: 13 }}>
-                No drivers registered yet
+                {d.noDrivers}
               </div>
-            ) : drivers.map(d => {
-              const isSuggested = selectedOrder && suggestedDrivers.find(s => s.id === d.id)
-              const isAssigned = assignedDrivers && Object.values(assignedDrivers).includes(d.id)
-              const isUnavailable = d.status !== 'available'
+            ) : drivers.map(drv => {
+              const isSuggested = selectedOrder && suggestedDrivers.find(s => s.id === drv.id)
+              const isAssigned = assignedDrivers && Object.values(assignedDrivers).includes(drv.id)
+              const isUnavailable = drv.status !== 'available'
               return (
                 <div
-                  key={d.id}
+                  key={drv.id}
                   className={`dp-driver-card ${isSuggested && selectedOrder ? 'suggested' : ''} ${isAssigned ? 'assigned' : ''} ${isUnavailable ? 'unavailable' : ''}`}
-                  onClick={() => { if (selectedOrder && !isUnavailable) { setModalDriverId(d.id); setModalOpen(true) } }}
+                  onClick={() => { if (selectedOrder && !isUnavailable) { setModalDriverId(drv.id); setModalOpen(true) } }}
                 >
                   <div className="dp-driver-photo">
-                    {d.name[0]}
-                    <span className={`status-ring ${d.status}`} />
+                    {drv.name[0]}
+                    <span className={`status-ring ${drv.status}`} />
                   </div>
                   <div className="dp-driver-info">
                     <div className="dp-driver-name">
-                      {d.name}
-                      {d.vip_compatible ? <span style={{ fontSize: 9, color: theme.gold }}>VIP</span> : null}
+                      {drv.name}
+                      {drv.vip_compatible ? <span style={{ fontSize: 9, color: theme.gold }}>{d.vIPSuv}</span> : null}
                     </div>
-                    <div className="dp-driver-detail">{d.vehicle} · {d.plate} · {d.languages}</div>
+                    <div className="dp-driver-detail">{drv.vehicle} · {drv.plate} · {drv.languages}</div>
                   </div>
                   <div className="dp-driver-right">
-                    <div className="dp-driver-stat">★ {d.rating}</div>
-                    <div style={{ fontSize: 10, color: theme.fgMuted }}>{d.total_trips} trips</div>
+                    <div className="dp-driver-stat">★ {drv.rating}</div>
+                    <div style={{ fontSize: 10, color: theme.fgMuted }}>{drv.total_trips} {d.trips}</div>
                   </div>
                 </div>
               )
@@ -662,36 +663,37 @@ export default function DispatchPage() {
         <div className="dp-modal-overlay" onClick={() => setModalOpen(false)}>
           <div className="dp-modal" onClick={e => e.stopPropagation()}>
             <div className="dp-modal-header">
-              <span style={{ fontSize: 16, fontWeight: 600, color: theme.fg }}>Assign Driver</span>
+              <span style={{ fontSize: 16, fontWeight: 600, color: theme.fg }}>{d.assignConfirm}</span>
+              <button onClick={() => setModalOpen(false)} style={{ background: 'none', border: 'none', color: theme.fgSecondary, cursor: 'pointer', fontSize: 18 }}>✕</button>
               <button onClick={() => setModalOpen(false)} style={{ background: 'none', border: 'none', color: theme.fgSecondary, cursor: 'pointer', fontSize: 18 }}>✕</button>
             </div>
             <div className="dp-modal-body">
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: `1px solid ${theme.borderLight}`, fontSize: 13 }}>
-                <span style={{ color: theme.fgMuted }}>Customer</span>
-                <span style={{ fontWeight: 600, color: theme.fg }}>{selectedOrder?.customer_name || 'Guest'}</span>
+                <span style={{ color: theme.fgMuted }}>{d.customer}</span>
+                <span style={{ fontWeight: 600, color: theme.fg }}>{selectedOrder?.customer_name || d.customer}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: `1px solid ${theme.borderLight}`, fontSize: 13 }}>
-                <span style={{ color: theme.fgMuted }}>Driver</span>
+                <span style={{ color: theme.fgMuted }}>{d.driver}</span>
                 <span style={{ fontWeight: 600, color: theme.fg }}>{selectedDriver?.name || '—'}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: `1px solid ${theme.borderLight}`, fontSize: 13 }}>
-                <span style={{ color: theme.fgMuted }}>Vehicle</span>
+                <span style={{ color: theme.fgMuted }}>{d.vehicle}</span>
                 <span style={{ fontWeight: 600, color: theme.fg }}>{selectedDriver?.vehicle || '—'} · {selectedDriver?.plate || '—'}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 13 }}>
-                <span style={{ color: theme.fgMuted }}>Pickup</span>
+                <span style={{ color: theme.fgMuted }}>{d.pickup}</span>
                 <span style={{ fontWeight: 600, color: theme.fg }}>{selectedOrder?.arrival_time?.substring(0, 5) || '--:--'}</span>
               </div>
             </div>
             <div className="dp-modal-footer">
               <button onClick={() => setModalOpen(false)}
                 style={{ padding: '8px 16px', borderRadius: theme.radiusSm, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.fg, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
-                Cancel
+                {d.cancel}
               </button>
               <button onClick={() => selectedOrder && selectedDriver && doAssign(selectedOrder.id, selectedDriver.id)}
                 style={{ padding: '8px 16px', borderRadius: theme.radiusSm, border: 'none', background: theme.accent, color: 'white', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
                 disabled={!selectedDriver}>
-                Confirm
+                {d.confirm}
               </button>
             </div>
           </div>
