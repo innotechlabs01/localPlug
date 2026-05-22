@@ -136,7 +136,7 @@ export default function EmployeesPage() {
   }
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64 text-[#646880]">Loading...</div>
+    return <div className="flex items-center justify-center h-64 text-[#646880]">{d.loading || 'Loading...'}</div>
   }
 
   return (
@@ -151,7 +151,7 @@ export default function EmployeesPage() {
         </div>
         <div className="flex gap-2">
           <button className="px-3 py-2 border border-[#282b38] text-[12px] text-[#9ca0b0] rounded-lg hover:bg-[#202330] transition-all font-medium"
-            onClick={() => showToast('Export queued')}>Export</button>
+            onClick={() => showToast('Export queued')}>{d.export_ || 'Export'}</button>
           <button className="px-4 py-2 bg-[#10b981] text-white text-[13px] font-medium rounded-lg hover:bg-[#059669] transition-all"
             onClick={openCreate}>{d.add || '+ Add'}</button>
         </div>
@@ -175,12 +175,12 @@ export default function EmployeesPage() {
       {/* ── KPIs ── */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {[
-          ['Total', String(stats.total), 'Team members'],
-          ['Active', String(stats.active), 'Currently working'],
-          ['On Route', String(stats.onRoute), 'In service'],
-          ['Avg Rating', stats.avgRating, 'Performance'],
-          ['Total Trips', String(stats.totalTrips), 'All time'],
-          ['Expiring Docs', String(stats.expiringDocs), 'Needs review'],
+          [d.kpis?.total || 'Total', String(stats.total), d.kpis?.teamMembers || 'Team members'],
+          [d.kpis?.active || 'Active', String(stats.active), d.kpis?.currentlyWorking || 'Currently working'],
+          [d.kpis?.onRoute || 'On Route', String(stats.onRoute), d.kpis?.inService || 'In service'],
+          [d.kpis?.avgRating || 'Avg Rating', stats.avgRating, d.kpis?.performance || 'Performance'],
+          [d.kpis?.totalTrips || 'Total Trips', String(stats.totalTrips), d.kpis?.allTime || 'All time'],
+          [d.kpis?.expiringDocs || 'Expiring Docs', String(stats.expiringDocs), d.kpis?.needsReview || 'Needs review'],
         ].map(([label, value, sub]) => (
           <div key={label} className="bg-[#181b25] border border-[#282b38] rounded-xl p-4">
             <p className="text-[11px] text-[#646880] uppercase tracking-wide">{label}</p>
@@ -196,7 +196,7 @@ export default function EmployeesPage() {
         <div className="bg-[#181b25] border border-[#282b38] rounded-xl overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2130]">
             <div className="flex items-center gap-2.5">
-              <span className="text-[14px] font-bold text-[#f0f2f5]">Employees</span>
+              <span className="text-[14px] font-bold text-[#f0f2f5]">{d.tableTitle || 'Employees'}</span>
               <span className="text-[12px] text-[#646880] font-medium">{filtered.length} shown</span>
             </div>
             <div className="relative">
@@ -204,7 +204,7 @@ export default function EmployeesPage() {
                 <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
               </svg>
               <input className="w-[200px] pl-9 pr-3 py-1.5 bg-[#0b0d14] border border-[#282b38] rounded-lg text-[12px] text-[#f0f2f5] placeholder:text-[#646880] outline-none focus:border-[#10b981] transition-all"
-                placeholder="Search employees..."
+                placeholder={d.searchPlaceholder || 'Search employees...'}
                 value={search} onChange={e => setSearch(e.target.value)} />
             </div>
           </div>
@@ -213,17 +213,17 @@ export default function EmployeesPage() {
             <table className="w-full">
               <thead>
                 <tr className="bg-[rgba(255,255,255,0.02)]">
-                  <th className="text-left text-[11px] font-semibold uppercase tracking-[0.4px] text-[#646880] px-4 py-3.5">Employee</th>
-                  <th className="text-left text-[11px] font-semibold uppercase tracking-[0.4px] text-[#646880] px-4 py-3.5">Role</th>
-                  <th className="text-left text-[11px] font-semibold uppercase tracking-[0.4px] text-[#646880] px-4 py-3.5">Status</th>
-                  <th className="text-left text-[11px] font-semibold uppercase tracking-[0.4px] text-[#646880] px-4 py-3.5">Trips</th>
-                  <th className="text-left text-[11px] font-semibold uppercase tracking-[0.4px] text-[#646880] px-4 py-3.5">Rating</th>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-[0.4px] text-[#646880] px-4 py-3.5">{d.tableName || 'Employee'}</th>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-[0.4px] text-[#646880] px-4 py-3.5">{d.tableRole || 'Role'}</th>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-[0.4px] text-[#646880] px-4 py-3.5">{d.tableStatus || 'Status'}</th>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-[0.4px] text-[#646880] px-4 py-3.5">{d.tableTrips || 'Trips'}</th>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-[0.4px] text-[#646880] px-4 py-3.5">{d.tableRating || 'Rating'}</th>
                   <th className="text-left text-[11px] font-semibold uppercase tracking-[0.4px] text-[#646880] px-4 py-3.5"></th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
-                  <tr><td colSpan={6} className="p-12 text-center text-[#646880] text-[13px]">No employees found</td></tr>
+                  <tr><td colSpan={6} className="p-12 text-center text-[#646880] text-[13px]">{d.noResults || 'No employees found'}</td></tr>
                 ) : filtered.map(emp => (
                   <tr key={emp.id}
                     className="border-b border-[#1e2130] hover:bg-[#0b0d14] cursor-pointer transition-colors"
@@ -273,7 +273,7 @@ export default function EmployeesPage() {
                     <td className="px-4 py-3.5">
                       <button className="border border-[#282b38] bg-[#181b25] text-[#f0f2f5] rounded-lg px-2.5 py-1.5 text-[12px] cursor-pointer hover:border-[#10b981] hover:text-[#10b981] transition-all"
                         onClick={e => { e.stopPropagation(); openEdit(emp) }}>
-                        Edit
+                        {d.edit || 'Edit'}
                       </button>
                     </td>
                   </tr>
@@ -288,7 +288,7 @@ export default function EmployeesPage() {
           {/* Profile */}
           <div className="bg-[#181b25] border border-[#282b38] rounded-xl overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2130]">
-              <span className="text-[14px] font-bold text-[#f0f2f5]">Employee Profile</span>
+              <span className="text-[14px] font-bold text-[#f0f2f5]">{d.sidePanel?.profile || 'Employee Profile'}</span>
               {selected && (
                 <button className="px-2 py-1 text-[11px] text-[#9ca0b0] border border-[#282b38] rounded-lg hover:bg-[#202330] transition-all"
                   onClick={() => openEdit(selected)}>Edit</button>
@@ -296,7 +296,7 @@ export default function EmployeesPage() {
             </div>
             <div className="p-4">
               {!selected ? (
-                <p className="text-[13px] text-[#646880] text-center py-8">Select an employee to view profile</p>
+                <p className="text-[13px] text-[#646880] text-center py-8">{d.selectPrompt || 'Select an employee to view profile'}</p>
               ) : (
                 <>
                   <div className="flex items-center gap-3.5 mb-4">
@@ -316,9 +316,9 @@ export default function EmployeesPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     {[
-                      ['Email', selected.email || '—'],
-                      ['Phone', selected.phone || '—'],
-                      ['Role', selected.role_name || '—'],
+                      [d.formEmail || 'Email', selected.email || '—'],
+                      [d.formPhone || 'Phone', selected.phone || '—'],
+                      [d.formRole || 'Role', selected.role_name || '—'],
                       ['Trips', String(selected.total_trips || 0)],
                       ['Rating', selected.rating ? `★ ${selected.rating}` : '—'],
                       ['Joined', selected.created_at ? new Date(selected.created_at).toLocaleDateString() : '—'],
@@ -337,11 +337,11 @@ export default function EmployeesPage() {
           {/* Recent Activity */}
           <div className="bg-[#181b25] border border-[#282b38] rounded-xl overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2130]">
-              <span className="text-[14px] font-bold text-[#f0f2f5]">Recent Activity</span>
+              <span className="text-[14px] font-bold text-[#f0f2f5]">{d.sidePanel?.recentActivity || 'Recent Activity'}</span>
             </div>
             <div className="p-4">
               {!selected ? (
-                <p className="text-[13px] text-[#646880] text-center py-4">No employee selected</p>
+                <p className="text-[13px] text-[#646880] text-center py-4">{d.noSelection || 'No employee selected'}</p>
               ) : (
                 <div className="space-y-2.5">
                   {[
@@ -369,40 +369,40 @@ export default function EmployeesPage() {
           <div className="relative w-full max-w-[600px] max-h-[90vh] overflow-auto bg-[#0b0d14] border border-[#282b38] rounded-2xl shadow-2xl">
             <div className="flex items-center justify-between p-5 border-b border-[#282b38]">
               <div>
-                <h2 className="text-[18px] font-bold text-[#f0f2f5]">{editEmp ? 'Edit Employee' : 'Add Employee'}</h2>
-                <p className="text-[12px] text-[#646880] mt-1">Employee registration and role assignment.</p>
+                <h2 className="text-[18px] font-bold text-[#f0f2f5]">{editEmp ? (d.modalEdit || 'Edit Employee') : (d.modalAdd || 'Add Employee')}</h2>
+                <p className="text-[12px] text-[#646880] mt-1">{d.modalDesc || 'Employee registration and role assignment.'}</p>
               </div>
               <button className="text-[#646880] hover:text-[#f0f2f5] text-2xl" onClick={() => setModalOpen(false)}>×</button>
             </div>
 
             <div className="p-5 grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-[#646880]">Full name</label>
+                <label className="text-[11px] font-semibold text-[#646880]">{d.formName || 'Full name'}</label>
                 <input className="w-full px-3 py-2 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none" placeholder="e.g. John Doe"
                   value={form.name || ''} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-[#646880]">Email</label>
+                <label className="text-[11px] font-semibold text-[#646880]">{d.formEmail || 'Email'}</label>
                 <input className="w-full px-3 py-2 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none" placeholder="email@company.com"
                   value={form.email || ''} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-[#646880]">Phone</label>
+                <label className="text-[11px] font-semibold text-[#646880]">{d.formPhone || 'Phone'}</label>
                 <input className="w-full px-3 py-2 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none" placeholder="+57 300 000 0000"
                   value={form.phone || ''} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} />
               </div>
               <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-[#646880]">Role</label>
+                <label className="text-[11px] font-semibold text-[#646880]">{d.formRole || 'Role'}</label>
                 <select className="w-full px-3 py-2 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none"
                   value={form.role_id || ''} onChange={e => setForm(p => ({ ...p, role_id: e.target.value }))}>
-                  <option value="">Select role...</option>
+                  <option value="">{d.selectRole || 'Select role...'}</option>
                   {roles.map(r => (
                     <option key={r.id} value={r.id}>{r.name}</option>
                   ))}
                 </select>
               </div>
               <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-[#646880]">Status</label>
+                <label className="text-[11px] font-semibold text-[#646880]">{d.formStatus || 'Status'}</label>
                 <select className="w-full px-3 py-2 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none"
                   value={form.employee_status || 'active'} onChange={e => setForm(p => ({ ...p, employee_status: e.target.value }))}>
                   <option value="active">Active</option>
@@ -414,9 +414,9 @@ export default function EmployeesPage() {
             </div>
 
             <div className="flex justify-end gap-2.5 px-5 py-4 border-t border-[#282b38]">
-              <button className="px-4 py-2 border border-[#282b38] text-[13px] text-[#9ca0b0] rounded-lg hover:bg-[#202330] transition-all" onClick={() => setModalOpen(false)}>Cancel</button>
+              <button className="px-4 py-2 border border-[#282b38] text-[13px] text-[#9ca0b0] rounded-lg hover:bg-[#202330] transition-all" onClick={() => setModalOpen(false)}>{d.cancel || 'Cancel'}</button>
               <button className="px-4 py-2 bg-[#10b981] text-white text-[13px] font-medium rounded-lg hover:bg-[#059669] transition-all" onClick={handleSubmit}>
-                {editEmp ? 'Update' : 'Create'}
+                {editEmp ? (d.saveChanges || 'Update') : (d.modalAdd || 'Create')}
               </button>
             </div>
           </div>

@@ -1,3 +1,4 @@
+import { useI18n } from '@/lib/i18n'
 import { Reservation } from '@/lib/reservations-api'
 
 interface ReservationTableProps {
@@ -9,10 +10,12 @@ export default function ReservationTable({
   reservations, 
   onViewReservation 
 }: ReservationTableProps) {
+  const { t } = useI18n()
+  const labels = t.admin?.reservations || {}
   if (reservations.length === 0) {
     return (
       <div className="text-center py-8 text-muted">
-        No reservations found
+        {labels.noReservations || 'No reservations found'}
       </div>
     )
   }
@@ -22,31 +25,25 @@ export default function ReservationTable({
       <thead className="bg-gray-50">
         <tr>
           <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Guest
+            {t.admin.reservations.guest || 'Guest'}
           </th>
           <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Country
+            {t.admin.reservations.country || 'Country'}
           </th>
           <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Package
+            {t.admin.reservations.package || 'Package'}
           </th>
           <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Arrival
+            {t.admin.reservations.arrival || 'Arrival'}
           </th>
           <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Flight
+            {t.admin.reservations.flight || 'Flight'}
           </th>
           <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Status
+            {t.admin.reservations.status || 'Status'}
           </th>
           <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Payment
-          </th>
-          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            Hotel
-          </th>
-          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-            VIP
+            {t.admin.reservations.payment || 'Payment'}
           </th>
           <th scope="col" className="relative px-6 py-3">
             <span className="sr-only">Actions</span>
@@ -91,7 +88,7 @@ export default function ReservationTable({
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                 <div className="flex items-center">
                   <span className="country-flag mr-2">{getFlag(reservation.guest.country)}</span>
-                  {reservation.guest.country || 'Unknown'}
+                  {reservation.guest.country || (t.admin.reservations.unknown || 'Unknown')}
                 </div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -105,41 +102,17 @@ export default function ReservationTable({
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm">
                 <span 
-                  className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass} bg-${statusClass}-light text-${statusClass}-dark`}
+                  className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}`}
                 >
                   {getStatusText(reservation.status)}
                 </span>
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm">
                 <span 
-                  className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${paymentClass} bg-${paymentClass}-light text-${paymentClass}-dark`}
+                  className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${paymentClass}`}
                 >
                   {getPaymentText(reservation.paymentStatus)}
                 </span>
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {reservation.selectedHotel || '—'}
-              </td>
-              <td className="px-6 py-4 whitespace-nowrap text-sm">
-                {reservation.vipStatus !== 'none' ? (
-                  <span 
-                    className="vip-badge"
-                    style={{
-                      width: '20px',
-                      height: '20px',
-                      backgroundColor: '#fbbf24', // gold-400
-                      color: '#ffffff',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '10px',
-                      fontWeight: '700',
-                      borderRadius: '50%'
-                    }}
-                  >
-                    ★
-                  </span>
-                ) : '—'}
               </td>
               <td className="relative px-6 py-4">
                 <div className="flex items-center space-x-2">
@@ -208,51 +181,50 @@ export default function ReservationTable({
   )
 }
 
-// Helper functions
 function getStatusClass(status: string): string {
-  const statusMap: Record<string, string> = {
-    pending: 'warning',
-    confirmed: 'success',
-    awaiting_payment: 'info',
-    assigned: 'primary',
-    in_progress: 'secondary',
-    completed: 'neutral',
-    cancelled: 'error'
+  const map: Record<string, string> = {
+    pending: 'bg-yellow-100 text-yellow-800',
+    confirmed: 'bg-green-100 text-green-800',
+    awaiting_payment: 'bg-blue-100 text-blue-800',
+    assigned: 'bg-purple-100 text-purple-800',
+    in_progress: 'bg-indigo-100 text-indigo-800',
+    completed: 'bg-gray-100 text-gray-800',
+    cancelled: 'bg-red-100 text-red-800'
   }
-  return statusMap[status] || 'warning'
+  return map[status] || 'bg-gray-100 text-gray-800'
 }
 
 function getPaymentClass(status: string): string {
-  const statusMap: Record<string, string> = {
-    pending: 'warning',
-    paid: 'success',
-    partial: 'info',
-    refunded: 'error'
+  const map: Record<string, string> = {
+    pending: 'bg-yellow-100 text-yellow-800',
+    paid: 'bg-green-100 text-green-800',
+    partial: 'bg-blue-100 text-blue-800',
+    refunded: 'bg-red-100 text-red-800'
   }
-  return statusMap[status] || 'warning'
+  return map[status] || 'bg-gray-100 text-gray-800'
 }
 
 function getStatusText(status: string): string {
-  const statusMap: Record<string, string> = {
+  const map: Record<string, string> = {
     pending: 'Pending',
     confirmed: 'Confirmed',
-    awaiting_payment: 'Awaiting Payment',
+    awaiting_payment: 'Awaiting',
     assigned: 'Assigned',
     in_progress: 'In Progress',
     completed: 'Completed',
     cancelled: 'Cancelled'
   }
-  return statusMap[status] || 'Unknown'
+  return map[status] || 'Unknown'
 }
 
 function getPaymentText(status: string): string {
-  const statusMap: Record<string, string> = {
+  const map: Record<string, string> = {
     pending: 'Pending',
     paid: 'Paid',
     partial: 'Partial',
     refunded: 'Refunded'
   }
-  return statusMap[status] || 'Unknown'
+  return map[status] || 'Unknown'
 }
 
 function getFlag(country: string | undefined): string {
@@ -272,25 +244,17 @@ function getFlag(country: string | undefined): string {
     Germany: '🇩🇪',
     Italy: '🇮🇹',
     Portugal: '🇵🇹',
-    Australia: '🇦🇺'
+    Australia: '🇦🇺',
+    Sweden: '🇸🇪'
   }
   return flags[country || ''] || '🌍'
 }
 
 function getAvatarColor(letter: string): string {
-  // Generate a consistent color based on the first letter
   const hash = letter.charCodeAt(0)
   const colors = [
-    '#f59e0b', // amber-500
-    '#10b981', // emerald-500
-    '#3b82f6', // blue-500
-    '#8b5cf6', // violet-500
-    '#14b8a6', // teal-500
-    '#64748b', // slate-500
-    '#ef4450', // red-500
-    '#f97316', // orange-500
-    '#84cc16', // lime-500
-    '#06b6d4'  // cyan-500
+    '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', 
+    '#14b8a6', '#64748b', '#ef4450', '#f97316', '#84cc16', '#06b6d4'
   ]
   return colors[hash % colors.length]
 }
@@ -298,13 +262,10 @@ function getAvatarColor(letter: string): string {
 function formatDate(dateStr: string): string {
   if (!dateStr) return ''
   const date = new Date(dateStr)
-  return date.toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric'
-  })
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 function formatTime(timeStr: string | undefined): string {
   if (!timeStr) return '--:--'
-  return timeStr.substring(0, 5) // Ensure HH:MM format
+  return timeStr.substring(0, 5)
 }
