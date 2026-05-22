@@ -139,15 +139,13 @@ export default function DispatchPage() {
     }
   }
 
-  if (loading) {
-    return <div className="flex items-center justify-center h-full text-[#646880]">{d.selectRequest}...</div>
-  }
-
   const orders = data?.orders || []
   const drivers = data?.drivers || []
   const counts = data?.counts || { pending: 0, assigned: 0, enroute: 0, pickedup: 0 }
 
   const getStatusStep = (status: string | null) => dispatchStatuses.indexOf((status || 'pending') as typeof dispatchStatuses[number])
+
+  const isVip = (o: Order) => o.priority === 'high' || o.priority === 'urgent'
 
   const filteredOrders = useMemo(() => {
     let list = orders
@@ -155,6 +153,7 @@ export default function DispatchPage() {
     else if (tab === 'assigned') list = list.filter(o => o.dispatch_status === 'assigned')
     else if (tab === 'enroute') list = list.filter(o => o.dispatch_status === 'enroute')
     else if (tab === 'completed') list = list.filter(o => o.dispatch_status === 'completed')
+    else if (tab === 'pickedup') list = list.filter(o => o.dispatch_status === 'pickedup')
     else if (tab === 'vip') list = list.filter(o => o.priority === 'high' || o.priority === 'urgent')
     else if (tab === 'unassigned') list = list.filter(o => !o.assigned_to)
     if (query) {
@@ -169,7 +168,10 @@ export default function DispatchPage() {
     return list
   }, [orders, tab, query])
 
-  const isVip = (o: Order) => o.priority === 'high' || o.priority === 'urgent'
+  if (loading) {
+    return <div className="flex items-center justify-center h-full text-[#646880]">{d.selectRequest}...</div>
+  }
+
 
   return (
     <>
