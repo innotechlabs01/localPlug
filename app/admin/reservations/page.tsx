@@ -7,19 +7,27 @@ import ReservationFilters from './components/ReservationFilters'
 import ReservationTable from './components/ReservationTable'
 import ReservationTimeline from './components/ReservationTimeline'
 import ReservationDetailModal from './components/ReservationDetailModal'
-import { fetchReservations, Reservation } from '@/lib/reservations-api'
+import { Reservation, ReservationStatus, fetchReservations } from '@/lib/reservations-api'
 
 export default function AdminReservations() {
   const { t } = useI18n()
-  const d = t.admin.reservations || {}
+  const d = t.admin?.reservations || {}
 
   const [reservations, setReservations] = useState<Reservation[]>([])
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedFilter, setSelectedFilter] = useState<'all' | 'pending' | 'confirmed' | 'awaiting_payment' | 'assigned' | 'in_progress' | 'completed' | 'cancelled'>('all')
+  const [selectedFilter, setSelectedFilter] = useState<ReservationStatus | 'all'>('all')
   const [modalOpen, setModalOpen] = useState(false)
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  
+  // Filters state
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [countryFilter, setCountryFilter] = useState('')
+  const [flightFilter, setFlightFilter] = useState('')
+  const [packageFilter, setPackageFilter] = useState('')
+  const [paymentFilter, setPaymentFilter] = useState<string>('all')
 
   useEffect(() => {
     loadReservations()
@@ -43,12 +51,48 @@ export default function AdminReservations() {
     }
   }, [])
 
-  // Filter reservations based on search and status filter
+  // Filter reservations based on multiple filters
   const filteredReservations = useMemo(() => {
     return reservations.filter(reservation => {
       // Apply status filter
       if (selectedFilter !== 'all' && reservation.status !== selectedFilter) {
         return false
+      }
+      
+      // Apply payment filter
+      if (paymentFilter !== 'all' && reservation.paymentStatus !== paymentFilter) {
+        return false
+      }
+      
+      // Apply date range filter
+      if (dateFrom) {
+        const arrival = new Date(reservation.arrivalDate)
+        const from = new Date(dateFrom)
+        if (arrival < from) return false
+      }
+      if (dateTo) {
+        const arrival = new Date(reservation.arrivalDate)
+        const to = new Date(dateTo)
+        if (arrival > to) return false
+      }
+      
+      // Apply country filter
+      if (countryFilter && reservation.guest.country !== countryFilter) {
+        return false
+      }
+      
+      // Apply flight filter
+      if (flightFilter) {
+        const query = flightFilter.toLowerCase()
+        const matchFlight = reservation.flightInfo?.toLowerCase().includes(query)
+        if (!matchFlight) return false
+      }
+      
+      // Apply package filter
+      if (packageFilter) {
+        const query = packageFilter.toLowerCase()
+        const matchPkg = reservation.service.name.toLowerCase().includes(query)
+        if (!matchPkg) return false
       }
       
       // Apply search filter
@@ -60,14 +104,13 @@ export default function AdminReservations() {
           reservation.guest.email.toLowerCase().includes(query) ||
           reservation.guest.country?.toLowerCase().includes(query) ||
           reservation.service.name.toLowerCase().includes(query) ||
-          reservation.flightInfo?.toLowerCase().includes(query) ||
-          reservation.selectedHotel?.toLowerCase().includes(query)
+          reservation.flightInfo?.toLowerCase().includes(query)
         )
       }
       
       return true
     })
-  }, [reservations, searchQuery, selectedFilter])
+  }, [reservations, searchQuery, selectedFilter, dateFrom, dateTo, countryFilter, flightFilter, packageFilter, paymentFilter])
 
   // Get upcoming arrivals for timeline (next 24 hours)
   const upcomingArrivals = useMemo(() => {
@@ -96,30 +139,16 @@ export default function AdminReservations() {
     setSelectedReservation(null)
   }, [])
 
-  // Action handlers (these would connect to actual backend services)
-  const handleAssignDriver = useCallback(async (driverId: string) => {
+  // Action handlers
+  const handleSendWhatsApp = useCallback(async () => {
     if (!selectedReservation) return
     try {
-      // In a real implementation, this would call an API to assign a driver
-      // For now, we'll simulate with a toast
-      // await assignDriverToReservation(selectedReservation.id, driverId)
-      // setReservations(prev => prev.map(r => 
-      //   r.id === selectedReservation.id ? {...r, status: 'assigned'} : r
-      // ))
+      const { sendWhatsAppMessage } = await import('@/lib/reservations-api')
+      await sendWhatsAppMessage(selectedReservation.id)
       handleCloseModal()
-      // showToast(`Driver assigned to ${selectedReservation.guest.firstName}`)
     } catch (err) {
-      // showToast('Failed to assign driver')
-      console.error('Error assigning driver:', err)
+      console.error('Error sending WhatsApp:', err)
     }
-  }, [selectedReservation])
-
-  const handleSendWhatsApp = useCallback(() => {
-    if (!selectedReservation) return
-    // In a real implementation, this would trigger a WhatsApp message
-    // For now, we'll simulate with a toast
-    // showToast(`WhatsApp sent to ${selectedReservation.guest.firstName}`)
-    handleCloseModal()
   }, [selectedReservation])
 
   const handleCancelReservation = useCallback(async () => {
@@ -127,15 +156,13 @@ export default function AdminReservations() {
     if (!window.confirm('Are you sure you want to cancel this reservation?')) return
     
     try {
-      // In a real implementation, this would call an API to cancel the reservation
-      // await cancelReservation(selectedReservation.id)
-      // setReservations(prev => prev.map(r => 
-      //   r.id === selectedReservation.id ? {...r, status: 'cancelled'} : r
-      // ))
+      const { cancelReservation } = await import('@/lib/reservations-api')
+      await cancelReservation(selectedReservation.id)
+      setReservations(prev => prev.map(r => 
+        r.id === selectedReservation.id ? {...r, status: 'cancelled'} : r
+      ))
       handleCloseModal()
-      // showToast('Reservation cancelled')
     } catch (err) {
-      // showToast('Failed to cancel reservation')
       console.error('Error cancelling reservation:', err)
     }
   }, [selectedReservation])
@@ -145,7 +172,7 @@ export default function AdminReservations() {
       <div className="min-h-screen bg-gray-50">
         <div className="flex items-center justify-center h-[200px]">
           <div className="animate-spin rounded-full border-4 border-primary-light border-t-transparent w-12 h-12"></div>
-          <span className="ml-4 text-primary-dark">Loading reservations...</span>
+          <span className="ml-4 text-primary-dark">{d.loading || 'Loading reservations...'}</span>
         </div>
       </div>
     )
@@ -164,14 +191,14 @@ export default function AdminReservations() {
                 </svg>
               </div>
               <div className="ml-3">
-                <h3 className="text-sm font-medium">Error loading reservations</h3>
+                <h3 className="text-sm font-medium">{d.errorTitle || 'Error loading reservations'}</h3>
                 <div className="mt-2 text-sm">{error}</div>
                 <div className="mt-4">
                   <button 
                     onClick={loadReservations}
                     className="bg-primary-dark hover:bg-primary-darker text-white font-medium py-1 px-3 rounded"
                   >
-                    Retry
+                    {d.retry || 'Retry'}
                   </button>
                 </div>
               </div>
@@ -186,7 +213,7 @@ export default function AdminReservations() {
     <div className="min-h-screen bg-gray-50">
       {/* Sidebar would be handled by layout */}
       <div className="ml-64 transition-all duration-300 ease-in-out">
-        <div class="app-layout">
+        <div className="app-layout">
           {/* Topbar would be handled by layout */}
           <div className="main-area">
             <header className="topbar">
@@ -204,7 +231,7 @@ export default function AdminReservations() {
                   </svg>
                 </button>
                 <span className="page-title">{d.pageTitle || 'Reservations'}</span>
-                <span className="badge badge-accent" style={{ fontSize: '10px' }}>Live</span>
+                <span className="badge badge-accent" style={{ fontSize: '10px' }}>{d.live || 'Live'}</span>
               </div>
               <div className="topbar-right">
                 <div className="search-input" style={{ width: '200px' }}>
@@ -252,11 +279,99 @@ export default function AdminReservations() {
                 {/* KPI Row */}
                 <ReservationKPIs reservations={reservations} />
                 
+                {/* Advanced Filters */}
+                <div className="filters-bar">
+                  <div className="filter-group">
+                    <label>{d.dateFrom || 'From Date'}</label>
+                    <input 
+                      type="date" 
+                      className="input"
+                      value={dateFrom}
+                      onChange={(e) => setDateFrom(e.target.value)}
+                    />
+                  </div>
+                  <div className="filter-group">
+                    <label>{d.dateTo || 'To Date'}</label>
+                    <input 
+                      type="date" 
+                      className="input"
+                      value={dateTo}
+                      onChange={(e) => setDateTo(e.target.value)}
+                    />
+                  </div>
+                  <div className="filter-group">
+                    <label>{d.country || 'Country'}</label>
+                    <select 
+                      className="input"
+                      value={countryFilter}
+                      onChange={(e) => setCountryFilter(e.target.value)}
+                    >
+                      <option value="">All</option>
+                      <option value="Argentina">Argentina</option>
+                      <option value="USA">USA</option>
+                      <option value="Spain">Spain</option>
+                      <option value="Mexico">Mexico</option>
+                      <option value="Colombia">Colombia</option>
+                      <option value="Brazil">Brazil</option>
+                      <option value="Chile">Chile</option>
+                      <option value="UK">UK</option>
+                      <option value="France">France</option>
+                    </select>
+                  </div>
+                  <div className="filter-group">
+                    <label>{d.flight || 'Flight'}</label>
+                    <input 
+                      type="text" 
+                      className="input"
+                      placeholder={d.searchFlight || 'Search flight...'}
+                      value={flightFilter}
+                      onChange={(e) => setFlightFilter(e.target.value)}
+                    />
+                  </div>
+                  <div className="filter-group">
+                    <label>{d.package || 'Package'}</label>
+                    <input 
+                      type="text" 
+                      className="input"
+                      placeholder={d.searchPackage || 'Search package...'}
+                      value={packageFilter}
+                      onChange={(e) => setPackageFilter(e.target.value)}
+                    />
+                  </div>
+                  <div className="filter-group">
+                    <label>{d.payment || 'Payment'}</label>
+                    <select 
+                      className="input"
+                      value={paymentFilter}
+                      onChange={(e) => setPaymentFilter(e.target.value)}
+                    >
+                      <option value="all">{d.filters?.all || 'All'}</option>
+                      <option value="pending">{d.filters?.pending || 'Pending'}</option>
+                      <option value="paid">{d.paymentStatus || 'Paid'}</option>
+                      <option value="partial">{d.partial || 'Partial'}</option>
+                      <option value="refunded">{d.refunded || 'Refunded'}</option>
+                    </select>
+                  </div>
+                  <button 
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => {
+                      setDateFrom('')
+                      setDateTo('')
+                      setCountryFilter('')
+                      setFlightFilter('')
+                      setPackageFilter('')
+                      setPaymentFilter('all')
+                    }}
+                  >
+                    {d.clearFilters || 'Clear'}
+                  </button>
+                </div>
+                
                 {/* Status Filter Tabs */}
                 <ReservationFilters 
                   selectedFilter={selectedFilter}
                   onFilterChange={setSelectedFilter}
-                  reservationsCount={reservations.length}
+                  reservations={reservations}
                 />
                 
                 {/* Table + Timeline */}
@@ -275,7 +390,7 @@ export default function AdminReservations() {
                               <polyline points="7 10 12 15 17 10"/>
                               <line x1="12" y1="15" x2="12" y2="3"/>
                             </svg>
-                            Export
+                            {d.export_ || 'Export'}
                           </button>
                           <button 
                             className="btn btn-primary btn-sm"
@@ -285,7 +400,7 @@ export default function AdminReservations() {
                               <line x1="12" y1="5" x2="12" y2="19"/>
                               <line x1="5" y1="12" x2="19" y2="12"/>
                             </svg>
-                            New
+                            {d.newReservation || 'New'}
                           </button>
                         </div>
                       </div>
@@ -354,7 +469,6 @@ export default function AdminReservations() {
                   open={modalOpen}
                   reservation={selectedReservation}
                   onClose={handleCloseModal}
-                  onAssignDriver={handleAssignDriver}
                   onSendWhatsApp={handleSendWhatsApp}
                   onCancelReservation={handleCancelReservation}
                 />
