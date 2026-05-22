@@ -79,7 +79,7 @@ export default function TeamPage() {
   const handleCreate = async () => {
     try {
       if (!form.name || !form.email || !form.role_id) {
-        showToast('Name, email, and role are required')
+        showToast(d.validationRequired || 'Name, email, and role are required')
         return
       }
       const res = await fetch('/api/admin/team', {
@@ -88,17 +88,17 @@ export default function TeamPage() {
         body: JSON.stringify({ name: form.name, email: form.email, role_id: Number(form.role_id) }),
       })
       if (res.ok) {
-        showToast('Member created')
+        showToast(d.memberCreated || 'Member created')
         setModalOpen(false)
         setForm({})
         const data = await fetch('/api/admin/team').then(r => r.json())
         setMembers(data)
       } else {
         const err = await res.json()
-        showToast(err.error || 'Failed to create member')
+        showToast(err.error || d.createFailed || 'Failed to create member')
       }
     } catch {
-      showToast('Error creating member')
+      showToast(d.createError || 'Error creating member')
     }
   }
 
@@ -115,8 +115,17 @@ export default function TeamPage() {
     viewer: 'bg-[rgba(100,104,128,0.12)] text-[#646880]',
   }
 
+  const filterLabels: Record<string, string> = {
+    all: d.filterAll || 'All',
+    active: d.filterActive || 'Active',
+    inactive: d.filterInactive || 'Inactive',
+    admin: d.filterAdmin || 'Admin',
+    manager: d.filterManager || 'Manager',
+    concierge: d.filterConcierge || 'Concierge',
+  }
+
   if (loading) {
-    return <div className="flex items-center justify-center h-64 text-[#646880]">Loading...</div>
+    return <div className="flex items-center justify-center h-64 text-[#646880]">{d.loading || 'Loading...'}</div>
   }
 
   return (
@@ -139,11 +148,11 @@ export default function TeamPage() {
       {/* ── KPIs ── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          ['Total', String(stats.total), 'Team members'],
-          ['Active', String(stats.active), 'Currently working'],
-          ['Admins', String(stats.admin), 'Management'],
-          ['Orders', String(stats.totalOrders), 'All assigned'],
-        ].map(([label, value, sub]) => (
+          { label: d.kpiTotal || 'Total', value: String(stats.total), sub: d.kpiTeamMembers || 'Team members' },
+          { label: d.kpiActive || 'Active', value: String(stats.active), sub: d.kpiWorking || 'Currently working' },
+          { label: d.kpiAdmins || 'Admins', value: String(stats.admin), sub: d.kpiManagement || 'Management' },
+          { label: d.kpiOrders || 'Orders', value: String(stats.totalOrders), sub: d.kpiAllAssigned || 'All assigned' },
+        ].map(({ label, value, sub }) => (
           <div key={label} className="bg-[#181b25] border border-[#282b38] rounded-xl p-4">
             <p className="text-[11px] text-[#646880] uppercase tracking-wide">{label}</p>
             <p className="text-[24px] font-bold text-[#f0f2f5] mt-1">{value}</p>
@@ -158,15 +167,15 @@ export default function TeamPage() {
         <div className="bg-[#181b25] border border-[#282b38] rounded-xl overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2130]">
             <div className="flex items-center gap-2.5">
-              <span className="text-[14px] font-bold text-[#f0f2f5]">Team Members</span>
-              <span className="text-[12px] text-[#646880] font-medium">{filtered.length} shown</span>
+              <span className="text-[14px] font-bold text-[#f0f2f5]">{d.rosterTitle || 'Team Members'}</span>
+              <span className="text-[12px] text-[#646880] font-medium">{d.rosterCount?.replace('{count}', String(filtered.length)) || `${filtered.length} shown`}</span>
             </div>
             <div className="relative">
               <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#646880]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
               </svg>
               <input className="w-[200px] pl-9 pr-3 py-1.5 bg-[#0b0d14] border border-[#282b38] rounded-lg text-[12px] text-[#f0f2f5] placeholder:text-[#646880] outline-none focus:border-[#10b981] transition-all"
-                placeholder="Search team..."
+                placeholder={d.searchPlaceholder || 'Search team...'}
                 value={search} onChange={e => setSearch(e.target.value)} />
             </div>
           </div>
@@ -181,7 +190,7 @@ export default function TeamPage() {
                     : 'bg-transparent text-[#646880] border-[#282b38] hover:border-[#10b981] hover:text-[#f0f2f5]'
                 }`}
                 onClick={() => setFilter(f)}>
-                {f.charAt(0).toUpperCase() + f.slice(1)}
+                {filterLabels[f] || f.charAt(0).toUpperCase() + f.slice(1)}
               </button>
             ))}
           </div>
@@ -190,16 +199,16 @@ export default function TeamPage() {
             <table className="w-full">
               <thead>
                 <tr className="bg-[rgba(255,255,255,0.02)]">
-                  <th className="text-left text-[11px] font-semibold uppercase tracking-[0.4px] text-[#646880] px-4 py-3.5">Member</th>
-                  <th className="text-left text-[11px] font-semibold uppercase tracking-[0.4px] text-[#646880] px-4 py-3.5">Role</th>
-                  <th className="text-left text-[11px] font-semibold uppercase tracking-[0.4px] text-[#646880] px-4 py-3.5">Status</th>
-                  <th className="text-left text-[11px] font-semibold uppercase tracking-[0.4px] text-[#646880] px-4 py-3.5">Orders</th>
-                  <th className="text-left text-[11px] font-semibold uppercase tracking-[0.4px] text-[#646880] px-4 py-3.5">Last Active</th>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-[0.4px] text-[#646880] px-4 py-3.5">{d.tableMember || 'Member'}</th>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-[0.4px] text-[#646880] px-4 py-3.5">{d.tableRole || 'Role'}</th>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-[0.4px] text-[#646880] px-4 py-3.5">{d.tableStatus || 'Status'}</th>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-[0.4px] text-[#646880] px-4 py-3.5">{d.tableOrders || 'Orders'}</th>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-[0.4px] text-[#646880] px-4 py-3.5">{d.tableLastActive || 'Last Active'}</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
-                  <tr><td colSpan={5} className="p-12 text-center text-[#646880] text-[13px]">No team members found</td></tr>
+                  <tr><td colSpan={5} className="p-12 text-center text-[#646880] text-[13px]">{d.noResults || 'No team members found'}</td></tr>
                 ) : filtered.map(m => (
                   <tr key={m.id}
                     className="border-b border-[#1e2130] hover:bg-[#0b0d14] cursor-pointer transition-colors"
@@ -246,11 +255,11 @@ export default function TeamPage() {
         <div className="space-y-4 sticky top-20">
           <div className="bg-[#181b25] border border-[#282b38] rounded-xl overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2130]">
-              <span className="text-[14px] font-bold text-[#f0f2f5]">Member Profile</span>
+              <span className="text-[14px] font-bold text-[#f0f2f5]">{d.panelProfile || 'Member Profile'}</span>
             </div>
             <div className="p-4">
               {!selected ? (
-                <p className="text-[13px] text-[#646880] text-center py-8">Select a member to view profile</p>
+                <p className="text-[13px] text-[#646880] text-center py-8">{d.selectPrompt || 'Select a member to view profile'}</p>
               ) : (
                 <>
                   <div className="flex items-center gap-3.5 mb-4">
@@ -270,12 +279,12 @@ export default function TeamPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     {[
-                      ['Email', selected.email],
-                      ['Role', selected.roles?.split(',')[0] || '—'],
-                      ['Orders Assigned', String(selected.orders_assigned || 0)],
-                      ['Last Active', selected.last_login_at ? new Date(selected.last_login_at).toLocaleDateString() : '—'],
-                      ['Joined', selected.created_at ? new Date(selected.created_at).toLocaleDateString() : '—'],
-                    ].map(([label, value]) => (
+                      { label: t.common.email || 'Email', value: selected.email },
+                      { label: d.tableRole || 'Role', value: selected.roles?.split(',')[0] || '—' },
+                      { label: d.ordersAssigned || 'Orders Assigned', value: String(selected.orders_assigned || 0) },
+                      { label: d.tableLastActive || 'Last Active', value: selected.last_login_at ? new Date(selected.last_login_at).toLocaleDateString() : '—' },
+                      { label: 'Joined', value: selected.created_at ? new Date(selected.created_at).toLocaleDateString() : '—' },
+                    ].map(({ label, value }) => (
                       <div key={label}>
                         <label className="block text-[10px] text-[#646880] uppercase tracking-wider mb-1">{label}</label>
                         <div className="text-[13px] text-[#f0f2f5]">{value}</div>
@@ -290,17 +299,17 @@ export default function TeamPage() {
           {/* Activity */}
           <div className="bg-[#181b25] border border-[#282b38] rounded-xl overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2130]">
-              <span className="text-[14px] font-bold text-[#f0f2f5]">Activity</span>
+              <span className="text-[14px] font-bold text-[#f0f2f5]">{d.panelActivity || 'Activity'}</span>
             </div>
             <div className="p-4">
               {!selected ? (
-                <p className="text-[13px] text-[#646880] text-center py-4">No member selected</p>
+                <p className="text-[13px] text-[#646880] text-center py-4">{d.noActivity || 'No member selected'}</p>
               ) : (
                 <div className="space-y-2.5">
                   {[
-                    { dot: theme.accent, text: 'Last login', time: selected.last_login_at ? new Date(selected.last_login_at).toLocaleDateString() : '—' },
-                    { dot: theme.info, text: `${selected.orders_assigned || 0} orders assigned`, time: 'Current' },
-                    { dot: theme.warning, text: 'Member since', time: selected.created_at ? new Date(selected.created_at).toLocaleDateString() : '—' },
+                    { dot: theme.accent, text: d.activityLastLogin || 'Last login', time: selected.last_login_at ? new Date(selected.last_login_at).toLocaleDateString() : '—' },
+                    { dot: theme.info, text: (d.activityOrders || '{count} orders assigned').replace('{count}', String(selected.orders_assigned || 0)), time: d.activityCurrent || 'Current' },
+                    { dot: theme.warning, text: d.activityMemberSince || 'Member since', time: selected.created_at ? new Date(selected.created_at).toLocaleDateString() : '—' },
                   ].map((act, i) => (
                     <div key={i} className="grid grid-cols-[10px_1fr_auto] gap-2.5 items-start pb-2.5 border-b border-[#1e2130] last:border-b-0 last:pb-0">
                       <div className="w-2.5 h-2.5 rounded-full mt-1" style={{ background: act.dot }} />
@@ -320,7 +329,7 @@ export default function TeamPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6" style={{ background: 'rgba(0,0,0,0.62)' }} onClick={() => setModalOpen(false)}>
           <div className="w-full max-w-[760px] max-h-[90vh] overflow-y-auto bg-[#0b0d14] border border-[#282b38] rounded-2xl shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between p-5 border-b border-[#282b38]">
-              <h2 className="text-[18px] font-bold text-[#f0f2f5]">Add Team Member</h2>
+              <h2 className="text-[18px] font-bold text-[#f0f2f5]">{d.addMember || '+ Add Team Member'}</h2>
               <button className="text-[#646880] hover:text-[#f0f2f5]" onClick={() => setModalOpen(false)}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M18 6L6 18M6 6l12 12"/>
@@ -336,6 +345,7 @@ export default function TeamPage() {
                 <div className={`h-1 flex-1 rounded-full ${wizardStep >= 4 ? 'bg-[#10b981]' : 'bg-[#282b38]'}`} />
               </div>
               <p className="text-[12px] text-[#646880] mb-4">Step {wizardStep} of 4 - {['Personal Information', 'Role & Department', 'Permissions', 'Review'][wizardStep - 1]}</p>
+
 
               {/* Step 1: Personal Info */}
               {wizardStep === 1 && (
@@ -443,7 +453,7 @@ export default function TeamPage() {
             <div className="flex justify-between gap-2.5 px-5 py-4 border-t border-[#282b38]">
               <button className="px-4 py-2 border border-[#282b38] text-[13px] text-[#9ca0b0] rounded-lg hover:bg-[#202330] transition-all"
                 style={{ display: wizardStep > 1 ? 'block' : 'none' }}
-                onClick={() => setWizardStep(s => s - 1)}>Back</button>
+                onClick={() => setWizardStep(s => s - 1)}>{t.common.back || 'Back'}</button>
               <div style={{ flex: 1 }} />
               {wizardStep < 4 ? (
                 <button className="px-6 py-2 bg-[#10b981] text-white text-[13px] font-medium rounded-lg hover:bg-[#059669] transition-all" onClick={() => setWizardStep(s => s + 1)}>Next</button>

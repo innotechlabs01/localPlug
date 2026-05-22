@@ -22,6 +22,7 @@ const initialClients: Client[] = [
 
 export default function CustomersPage() {
   const { t } = useI18n()
+  const d = t.admin.customers
   const [clients, setClients] = useState<Client[]>(initialClients)
   const [search, setSearch] = useState('')
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
@@ -128,14 +129,14 @@ export default function CustomersPage() {
                   <td className="px-5 py-3 text-[13px] text-[#9ca0b0]">{client.createdAt}</td>
                   <td className="px-5 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <button onClick={() => openEdit(client)} className="p-1.5 rounded-[4px] text-[#9ca0b0] hover:bg-[#202330] hover:text-[#3b82f6] transition-all" title="Edit">
+                      <button onClick={() => openEdit(client)} className="p-1.5 rounded-[4px] text-[#9ca0b0] hover:bg-[#202330] hover:text-[#3b82f6] transition-all" title={d.titleEdit || 'Edit'}>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                       </button>
                       <button onClick={() => toggleStatus(client)} className={`p-1.5 rounded-[4px] transition-all ${
                         client.status === 'Active'
                           ? 'text-[#9ca0b0] hover:bg-[#202330] hover:text-[#f59e0b]'
                           : 'text-[#9ca0b0] hover:bg-[#202330] hover:text-[#10b981]'
-                      }`} title={client.status === 'Active' ? 'Deactivate' : 'Activate'}>
+                      }`} title={client.status === 'Active' ? d.titleDeactivate || 'Deactivate' : d.titleActivate || 'Activate'}>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                           {client.status === 'Active' ? (
                             <><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0110 0v4" /></>
@@ -144,7 +145,7 @@ export default function CustomersPage() {
                           )}
                         </svg>
                       </button>
-                      <button onClick={() => setSelectedClient(client)} className="p-1.5 rounded-[4px] text-[#9ca0b0] hover:bg-[#202330] hover:text-[#10b981] transition-all" title="View">
+                      <button onClick={() => setSelectedClient(client)} className="p-1.5 rounded-[4px] text-[#9ca0b0] hover:bg-[#202330] hover:text-[#10b981] transition-all" title={d.titleView || 'View'}>
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
                       </button>
                     </div>
@@ -187,10 +188,10 @@ export default function CustomersPage() {
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <div><div className="text-[11px] text-[#646880] font-medium">Type</div><div className="text-[13px] text-[#f0f2f5] mt-0.5">{selectedClient.type}</div></div>
-                <div><div className="text-[11px] text-[#646880] font-medium">Created</div><div className="text-[13px] text-[#f0f2f5] mt-0.5">{selectedClient.createdAt}</div></div>
-                <div className="col-span-2"><div className="text-[11px] text-[#646880] font-medium">Email</div><div className="text-[13px] text-[#f0f2f5] mt-0.5">{selectedClient.email}</div></div>
-                <div className="col-span-2"><div className="text-[11px] text-[#646880] font-medium">Phone</div><div className="text-[13px] text-[#f0f2f5] mt-0.5 font-mono">{selectedClient.phone}</div></div>
+                <div><div className="text-[11px] text-[#646880] font-medium">{d.labelType || 'Type'}</div><div className="text-[13px] text-[#f0f2f5] mt-0.5">{selectedClient.type}</div></div>
+                <div><div className="text-[11px] text-[#646880] font-medium">{d.labelCreated || 'Created'}</div><div className="text-[13px] text-[#f0f2f5] mt-0.5">{selectedClient.createdAt}</div></div>
+                <div className="col-span-2"><div className="text-[11px] text-[#646880] font-medium">{d.labelEmail || 'Email'}</div><div className="text-[13px] text-[#f0f2f5] mt-0.5">{selectedClient.email}</div></div>
+                <div className="col-span-2"><div className="text-[11px] text-[#646880] font-medium">{d.labelPhone || 'Phone'}</div><div className="text-[13px] text-[#f0f2f5] mt-0.5 font-mono">{selectedClient.phone}</div></div>
               </div>
             </div>
             <div className="px-6 py-4 border-t border-[#282b38] flex gap-2 justify-end">
@@ -224,7 +225,7 @@ export default function CustomersPage() {
               <div className="flex flex-col gap-1.5">
                 <label className="text-[12px] font-medium text-[#9ca0b0]">{t.admin.customers.formType as string}</label>
                 <select value={formData.type || ''} onChange={(e) => setFormData({ ...formData, type: e.target.value })} className="w-full px-3 py-2 bg-[#0b0d14] border border-[#282b38] rounded-[6px] text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-all">
-                  <option value="">Select type</option>
+                  <option value="">{d.selectType || 'Select type'}</option>
                   <option value="Laboral">Laboral</option>
                   <option value="Civil / Familia">Civil / Familia</option>
                   <option value="Comercial">Comercial</option>
@@ -242,8 +243,8 @@ export default function CustomersPage() {
               <div className="flex flex-col gap-1.5">
                 <label className="text-[12px] font-medium text-[#9ca0b0]">{t.admin.customers.formStatus as string}</label>
                 <select value={formData.status || 'Active'} onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Active' | 'Inactive' })} className="w-full px-3 py-2 bg-[#0b0d14] border border-[#282b38] rounded-[6px] text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-all">
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
+                  <option value="Active">{d.optionActive || 'Active'}</option>
+                  <option value="Inactive">{d.optionInactive || 'Inactive'}</option>
                 </select>
               </div>
             </div>

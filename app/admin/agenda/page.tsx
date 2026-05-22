@@ -29,16 +29,16 @@ function AgendaInner() {
   }, [selectedDate])
 
   const typeColors: Record<string, string> = {
-    arrival: 'bg-green-100 text-green-800 border-green-200',
-    departure: 'bg-blue-100 text-blue-800 border-blue-200',
-    meeting: 'bg-purple-100 text-purple-800 border-purple-200',
-    task: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    arrival: 'bg-[rgba(16,185,129,0.12)] text-[#10b981] border-[rgba(16,185,129,0.3)]',
+    departure: 'bg-[rgba(59,130,246,0.12)] text-[#3b82f6] border-[rgba(59,130,246,0.3)]',
+    meeting: 'bg-[rgba(139,92,246,0.12)] text-[#8b5cf6] border-[rgba(139,92,246,0.3)]',
+    task: 'bg-[rgba(245,158,11,0.12)] text-[#f59e0b] border-[rgba(245,158,11,0.3)]',
   }
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-cool-slate-500">Loading agenda...</div>
+        <div className="text-[#646880]">{t.admin.agenda?.loading || 'Loading agenda...'}</div>
       </div>
     )
   }
@@ -47,37 +47,37 @@ function AgendaInner() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-display-lg text-slate-navy">{t.admin.agenda.title}</h1>
-          <p className="text-body-md text-cool-slate-500 mt-1">{t.admin.agenda.subtitle}</p>
+          <h1 className="text-[18px] font-semibold text-[#f0f2f5]">{t.admin.agenda.title}</h1>
+          <p className="text-[13px] text-[#646880] mt-1">{t.admin.agenda.subtitle}</p>
         </div>
         <input
           type="date"
           value={selectedDate}
           onChange={(e) => setSelectedDate(e.target.value)}
-          className="px-4 py-2 border border-cool-slate-200 rounded-lg text-body-md focus:outline-none focus:ring-2 focus:ring-mountain-emerald/20 focus:border-mountain-emerald"
+          className="px-4 py-2 bg-[#0b0d14] border border-[#282b38] rounded-[6px] text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-all"
         />
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-cool-slate-100 p-6">
-        <div className="space-y-4">
+      <div className="bg-[#181b25] border border-[#282b38] rounded-[10px] p-5">
+        <div className="space-y-3">
           {items.sort((a, b) => a.time.localeCompare(b.time)).map((item) => (
-            <div key={item.id} className={`flex items-center gap-4 p-4 rounded-lg border ${typeColors[item.type]}`}>
-              <div className="text-label-lg font-bold text-slate-navy w-16">
+            <div key={item.id} className={`flex items-center gap-4 p-4 rounded-[6px] border ${typeColors[item.type]}`}>
+              <div className="text-[14px] font-bold text-[#f0f2f5] w-16">
                 {item.time}
               </div>
               <div className="flex-1">
-                <p className="text-label-md text-slate-navy">{item.title}</p>
-                <p className="text-body-md text-cool-slate-600">{item.customer}</p>
+                <p className="text-[13px] font-medium text-[#f0f2f5]">{item.title}</p>
+                <p className="text-[13px] text-[#9ca0b0]">{item.customer}</p>
               </div>
               <div className="flex items-center gap-2">
-                <span className={`px-2.5 py-0.5 rounded-full text-label-sm font-medium ${
-                  item.status === 'completed' ? 'bg-green-100 text-green-800' :
-                  item.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                  'bg-cool-slate-100 text-cool-slate-600'
+                <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-medium ${
+                  item.status === 'completed' ? 'bg-[rgba(16,185,129,0.12)] text-[#10b981]' :
+                  item.status === 'cancelled' ? 'bg-[rgba(239,68,80,0.12)] text-[#ef4450]' :
+                  'bg-[rgba(100,104,128,0.12)] text-[#646880]'
                 }`}>
                   {item.status}
                 </span>
-                <button className="p-1.5 hover:bg-white/50 rounded-lg transition-colors">
+                <button className="p-1.5 hover:bg-[#202330] rounded-[4px] text-[#9ca0b0] transition-all">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <circle cx="12" cy="12" r="1" />
                     <circle cx="19" cy="12" r="1" />
@@ -88,8 +88,8 @@ function AgendaInner() {
             </div>
           ))}
           {items.length === 0 && (
-            <div className="p-12 text-center text-cool-slate-500">
-              No activities scheduled for this date.
+            <div className="p-12 text-center text-[#646880]">
+              {t.admin.agenda?.noActivities || 'No activities scheduled for this date.'}
             </div>
           )}
         </div>
