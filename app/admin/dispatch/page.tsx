@@ -363,7 +363,7 @@ export default function DispatchPage() {
           <div className="dp-filter-tabs">
             {(['all', 'pending', 'assigned', 'enroute', 'pickedup', 'completed', 'vip'] as const).map(t => (
               <button key={t} className={`dp-filter-tab ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
-                {t === 'all' ? d.all : t === 'pending' ? d.pending : t === 'assigned' ? d.assigned : t === 'enroute' ? d.enroute : t === 'pickedup' ? d.pickedup : t === 'completed' ? d.completed : t === 'vip' ? d.vIP : t.charAt(0).toUpperCase() + t.slice(1)}
+                {t === 'all' ? d.all : t === 'pending' ? d.pending : t === 'assigned' ? d.assigned : t === 'enroute' ? d.enroute : t === 'pickedup' ? d.pickedup : t === 'completed' ? d.completed : d.vIP}
               </button>
             ))}
           </div>
@@ -458,7 +458,7 @@ export default function DispatchPage() {
                       <div>
                         <div className={`dp-timeline-dot ${completed && (s === 'completed' || currentStep === dispatchStatuses.length - 1) ? 'completed' : active ? 'active' : ''}`} />
                         <div className={`dp-timeline-label ${completed && (s === 'completed' || currentStep === dispatchStatuses.length - 1) ? 'completed' : active ? 'active' : ''}`}>
-                          {s === 'pickedup' ? d.pickedup : s === 'assigned' ? d.assigned : s === 'completed' ? d.completed : s === 'enroute' ? d.enroute : s === 'pending' ? d.pending : s.charAt(0).toUpperCase() + s.slice(1)}
+                          {s === 'pickedup' ? d.pickedup : s === 'assigned' ? d.assigned : s === 'completed' ? d.completed : s === 'enroute' ? d.enroute : d.pending}
                         </div>
                       </div>
                       {i < dispatchStatuses.length - 1 && <div className={`dp-timeline-connector ${completed ? 'completed' : ''}`} />}
