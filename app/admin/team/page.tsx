@@ -314,43 +314,63 @@ export default function TeamPage() {
         </div>
       </div>
 
-      {/* ── Create Modal ── */}
+      {/* ── Create Modal (matching admin-employees.html) ── */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
-          <div className="absolute inset-0 bg-black/62" onClick={() => setModalOpen(false)} />
-          <div className="relative w-full max-w-[500px] bg-[#0b0d14] border border-[#282b38] rounded-2xl shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6" style={{ background: 'rgba(0,0,0,0.62)' }}>
+          <div className="w-full max-w-[760px] max-h-[90vh] overflow-y-auto bg-[#0b0d14] border border-[#282b38] rounded-2xl shadow-2xl">
             <div className="flex items-center justify-between p-5 border-b border-[#282b38]">
-              <div>
-                <h2 className="text-[18px] font-bold text-[#f0f2f5]">Add Team Member</h2>
-                <p className="text-[12px] text-[#646880] mt-1">Register a new team member with role assignment.</p>
-              </div>
-              <button className="text-[#646880] hover:text-[#f0f2f5] text-2xl" onClick={() => setModalOpen(false)}>×</button>
+              <h2 className="text-[18px] font-bold text-[#f0f2f5]">Add Team Member</h2>
+              <button className="text-[#646880] hover:text-[#f0f2f5]" onClick={() => setModalOpen(false)}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+              </button>
             </div>
-            <div className="p-5 grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-[#646880]">Full name</label>
-                <input className="w-full px-3 py-2 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none" placeholder="e.g. John Doe"
-                  value={form.name || ''} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} />
+            <div className="p-5">
+              {/* Stepper */}
+              <div className="flex gap-2 mb-4">
+                <div className="h-1 flex-1 rounded-full bg-[#10b981]" />
+                <div className="h-1 flex-1 rounded-full bg-[#282b38]" />
+                <div className="h-1 flex-1 rounded-full bg-[#282b38]" />
+                <div className="h-1 flex-1 rounded-full bg-[#282b38]" />
               </div>
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-[#646880]">Email</label>
-                <input className="w-full px-3 py-2 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none" placeholder="email@company.com"
-                  value={form.email || ''} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} />
-              </div>
-              <div className="col-span-2 space-y-1.5">
-                <label className="text-[11px] font-semibold text-[#646880]">Role</label>
-                <select className="w-full px-3 py-2 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none"
-                  value={form.role_id || ''} onChange={e => setForm(p => ({ ...p, role_id: e.target.value }))}>
-                  <option value="">Select role...</option>
-                  {roles.map(r => (
-                    <option key={r.id} value={r.id}>{r.name}</option>
-                  ))}
-                </select>
+              <p className="text-[12px] text-[#646880] mb-4">Step 1 of 4 - Personal Information</p>
+
+              {/* Step 1: Personal Info */}
+              <div className="grid grid-cols-2 gap-3 mt-3.5">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-[#646880]">Full name</label>
+                  <input className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-colors" placeholder="e.g. Laura Giraldo"
+                    value={form.name || ''} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-[#646880]">Email</label>
+                  <input className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-colors" placeholder="laura@company.com" type="email"
+                    value={form.email || ''} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-[#646880]">Role</label>
+                  <select className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-colors"
+                    value={form.role_id || ''} onChange={e => setForm(p => ({ ...p, role_id: e.target.value }))}>
+                    <option value="">Select role...</option>
+                    {roles.map(r => (
+                      <option key={r.id} value={r.id}>{r.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-[#646880]">Phone</label>
+                  <input className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-colors" placeholder="+57 300 123 4567"
+                    value={form.phone || ''} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} />
+                </div>
               </div>
             </div>
-            <div className="flex justify-end gap-2.5 px-5 py-4 border-t border-[#282b38]">
-              <button className="px-4 py-2 border border-[#282b38] text-[13px] text-[#9ca0b0] rounded-lg hover:bg-[#202330] transition-all" onClick={() => setModalOpen(false)}>Cancel</button>
-              <button className="px-4 py-2 bg-[#10b981] text-white text-[13px] font-medium rounded-lg hover:bg-[#059669] transition-all" onClick={handleCreate}>Create</button>
+            <div className="flex justify-between gap-2.5 px-5 py-4 border-t border-[#282b38]">
+              <button className="px-4 py-2 border border-[#282b38] text-[13px] text-[#9ca0b0] rounded-lg hover:bg-[#202330] transition-all">Back</button>
+              <div className="flex gap-2.5">
+                <button className="px-4 py-2 border border-[#282b38] text-[13px] text-[#9ca0b0] rounded-lg hover:bg-[#202330] transition-all" onClick={() => setModalOpen(false)}>Cancel</button>
+                <button className="px-4 py-2 bg-[#10b981] text-white text-[13px] font-medium rounded-lg hover:bg-[#059669] transition-all" onClick={handleCreate}>Create</button>
+              </div>
             </div>
           </div>
         </div>
