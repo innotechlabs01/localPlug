@@ -28,6 +28,16 @@ export default function AdminReservations() {
   const [flightFilter, setFlightFilter] = useState('')
   const [packageFilter, setPackageFilter] = useState('')
   const [paymentFilter, setPaymentFilter] = useState<string>('all')
+  const [countries, setCountries] = useState<{ code: string; name: string; flag: string }[]>([])
+
+  useEffect(() => {
+    fetch('/api/admin/lookup')
+      .then(res => res.json())
+      .then((data: any) => {
+        if (data.countries) setCountries(data.countries)
+      })
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     loadReservations()
@@ -309,15 +319,9 @@ export default function AdminReservations() {
                       onChange={(e) => setCountryFilter(e.target.value)}
                     >
                       <option value="">All</option>
-                      <option value="Argentina">Argentina</option>
-                      <option value="USA">USA</option>
-                      <option value="Spain">Spain</option>
-                      <option value="Mexico">Mexico</option>
-                      <option value="Colombia">Colombia</option>
-                      <option value="Brazil">Brazil</option>
-                      <option value="Chile">Chile</option>
-                      <option value="UK">UK</option>
-                      <option value="France">France</option>
+                      {countries.map(c => (
+                        <option key={c.code} value={c.name}>{c.flag} {c.name}</option>
+                      ))}
                     </select>
                   </div>
                   <div className="filter-group">

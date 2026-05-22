@@ -1,6 +1,7 @@
 'use client'
 
 import { useI18n } from '@/lib/i18n'
+import { useState, useEffect } from 'react'
 import type { ReactNode } from 'react'
 
 interface StepTravelerProfileProps {
@@ -48,6 +49,38 @@ const profileIcons: Record<string, ReactNode> = {
   ),
 }
 
+interface LookupCountry {
+  code: string
+  name: string
+  flag: string
+}
+
+interface LookupLanguage {
+  code: string
+  name: string
+  native_name: string
+}
+
+interface LookupData {
+  countries: LookupCountry[]
+  languages: LookupLanguage[]
+}
+
+const fallbackCountries: LookupCountry[] = [
+  { code: 'US', name: 'USA', flag: '🇺🇸' }, { code: 'CO', name: 'Colombia', flag: '🇨🇴' },
+  { code: 'MX', name: 'Mexico', flag: '🇲🇽' }, { code: 'AR', name: 'Argentina', flag: '🇦🇷' },
+  { code: 'ES', name: 'Spain', flag: '🇪🇸' }, { code: 'GB', name: 'UK', flag: '🇬🇧' },
+  { code: 'CA', name: 'Canada', flag: '🇨🇦' }, { code: 'BR', name: 'Brazil', flag: '🇧🇷' },
+  { code: 'CL', name: 'Chile', flag: '🇨🇱' }, { code: 'FR', name: 'France', flag: '🇫🇷' },
+  { code: 'DE', name: 'Germany', flag: '🇩🇪' }, { code: 'OT', name: 'Other', flag: '🌍' },
+]
+
+const fallbackLanguages: LookupLanguage[] = [
+  { code: 'en', name: 'English', native_name: 'English' }, { code: 'es', name: 'Spanish', native_name: 'Español' },
+  { code: 'pt', name: 'Portuguese', native_name: 'Português' }, { code: 'fr', name: 'French', native_name: 'Français' },
+  { code: 'de', name: 'German', native_name: 'Deutsch' }, { code: 'ot', name: 'Other', native_name: 'Other' },
+]
+
 export default function StepTravelerProfile({
   value,
   onChange,
@@ -64,6 +97,19 @@ export default function StepTravelerProfile({
 }: StepTravelerProfileProps) {
   const { t } = useI18n()
   const profileT = t.booking.steps.profile
+
+  const [countries, setCountries] = useState<LookupCountry[]>(fallbackCountries)
+  const [languages, setLanguages] = useState<LookupLanguage[]>(fallbackLanguages)
+
+  useEffect(() => {
+    fetch('/api/admin/lookup')
+      .then(res => res.json())
+      .then((data: LookupData) => {
+        if (data.countries) setCountries(data.countries)
+        if (data.languages) setLanguages(data.languages)
+      })
+      .catch(() => {})
+  }, [])
 
   const profiles = [
     { id: 'family', title: profileT.family, description: profileT.familyDesc },
@@ -129,18 +175,9 @@ export default function StepTravelerProfile({
             <select value={country} onChange={(e) => onCountryChange(e.target.value)}
               className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-elevated)] text-body-md text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-gold)]/40 focus:border-[var(--accent-gold)] transition-all">
               <option value="">Select country...</option>
-              <option value="USA">🇺🇸 USA</option>
-              <option value="Colombia">🇨🇴 Colombia</option>
-              <option value="Mexico">🇲🇽 Mexico</option>
-              <option value="Argentina">🇦🇷 Argentina</option>
-              <option value="Spain">🇪🇸 Spain</option>
-              <option value="UK">🇬🇧 UK</option>
-              <option value="Canada">🇨🇦 Canada</option>
-              <option value="Brazil">🇧🇷 Brazil</option>
-              <option value="Chile">🇨🇱 Chile</option>
-              <option value="France">🇫🇷 France</option>
-              <option value="Germany">🇩🇪 Germany</option>
-              <option value="Other">Other</option>
+              {countries.map(c => (
+                <option key={c.code} value={c.code}>{c.flag} {c.name}</option>
+              ))}
             </select>
           </div>
           <div>
@@ -148,12 +185,9 @@ export default function StepTravelerProfile({
             <select value={language} onChange={(e) => onLanguageChange(e.target.value)}
               className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-elevated)] text-body-md text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-gold)]/40 focus:border-[var(--accent-gold)] transition-all">
               <option value="">Select language...</option>
-              <option value="English">English</option>
-              <option value="Spanish">Español</option>
-              <option value="Portuguese">Português</option>
-              <option value="French">Français</option>
-              <option value="German">Deutsch</option>
-              <option value="Other">Other</option>
+              {languages.map(l => (
+                <option key={l.code} value={l.name}>{l.native_name || l.name}</option>
+              ))}
             </select>
           </div>
         </div>

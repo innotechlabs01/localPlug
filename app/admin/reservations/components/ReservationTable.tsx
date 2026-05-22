@@ -1,3 +1,6 @@
+'use client'
+
+import { useState, useEffect } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { Reservation } from '@/lib/reservations-api'
 
@@ -12,6 +15,29 @@ export default function ReservationTable({
 }: ReservationTableProps) {
   const { t } = useI18n()
   const labels = t.admin?.reservations || {}
+
+  const [flags, setFlags] = useState<Record<string, string>>({
+    Argentina: '🇦🇷', USA: '🇺🇸', Spain: '🇪🇸', Mexico: '🇲🇽',
+    UK: '🇬🇧', France: '🇫🇷', Colombia: '🇨🇴', Brazil: '🇧🇷',
+    Chile: '🇨🇱', Peru: '🇵🇪', Ecuador: '🇪🇨', Canada: '🇨🇦',
+    Germany: '🇩🇪', Italy: '🇮🇹', Portugal: '🇵🇹', Australia: '🇦🇺',
+    Sweden: '🇸🇪',
+  })
+
+  useEffect(() => {
+    fetch('/api/admin/lookup')
+      .then(res => res.json())
+      .then((data: any) => {
+        if (data.countries) {
+          const map: Record<string, string> = {}
+          data.countries.forEach((c: { name: string; flag: string }) => {
+            map[c.name] = c.flag
+          })
+          setFlags(prev => ({ ...prev, ...map }))
+        }
+      })
+      .catch(() => {})
+  }, [])
   if (reservations.length === 0) {
     return (
       <div className="text-center py-8 text-muted">
@@ -87,7 +113,7 @@ export default function ReservationTable({
               </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                 <div className="flex items-center">
-                  <span className="country-flag mr-2">{getFlag(reservation.guest.country)}</span>
+                  <span className="country-flag mr-2">{flags[reservation.guest.country || ''] || '🌍'}</span>
                   {reservation.guest.country || (t.admin.reservations.unknown || 'Unknown')}
                 </div>
               </td>
@@ -225,29 +251,6 @@ function getPaymentText(status: string): string {
     refunded: 'Refunded'
   }
   return map[status] || 'Unknown'
-}
-
-function getFlag(country: string | undefined): string {
-  const flags: Record<string, string> = {
-    Argentina: '🇦🇷',
-    USA: '🇺🇸',
-    Spain: '🇪🇸',
-    Mexico: '🇲🇽',
-    UK: '🇬🇧',
-    France: '🇫🇷',
-    Colombia: '🇨🇴',
-    Brazil: '🇧🇷',
-    Chile: '🇨🇱',
-    Peru: '🇵🇪',
-    Ecuador: '🇪🇨',
-    Canada: '🇨🇦',
-    Germany: '🇩🇪',
-    Italy: '🇮🇹',
-    Portugal: '🇵🇹',
-    Australia: '🇦🇺',
-    Sweden: '🇸🇪'
-  }
-  return flags[country || ''] || '🌍'
 }
 
 function getAvatarColor(letter: string): string {
