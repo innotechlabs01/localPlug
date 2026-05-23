@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useI18n } from '@/lib/i18n'
+import { adminFetch } from '@/lib/admin/admin-fetch'
 
 interface Driver {
   id: number; name: string | null; phone: string | null; photo: string | null
@@ -52,8 +53,6 @@ export default function DriversPage() {
   const [createStep, setCreateStep] = useState(1)
   const [formData, setFormData] = useState<Record<string, string>>({})
   const [editDriver, setEditDriver] = useState<Driver | null>(null)
-  const [timeline, setTimeline] = useState<{ type: string; title: string; description: string; timestamp: string }[]>([])
-  const [timelineLoading, setTimelineLoading] = useState(false)
   const [notif, setNotif] = useState<{ id: number; msg: string }[]>([])
 
   const showToast = (msg: string) => {
@@ -64,7 +63,7 @@ export default function DriversPage() {
 
   const fetchDrivers = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/drivers')
+      const res = await adminFetch('/api/admin/drivers')
       if (res.ok) {
         const data = await res.json()
         setDrivers(data.drivers || [])
@@ -76,10 +75,6 @@ export default function DriversPage() {
   }, [])
 
   useEffect(() => { fetchDrivers() }, [fetchDrivers])
-
-  useEffect(() => {
-    if (selectedId !== null) loadTimeline(selectedId)
-  }, [selectedId])
 
   const selected = useMemo(() => drivers.find(d => d.id === selectedId), [drivers, selectedId])
 
@@ -111,6 +106,12 @@ export default function DriversPage() {
     })
   }, [drivers, search, filter])
 
+  const alertDrivers = useMemo(() =>
+    drivers.filter(d => d.doc_status === 'expired' || d.doc_status === 'warning'), [drivers])
+
+  const filteredAlerts = useMemo(() =>
+    alertDrivers.filter(d => d.id !== selectedId).slice(0, 3), [alertDrivers, selectedId])
+
   const getInit = (name: string | null) =>
     name ? name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '??'
 
@@ -141,12 +142,6 @@ export default function DriversPage() {
     check('Insurance', driver.insurance_expiry)
     return reasons.length ? reasons : [d.alertsExpired || 'Documents expired']
   }
-
-  const alertDrivers = useMemo(() =>
-    drivers.filter(d => d.doc_status === 'expired' || d.doc_status === 'warning'), [drivers])
-
-  const filteredAlerts = useMemo(() =>
-    alertDrivers.filter(d => d.id !== selectedId).slice(0, 3), [alertDrivers, selectedId])
 
   const openCreateModal = () => {
     setEditDriver(null)
@@ -182,22 +177,10 @@ export default function DriversPage() {
     setModalOpen(true)
   }
 
-  const loadTimeline = async (driverId: number) => {
-    setTimelineLoading(true)
-    try {
-      const res = await fetch(`/api/admin/drivers/${driverId}/history`)
-      if (res.ok) {
-        const data = await res.json()
-        setTimeline(data.timeline || [])
-      }
-    } catch { /* ignore */ }
-    setTimelineLoading(false)
-  }
-
   const handleSubmit = async () => {
     try {
       if (editDriver) {
-        const res = await fetch('/api/admin/drivers', {
+        const res = await adminFetch('/api/admin/drivers', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id: editDriver.id, ...formData }),
@@ -210,7 +193,7 @@ export default function DriversPage() {
           showToast(d.toastUpdateFail || 'Failed to update driver')
         }
       } else {
-        const res = await fetch('/api/admin/drivers', {
+        const res = await adminFetch('/api/admin/drivers', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData),
@@ -238,27 +221,48 @@ export default function DriversPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* ── HEADER ── */}
-      <div className="flex items-end justify-between gap-4 flex-wrap">
+    <div className="drivers-page" style={{ padding: 0 }}>
+      {/* ── HERO ── */}
+      <div style={{
+        padding: '22px 24px 10px',
+        display: 'flex',
+        alignItems: 'flex-end',
+        justifyContent: 'space-between',
+        gap: '16px',
+        flexWrap: 'wrap',
+      }}>
         <div>
-          <h1 className="text-[22px] font-bold text-[#f0f2f5] tracking-tight">{d.headerTitle || 'Drivers'}</h1>
-          <p className="text-[13px] text-[#646880] mt-1.5 max-w-[760px] leading-relaxed">
+          <h1 style={{ margin: 0, fontSize: 24, letterSpacing: '-0.02em', fontWeight: 700, color: '#f0f2f5' }}>
+            {d.headerTitle || 'Drivers Management'}
+          </h1>
+          <p style={{ margin: '8px 0 0', color: '#646880', fontSize: 13, maxWidth: 760, lineHeight: 1.55 }}>
             {d.headerDesc || 'Operational driver roster, vehicle eligibility, compliance validation, and assignment readiness for premium airport pickups and VIP tourism services in Medellín.'}
           </p>
         </div>
-        <div className="flex gap-2">
-          <button className="px-3 py-2 border border-[#282b38] text-[12px] text-[#9ca0b0] rounded-lg hover:bg-[#202330] transition-all font-medium" onClick={() => showToast(d.toastCompliance || 'Compliance report queued')}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <button
+            className="px-3 py-2 border border-[#282b38] text-[12px] text-[#9ca0b0] rounded-lg hover:bg-[#202330] transition-all font-medium"
+            onClick={() => showToast(d.toastCompliance || 'Compliance report queued')}
+          >
             {d.exportCompliance || 'Export compliance'}
           </button>
-          <button className="px-4 py-2 bg-[#10b981] text-white text-[13px] font-medium rounded-lg hover:bg-[#059669] transition-all" onClick={openCreateModal}>
+          <button
+            className="px-4 py-2 bg-[#10b981] text-white text-[13px] font-medium rounded-lg hover:bg-[#059669] transition-all"
+            onClick={openCreateModal}
+          >
             {d.create || 'Create Driver'}
           </button>
         </div>
       </div>
 
       {/* ── FILTER CHIPS ── */}
-      <div className="flex gap-2 flex-wrap">
+      <div style={{
+        padding: '0 24px 16px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        flexWrap: 'wrap',
+      }}>
         {[
           ['all', d.filterAll || 'All drivers'],
           ['available', d.filterAvailable || 'Available'],
@@ -270,12 +274,30 @@ export default function DriversPage() {
         ].map(([key, label]) => (
           <button
             key={key}
-            className={`px-3 py-1.5 rounded-full text-[12px] font-medium transition-all border ${
-              filter === key
-                ? 'bg-[rgba(16,185,129,0.12)] text-[#10b981] border-[#10b981]'
-                : 'bg-[#181b25] text-[#646880] border-[#282b38] hover:border-[#10b981] hover:text-[#f0f2f5]'
-            }`}
             onClick={() => setFilter(key)}
+            style={{
+              border: `1px solid ${filter === key ? '#10b981' : '#282b38'}`,
+              background: filter === key ? 'rgba(16,185,129,0.12)' : '#181b25',
+              color: filter === key ? '#10b981' : '#646880',
+              padding: '7px 12px',
+              borderRadius: 999,
+              fontSize: 12,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              fontWeight: 500,
+            }}
+            onMouseEnter={e => {
+              if (filter !== key) {
+                e.currentTarget.style.borderColor = '#10b981'
+                e.currentTarget.style.color = '#f0f2f5'
+              }
+            }}
+            onMouseLeave={e => {
+              if (filter !== key) {
+                e.currentTarget.style.borderColor = '#282b38'
+                e.currentTarget.style.color = '#646880'
+              }
+            }}
           >
             {label}
           </button>
@@ -283,7 +305,12 @@ export default function DriversPage() {
       </div>
 
       {/* ── KPI ROW ── */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div style={{
+        padding: '0 24px 20px',
+        display: 'grid',
+        gridTemplateColumns: 'repeat(6, minmax(0, 1fr))',
+        gap: 12,
+      }}>
         {[
           [d.kpiTotal || 'Total drivers', String(stats.total), d.kpiSubPlus || '+3 this month', true],
           [d.kpiAvailable || 'Available now', String(stats.available), d.kpiSubAirport || 'Airport ready', true],
@@ -292,36 +319,81 @@ export default function DriversPage() {
           [d.kpiAlerts || 'Compliance alerts', String(stats.alerts), d.kpiSubReview || 'Needs review', false],
           [d.kpiAvgRating || 'Avg rating', stats.avg, d.kpiSubTop || 'Top quartile', true],
         ].map(([label, value, sub, positive], idx) => (
-          <div key={`kpi-${idx}`} className="bg-[#181b25] border border-[#282b38] rounded-xl p-4">
-            <p className="text-[11px] text-[#646880] uppercase tracking-wide">{label}</p>
-            <p className="text-[24px] font-bold text-[#f0f2f5] mt-1">{value}</p>
-            <p className={`text-[11px] ${positive ? 'text-[#10b981]' : 'text-[#f59e0b]'} mt-1`}>{sub}</p>
+          <div key={`kpi-${idx}`} style={{
+            background: '#181b25',
+            border: '1px solid #282b38',
+            borderRadius: 12,
+            padding: 16,
+          }}>
+            <div style={{ fontSize: 11, color: '#646880', textTransform: 'uppercase', letterSpacing: '0.4px' }}>{label}</div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: '#f0f2f5', marginTop: 4 }}>{value}</div>
+            <div style={{
+              fontSize: 11,
+              marginTop: 4,
+              color: positive ? '#10b981' : '#f59e0b',
+            }}>{sub}</div>
           </div>
         ))}
       </div>
 
-      {/* ── ALERTS + ELIGIBILITY ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1.15fr_0.85fr] gap-3">
-        <div className="bg-[#181b25] border border-[#282b38] rounded-xl p-4"
-          style={{ background: 'linear-gradient(135deg, rgba(239,68,80,0.08), transparent 48%), #181b25' }}>
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-[13px] font-bold text-[#f0f2f5]">{d.alertsTitle || 'Operational compliance alerts'}</span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[rgba(245,158,11,0.12)] text-[#f59e0b]">
+      {/* ── OPS ALERTS + ELIGIBILITY ── */}
+      <div style={{
+        padding: '0 24px 18px',
+        display: 'grid',
+        gridTemplateColumns: '1.15fr 0.85fr',
+        gap: 12,
+      }}>
+        {/* Alert panel */}
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(239,68,80,0.08), transparent 48%), #181b25',
+          border: '1px solid #282b38',
+          borderRadius: 12,
+          padding: '16px 18px',
+          display: 'grid',
+          gap: 12,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, fontSize: 13, fontWeight: 700, color: '#f0f2f5' }}>
+            <span>{d.alertsTitle || 'Operational compliance alerts'}</span>
+            <span style={{
+              padding: '4px 9px',
+              borderRadius: 999,
+              fontSize: 10.5,
+              fontWeight: 700,
+              background: 'rgba(245,158,11,0.12)',
+              color: '#f59e0b',
+            }}>
               {d.alertsOpen?.replace('{count}', String(stats.alerts)) || `${stats.alerts} open`}
             </span>
           </div>
           {filteredAlerts.length === 0 ? (
-            <p className="text-[13px] text-[#646880] py-4 text-center">{d.alertsNone || 'No compliance alerts'}</p>
+            <p style={{ fontSize: 13, color: '#646880', padding: '24px 0', textAlign: 'center' }}>{d.alertsNone || 'No compliance alerts'}</p>
           ) : (
             filteredAlerts.map(driver => (
-              <div key={driver.id} className="grid grid-cols-[auto_1fr_auto] gap-2.5 items-center py-2.5 border-t border-[#1e2130]">
-                <div className={`w-2.5 h-2.5 rounded-full ${driver.doc_status === 'expired' ? 'bg-[#ef4450]' : 'bg-[#f59e0b]'} shadow-[0_0_0_4px_rgba(239,68,80,0.12)]`} />
+              <div key={driver.id} style={{
+                display: 'grid',
+                gridTemplateColumns: 'auto 1fr auto',
+                gap: 10,
+                alignItems: 'center',
+                padding: '10px 0',
+                borderTop: '1px solid #1e2130',
+              }}>
+                <span style={{
+                  width: 9, height: 9, borderRadius: '50%',
+                  background: driver.doc_status === 'expired' ? '#ef4450' : '#f59e0b',
+                  boxShadow: `0 0 0 4px ${driver.doc_status === 'expired' ? 'rgba(239,68,80,0.12)' : 'rgba(245,158,11,0.12)'}`,
+                }} />
                 <div>
-                  <strong className="text-[13px] text-[#f0f2f5]">{driver.name}</strong>
-                  <span className="block text-[12px] text-[#646880]">{docReason(driver).join(', ') || 'Documents expired'} — {driver.vehicle} ({driver.plate})</span>
+                  <strong style={{ display: 'block', fontSize: 13, color: '#f0f2f5' }}>{driver.name}</strong>
+                  <span style={{ color: '#646880', fontSize: 12 }}>{docReason(driver).join(', ') || 'Documents expired'} — {driver.vehicle} ({driver.plate})</span>
                 </div>
-                <button className="px-2 py-1 text-[11px] text-[#9ca0b0] border border-[#282b38] rounded-lg hover:bg-[#202330] transition-all"
-                  onClick={() => { setSelectedId(driver.id); setFilter('expired') }}>
+                <button
+                  style={{
+                    padding: '4px 8px', fontSize: 11, color: '#9ca0b0',
+                    border: '1px solid #282b38', borderRadius: 8,
+                    background: 'transparent', cursor: 'pointer',
+                  }}
+                  onClick={() => { setSelectedId(driver.id); setFilter('expired') }}
+                >
                   {d.alertsReview || 'Review'}
                 </button>
               </div>
@@ -329,57 +401,110 @@ export default function DriversPage() {
           )}
         </div>
 
-        <div className="bg-[#181b25] border border-[#282b38] rounded-xl p-4">
-          <h3 className="text-[13px] font-bold text-[#f0f2f5] mb-3">{d.eligibilityTitle || 'Assignment eligibility'}</h3>
-          <div className="grid grid-cols-2 gap-2.5">
-            <div className="bg-[#0b0d14] border border-[#1e2130] rounded-lg p-3">
-              <strong className="text-[18px] text-[#f0f2f5]">{drivers.filter(drv => drv.status === 'available').length}</strong>
-              <span className="block text-[11px] text-[#646880]">{d.eligibilityPickup || 'Eligible for airport pickup'}</span>
-            </div>
-            <div className="bg-[#0b0d14] border border-[#1e2130] rounded-lg p-3">
-              <strong className="text-[18px] text-[#f0f2f5]">{stats.vip}</strong>
-              <span className="block text-[11px] text-[#646880]">{d.eligibilityVip || 'Eligible for VIP guests'}</span>
-            </div>
-            <div className="bg-[#0b0d14] border border-[#1e2130] rounded-lg p-3">
-              <strong className="text-[18px] text-[#f0f2f5]">{stats.alerts}</strong>
-              <span className="block text-[11px] text-[#646880]">{d.eligibilityRestricted || 'Restricted by compliance'}</span>
-            </div>
-            <div className="bg-[#0b0d14] border border-[#1e2130] rounded-lg p-3">
-              <strong className="text-[18px] text-[#f0f2f5]">{stats.total ? '15 min' : '—'}</strong>
-              <span className="block text-[11px] text-[#646880]">{d.eligibilityEta || 'Avg airport ETA'}</span>
-            </div>
+        {/* Eligibility panel */}
+        <div style={{
+          background: '#181b25',
+          border: '1px solid #282b38',
+          borderRadius: 12,
+          padding: '16px 18px',
+        }}>
+          <h3 style={{ fontSize: 13, marginBottom: 12, color: '#f0f2f5', fontWeight: 700 }}>{d.eligibilityTitle || 'Assignment eligibility'}</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+            {[
+              [drivers.filter(drv => drv.status === 'available').length, d.eligibilityPickup || 'Eligible for airport pickup'],
+              [stats.vip, d.eligibilityVip || 'Eligible for VIP guests'],
+              [stats.alerts, d.eligibilityRestricted || 'Restricted by compliance'],
+              [stats.total ? '6 min' : '—', d.eligibilityEta || 'Avg airport ETA'],
+            ].map(([val, lab], idx) => (
+              <div key={idx} style={{
+                padding: 12,
+                border: '1px solid #1e2130',
+                borderRadius: 8,
+                background: '#0b0d14',
+              }}>
+                <strong style={{ display: 'block', fontSize: 18, lineHeight: 1.1, color: '#f0f2f5' }}>{val}</strong>
+                <span style={{ color: '#646880', fontSize: 11 }}>{lab}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* ── RANKING BOARD ── */}
-      <RankingBoard drivers={drivers} d={d} />
-
       {/* ── MAIN LAYOUT ── */}
-      <div className="grid grid-cols-1 xl:grid-cols-[1.28fr_0.72fr] gap-4 items-start">
-        {/* ── LEFT: DRIVER GRID ── */}
-        <div className="bg-[#181b25] border border-[#282b38] rounded-xl overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2130]">
-            <div className="flex items-center gap-2.5">
-              <span className="text-[14px] font-bold text-[#f0f2f5]">{d.rosterTitle || 'Driver roster'}</span>
-              <span className="text-[12px] text-[#646880] font-medium">{filtered.length} shown</span>
+      <div style={{
+        padding: '0 24px 24px',
+        display: 'grid',
+        gridTemplateColumns: 'minmax(0, 1.28fr) minmax(360px, 0.72fr)',
+        gap: 16,
+        alignItems: 'start',
+      }}>
+        {/* ── LEFT: DRIVER ROSTER ── */}
+        <div style={{
+          background: '#181b25',
+          border: '1px solid #282b38',
+          borderRadius: 12,
+          overflow: 'hidden',
+        }}>
+          <div style={{
+            padding: '16px 18px',
+            borderBottom: '1px solid #1e2130',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            flexWrap: 'wrap',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, fontWeight: 700, color: '#f0f2f5' }}>
+              <span>{d.rosterTitle || 'Driver roster'}</span>
+              <span style={{ color: '#646880', fontWeight: 500, fontSize: 12 }}>{filtered.length} shown</span>
             </div>
-            <div className="relative">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#646880]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-              </svg>
-              <input
-                className="w-[200px] pl-9 pr-3 py-1.5 bg-[#0b0d14] border border-[#282b38] rounded-lg text-[12px] text-[#f0f2f5] placeholder:text-[#646880] outline-none focus:border-[#10b981] transition-all"
-                placeholder={d.rosterSearch || 'Search drivers, plates, vehicles...'}
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-              />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ position: 'relative' }}>
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#646880" strokeWidth="2" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }}>
+                  <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                </svg>
+                <input
+                  style={{
+                    width: 200, padding: '7px 10px 7px 32px', background: '#0b0d14',
+                    border: '1px solid #282b38', borderRadius: 8,
+                    fontSize: 12, color: '#f0f2f5', outline: 'none',
+                  }}
+                  placeholder={d.rosterSearch || 'Search drivers, plates, vehicles...'}
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                />
+              </div>
+              <button
+                style={{
+                  padding: '7px 12px', border: '1px solid #282b38', borderRadius: 8,
+                  fontSize: 12, color: '#9ca0b0', background: 'transparent', cursor: 'pointer',
+                }}
+                className="hover:bg-[#202330] transition-all"
+                onClick={() => showToast('Card view active')}
+              >
+                Cards
+              </button>
+              <button
+                style={{
+                  padding: '7px 12px', border: '1px solid #282b38', borderRadius: 8,
+                  fontSize: 12, color: '#9ca0b0', background: 'transparent', cursor: 'pointer',
+                }}
+                className="hover:bg-[#202330] transition-all"
+                onClick={() => showToast('Table view ready for implementation handoff')}
+              >
+                Table
+              </button>
             </div>
           </div>
 
-          <div className="p-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div style={{
+            padding: 14,
+            display: 'grid',
+            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+            gap: 12,
+          }}>
             {filtered.length === 0 ? (
-              <div className="col-span-full py-12 text-center text-[#646880] text-[13px]">
+              <div style={{ gridColumn: '1 / -1', padding: 32, textAlign: 'center', color: '#646880', fontSize: 13 }}>
                 {d.rosterNoMatch || 'No drivers match the current filter.'}
               </div>
             ) : filtered.map(drv => {
@@ -387,60 +512,108 @@ export default function DriversPage() {
               return (
                 <div
                   key={drv.id}
-                  className={`border rounded-xl p-3.5 cursor-pointer transition-all ${
-                    isSelected
-                      ? 'border-[#10b981] bg-[#202330]'
-                      : 'border-[#1e2130] hover:border-[#10b981] hover:bg-[#202330]'
-                  }`}
+                  style={{
+                    border: `1px solid ${isSelected ? '#10b981' : '#1e2130'}`,
+                    borderRadius: 12,
+                    background: isSelected
+                      ? '#202330'
+                      : 'linear-gradient(180deg, rgba(255,255,255,0.025), transparent 34%), #0b0d14',
+                    padding: 14,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                  className={isSelected ? '' : 'hover:border-[#10b981] hover:bg-[#202330]'}
                   onClick={() => setSelectedId(drv.id)}
-                  style={{ background: isSelected ? '#202330' : 'linear-gradient(180deg, rgba(255,255,255,0.025), transparent 34%), #0b0d14' }}
                 >
-                  <div className="flex justify-between gap-3 items-start mb-3">
-                    <div className="flex gap-2.5 min-w-0">
-                      <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white font-extrabold text-[13px] flex-shrink-0"
-                        style={{ background: getAvatarColor(drv.name, drv.vip_compatible || undefined) }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', marginBottom: 12 }}>
+                    <div style={{ display: 'flex', gap: 11, minWidth: 0 }}>
+                      <div style={{
+                        width: 44, height: 44, borderRadius: 14,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        color: '#fff', fontWeight: 800, fontSize: 13,
+                        background: getAvatarColor(drv.name, drv.vip_compatible || undefined),
+                        flex: '0 0 auto',
+                      }}>
                         {getInit(drv.name)}
                       </div>
-                      <div className="min-w-0">
-                        <div className="text-[14px] font-bold text-[#f0f2f5] truncate">{drv.name}</div>
-                        <div className="text-[12px] text-[#646880]">{drv.phone}</div>
-                        <div className="text-[12px] text-[#646880]">{drv.languages} · {drv.city || 'Medellín'}</div>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: '#f0f2f5' }}>{drv.name}</div>
+                        <div style={{ color: '#646880', fontSize: 12, marginTop: 2 }}>{drv.phone}</div>
+                        <div style={{ color: '#646880', fontSize: 12, marginTop: 2 }}>{drv.languages} · {drv.city || 'Medellín'}</div>
                       </div>
                     </div>
-                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold whitespace-nowrap ${statusClasses[drv.status || ''] || statusClasses.offline}`}>
+                    <span style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 5,
+                      padding: '4px 9px', borderRadius: 999, fontSize: 10.5, fontWeight: 700,
+                      whiteSpace: 'nowrap',
+                      ...(statusClasses[drv.status || ''] ? {
+                        background: statusClasses[drv.status || ''].split(' ')[0],
+                        color: statusClasses[drv.status || ''].split(' ')[1],
+                      } : { background: 'rgba(100,104,128,0.15)', color: '#646880' }),
+                    }}>
                       {statusLabels[drv.status || ''] || drv.status}
                     </span>
                   </div>
-                  <div className="flex gap-1.5 flex-wrap mb-3">
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${docClasses[docStatus(drv)] || docClasses.valid}`}>
+
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    <span style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 5,
+                      padding: '4px 9px', borderRadius: 999, fontSize: 10.5, fontWeight: 700,
+                      ...(docClasses[docStatus(drv)] ? {
+                        background: docClasses[docStatus(drv)].split(' ')[0],
+                        color: docClasses[docStatus(drv)].split(' ')[1],
+                      } : { background: 'rgba(16,185,129,0.12)', color: '#10b981' }),
+                    }}>
                       {docStatus(drv) === 'valid' ? (d.rosterValid || 'Valid') : docStatus(drv) === 'warning' ? (d.rosterExpiring || 'Expiring soon') : docStatus(drv) === 'expired' ? (d.rosterExpired || 'Expired') : (d.rosterPending || 'Pending')}
                     </span>
                     {drv.vip_compatible === 1 && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[rgba(212,168,75,0.15)] text-[#d4a84b]">{d.rosterVip || 'VIP compatible'}</span>
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 5,
+                        padding: '4px 9px', borderRadius: 999, fontSize: 10.5, fontWeight: 700,
+                        background: 'rgba(212,168,75,0.15)', color: '#d4a84b',
+                      }}>
+                        {d.rosterVip || 'VIP compatible'}
+                      </span>
                     )}
                   </div>
-                  <div className="grid grid-cols-3 gap-2 mb-3">
-                    <div className="bg-[#181b25] border border-[#1e2130] rounded-lg p-2">
-                      <strong className="text-[14px] text-[#f0f2f5]">{drv.rating || 'New'}</strong>
-                      <span className="block text-[10px] text-[#646880]">{d.rosterRating || 'Rating'}</span>
-                    </div>
-                    <div className="bg-[#181b25] border border-[#1e2130] rounded-lg p-2">
-                      <strong className="text-[14px] text-[#f0f2f5]">{drv.total_trips || 0}</strong>
-                      <span className="block text-[10px] text-[#646880]">{d.rosterTrips || 'Trips'}</span>
-                    </div>
-                    <div className="bg-[#181b25] border border-[#1e2130] rounded-lg p-2">
-                      <strong className="text-[14px] text-[#f0f2f5]">{drv.status === 'available' ? '4 min' : drv.active_orders ? 'In service' : '—'}</strong>
-                      <span className="block text-[10px] text-[#646880]">{d.rosterEta || 'Airport ETA'}</span>
-                    </div>
+
+                  <div style={{
+                    display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8,
+                    margin: '12px 0',
+                  }}>
+                    {[
+                      [drv.rating || 'New', d.rosterRating || 'Rating'],
+                      [drv.total_trips || 0, d.rosterTrips || 'Trips'],
+                      [drv.status === 'available' ? '4 min' : drv.active_orders ? 'In service' : '—', d.rosterEta || 'Airport ETA'],
+                    ].map(([val, lab], idx) => (
+                      <div key={idx} style={{
+                        padding: 9, borderRadius: 8,
+                        background: '#181b25', border: '1px solid #1e2130',
+                      }}>
+                        <strong style={{ display: 'block', fontSize: 14, color: '#f0f2f5' }}>{val}</strong>
+                        <span style={{ color: '#646880', fontSize: 10.5 }}>{lab}</span>
+                      </div>
+                    ))}
                   </div>
-                  <div className="flex justify-between gap-2.5 pt-3 border-t border-[#1e2130] text-[12px] text-[#9ca0b0]">
-                    <span><strong className="text-[#f0f2f5]">{drv.vehicle || '—'}</strong><br />{drv.plate} · {drv.year || '—'}</span>
-                    <span className="text-right">{catColors[drv.category || ''] ? (
-                      <span className="flex items-center gap-1.5 justify-end">
-                        <span className="w-2 h-2 rounded-full inline-block" style={{ background: catColors[drv.category || ''] }}></span>
-                        {drv.category}
-                      </span>
-                    ) : '—'}<br />{drv.capacity || drv.experience_level || '—'}</span>
+
+                  <div style={{
+                    display: 'flex', justifyContent: 'space-between', gap: 10,
+                    paddingTop: 12, borderTop: '1px solid #1e2130',
+                    color: '#9ca0b0', fontSize: 12,
+                  }}>
+                    <span>
+                      <strong style={{ color: '#f0f2f5' }}>{drv.vehicle || '—'}</strong><br />
+                      {drv.plate} · {drv.year || '—'}
+                    </span>
+                    <span>
+                      {catColors[drv.category || ''] ? (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                          <span style={{ width: 8, height: 8, borderRadius: '50%', display: 'inline-block', background: catColors[drv.category || ''] }} />
+                          {drv.category}
+                        </span>
+                      ) : '—'}
+                      <br />{drv.capacity || drv.experience_level || '—'}
+                    </span>
                   </div>
                 </div>
               )
@@ -448,56 +621,97 @@ export default function DriversPage() {
           </div>
         </div>
 
-        {/* ── RIGHT: SIDE PANEL ── */}
-        <div className="space-y-4 sticky top-20">
+        {/* ── RIGHT: SIDE STACK ── */}
+        <aside style={{ display: 'grid', gap: 16, position: 'sticky', top: 76 }}>
           {/* Profile */}
-          <div className="bg-[#181b25] border border-[#282b38] rounded-xl overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2130]">
-              <span className="text-[14px] font-bold text-[#f0f2f5]">{d.profileTitle || 'Driver profile'}</span>
-              <div className="flex gap-1.5">
-                <button className="px-2 py-1 text-[11px] text-[#9ca0b0] border border-[#282b38] rounded-lg hover:bg-[#202330] transition-all"
-                  onClick={() => selected && openEditModal(selected)}>
-                  {d.profileEdit || 'Edit'}
-                </button>
-                <button className="px-2 py-1 text-[11px] text-[#9ca0b0] border border-[#282b38] rounded-lg hover:bg-[#202330] transition-all"
-                  onClick={() => showToast(d.toastStatus || 'Driver status updated and audit log recorded')}>
-                  {d.profileActions || 'Actions'}
-                </button>
-              </div>
+          <div style={{
+            background: '#181b25', border: '1px solid #282b38', borderRadius: 12, overflow: 'hidden',
+          }}>
+            <div style={{
+              padding: '16px 18px',
+              borderBottom: '1px solid #1e2130',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+            }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: '#f0f2f5' }}>{d.profileTitle || 'Driver profile'}</span>
+              <button
+                style={{
+                  padding: '4px 8px', fontSize: 11, color: '#9ca0b0',
+                  border: '1px solid #282b38', borderRadius: 8,
+                  background: 'transparent', cursor: 'pointer',
+                }}
+                className="hover:bg-[#202330] transition-all"
+                onClick={() => {
+                  if (window.confirm('Suspend driver access?')) {
+                    showToast(d.toastStatus || 'Driver status updated and audit log recorded')
+                  }
+                }}
+              >
+                {d.profileActions || 'Actions'}
+              </button>
             </div>
-            <div className="p-4">
+            <div style={{ padding: '16px 18px' }}>
               {!selected ? (
-                <p className="text-[13px] text-[#646880] text-center py-8">{d.profileSelect || 'Select a driver to view profile'}</p>
+                <p style={{ fontSize: 13, color: '#646880', textAlign: 'center', padding: '24px 0' }}>
+                  {d.profileSelect || 'Select a driver to view profile'}
+                </p>
               ) : (
                 <>
-                  <div className="flex items-center gap-3.5 mb-4">
-                    <div className="relative group">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <div style={{
+                      width: 68, height: 68, borderRadius: 20,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: '#fff', fontWeight: 800, fontSize: 21,
+                      background: getAvatarColor(selected.name, selected.vip_compatible || undefined),
+                      flex: '0 0 auto',
+                    }}>
                       {selected.photo_url ? (
-                        <img src={selected.photo_url} alt={selected.name || ''} className="w-[68px] h-[68px] rounded-[20px] object-cover" />
-                      ) : (
-                        <div className="w-[68px] h-[68px] rounded-[20px] flex items-center justify-center text-white font-extrabold text-[21px] flex-shrink-0"
-                          style={{ background: getAvatarColor(selected.name, selected.vip_compatible || undefined) }}>
-                          {getInit(selected.name)}
-                        </div>
-                      )}
+                        <img src={selected.photo_url} alt={selected.name || ''} style={{ width: '100%', height: '100%', borderRadius: 20, objectFit: 'cover' }} />
+                      ) : getInit(selected.name)}
                     </div>
                     <div>
-                      <h2 className="text-[18px] font-bold text-[#f0f2f5]">{selected.name}</h2>
-                      <p className="text-[12px] text-[#646880]">{(selected.category || d.profileStandard || 'Standard')} · {selected.plate}</p>
-                      <div className="flex gap-1.5 flex-wrap mt-2">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${statusClasses[selected.status || ''] || statusClasses.offline}`}>
+                      <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#f0f2f5' }}>{selected.name}</h2>
+                      <div style={{ color: '#646880', fontSize: 12, marginTop: 3 }}>
+                        {(selected.category || d.profileStandard || 'Standard')} · {selected.plate}
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 5,
+                          padding: '4px 9px', borderRadius: 999, fontSize: 10.5, fontWeight: 700,
+                          ...(statusClasses[selected.status || ''] ? {
+                            background: statusClasses[selected.status || ''].split(' ')[0],
+                            color: statusClasses[selected.status || ''].split(' ')[1],
+                          } : { background: 'rgba(100,104,128,0.15)', color: '#646880' }),
+                        }}>
                           {statusLabels[selected.status || ''] || selected.status}
                         </span>
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${docClasses[docStatus(selected)] || docClasses.valid}`}>
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 5,
+                          padding: '4px 9px', borderRadius: 999, fontSize: 10.5, fontWeight: 700,
+                          ...(docClasses[docStatus(selected)] ? {
+                            background: docClasses[docStatus(selected)].split(' ')[0],
+                            color: docClasses[docStatus(selected)].split(' ')[1],
+                          } : { background: 'rgba(16,185,129,0.12)', color: '#10b981' }),
+                        }}>
                           {docStatus(selected) === 'valid' ? (d.profileValid || 'Valid') : docStatus(selected) === 'warning' ? (d.profileExpiring || 'Expiring soon') : (d.profileExpired || 'Expired')}
                         </span>
                         {selected.vip_compatible === 1 && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[rgba(212,168,75,0.15)] text-[#d4a84b]">{d.profileVip || 'VIP services'}</span>
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 5,
+                            padding: '4px 9px', borderRadius: 999, fontSize: 10.5, fontWeight: 700,
+                            background: 'rgba(212,168,75,0.15)', color: '#d4a84b',
+                          }}>
+                            {d.profileVip || 'VIP services'}
+                          </span>
                         )}
                       </div>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div style={{
+                    display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 16,
+                  }}>
                     {[
                       [d.profileEmail || 'Email', selected.email || '—'],
                       [d.profilePhone || 'Phone', selected.phone || '—'],
@@ -509,8 +723,11 @@ export default function DriversPage() {
                       [d.profileEligibility || 'Eligibility', docStatus(selected) === 'valid' && selected.status !== 'suspended' ? (d.profileAllowed || 'Assignment allowed') : (d.profileRestricted || 'Assignment restricted')],
                     ].map(([label, value]) => (
                       <div key={label}>
-                        <label className="block text-[10px] text-[#646880] uppercase tracking-wider mb-1">{label}</label>
-                        <div className="text-[13px] text-[#f0f2f5]">{value}</div>
+                        <label style={{
+                          display: 'block', fontSize: 10, color: '#646880',
+                          textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 3,
+                        }}>{label}</label>
+                        <div style={{ fontSize: 13, lineHeight: 1.45, color: '#f0f2f5' }}>{value}</div>
                       </div>
                     ))}
                   </div>
@@ -520,75 +737,114 @@ export default function DriversPage() {
           </div>
 
           {/* Compliance */}
-          <div className="bg-[#181b25] border border-[#282b38] rounded-xl overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2130]">
-              <span className="text-[14px] font-bold text-[#f0f2f5]">{d.complianceTitle || 'Compliance validation'}</span>
+          <div style={{
+            background: '#181b25', border: '1px solid #282b38', borderRadius: 12, overflow: 'hidden',
+          }}>
+            <div style={{
+              padding: '16px 18px',
+              borderBottom: '1px solid #1e2130',
+            }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: '#f0f2f5' }}>{d.complianceTitle || 'Compliance validation'}</span>
             </div>
-            <div className="p-4">
+            <div style={{ padding: '16px 18px' }}>
               {!selected ? (
-                <p className="text-[13px] text-[#646880] text-center py-4">{d.complianceNone || 'No driver selected'}</p>
+                <p style={{ fontSize: 13, color: '#646880', textAlign: 'center', padding: '16px 0' }}>
+                  {d.complianceNone || 'No driver selected'}
+                </p>
               ) : (
-                <div className="space-y-2.5">
-                  {[
-                    [d.complianceLicense || 'Driver license', selected.license_expiry || d.complianceValid || 'Valid'],
-                    [d.complianceSoat || 'SOAT insurance', selected.soat_expiry || d.complianceValid || 'Valid'],
-                    [d.complianceInspection || 'Technical inspection', selected.tech_inspection_expiry || d.complianceValid || 'Valid'],
-                    [d.complianceInsurance || 'Vehicle insurance', selected.insurance_expiry || d.complianceValid || 'Valid'],
-                  ].map(([name, value]) => {
-                    const lower = value.toLowerCase()
-                    const s = lower.includes('expir') ? 'warning' : lower.includes('expired') || lower.includes('missing') ? 'expired' : 'valid'
-                    return (
-                      <div key={name} className="grid grid-cols-[1fr_auto] gap-2.5 items-center py-2 border-b border-[#1e2130] last:border-b-0">
-                        <div>
-                          <div className="font-semibold text-[13px] text-[#f0f2f5]">{name}</div>
-                          <div className="text-[11px] text-[#646880] mt-0.5">{value}</div>
+                <>
+                  <div style={{ display: 'grid', gap: 10 }}>
+                    {[
+                      [d.complianceLicense || 'Driver license', selected.license_expiry || d.complianceValid || 'Valid'],
+                      [d.complianceSoat || 'SOAT insurance', selected.soat_expiry || d.complianceValid || 'Valid'],
+                      [d.complianceInspection || 'Technical inspection', selected.tech_inspection_expiry || d.complianceValid || 'Valid'],
+                      [d.complianceInsurance || 'Vehicle insurance', selected.insurance_expiry || d.complianceValid || 'Valid'],
+                    ].map(([name, value]) => {
+                      const lower = value.toLowerCase()
+                      const s = lower.includes('expir') ? 'warning' : lower.includes('expired') || lower.includes('missing') ? 'expired' : 'valid'
+                      return (
+                        <div key={name} style={{
+                          display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'center',
+                          padding: '10px 0', borderBottom: '1px solid #1e2130',
+                        }}>
+                          <div>
+                            <div style={{ fontWeight: 600, fontSize: 13, color: '#f0f2f5' }}>{name}</div>
+                            <div style={{ color: '#646880', fontSize: 11, marginTop: 2 }}>{value}</div>
+                          </div>
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 5,
+                            padding: '4px 9px', borderRadius: 999, fontSize: 10.5, fontWeight: 700,
+                            ...(docClasses[s] ? {
+                              background: docClasses[s].split(' ')[0],
+                              color: docClasses[s].split(' ')[1],
+                            } : { background: 'rgba(16,185,129,0.12)', color: '#10b981' }),
+                          }}>
+                            {s === 'valid' ? (d.complianceValid || 'Valid') : s === 'warning' ? (d.complianceExpiring || 'Expiring') : (d.complianceExpired || 'Expired')}
+                          </span>
                         </div>
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${docClasses[s]}`}>
-                          {s === 'valid' ? (d.complianceValid || 'Valid') : s === 'warning' ? (d.complianceExpiring || 'Expiring') : (d.complianceExpired || 'Expired')}
-                        </span>
-                      </div>
-                    )
-                  })}
-                  <div className={`mt-3.5 p-3 rounded-lg text-[12px] font-bold ${
-                    docStatus(selected) === 'valid'
-                      ? 'bg-[rgba(16,185,129,0.12)] text-[#10b981]'
+                      )
+                    })}
+                  </div>
+                  <div style={{
+                    marginTop: 14, padding: 12, borderRadius: 8, fontSize: 12, fontWeight: 600,
+                    ...(docStatus(selected) === 'valid'
+                      ? { background: 'rgba(16,185,129,0.12)', color: '#10b981' }
                       : docStatus(selected) === 'expired'
-                        ? 'bg-[rgba(239,68,80,0.12)] text-[#ef4450]'
-                        : 'bg-[rgba(245,158,11,0.12)] text-[#f59e0b]'
-                  }`}>
+                        ? { background: 'rgba(239,68,80,0.12)', color: '#ef4450' }
+                        : { background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }
+                    ),
+                  }}>
                     {docStatus(selected) === 'valid'
                       ? (d.complianceOk || 'Driver is operationally eligible for assignment.')
                       : docStatus(selected) === 'expired'
                         ? (d.complianceBlocked || 'Assignment blocked until compliance is restored.')
                         : (d.complianceWarn || 'Driver can be monitored but needs verification before assignment.')}
                   </div>
-                </div>
+                </>
               )}
             </div>
           </div>
 
           {/* Performance */}
-          <div className="bg-[#181b25] border border-[#282b38] rounded-xl overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2130]">
-              <span className="text-[14px] font-bold text-[#f0f2f5]">{d.perfTitle || 'Performance'}</span>
+          <div style={{
+            background: '#181b25', border: '1px solid #282b38', borderRadius: 12, overflow: 'hidden',
+          }}>
+            <div style={{
+              padding: '16px 18px',
+              borderBottom: '1px solid #1e2130',
+            }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: '#f0f2f5' }}>{d.perfTitle || 'Performance & condition'}</span>
             </div>
-            <div className="p-4">
+            <div style={{ padding: '16px 18px' }}>
               {!selected ? (
-                <p className="text-[13px] text-[#646880] text-center py-4">{d.perfNone || 'No driver selected'}</p>
+                <p style={{ fontSize: 13, color: '#646880', textAlign: 'center', padding: '16px 0' }}>
+                  {d.perfNone || 'No driver selected'}
+                </p>
               ) : (
                 <>
-                  <div className="grid grid-cols-[82px_1fr] gap-3.5 items-center mb-4">
-                    <div className="w-[82px] h-[82px] rounded-full grid place-items-center font-extrabold text-[18px] text-[#f0f2f5] relative"
-                      style={{ background: `conic-gradient(#10b981 ${(selected.rating || 0) * 20}%, #1e2130 0)` }}>
-                      <div className="absolute inset-[8px] rounded-full bg-[#181b25]" />
-                      <span className="relative z-10">{Math.round((selected.rating || 0) * 20)}</span>
+                  <div style={{
+                    display: 'grid', gridTemplateColumns: '82px 1fr', gap: 14, alignItems: 'center',
+                  }}>
+                    <div style={{
+                      width: 82, height: 82, borderRadius: '50%',
+                      display: 'grid', placeItems: 'center',
+                      fontWeight: 800, fontSize: 18, color: '#f0f2f5',
+                      position: 'relative',
+                      background: `conic-gradient(#10b981 ${Math.round((selected.rating || 0) * 20)}%, #1e2130 0)`,
+                    }}>
+                      <div style={{
+                        position: 'absolute', inset: 8, borderRadius: '50%', background: '#181b25',
+                      }} />
+                      <span style={{ position: 'relative', zIndex: 1 }}>{Math.round((selected.rating || 0) * 20)}</span>
                     </div>
                     <div>
-                      <div className="font-bold text-[#f0f2f5]">{d.perfScore || 'Vehicle condition score'}</div>
-                      <div className="text-[12px] text-[#646880] mt-1">{d.perfScoreDesc || 'Cleanliness, interior, exterior, and mechanical inspection summary.'}</div>
+                      <div style={{ fontWeight: 700, color: '#f0f2f5' }}>{d.perfScore || 'Vehicle condition score'}</div>
+                      <div style={{ color: '#646880', fontSize: 12, marginTop: 4 }}>
+                        {d.perfScoreDesc || 'Cleanliness, interior, exterior, and mechanical inspection summary.'}
+                      </div>
                     </div>
                   </div>
-                  <div className="space-y-2.5">
+                  <div style={{ display: 'grid', gap: 10, marginTop: 16 }}>
                     {[
                       [d.perfTrips || 'Trips completed', String(selected.total_trips || 0), Math.min((selected.total_trips || 0) / 4, 92)],
                       [d.perfRevenue || 'Revenue generated', `$${(selected.total_trips || 0) * 68}`, Math.min((selected.total_trips || 0) / 4, 78)],
@@ -597,12 +853,15 @@ export default function DriversPage() {
                       [d.perfSatisfaction || 'Customer satisfaction', String(selected.rating || 'New'), selected.rating ? Math.round(selected.rating * 20) : 0],
                     ].map(([name, value, pct]) => (
                       <div key={name}>
-                        <div className="flex justify-between text-[12px] mb-1">
-                          <span className="text-[#f0f2f5]">{name}</span>
-                          <strong className="text-[#f0f2f5]">{value}</strong>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 5 }}>
+                          <span style={{ color: '#f0f2f5' }}>{name}</span>
+                          <strong style={{ color: '#f0f2f5' }}>{value}</strong>
                         </div>
-                        <div className="h-[7px] rounded-full bg-[#1e2130] overflow-hidden">
-                          <div className="h-full rounded-full bg-[#10b981] transition-all" style={{ width: `${pct}%` }} />
+                        <div style={{ height: 7, borderRadius: 999, background: '#1e2130', overflow: 'hidden' }}>
+                          <div style={{
+                            height: '100%', borderRadius: 'inherit', background: '#10b981',
+                            width: `${pct}%`, transition: 'width 0.3s ease',
+                          }} />
                         </div>
                       </div>
                     ))}
@@ -611,83 +870,131 @@ export default function DriversPage() {
               )}
             </div>
           </div>
-
-          {/* Timeline */}
-          <div className="bg-[#181b25] border border-[#282b38] rounded-xl overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2130]">
-              <span className="text-[14px] font-bold text-[#f0f2f5]">{d.timelineTitle || 'Activity Timeline'}</span>
-            </div>
-            <div className="p-4">
-              {!selected ? (
-                <p className="text-[13px] text-[#646880] text-center py-4">{d.timelineNone || 'No driver selected'}</p>
-              ) : timelineLoading ? (
-                <p className="text-[13px] text-[#646880] text-center py-4">{d.timelineLoading || 'Loading timeline...'}</p>
-              ) : timeline.length === 0 ? (
-                <p className="text-[13px] text-[#646880] text-center py-4">{d.timelineEmpty || 'No activity recorded yet'}</p>
-              ) : (
-                <div className="space-y-3">
-                  {timeline.slice(0, 8).map((item, idx) => (
-                    <div key={idx} className="flex items-start gap-3">
-                      <div className={`w-2 h-2 mt-1.5 rounded-full ${
-                        item.type === 'created' ? 'bg-[#10b981]' :
-                        item.type === 'order' ? 'bg-[#3b82f6]' :
-                        'bg-[#646880]'
-                      }`} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[13px] text-[#f0f2f5] font-medium">{item.title}</p>
-                        <p className="text-[11px] text-[#646880] truncate">{item.description}</p>
-                        <p className="text-[10px] text-[#646880] mt-0.5">{new Date(item.timestamp).toLocaleString()}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        </aside>
       </div>
 
-      {/* ── CREATE DRIVER MODAL (wizard) ── */}
+      {/* ── CREATE DRIVER MODAL ── */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6" style={{ background: 'rgba(0,0,0,0.62)' }} onClick={() => setModalOpen(false)}>
-          <div className="relative w-full max-w-[900px] max-h-[90vh] overflow-auto bg-[#0b0d14] border border-[#282b38] rounded-2xl shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between p-5 border-b border-[#282b38]">
+        <div
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.62)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 24, zIndex: 500,
+          }}
+          onClick={() => setModalOpen(false)}
+        >
+          <div
+            style={{
+              width: 'min(900px, 100%)', maxHeight: '90vh', overflow: 'auto',
+              borderRadius: 16, background: '#0b0d14',
+              border: '1px solid #282b38',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{
+              padding: '18px 20px',
+              borderBottom: '1px solid #282b38',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+            }}>
               <div>
-                <h2 className="text-[18px] font-bold text-[#f0f2f5]">{editDriver ? (d.modalEdit || 'Edit driver') : (d.modalCreate || 'Create driver')}</h2>
-                <p className="text-[12px] text-[#646880] mt-1">{editDriver ? (d.modalEditDesc || 'Update driver information.') : (d.modalCreateDesc || 'Register a new driver.')}</p>
+                <h2 style={{ fontSize: 18, margin: 0, fontWeight: 700, color: '#f0f2f5' }}>
+                  {editDriver ? (d.modalEdit || 'Edit driver') : (d.modalCreate || 'Create driver')}
+                </h2>
+                <p style={{ color: '#646880', fontSize: 12, marginTop: 4 }}>
+                  {editDriver ? (d.modalEditDesc || 'Update driver information. All changes will be logged.') : (d.modalCreateDesc || 'Guided registration for driver, vehicle, documents, and compliance review.')}
+                </p>
               </div>
-              <button className="text-[#646880] hover:text-[#f0f2f5]" onClick={() => setModalOpen(false)}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M18 6L6 18M6 6l12 12"/>
-                </svg>
+              <button
+                style={{ color: '#646880', background: 'none', border: 'none', cursor: 'pointer', fontSize: 22 }}
+                onClick={() => setModalOpen(false)}
+              >
+                &times;
               </button>
             </div>
-            <div className="p-5">
-              {/* Stepper */}
-              <div className="flex gap-2 mb-4">
-                {[1,2,3,4,5,6].map(s => (
-                  <div key={s} className={`h-1 flex-1 rounded-full ${createStep >= s ? 'bg-[#10b981]' : 'bg-[#282b38]'}`} />
-                ))}
+            <div style={{ padding: 20 }}>
+              {/* Visual stepper */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 8, marginBottom: 18 }}>
+                {[
+                  d.modalStep1 || '1 Personal',
+                  d.modalStep2 || '2 Emergency',
+                  d.modalStep3 || '3 License',
+                  d.modalStep4 || '4 Vehicle',
+                  d.modalStep5 || '5 Docs',
+                  d.modalStep6 || '6 Review',
+                ].map((stepLabel, idx) => {
+                  const stepNum = idx + 1
+                  return (
+                    <div key={stepNum} style={{
+                      border: `1px solid ${createStep >= stepNum ? '#10b981' : '#282b38'}`,
+                      background: createStep >= stepNum ? 'rgba(16,185,129,0.12)' : '#181b25',
+                      color: createStep >= stepNum ? '#10b981' : '#646880',
+                      borderRadius: 8, padding: 10, fontSize: 11, fontWeight: 700, textAlign: 'center',
+                    }}>
+                      {stepLabel}
+                    </div>
+                  )
+                })}
               </div>
-              <p className="text-[12px] text-[#646880] mb-4">Step {createStep} of 6 - {(d.modalStep1 || '1 Personal')}</p>
 
-              {/* Step 1: Personal Info */}
+              {/* Step navigation */}
+              <p style={{ fontSize: 12, color: '#646880', marginBottom: 16 }}>
+                {`Step ${createStep} of 6`}
+              </p>
+
+              {/* Step 1: Personal */}
               {createStep === 1 && (
-                <div className="grid grid-cols-2 gap-3 mt-3.5">
-                  <div className="space-y-1"><label className="text-[11px] font-semibold text-[#646880]">{d.modalName || 'Full name'}</label><input className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981]" placeholder={d.modalNamePlace || 'e.g. Alejandro Restrepo'} value={formData.name || ''} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))} /></div>
-                  <div className="space-y-1"><label className="text-[11px] font-semibold text-[#646880]">{d.modalPhone || 'Phone'}</label><input className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981]" placeholder={d.modalPhonePlace || '+57 300 000 0000'} value={formData.phone || ''} onChange={e => setFormData(p => ({ ...p, phone: e.target.value }))} /></div>
-                  <div className="space-y-1"><label className="text-[11px] font-semibold text-[#646880]">{d.modalEmail || 'Email'}</label><input className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981]" placeholder={d.modalEmailPlace || 'driver@company.com'} value={formData.email || ''} onChange={e => setFormData(p => ({ ...p, email: e.target.value }))} /></div>
-                  <div className="space-y-1"><label className="text-[11px] font-semibold text-[#646880]">{d.modalLang || 'Languages'}</label><input className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981]" placeholder={d.modalLangPlace || 'Spanish, English'} value={formData.languages || ''} onChange={e => setFormData(p => ({ ...p, languages: e.target.value }))} /></div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalName || 'Full name'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} placeholder={d.modalNamePlace || 'e.g. Alejandro Restrepo'} value={formData.name || ''} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>ID / passport</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} placeholder="CC 1.037.***" /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalPhone || 'Phone'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} placeholder={d.modalPhonePlace || '+57 300 000 0000'} value={formData.phone || ''} onChange={e => setFormData(p => ({ ...p, phone: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalEmail || 'Email'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} placeholder={d.modalEmailPlace || 'driver@company.com'} value={formData.email || ''} onChange={e => setFormData(p => ({ ...p, email: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalLang || 'Languages'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} placeholder={d.modalLangPlace || 'Spanish, English, Portuguese'} value={formData.languages || ''} onChange={e => setFormData(p => ({ ...p, languages: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalVehicleType || 'Vehicle type'}</label>
+                    <select style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }}
+                      value={formData.category || ''} onChange={e => setFormData(p => ({ ...p, category: e.target.value }))}>
+                      <option value="">{d.modalTypePlace || 'Select type...'}</option>
+                      <option value="vip">{d.modalTypeVip || 'VIP SUV'}</option>
+                      <option value="luxury">{d.modalTypeLuxury || 'Luxury'}</option>
+                      <option value="suv">{d.modalTypeSuv || 'SUV'}</option>
+                      <option value="van">{d.modalTypeVan || 'Van'}</option>
+                      <option value="standard">{d.modalTypeStandard || 'Standard'}</option>
+                    </select>
+                  </div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalLicense || 'License expiration'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} value={formData.license_expiry || ''} onChange={e => setFormData(p => ({ ...p, license_expiry: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalSoat || 'SOAT expiration'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} value={formData.soat_expiry || ''} onChange={e => setFormData(p => ({ ...p, soat_expiry: e.target.value }))} /></div>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>'Other expirations'</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+                      <div><label style={{ display: 'block', fontSize: 10, color: '#646880', marginBottom: 4 }}>{d.modalInspection || 'Tech inspection'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} value={formData.tech_inspection_expiry || ''} onChange={e => setFormData(p => ({ ...p, tech_inspection_expiry: e.target.value }))} /></div>
+                      <div><label style={{ display: 'block', fontSize: 10, color: '#646880', marginBottom: 4 }}>{d.modalInsurance || 'Insurance'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} value={formData.insurance_expiry || ''} onChange={e => setFormData(p => ({ ...p, insurance_expiry: e.target.value }))} /></div>
+                    </div>
+                  </div>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>Document uploads</label>
+                    <div style={{
+                      minHeight: 86, border: '1px dashed #282b38', borderRadius: 8,
+                      display: 'grid', placeItems: 'center', textAlign: 'center',
+                      color: '#646880', background: '#0b0d14', fontSize: 12,
+                    }}>
+                      Drop license, SOAT, technical inspection, insurance, vehicle photos
+                    </div>
+                  </div>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalNotes || 'Operational notes'}</label>
+                    <textarea rows={3} style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none', resize: 'none' }}
+                      placeholder={d.modalNotesPlace || 'VIP handling notes, airport authorization, language preferences...'}
+                      value={formData.notes || ''} onChange={e => setFormData(p => ({ ...p, notes: e.target.value }))} />
+                  </div>
                 </div>
               )}
 
               {/* Step 2: Emergency */}
               {createStep === 2 && (
-                <div className="grid grid-cols-2 gap-3 mt-3.5">
-                  <div className="space-y-1"><label className="text-[11px] font-semibold text-[#646880]">{d.modalEmergContact || 'Emergency contact'}</label><input className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981]" placeholder={d.modalEmergPlace || 'Contact name'} value={formData.emergency_contact || ''} onChange={e => setFormData(p => ({ ...p, emergency_contact: e.target.value }))} /></div>
-                  <div className="space-y-1"><label className="text-[11px] font-semibold text-[#646880]">{d.modalEmergPhone || 'Emergency phone'}</label><input className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981]" placeholder={d.modalEmergPhonePlace || '+57 300 000 0000'} value={formData.emergency_phone || ''} onChange={e => setFormData(p => ({ ...p, emergency_phone: e.target.value }))} /></div>
-                  <div className="space-y-1"><label className="text-[11px] font-semibold text-[#646880]">{d.modalExpLevel || 'Experience level'}</label>
-                    <select className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981]"
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalEmergContact || 'Emergency contact'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} placeholder={d.modalEmergPlace || 'Contact name'} value={formData.emergency_contact || ''} onChange={e => setFormData(p => ({ ...p, emergency_contact: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalEmergPhone || 'Emergency phone'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} placeholder={d.modalEmergPhonePlace || '+57 300 000 0000'} value={formData.emergency_phone || ''} onChange={e => setFormData(p => ({ ...p, emergency_phone: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalExpLevel || 'Experience level'}</label>
+                    <select style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }}
                       value={formData.experienceLevel || ''} onChange={e => setFormData(p => ({ ...p, experienceLevel: e.target.value }))}>
                       <option value="">{d.modalExpPlace || 'Select...'}</option>
                       <option value="Standard">{d.modalExpStd || 'Standard'}</option>
@@ -695,26 +1002,27 @@ export default function DriversPage() {
                       <option value="Lead">{d.modalExpLead || 'Lead'}</option>
                     </select>
                   </div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalCity || 'City'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} placeholder={d.modalCityPlace || 'e.g. Medellín'} value={formData.city || ''} onChange={e => setFormData(p => ({ ...p, city: e.target.value }))} /></div>
                 </div>
               )}
 
-              {/* Step 3: License */}
+              {/* Step 3: License & docs */}
               {createStep === 3 && (
-                <div className="grid grid-cols-2 gap-3 mt-3.5">
-                  <div className="space-y-1"><label className="text-[11px] font-semibold text-[#646880]">{d.modalLicense || 'License expiry'}</label><input type="date" className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981]" value={formData.license_expiry || ''} onChange={e => setFormData(p => ({ ...p, license_expiry: e.target.value }))} /></div>
-                  <div className="space-y-1"><label className="text-[11px] font-semibold text-[#646880]">{d.modalSoat || 'SOAT expiry'}</label><input type="date" className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981]" value={formData.soat_expiry || ''} onChange={e => setFormData(p => ({ ...p, soat_expiry: e.target.value }))} /></div>
-                  <div className="space-y-1"><label className="text-[11px] font-semibold text-[#646880]">{d.modalInspection || 'Tech inspection expiry'}</label><input type="date" className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981]" value={formData.tech_inspection_expiry || ''} onChange={e => setFormData(p => ({ ...p, tech_inspection_expiry: e.target.value }))} /></div>
-                  <div className="space-y-1"><label className="text-[11px] font-semibold text-[#646880]">{d.modalInsurance || 'Insurance expiry'}</label><input type="date" className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981]" value={formData.insurance_expiry || ''} onChange={e => setFormData(p => ({ ...p, insurance_expiry: e.target.value }))} /></div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalLicense || 'License expiry'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} value={formData.license_expiry || ''} onChange={e => setFormData(p => ({ ...p, license_expiry: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalSoat || 'SOAT expiry'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} value={formData.soat_expiry || ''} onChange={e => setFormData(p => ({ ...p, soat_expiry: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalInspection || 'Tech inspection'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} value={formData.tech_inspection_expiry || ''} onChange={e => setFormData(p => ({ ...p, tech_inspection_expiry: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalInsurance || 'Insurance expiry'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} value={formData.insurance_expiry || ''} onChange={e => setFormData(p => ({ ...p, insurance_expiry: e.target.value }))} /></div>
                 </div>
               )}
 
               {/* Step 4: Vehicle */}
               {createStep === 4 && (
-                <div className="grid grid-cols-2 gap-3 mt-3.5">
-                  <div className="space-y-1"><label className="text-[11px] font-semibold text-[#646880]">{d.modalVehicle || 'Vehicle'}</label><input className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981]" placeholder={d.modalVehiclePlace || 'e.g. Mercedes V-Class'} value={formData.vehicle || ''} onChange={e => setFormData(p => ({ ...p, vehicle: e.target.value }))} /></div>
-                  <div className="space-y-1"><label className="text-[11px] font-semibold text-[#646880]">{d.modalPlate || 'Plate'}</label><input className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981]" placeholder={d.modalPlatePlace || 'e.g. ABC-123'} value={formData.plate || ''} onChange={e => setFormData(p => ({ ...p, plate: e.target.value }))} /></div>
-                  <div className="space-y-1"><label className="text-[11px] font-semibold text-[#646880]">{d.modalVehicleType || 'Vehicle type'}</label>
-                    <select className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981]"
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalVehicle || 'Vehicle'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} placeholder={d.modalVehiclePlace || 'e.g. Mercedes V-Class'} value={formData.vehicle || ''} onChange={e => setFormData(p => ({ ...p, vehicle: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalPlate || 'Plate'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} placeholder={d.modalPlatePlace || 'e.g. ABC-123'} value={formData.plate || ''} onChange={e => setFormData(p => ({ ...p, plate: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalVehicleType || 'Vehicle type'}</label>
+                    <select style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }}
                       value={formData.category || ''} onChange={e => setFormData(p => ({ ...p, category: e.target.value }))}>
                       <option value="">{d.modalTypePlace || 'Select type...'}</option>
                       <option value="standard">{d.modalTypeStandard || 'Standard'}</option>
@@ -724,54 +1032,120 @@ export default function DriversPage() {
                       <option value="van">{d.modalTypeVan || 'Van'}</option>
                     </select>
                   </div>
-                  <div className="space-y-1"><label className="text-[11px] font-semibold text-[#646880]">{d.modalYear || 'Vehicle year'}</label><input className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981]" placeholder={d.modalYearPlace || 'e.g. 2024'} value={formData.year || ''} onChange={e => setFormData(p => ({ ...p, year: e.target.value }))} /></div>
-                  <div className="space-y-1"><label className="text-[11px] font-semibold text-[#646880]">{d.modalCapacity || 'Capacity'}</label><input className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981]" placeholder={d.modalCapacityPlace || 'e.g. 4 pax'} value={formData.capacity || ''} onChange={e => setFormData(p => ({ ...p, capacity: e.target.value }))} /></div>
-                  <div className="space-y-1"><label className="text-[11px] font-semibold text-[#646880]">{d.modalCity || 'City'}</label><input className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981]" placeholder={d.modalCityPlace || 'e.g. Medellín'} value={formData.city || ''} onChange={e => setFormData(p => ({ ...p, city: e.target.value }))} /></div>
-                  <div className="space-y-1"><label className="text-[11px] font-semibold text-[#646880]">{d.modalPhotoUrl || 'Photo URL'}</label><input className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981]" placeholder={d.modalPhotoPlace || 'https://example.com/photo.jpg'} value={formData.photo_url || ''} onChange={e => setFormData(p => ({ ...p, photo_url: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalYear || 'Vehicle year'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} placeholder={d.modalYearPlace || 'e.g. 2024'} value={formData.year || ''} onChange={e => setFormData(p => ({ ...p, year: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalCapacity || 'Capacity'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} placeholder={d.modalCapacityPlace || 'e.g. 4 pax'} value={formData.capacity || ''} onChange={e => setFormData(p => ({ ...p, capacity: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalPhotoUrl || 'Photo URL'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} placeholder={d.modalPhotoPlace || 'https://example.com/photo.jpg'} value={formData.photo_url || ''} onChange={e => setFormData(p => ({ ...p, photo_url: e.target.value }))} /></div>
                 </div>
               )}
 
-              {/* Step 5: Docs */}
+              {/* Step 5: Docs & Notes */}
               {createStep === 5 && (
-                <div className="grid grid-cols-2 gap-3 mt-3.5">
-                  <div className="col-span-2 space-y-1"><label className="text-[11px] font-semibold text-[#646880]">{d.modalNotes || 'Operational notes'}</label>
-                    <textarea rows={3} className="w-full px-3 py-2.5 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] resize-none" placeholder={d.modalNotesPlace || 'VIP handling notes...'} value={formData.notes || ''} onChange={e => setFormData(p => ({ ...p, notes: e.target.value }))} /></div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>Document uploads</label>
+                    <div style={{
+                      minHeight: 86, border: '1px dashed #282b38', borderRadius: 8,
+                      display: 'grid', placeItems: 'center', textAlign: 'center',
+                      color: '#646880', background: '#0b0d14', fontSize: 12,
+                    }}>
+                      Drop license, SOAT, technical inspection, insurance, vehicle photos
+                    </div>
+                  </div>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalNotes || 'Operational notes'}</label>
+                    <textarea rows={3} style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none', resize: 'none' }}
+                      placeholder={d.modalNotesPlace || 'VIP handling notes...'}
+                      value={formData.notes || ''} onChange={e => setFormData(p => ({ ...p, notes: e.target.value }))} />
+                  </div>
                 </div>
               )}
 
               {/* Step 6: Review */}
               {createStep === 6 && (
-                <div className="p-4 bg-[#181b25] border border-[#282b38] rounded-lg mt-3.5 text-[13px] text-[#9ca0b0] leading-relaxed">
-                  Review all driver information before saving. All actions will be logged.
-                  <div className="grid grid-cols-2 gap-3 mt-4">
+                <div style={{
+                  padding: 16, background: '#181b25', border: '1px solid #282b38',
+                  borderRadius: 8, marginTop: 4, fontSize: 13, color: '#9ca0b0', lineHeight: 1.65,
+                }}>
+                  'Review all driver information before saving. All actions will be logged.'
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginTop: 16 }}>
                     {[
                       ['Name', formData.name], ['Phone', formData.phone], ['Email', formData.email],
                       ['Languages', formData.languages], ['Vehicle', formData.vehicle], ['Plate', formData.plate],
                       ['Type', formData.category], ['City', formData.city],
                     ].map(([label, value]) => (
                       <div key={label}>
-                        <label className="block text-[10px] text-[#646880] uppercase tracking-wider mb-1">{label}</label>
-                        <div className="text-[13px] text-[#f0f2f5]">{value || '—'}</div>
+                        <label style={{ display: 'block', fontSize: 10, color: '#646880', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 3 }}>{label}</label>
+                        <div style={{ fontSize: 13, color: '#f0f2f5' }}>{value || '—'}</div>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
-            </div>
-            <div className="flex justify-between gap-2.5 px-5 py-4 border-t border-[#282b38]">
-              <button className="px-4 py-2 border border-[#282b38] text-[13px] text-[#9ca0b0] rounded-lg hover:bg-[#202330] transition-all"
-                style={{ display: createStep > 1 ? 'block' : 'none' }}
-                onClick={() => setCreateStep(s => s - 1)}>Back</button>
-              <div className="flex gap-2.5 ml-auto">
-                {createStep < 6 ? (
-                  <button className="px-6 py-2 bg-[#10b981] text-white text-[13px] font-medium rounded-lg hover:bg-[#059669] transition-all" onClick={() => setCreateStep(s => s + 1)}>Next</button>
-                ) : (
-                  <>
-                    <button className="px-4 py-2 border border-[#282b38] text-[13px] text-[#9ca0b0] rounded-lg hover:bg-[#202330] transition-all" onClick={() => setModalOpen(false)}>{d.modalCancel || 'Cancel'}</button>
-                    <button className="px-4 py-2 border border-[#282b38] text-[13px] text-[#9ca0b0] rounded-lg hover:bg-[#202330] transition-all" onClick={() => showToast(d.toastDraft || 'Draft saved')}>{d.modalDraft || 'Save draft'}</button>
-                    <button className="px-4 py-2 bg-[#10b981] text-white text-[13px] font-medium rounded-lg hover:bg-[#059669] transition-all" onClick={handleSubmit}>{editDriver ? (d.modalUpdate || 'Update') : (d.modalSubmit || 'Submit')}</button>
-                  </>
-                )}
+
+              {/* Navigation buttons */}
+              <div style={{
+                display: 'flex', justifyContent: 'space-between', gap: 10,
+                paddingTop: 16, marginTop: 16, borderTop: '1px solid #282b38',
+              }}>
+                {createStep > 1 ? (
+                  <button
+                    style={{
+                      padding: '10px 16px', border: '1px solid #282b38', borderRadius: 8,
+                      fontSize: 13, color: '#9ca0b0', background: 'transparent', cursor: 'pointer',
+                    }}
+                    className="hover:bg-[#202330] transition-all"
+                    onClick={() => setCreateStep(s => s - 1)}
+                  >
+                    'Back'
+                  </button>
+                ) : <div />}
+                <div style={{ display: 'flex', gap: 10 }}>
+                  {createStep < 6 ? (
+                    <button
+                      style={{
+                        padding: '10px 20px', background: '#10b981', color: '#fff',
+                        border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                      }}
+                      className="hover:bg-[#059669] transition-all"
+                      onClick={() => setCreateStep(s => s + 1)}
+                    >
+                      'Next'
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        style={{
+                          padding: '10px 16px', border: '1px solid #282b38', borderRadius: 8,
+                          fontSize: 13, color: '#9ca0b0', background: 'transparent', cursor: 'pointer',
+                        }}
+                        className="hover:bg-[#202330] transition-all"
+                        onClick={() => setModalOpen(false)}
+                      >
+                        {d.modalCancel || 'Cancel'}
+                      </button>
+                      <button
+                        style={{
+                          padding: '10px 16px', border: '1px solid #282b38', borderRadius: 8,
+                          fontSize: 13, color: '#9ca0b0', background: 'transparent', cursor: 'pointer',
+                        }}
+                        className="hover:bg-[#202330] transition-all"
+                        onClick={() => showToast(d.toastDraft || 'Draft saved')}
+                      >
+                        {d.modalDraft || 'Save draft'}
+                      </button>
+                      <button
+                        style={{
+                          padding: '10px 20px', background: '#10b981', color: '#fff',
+                          border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                        }}
+                        className="hover:bg-[#059669] transition-all"
+                        onClick={handleSubmit}
+                      >
+                        {editDriver ? (d.modalUpdate || 'Update Driver') : (d.modalSubmit || 'Submit for review')}
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -779,66 +1153,18 @@ export default function DriversPage() {
       )}
 
       {/* ── TOAST ── */}
-      <div className="fixed bottom-6 right-6 space-y-2 z-[800]">
+      <div style={{ position: 'fixed', bottom: 24, right: 24, display: 'grid', gap: 8, zIndex: 800 }}>
         {notif.map(n => (
-          <div key={n.id} className="bg-[#181b25] border border-[#282b38] text-[#f0f2f5] px-4 py-3 rounded-xl shadow-2xl text-[13px] animate-slide-up">
+          <div key={n.id} style={{
+            background: '#181b25', border: '1px solid #282b38', color: '#f0f2f5',
+            padding: '12px 16px', borderRadius: 12, fontSize: 13, zIndex: 800,
+          }}>
             {n.msg}
           </div>
         ))}
       </div>
-
-      <style>{`
-        @keyframes slide-up {
-          from { opacity: 0; transform: translateY(12px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-slide-up { animation: slide-up 300ms ease; }
-      `}</style>
     </div>
   )
 }
 
-function RankingBoard({ drivers, d }: { drivers: Driver[]; d: Record<string, string> }) {
-  const ranked = useMemo(() =>
-    [...drivers]
-      .filter(d => d.rating && d.total_trips)
-      .sort((a, b) => (b.rating || 0) - (a.rating || 0))
-      .slice(0, 6),
-    [drivers]
-  )
 
-  const maxTrips = useMemo(() => Math.max(...ranked.map(d => d.total_trips || 0), 1), [ranked])
-
-  if (ranked.length === 0) return null
-
-  const medals = ['🥇', '🥈', '🥉']
-
-  return (
-    <div className="bg-[#181b25] border border-[#282b38] rounded-xl overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2130]">
-        <div className="flex items-center gap-2.5">
-          <span className="text-[14px] font-bold text-[#f0f2f5]">{d.rankingTitle || 'Driver Ranking'}</span>
-          <span className="text-[12px] text-[#646880] font-medium">{d.rankingSub || 'Top performers'}</span>
-        </div>
-      </div>
-      <div className="p-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        {ranked.map((rd, idx) => (
-          <div key={rd.id} className="bg-[#0b0d14] border border-[#1e2130] rounded-xl p-3 text-center">
-            <div className="text-2xl mb-1">{medals[idx] || '🏅'}</div>
-            <p className="text-[13px] font-bold text-[#f0f2f5] truncate">{rd.name}</p>
-            <div className="flex justify-center gap-3 mt-2 text-[11px] text-[#646880]">
-              <span>★ {rd.rating}</span>
-              <span>{rd.total_trips} {d.rankingTrips || 'trips'}</span>
-            </div>
-            <div className="mt-2 h-1.5 rounded-full bg-[#1e2130] overflow-hidden">
-              <div className="h-full rounded-full bg-[#10b981] transition-all" style={{ width: `${((rd.total_trips || 0) / maxTrips) * 100}%` }} />
-            </div>
-            {rd.vip_compatible === 1 && (
-              <span className="mt-1.5 inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-[rgba(212,168,75,0.15)] text-[#d4a84b]">{d.rankingVip || 'VIP'}</span>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}

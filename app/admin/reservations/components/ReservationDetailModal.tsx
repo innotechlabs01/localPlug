@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { Reservation } from '@/lib/reservations-api'
+import { formatDateFull } from '@/lib/date-utils'
 
 interface ReservationDetailModalProps {
   open: boolean
@@ -197,6 +198,5 @@ function getAvatarColor(letter: string): string {
 }
 
 function formatDate(dateStr: string): string {
-  if (!dateStr) return ''
-  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return formatDateFull(dateStr)
 }

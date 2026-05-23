@@ -1,7 +1,9 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useI18n } from '@/lib/i18n'
+import { adminFetch } from '@/lib/admin/admin-fetch'
+import { getToday, getLocalDatePart } from '@/lib/date-utils'
 
 interface Booking {
   id: string
@@ -27,46 +29,37 @@ interface Booking {
 
 // Fetch data from Real API
 async function fetchReservations(): Promise<Booking[]> {
-  try {
-    const res = await fetch('/api/admin/reservations', { cache: 'no-store' })
-    if (!res.ok) return []
-    const data = await res.json()
-    return (data.reservations || []).map((r: any) => ({
-      id: r.id,
-      ref: r.bookingReference || r.orderNumber || `ORD-${r.id}`,
-      customerName: r.guest ? `${r.guest.firstName} ${r.guest.lastName}`.trim() : 'Unknown',
-      country: r.guest?.country,
-      flightNumber: r.flightInfo?.split(' — ')[0] || '',
-      airline: r.flightInfo?.split(' — ')[1] || '',
-      arrivalDate: r.arrivalDate,
-      arrivalTime: r.arrivalTime,
-      selectedHotel: r.destinationAddress || '',
-      total: r.totalAmount || 0,
-      driver: r.driverAssigned?.name,
-      status: r.status,
-      created_at: r.createdAt,
-      returnTransport: false,
-    }))
-  } catch (err) {
-    console.error('Failed to fetch reservations:', err)
-    return []
-  }
+  const res = await adminFetch('/api/admin/reservations', { cache: 'no-store' })
+  if (!res.ok) return []
+  const data = await res.json()
+  return (data.reservations || []).map((r: any) => ({
+    id: r.id,
+    ref: r.bookingReference || r.orderNumber || `ORD-${r.id}`,
+    customerName: r.guest ? `${r.guest.firstName} ${r.guest.lastName}`.trim() : 'Unknown',
+    country: r.guest?.country,
+    flightNumber: r.flightInfo?.split(' — ')[0] || '',
+    airline: r.flightInfo?.split(' — ')[1] || '',
+    arrivalDate: r.arrivalDate,
+    arrivalTime: r.arrivalTime,
+    selectedHotel: r.destinationAddress || '',
+    total: r.totalAmount || 0,
+    driver: r.driverAssigned?.name,
+    status: r.status,
+    created_at: r.createdAt,
+    returnTransport: false,
+  }))
 }
 
 async function fetchDrivers(): Promise<{ name: string; vehicle: string; plate: string; status: string }[]> {
-  try {
-    const res = await fetch('/api/admin/dispatch?tab=all', { cache: 'no-store' })
-    if (!res.ok) return getMockDrivers()
-    const data = await res.json()
-    return (data.drivers || []).map((d: any) => ({
-      name: d.name,
-      vehicle: d.vehicle,
-      plate: d.plate,
-      status: d.status || 'offline',
-    }))
-  } catch {
-    return getMockDrivers()
-  }
+  const res = await adminFetch('/api/admin/dispatch?tab=all', { cache: 'no-store' })
+  if (!res.ok) return getMockDrivers()
+  const data = await res.json()
+  return (data.drivers || []).map((d: any) => ({
+    name: d.name,
+    vehicle: d.vehicle,
+    plate: d.plate,
+    status: d.status || 'offline',
+  }))
 }
 
 function getMockDrivers() {
@@ -114,20 +107,31 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
 
   const loadData = useCallback(async () => {
-    setLoading(true)
-    const [bookingsData, driversData] = await Promise.all([
-      fetchReservations(),
-      fetchDrivers()
-    ])
-    setBookings(bookingsData)
-    setDrivers(driversData)
+    try {
+      const [bookingsData, driversData] = await Promise.all([
+        fetchReservations(),
+        fetchDrivers()
+      ])
+      setBookings(bookingsData)
+      setDrivers(driversData)
+    } catch (err) {
+      if (err instanceof Error && err.message === 'AUTH_ERROR') {
+        if (intervalRef.current) clearInterval(intervalRef.current)
+        window.location.href = '/sign-in'
+        return
+      }
+    }
     setLoading(false)
   }, [])
 
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
   useEffect(() => {
     loadData()
-    const interval = setInterval(loadData, 30000)
-    return () => clearInterval(interval)
+    intervalRef.current = setInterval(loadData, 30000)
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current)
+    }
   }, [loadData])
 
   useEffect(() => {
@@ -136,8 +140,8 @@ export default function AdminDashboard() {
     return () => clearTimeout(timer)
   }, [toast])
 
-  const today = new Date().toISOString().split('T')[0]
-  const todayBookings = useMemo(() => bookings.filter(b => b.arrivalDate === today), [bookings, today])
+  const today = getToday()
+  const todayBookings = useMemo(() => bookings.filter(b => getLocalDatePart(b.arrivalDate || '') === today), [bookings, today])
   const pending = useMemo(() => bookings.filter(b => !b.driver), [bookings])
   const assigned = useMemo(() => bookings.filter(b => b.driver), [bookings])
   const totalRevenue = useMemo(() => bookings.reduce((s, b) => s + (b.total || 0), 0), [bookings])
@@ -145,19 +149,22 @@ export default function AdminDashboard() {
   const onlineDrivers = useMemo(() => drivers.filter(d => d.status === 'online'), [drivers])
 
   const filteredBookings = useMemo(() => {
-    if (!searchQuery) return bookings
-    const q = searchQuery.toLowerCase()
-    return bookings.filter(b =>
-      b.customerName?.toLowerCase().includes(q) ||
-      b.ref?.toLowerCase().includes(q) ||
-      b.airline?.toLowerCase().includes(q) ||
-      b.flightNumber?.toLowerCase().includes(q)
-    )
-  }, [bookings, searchQuery])
+    let list = todayBookings
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase()
+      list = list.filter(b =>
+        b.customerName?.toLowerCase().includes(q) ||
+        b.ref?.toLowerCase().includes(q) ||
+        b.airline?.toLowerCase().includes(q) ||
+        b.flightNumber?.toLowerCase().includes(q)
+      )
+    }
+    return list
+  }, [todayBookings, searchQuery])
 
   const sortedBookings = useMemo(() =>
-    [...bookings].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
-    [bookings],
+    [...todayBookings].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
+    [todayBookings],
   )
 
   const activityItems = useMemo(() => sortedBookings.slice(0, 6), [sortedBookings])
@@ -193,7 +200,7 @@ export default function AdminDashboard() {
     }
     try {
       const driverObj = drivers.find(d => d.name === selectedDriver)
-      const res = await fetch('/api/admin/dispatch', {
+      const res = await adminFetch('/api/admin/dispatch', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 

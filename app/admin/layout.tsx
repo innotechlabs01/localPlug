@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useI18n } from '@/lib/i18n'
-import { RealtimeProvider, useRealtime } from '@/lib/admin/realtime-context'
+import { useRealtime } from '@/lib/admin/realtime-context'
 
 interface NavItem {
   labelKey: string
@@ -131,11 +131,7 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <RealtimeProvider>
-      <AdminLayoutInner>{children}</AdminLayoutInner>
-    </RealtimeProvider>
-  )
+  return <AdminLayoutInner>{children}</AdminLayoutInner>
 }
 
 function AdminLayoutInner({ children }: { children: React.ReactNode }) {
@@ -144,7 +140,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const [profileOpen, setProfileOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const { t } = useI18n()
-  const { notifications, unreadCount, markAsRead, markAllAsRead } = useRealtime()
+  const { notifications, unreadCount, markAsRead, markAllAsRead, stats } = useRealtime()
 
   const pageTitle = t.admin.dashboard.title as string
 
@@ -183,7 +179,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                     {item.icon}
                     <span>{t.admin.nav[item.labelKey as keyof typeof t.admin.nav] as string}</span>
                     {item.badge !== undefined && (
-                      <span className="nav-badge">{item.badge}</span>
+                      <span className="nav-badge">{item.href === '/admin/dispatch' ? stats.pending_dispatch : item.badge}</span>
                     )}
                   </Link>
                 )

@@ -2,12 +2,14 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useI18n } from '@/lib/i18n'
+import { adminFetch } from '@/lib/admin/admin-fetch'
+import { RealtimeProvider } from '@/lib/admin/realtime-context'
 import ReservationKPIs from './components/ReservationKPIs'
 import ReservationFilters from './components/ReservationFilters'
 import ReservationTable from './components/ReservationTable'
 import ReservationTimeline from './components/ReservationTimeline'
 import ReservationDetailModal from './components/ReservationDetailModal'
-import { Reservation, ReservationStatus, fetchReservations } from '@/lib/reservations-api'
+import { Reservation, ReservationStatus } from '@/lib/reservations-api'
 
 export default function AdminReservations() {
   const { t } = useI18n()
@@ -31,7 +33,7 @@ export default function AdminReservations() {
   const [countries, setCountries] = useState<{ code: string; name: string; flag: string }[]>([])
 
   useEffect(() => {
-    fetch('/api/admin/lookup')
+    adminFetch('/api/admin/lookup')
       .then(res => res.json())
       .then((data: any) => {
         if (data.countries) setCountries(data.countries)
@@ -51,8 +53,9 @@ export default function AdminReservations() {
     try {
       setLoading(true)
       setError(null)
-      const data = await fetchReservations()
-      setReservations(data)
+      const res = await adminFetch('/api/admin/reservations')
+      const data = await res.json()
+      setReservations(data.reservations || [])
     } catch (err) {
       setError('Failed to load reservations. Please try again.')
       console.error('Error fetching reservations:', err)
@@ -136,7 +139,7 @@ export default function AdminReservations() {
       })
       .sort((a, b) => {
         const dateA = new Date(`${a.arrivalDate}T${a.arrivalTime || '00:00'}`)
-        const dateB = new Date(`${b.arrivalDate}${b.arrivalTime || '00:00'}`)
+        const dateB = new Date(`${b.arrivalDate}T${b.arrivalTime || '00:00'}`)
         return dateA.getTime() - dateB.getTime()
       })
   }, [reservations])
@@ -222,7 +225,8 @@ export default function AdminReservations() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <RealtimeProvider>
+      <div className="min-h-screen bg-gray-50">
       {/* Sidebar would be handled by layout */}
       <div className="ml-64 transition-all duration-300 ease-in-out">
         <div className="app-layout">
@@ -484,6 +488,7 @@ export default function AdminReservations() {
         </div>
       </div>
     </div>
+    </RealtimeProvider>
   )
 }
 

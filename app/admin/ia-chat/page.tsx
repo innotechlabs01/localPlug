@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useI18n } from '@/lib/i18n'
+import { RealtimeProvider } from '@/lib/admin/realtime-context'
+import { getTimeAgoI18n } from '@/lib/date-utils'
 
 interface Conversation {
   id: number
@@ -68,15 +70,8 @@ const PRIORITY_STYLES: Record<string, string> = {
 
 function formatDate(dateStr: string | null, t: any): string {
   if (!dateStr) return '-'
-  const d = new Date(dateStr + 'Z')
-  const now = new Date()
-  const diffMs = now.getTime() - d.getTime()
-  const diffMin = Math.floor(diffMs / 60000)
-  if (diffMin < 1) return t.admin.chat.justNow || 'Just now'
-  if (diffMin < 60) return (t.admin.chat.minutesAgo || '{n}m ago').replace('{n}', String(diffMin))
-  const diffHr = Math.floor(diffMin / 60)
-  if (diffHr < 24) return (t.admin.chat.hoursAgo || '{n}h ago').replace('{n}', String(diffHr))
-  return d.toLocaleDateString()
+  const chatT = t?.admin?.chat || {}
+  return getTimeAgoI18n(dateStr, { justNow: chatT.justNow, minutesAgo: chatT.minutesAgo, hoursAgo: chatT.hoursAgo, daysAgo: chatT.daysAgo })
 }
 
 export default function IaChatPage() {
@@ -165,7 +160,21 @@ export default function IaChatPage() {
   useEffect(() => {
     fetchConversations()
     fetchAgents()
+
+    // Poll for new conversations every 30s
+    const pollConversations = setInterval(() => {
+      if (!document.hidden) fetchConversations()
+    }, 30_000)
+
+    return () => clearInterval(pollConversations)
   }, [fetchConversations, fetchAgents])
+
+  // Refresh relative times every 60s
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    const tick = setInterval(() => setTick(t => t + 1), 60_000)
+    return () => clearInterval(tick)
+  }, [])
 
   useEffect(() => {
     if (selectedConv) {
@@ -825,7 +834,8 @@ function AgentForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3">
+    <RealtimeProvider>
+      <form onSubmit={handleSubmit} className="space-y-3">
       <div>
         <label className="text-[11px] font-medium text-[#9ca0b0] block mb-1">{t.admin.chat.agents.name}</label>
         <input
@@ -904,5 +914,6 @@ function AgentForm({
         </button>
       </div>
     </form>
+    </RealtimeProvider>
   )
 }

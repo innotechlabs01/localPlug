@@ -13,9 +13,11 @@ export async function GET(req: Request) {
   const driverCat = searchParams.get('driverCat') || 'all'
 
   // ── Build orders query ──
-  let sql = `SELECT o.*, d.name as driver_name, d.vehicle as driver_vehicle
+  let sql = `SELECT o.*, d.name as driver_name, d.vehicle as driver_vehicle,
+             COALESCE(p.status, o.payment_status) as payment_status
              FROM orders o
              LEFT JOIN drivers d ON o.assigned_to = d.id
+             LEFT JOIN payments p ON o.booking_reference = p.booking_reference
              WHERE 1=1`
   const args: (string | number)[] = []
 

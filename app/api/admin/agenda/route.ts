@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
+import { getToday } from '@/lib/date-utils'
 
 export async function GET(req: Request) {
   const db = getDb()
   const { searchParams } = new URL(req.url)
-  const date = searchParams.get('date') || new Date().toISOString().split('T')[0]
+  const date = searchParams.get('date') || getToday()
 
   const result = await db.execute({
     sql: `SELECT

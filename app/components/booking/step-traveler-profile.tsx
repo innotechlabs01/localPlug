@@ -3,6 +3,7 @@
 import { useI18n } from '@/lib/i18n'
 import { useState, useEffect } from 'react'
 import type { ReactNode } from 'react'
+import PhoneInputWithCountry from './phone-input-with-country'
 
 interface StepTravelerProfileProps {
   value: string
@@ -153,20 +154,15 @@ export default function StepTravelerProfile({
           />
         </div>
         <div>
-          <label htmlFor="traveler-phone" className="block text-label-md text-[var(--text-primary)] font-semibold mb-1.5">
-            {t.common.phone}
-          </label>
-          <input
-            id="traveler-phone"
-            type="tel"
+          <PhoneInputWithCountry
             value={phone}
-            onChange={(e) => onPhoneChange(e.target.value)}
+            onChange={onPhoneChange}
+            countryCode={country}
+            onCountryCodeChange={onCountryChange}
+            countries={countries}
             placeholder={t.booking.steps.profile.phonePlaceholder}
-            className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-elevated)] text-body-md text-white placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-gold)]/40 focus:border-[var(--accent-gold)] transition-all"
+            hint={t.booking.steps.profile.phoneHint}
           />
-          <p className="text-body-sm text-[var(--text-muted)] mt-1">
-            {t.booking.steps.profile.phoneHint}
-          </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

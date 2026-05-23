@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
+import { cookies } from 'next/headers'
 import { Playfair_Display, Plus_Jakarta_Sans } from 'next/font/google'
-import { I18nProvider } from '@/lib/i18n'
+import { I18nProvider, type Lang } from '@/lib/i18n'
 import ChatWidget from '@/app/components/chat/ChatWidget'
 import './globals.css'
 
@@ -70,19 +71,22 @@ const jsonLd = {
   ],
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const cookieStore = await cookies()
+  const initialLang = (cookieStore.get('localplug-lang')?.value === 'es' ? 'es' : 'en') as Lang
+
   return (
-    <html lang="en" className={`${playfairDisplay.variable} ${plusJakartaSans.variable}`}>
+    <html lang={initialLang} suppressHydrationWarning className={`${playfairDisplay.variable} ${plusJakartaSans.variable}`}>
       <body className="min-h-screen bg-bg-dark font-body antialiased">
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
-        <I18nProvider>
+        <I18nProvider initialLang={initialLang}>
           {children}
           <ChatWidget />
         </I18nProvider>

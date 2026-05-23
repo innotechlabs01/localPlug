@@ -9,10 +9,12 @@ const PACKAGE_PRICES: Record<string, number> = {
   'full-insider': 24900,
 }
 
+const RETURN_TRIP_CHARGE_CENTS = 4800
+
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const { bookingReference, packageId, customerEmail, customerName, customerPhone, flightNumber, airline, arrivalDate, arrivalTime } = body as {
+    const { bookingReference, packageId, customerEmail, customerName, customerPhone, flightNumber, airline, arrivalDate, arrivalTime, needReturn } = body as {
       bookingReference: string
       packageId: string
       customerEmail: string
@@ -22,6 +24,7 @@ export async function POST(req: Request) {
       airline?: string
       arrivalDate?: string
       arrivalTime?: string
+      needReturn?: boolean
     }
 
     if (!bookingReference || !packageId || !customerEmail || !customerName) {
@@ -31,13 +34,15 @@ export async function POST(req: Request) {
       )
     }
 
-    const amount = PACKAGE_PRICES[packageId]
-    if (amount === undefined) {
+    const baseAmount = PACKAGE_PRICES[packageId]
+    if (baseAmount === undefined) {
       return NextResponse.json(
         { error: 'invalid_request', message: 'Invalid package ID' },
         { status: 400 },
       )
     }
+
+    const amount = baseAmount + (needReturn ? RETURN_TRIP_CHARGE_CENTS : 0)
 
     if (await hasPayment(bookingReference)) {
       const existing = await getPayment(bookingReference)

@@ -31,16 +31,18 @@ export async function POST(request: Request) {
     const customer = body.customer || {}
     const flight = body.flight || {}
     const dest = body.destination || {}
+    const needReturn = flight.needReturn ?? false
+    const packagePrice = (PACKAGE_PRICES[pkg] || 0) + (needReturn ? 48 : 0)
 
     await db.execute({
       sql: `INSERT INTO orders (
         order_number, booking_reference, customer_name, customer_email, customer_phone,
-        customer_country, customer_language, customer_notes, return_date, return_time,
+        customer_country, customer_notes, return_date, return_time,
         package_id, package_name, package_price, currency,
         flight_number, airline, arrival_date, arrival_time,
         destination_address, destination_has_place, additional_trips,
         traveler_profile, status, dispatch_status, payment_status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         orderNumber,
         bookingRef,
@@ -48,13 +50,12 @@ export async function POST(request: Request) {
         customer.email || null,
         customer.phone || null,
         customer.country || null,
-        customer.language || null,
         customer.notes || null,
         flight.returnDate || null,
         flight.returnTime || null,
         pkg,
         PACKAGE_NAMES[pkg] || pkg,
-        PACKAGE_PRICES[pkg] || 0,
+        packagePrice,
         'usd',
         flight.flightNumber || null,
         flight.airline || null,

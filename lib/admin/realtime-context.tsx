@@ -57,6 +57,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
 
   const lastTimestampRef = useRef<string | null>(null)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const failedRef = useRef(false)
 
   const fetchRealtime = useCallback(async () => {
     try {
@@ -64,7 +65,16 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       if (lastTimestampRef.current) params.set('since', lastTimestampRef.current)
 
       const res = await fetch(`/api/admin/realtime?${params}`)
-      if (!res.ok) return
+      if (!res.ok) {
+        if (res.status === 401) {
+          failedRef.current = true
+          if (intervalRef.current) {
+            clearInterval(intervalRef.current)
+            intervalRef.current = null
+          }
+        }
+        return
+      }
 
       const data = await res.json()
 
@@ -188,6 +198,15 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
 
 export function useRealtime() {
   const ctx = useContext(RealtimeContext)
-  if (!ctx) throw new Error('useRealtime must be used within RealtimeProvider')
-  return ctx
+  return ctx ?? {
+    orders: [],
+    conversations: [],
+    stats: { new_orders: 0, in_progress_orders: 0, pending_dispatch: 0, assigned_dispatch: 0, escalated_conversations: 0, active_conversations: 0, available_drivers: 0, busy_drivers: 0 },
+    notifications: [],
+    unreadCount: 0,
+    lastUpdate: null,
+    markAsRead: () => {},
+    markAllAsRead: () => {},
+    refetch: async () => {},
+  }
 }

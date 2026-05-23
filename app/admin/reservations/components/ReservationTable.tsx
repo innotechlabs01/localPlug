@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { Reservation } from '@/lib/reservations-api'
+import { formatDateShort } from '@/lib/date-utils'
 
 interface ReservationTableProps {
   reservations: Reservation[]
@@ -263,9 +264,7 @@ function getAvatarColor(letter: string): string {
 }
 
 function formatDate(dateStr: string): string {
-  if (!dateStr) return ''
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  return formatDateShort(dateStr)
 }
 
 function formatTime(timeStr: string | undefined): string {

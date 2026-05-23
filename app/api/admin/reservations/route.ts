@@ -13,7 +13,7 @@ function transformOrderToReservation(order: any) {
       email: order.customer_email || '',
       phone: order.customer_phone || '',
       country: order.customer_country || 'N/A',
-      language: order.customer_language || 'Not specified'
+      language: 'Not specified'
     },
     service: {
       id: order.package_id || '',
@@ -66,13 +66,14 @@ export async function GET(req: Request) {
     const result = await db.execute(`
       SELECT 
         o.id, o.order_number, o.booking_reference, o.customer_name, o.customer_email,
-        o.customer_phone, o.customer_country, o.customer_language, o.customer_notes,
+        o.customer_phone, o.customer_country, o.customer_notes,
         o.package_id, o.package_name, o.package_price, o.currency,
         o.flight_number, o.airline, o.arrival_date, o.arrival_time,
         o.return_date, o.return_time,
         o.destination_address, o.destination_has_place, o.additional_trips,
         o.traveler_profile,
-        o.status, o.dispatch_status, o.payment_status,
+        o.status, o.dispatch_status,
+        COALESCE(p.status, o.payment_status) as payment_status,
         o.payment_id,
         o.priority, o.internal_notes,
         o.assigned_to, o.assigned_at,
@@ -82,6 +83,7 @@ export async function GET(req: Request) {
         d.status as driver_status
       FROM orders o
       LEFT JOIN drivers d ON o.assigned_to = d.id
+      LEFT JOIN payments p ON o.booking_reference = p.booking_reference
       ORDER BY o.arrival_date DESC, o.arrival_time DESC
     `)
 

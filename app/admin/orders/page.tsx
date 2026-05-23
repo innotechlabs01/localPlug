@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { I18nProvider, useI18n } from '@/lib/i18n'
+import { adminFetch } from '@/lib/admin/admin-fetch'
+import { RealtimeProvider } from '@/lib/admin/realtime-context'
+import { formatDateTime, getToday, getLocalDatePart } from '@/lib/date-utils'
 
 interface Order {
   id: number
@@ -45,13 +48,14 @@ function OrdersInner() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
+  const [showTodayOnly, setShowTodayOnly] = useState(false)
 
   useEffect(() => {
     const params = new URLSearchParams()
     if (statusFilter !== 'all') params.set('status', statusFilter)
     if (searchQuery) params.set('search', searchQuery)
 
-    fetch(`/api/admin/orders?${params.toString()}`)
+    adminFetch(`/api/admin/orders?${params.toString()}`)
       .then(r => r.json())
       .then(data => {
         setOrders(data)
@@ -60,11 +64,16 @@ function OrdersInner() {
       .catch(() => setLoading(false))
   }, [statusFilter, searchQuery])
 
+  const today = getToday()
+  const filteredOrders = showTodayOnly
+    ? orders.filter(o => getLocalDatePart(o.arrival_date || o.created_at) === today)
+    : orders
+
   const openOrderDetail = async (order: Order) => {
     setDetailLoading(true)
     setSelectedOrder(order)
     try {
-      const res = await fetch(`/api/admin/orders/${order.id}`)
+      const res = await adminFetch(`/api/admin/orders/${order.id}`)
       if (res.ok) {
         const data = await res.json()
         setSelectedOrder(data)
@@ -116,6 +125,16 @@ function OrdersInner() {
           <h1 className="text-[18px] font-semibold text-[#f0f2f5]">{t.admin.orders.title}</h1>
           <p className="text-[13px] text-[#646880] mt-1">{t.admin.orders.subtitle}</p>
         </div>
+        <button
+          onClick={() => setShowTodayOnly(!showTodayOnly)}
+          className={`px-3 py-1.5 rounded-[6px] text-[12px] font-medium transition-all ${
+            showTodayOnly
+              ? 'bg-[#10b981] text-white'
+              : 'bg-[#181b25] text-[#9ca0b0] border border-[#282b38] hover:bg-[#202330]'
+          }`}
+        >
+          {showTodayOnly ? 'Today Only' : 'All Dates'}
+        </button>
       </div>
 
       {/* Status Tabs */}
@@ -172,7 +191,7 @@ function OrdersInner() {
               </tr>
             </thead>
             <tbody>
-              {orders.map((order) => (
+              {filteredOrders.map((order) => (
                 <tr key={order.id} className="border-b border-[#282b38] hover:bg-[#202330] transition-colors">
                   <td className="px-6 py-4">
                     <div>
@@ -363,7 +382,7 @@ function OrdersInner() {
                         }`} />
                       <div className="flex-1">
                         <p className="text-sm text-[#f0f2f5]">{item.description}</p>
-                        <p className="text-xs text-[#646880]">{new Date(item.timestamp).toLocaleString()}</p>
+                        <p className="text-xs text-[#646880]">{formatDateTime(item.timestamp)}</p>
                       </div>
                     </div>
                   ))}
@@ -382,8 +401,10 @@ function OrdersInner() {
 
 export default function OrdersPage() {
   return (
-    <I18nProvider>
-      <OrdersInner />
-    </I18nProvider>
+    <RealtimeProvider>
+      <I18nProvider>
+        <OrdersInner />
+      </I18nProvider>
+    </RealtimeProvider>
   )
 }

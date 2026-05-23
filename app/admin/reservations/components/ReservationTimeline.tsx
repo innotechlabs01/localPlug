@@ -14,8 +14,8 @@ export default function ReservationTimeline({ reservations }: ReservationTimelin
       return arrivalDate >= now && arrivalDate <= next24Hours
     })
     .sort((a, b) => {
-      const dateA = new Date(`${a.arrivalDate}${a.arrivalTime || '00:00'}`)
-      const dateB = new Date(`${b.arrivalDate}${b.arrivalTime || '00:00'}`)
+      const dateA = new Date(`${a.arrivalDate}T${a.arrivalTime || '00:00'}`)
+      const dateB = new Date(`${b.arrivalDate}T${b.arrivalTime || '00:00'}`)
       return dateA.getTime() - dateB.getTime()
     })
 
@@ -35,7 +35,7 @@ export default function ReservationTimeline({ reservations }: ReservationTimelin
             <div 
               className={`timeline-dot ${getStatusClass(reservation.status)}`} 
               // Add arrived class if it's in the past
-              {...(new Date(`${reservation.arrivalDate}${reservation.arrivalTime || '00:00'}`) < new Date() ? 
+              {...(new Date(`${reservation.arrivalDate}T${reservation.arrivalTime || '00:00'}`) < new Date() ? 
                 { className: 'timeline-dot arrived' } : {})}
             />
           </div>

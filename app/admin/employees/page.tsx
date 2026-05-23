@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useI18n } from '@/lib/i18n'
+import { adminFetch } from '@/lib/admin/admin-fetch'
 
 interface Employee {
   id: number; name: string | null; email: string | null; phone: string | null
@@ -48,8 +49,8 @@ export default function EmployeesPage() {
   const fetchEmployees = useCallback(async () => {
     try {
       const [empRes, roleRes] = await Promise.all([
-        fetch('/api/admin/employees'),
-        fetch('/api/admin/team'),
+        adminFetch('/api/admin/employees'),
+        adminFetch('/api/admin/team'),
       ])
       if (empRes.ok) {
         const data = await empRes.json()
@@ -120,7 +121,7 @@ export default function EmployeesPage() {
     try {
       const body = { ...form }
       if (editEmp) body.id = String(editEmp.id)
-      const res = await fetch('/api/admin/employees', {
+      const res = await adminFetch('/api/admin/employees', {
         method: editEmp ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),

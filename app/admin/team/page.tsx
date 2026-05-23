@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useI18n } from '@/lib/i18n'
+import { adminFetch } from '@/lib/admin/admin-fetch'
+import { RealtimeProvider } from '@/lib/admin/realtime-context'
 
 interface TeamMember {
   id: number; name: string; email: string; roles: string
@@ -45,8 +47,8 @@ export default function TeamPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/admin/team').then(r => r.json()),
-      fetch('/api/admin/team/roles').then(r => r.json()).catch(() => []),
+      adminFetch('/api/admin/team').then(r => r.json()),
+      adminFetch('/api/admin/team/roles').then(r => r.json()).catch(() => []),
     ]).then(([data, roleData]) => {
       setMembers(data)
       setRoles(roleData.roles || roleData || [])
@@ -82,7 +84,7 @@ export default function TeamPage() {
         showToast(d.validationRequired || 'Name, email, and role are required')
         return
       }
-      const res = await fetch('/api/admin/team', {
+      const res = await adminFetch('/api/admin/team', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: form.name, email: form.email, role_id: Number(form.role_id) }),
@@ -91,7 +93,7 @@ export default function TeamPage() {
         showToast(d.memberCreated || 'Member created')
         setModalOpen(false)
         setForm({})
-        const data = await fetch('/api/admin/team').then(r => r.json())
+        const data = await adminFetch('/api/admin/team').then(r => r.json())
         setMembers(data)
       } else {
         const err = await res.json()
@@ -129,7 +131,8 @@ export default function TeamPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <RealtimeProvider>
+      <div className="space-y-6">
       {/* ── Header ── */}
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
@@ -479,5 +482,6 @@ export default function TeamPage() {
         .animate-slide-up { animation: slide-up 300ms ease; }
       `}</style>
     </div>
+    </RealtimeProvider>
   )
 }

@@ -3,6 +3,47 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { usePolling } from './use-polling'
+import { adminFetch } from '@/lib/admin/admin-fetch'
+import { RealtimeProvider } from '@/lib/admin/realtime-context'
+import { getToday, getLocalDatePart } from '@/lib/date-utils'
+
+interface AuthModalProps {
+  open: boolean
+  onClose: () => void
+}
+
+function AuthModal({ open, onClose }: AuthModalProps) {
+  if (!open) return null
+
+  return (
+    <div className="dp-modal-overlay" onClick={onClose}>
+      <div className="dp-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 380 }}>
+        <div className="dp-modal-header">
+          <span style={{ fontSize: 16, fontWeight: 600, color: '#f0f2f5' }}>Sesión Expirada</span>
+        </div>
+        <div className="dp-modal-body">
+          <p style={{ fontSize: 13, color: '#9ca0b0', marginBottom: 16 }}>
+            Tu sesión ha expirado. Por favor inicia sesión nuevamente para continuar.
+          </p>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button
+              onClick={onClose}
+              style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid #282b38', background: 'transparent', color: '#f0f2f5', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
+            >
+              Cerrar
+            </button>
+            <button
+              onClick={() => window.location.href = '/'}
+              style={{ padding: '8px 16px', borderRadius: 6, border: 'none', background: '#10b981', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+            >
+              Ir al Inicio
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // ── Types ──
 interface Driver {
@@ -17,6 +58,7 @@ interface Order {
   customer_phone: string | null; customer_country: string | null
   customer_email: string | null; flight_number: string | null; airline: string | null
   arrival_date: string | null; arrival_time: string | null
+  return_date: string | null; return_time: string | null
   destination_address: string | null; package_name: string | null
   priority: string | null; status: string; dispatch_status: string | null
   assigned_to: number | null; driver_name: string | null; driver_vehicle: string | null
@@ -55,27 +97,37 @@ export default function DispatchPage() {
   const [assignedDrivers, setAssignedDrivers] = useState<Record<number, number>>({})
   const [notifications, setNotifications] = useState<{ id: number; type: string; title: string; desc: string }[]>([])
 
+  const [authModalOpen, setAuthModalOpen] = useState(false)
+
   const fetchData = useCallback(async () => {
     const params = new URLSearchParams({ tab, driverCat })
     if (search) params.set('search', search)
     try {
-      const res = await fetch(`/api/admin/dispatch?${params}`)
+      const res = await adminFetch(`/api/admin/dispatch?${params}`)
       const d: DispatchData = await res.json()
       setData(d)
       // Track assigned drivers
       const map: Record<number, number> = {}
-      for (const o of d.orders) {
+      for (const o of d.orders || []) {
         if (o.assigned_to) map[o.id] = o.assigned_to
       }
       setAssignedDrivers(map)
     } catch (err) {
+      if (err instanceof Error && err.message === 'AUTH_ERROR') {
+        setAuthModalOpen(true)
+        throw err
+      }
       console.error('Failed to fetch dispatch data', err)
     }
     setLoading(false)
   }, [tab, search, driverCat])
 
+  const handleAuthError = useCallback(() => {
+    setAuthModalOpen(true)
+  }, [])
+
   useEffect(() => { fetchData() }, [fetchData])
-  usePolling(fetchData, { intervalMs: 10_000 })
+  usePolling(fetchData, { intervalMs: 10_000, onAuthError: handleAuthError })
 
   const addNotif = (type: string, title: string, desc: string) => {
     const id = Date.now()
@@ -101,7 +153,7 @@ export default function DispatchPage() {
   )
 
   const doAssign = async (orderId: number, driverId: number) => {
-    const res = await fetch('/api/admin/dispatch', {
+    const res = await adminFetch('/api/admin/dispatch', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'assign', orderId, driverId }),
@@ -115,7 +167,7 @@ export default function DispatchPage() {
   }
 
   const doUnassign = async (orderId: number) => {
-    const res = await fetch('/api/admin/dispatch', {
+    const res = await adminFetch('/api/admin/dispatch', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'unassign', orderId }),
     })
@@ -129,7 +181,7 @@ export default function DispatchPage() {
   }
 
   const doStatus = async (orderId: number, status: string) => {
-    const res = await fetch('/api/admin/dispatch', {
+    const res = await adminFetch('/api/admin/dispatch', {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'status', orderId, status }),
     })
@@ -149,7 +201,9 @@ export default function DispatchPage() {
 
   const filteredOrders = useMemo(() => {
     let list = orders
-    if (tab === 'pending') list = list.filter(o => (o.dispatch_status || 'pending') === 'pending')
+    const today = getToday()
+    if (tab === 'today') list = list.filter(o => getLocalDatePart(o.arrival_date || o.created_at) === today)
+    else if (tab === 'pending') list = list.filter(o => (o.dispatch_status || 'pending') === 'pending')
     else if (tab === 'assigned') list = list.filter(o => o.dispatch_status === 'assigned')
     else if (tab === 'enroute') list = list.filter(o => o.dispatch_status === 'enroute')
     else if (tab === 'completed') list = list.filter(o => o.dispatch_status === 'completed')
@@ -174,6 +228,7 @@ export default function DispatchPage() {
 
 
   return (
+    <RealtimeProvider>
     <>
       <style>{`
         .dispatch-layout {
@@ -363,9 +418,9 @@ export default function DispatchPage() {
           </div>
 
           <div className="dp-filter-tabs">
-            {(['all', 'pending', 'assigned', 'enroute', 'pickedup', 'completed', 'vip'] as const).map(t => (
+            {(['today', 'all', 'pending', 'assigned', 'enroute', 'pickedup', 'completed', 'vip'] as const).map(t => (
               <button key={t} className={`dp-filter-tab ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
-                {t === 'all' ? d.all : t === 'pending' ? d.pending : t === 'assigned' ? d.assigned : t === 'enroute' ? d.enroute : t === 'pickedup' ? d.pickedup : t === 'completed' ? d.completed : d.vIP}
+                {t === 'today' ? 'Today' : t === 'all' ? d.all : t === 'pending' ? d.pending : t === 'assigned' ? d.assigned : t === 'enroute' ? d.enroute : t === 'pickedup' ? d.pickedup : t === 'completed' ? d.completed : d.vIP}
               </button>
             ))}
           </div>
@@ -483,6 +538,9 @@ export default function DispatchPage() {
                       <div className="dp-info-item"><span className="dp-info-label">{d.flight}</span><span className="dp-info-value mono">{selectedOrder.flight_number || '—'}</span></div>
                       <div className="dp-info-item"><span className="dp-info-label">{d.airline}</span><span className="dp-info-value">{selectedOrder.airline || '—'}</span></div>
                       <div className="dp-info-item"><span className="dp-info-label">{d.arrival}</span><span className="dp-info-value mono">{selectedOrder.arrival_date} {selectedOrder.arrival_time || ''}</span></div>
+                      {selectedOrder.return_date && (
+                        <div className="dp-info-item"><span className="dp-info-label">{d.returnLabel || 'Return'}</span><span className="dp-info-value mono">{selectedOrder.return_date} {selectedOrder.return_time || ''}</span></div>
+                      )}
                       <div className="dp-info-item"><span className="dp-info-label">{d.service}</span><span className="dp-info-value">{selectedOrder.package_name || '—'}</span></div>
                       <div className="dp-info-item"><span className="dp-info-label">{d.destination}</span><span className="dp-info-value">{selectedOrder.destination_address || '—'}</span></div>
                       <div className="dp-info-item"><span className="dp-info-label">{d.priority}</span><span className="dp-info-value" style={{ color: selectedOrder.priority === 'urgent' ? theme.danger : selectedOrder.priority === 'high' ? theme.warning : theme.fg }}>{selectedOrder.priority === 'urgent' ? d.urgent : selectedOrder.priority === 'high' ? d.high : d.normal}</span></div>
@@ -714,6 +772,10 @@ export default function DispatchPage() {
           )
         })}
       </div>
+
+      {/* ── Auth Modal ── */}
+      <AuthModal open={authModalOpen} onClose={() => setAuthModalOpen(false)} />
     </>
+    </RealtimeProvider>
   )
 }

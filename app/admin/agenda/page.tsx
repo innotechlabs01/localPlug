@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { I18nProvider, useI18n } from '@/lib/i18n'
+import { adminFetch } from '@/lib/admin/admin-fetch'
+import { getToday } from '@/lib/date-utils'
+import { RealtimeProvider } from '@/lib/admin/realtime-context'
 
 interface AgendaItem {
   id: number
@@ -16,10 +19,35 @@ function AgendaInner() {
   const { t } = useI18n()
   const [items, setItems] = useState<AgendaItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  const [selectedDate, setSelectedDate] = useState(getToday())
+
+  // Auto-refresh when day changes
+  useEffect(() => {
+    const checkDayChange = setInterval(() => {
+      const today = getToday()
+      if (today !== selectedDate) {
+        setSelectedDate(today)
+      }
+    }, 60_000) // Check every minute
+    return () => clearInterval(checkDayChange)
+  }, [selectedDate])
+
+  // Refresh data when page becomes visible
+  useEffect(() => {
+    const onVisible = () => {
+      if (!document.hidden) {
+        const today = getToday()
+        if (today !== selectedDate) {
+          setSelectedDate(today)
+        }
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [selectedDate])
 
   useEffect(() => {
-    fetch(`/api/admin/agenda?date=${selectedDate}`)
+    adminFetch(`/api/admin/agenda?date=${selectedDate}`)
       .then(r => r.json())
       .then(data => {
         setItems(data)
@@ -100,8 +128,10 @@ function AgendaInner() {
 
 export default function AgendaPage() {
   return (
-    <I18nProvider>
-      <AgendaInner />
-    </I18nProvider>
+    <RealtimeProvider>
+      <I18nProvider>
+        <AgendaInner />
+      </I18nProvider>
+    </RealtimeProvider>
   )
 }
