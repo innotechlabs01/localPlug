@@ -148,7 +148,7 @@ export default function CaseDetailPage() {
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                     <span className="flex-1 text-[13px] text-[#f0f2f5] truncate">{doc.name}</span>
                     <span className="text-[11px] text-[#646880]">{doc.size}</span>
-                    <a href="#" className="text-[12px] text-[#10b981] hover:text-[#34d399] transition-colors font-medium">Download</a>
+                    <a href="#" className="text-[12px] text-[#10b981] hover:text-[#34d399] transition-colors font-medium">{t.admin.cases?.download || 'Download'}</a>
                   </div>
                 ))}
               </div>
@@ -173,7 +173,7 @@ export default function CaseDetailPage() {
                       <div className={`text-[13px] font-medium ${task.status === 'Completed' ? 'text-[#646880] line-through' : 'text-[#f0f2f5]'}`}>
                         {task.title}
                       </div>
-                      <div className="text-[11px] text-[#646880] mt-0.5">{task.assignee} · Due {task.due}</div>
+                      <div className="text-[11px] text-[#646880] mt-0.5">{task.assignee} · {t.admin.cases?.duePrefix || 'Due '}{task.due}</div>
                     </div>
                     <span className={`px-2 py-0.5 rounded-full text-[11px] font-medium ${
                       task.status === 'Completed' ? 'bg-[rgba(16,185,129,0.12)] text-[#10b981]' : 'bg-[rgba(59,130,246,0.12)] text-[#3b82f6]'

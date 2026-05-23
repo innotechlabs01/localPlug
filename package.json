@@ -10,7 +10,12 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "prettier": "prettier --write .",
-    "prettier:check": "prettier --check ."
+    "prettier:check": "prettier --check .",
+    "db:migrate": "npx tsx scripts/migrate.ts",
+    "db:clear-drivers": "npx tsx scripts/migrate.ts clear-drivers",
+    "db:reset-orders": "npx tsx scripts/migrate.ts reset-orders",
+    "db:status": "npx tsx scripts/migrate.ts status",
+    "setup-admin": "npx tsx scripts/setup-admin.ts"
   },
   "keywords": [],
   "author": "",
@@ -23,6 +28,7 @@
     ]
   },
   "dependencies": {
+    "@clerk/nextjs": "^7.3.7",
     "@libsql/client": "^0.17.3",
     "@stripe/react-stripe-js": "^6.3.0",
     "@stripe/stripe-js": "^9.5.0",

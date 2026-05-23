@@ -31,4 +31,14 @@ For context about WhatsApp n8n communication implementation plan, data model, co
 specs/010-whatsapp-n8n-communication/plan.md
 specs/010-whatsapp-n8n-communication/data-model.md
 specs/010-whatsapp-n8n-communication/quickstart.md
+
+For context about admin reservations implementation, refer to:
+specs/011-admin-reservations-functionality/plan.md
+
+For context about return date validation — return date min equals arrival date when return transport is checked, refer to:
+specs/013-return-date-validation/plan.md
+
+For context about diagnosing and fixing Evolution API QR connection failure, refer to:
+specs/014-fix-evolution-qr-connection/plan.md
+
 <!-- SPECKIT END -->

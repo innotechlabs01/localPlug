@@ -14,11 +14,14 @@ const PACKAGE_PRICES_USD: Record<string, number> = {
   'full-insider': 249,
 }
 
+const RETURN_TRIP_CHARGE = 48
+
 interface FlightData {
   flightNumber: string
   airline: string
   arrivalDate: string
   arrivalTime: string
+  needReturn?: boolean
 }
 
 interface StepPaymentProps {
@@ -29,6 +32,7 @@ interface StepPaymentProps {
   customerPhone: string
   flightData: FlightData
   destinationAddress: string
+  needReturn?: boolean
   onPaymentSuccess: () => void
   onPaymentError: (message: string) => void
 }
@@ -41,6 +45,7 @@ export default function StepPayment({
   customerPhone,
   flightData,
   destinationAddress,
+  needReturn,
   onPaymentSuccess,
   onPaymentError,
 }: StepPaymentProps) {
@@ -66,6 +71,7 @@ export default function StepPayment({
           airline: flightData.airline,
           arrivalDate: flightData.arrivalDate,
           arrivalTime: flightData.arrivalTime,
+          needReturn: needReturn ?? flightData.needReturn ?? false,
         }),
       })
 
@@ -104,8 +110,10 @@ export default function StepPayment({
     onPaymentError(message)
   }
 
+  const hasReturn = needReturn ?? flightData.needReturn ?? false
   const packageName = t.booking.steps.packages.packages[packageId as keyof typeof t.booking.steps.packages.packages]?.name || packageId
-  const price = PACKAGE_PRICES_USD[packageId] || 0
+  const basePrice = PACKAGE_PRICES_USD[packageId] || 0
+  const totalPrice = basePrice + (hasReturn ? RETURN_TRIP_CHARGE : 0)
   const packageT = t.booking.steps.packages.packages[packageId as keyof typeof t.booking.steps.packages.packages]
 
   return (
@@ -147,9 +155,15 @@ export default function StepPayment({
             <span className="text-[var(--text-secondary)]">Plan</span>
             <span className="text-white font-medium">{packageName}</span>
           </div>
+          {hasReturn && (
+            <div className="flex justify-between py-3 border-b border-[var(--border)] text-sm">
+              <span className="text-[var(--text-secondary)]">Return trip</span>
+              <span className="text-white font-medium">${RETURN_TRIP_CHARGE} USD</span>
+            </div>
+          )}
           <div className="flex justify-between py-3 text-base font-bold">
             <span className="text-[var(--text-secondary)]">Total</span>
-            <span className="text-[var(--accent-gold)]">${price} USD</span>
+            <span className="text-[var(--accent-gold)]">${totalPrice} USD</span>
           </div>
         </div>
       </div>
@@ -165,7 +179,7 @@ export default function StepPayment({
             <p className="text-body-md text-[#f87171] font-medium">{error}</p>
             <button
               type="button"
-              onClick={() => { setError(null); setLoading(true); fetchClientSecret() }}
+              onClick={() => { setError(null); setLoading(true); setClientSecret(null); fetchClientSecret() }}
               className="text-body-md text-[var(--accent-gold)] underline mt-1 hover:text-[var(--accent-gold-light)]"
             >
               {paymentT.tryAgain}
@@ -196,7 +210,7 @@ export default function StepPayment({
       )}
 
       {clientSecret && (
-        <Elements stripe={stripePromise} options={{ clientSecret }}>
+        <Elements key={clientSecret} stripe={stripePromise} options={{ clientSecret }}>
           <PaymentForm
             onError={handleError}
             onPaymentSuccess={onPaymentSuccess}

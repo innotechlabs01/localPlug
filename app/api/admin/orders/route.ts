@@ -9,7 +9,10 @@ export async function GET(req: Request) {
   const priority = searchParams.get('priority')
   const search = searchParams.get('search')
 
-  let sql = 'SELECT * FROM orders WHERE 1=1'
+  let sql = `SELECT o.*, COALESCE(p.status, o.payment_status) as payment_status
+             FROM orders o
+             LEFT JOIN payments p ON o.booking_reference = p.booking_reference
+             WHERE 1=1`
   const args: string[] = []
 
   if (status && status !== 'all') {

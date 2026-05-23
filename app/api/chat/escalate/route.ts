@@ -1,110 +1,78 @@
 import { NextResponse } from 'next/server'
-import { getDb } from '@/lib/db'
-import { triggerEscalation } from '@/lib/n8n/client'
-import { t } from '@/lib/i18n/server'
+import { takeOverConversation } from '@/lib/services/chat-service'
+import { auth } from '@clerk/nextjs/server'
 
-interface EscalateRequest {
-  conversationId: number
-  reason: string
-  assignedAgentId?: number
-  locale?: string
-}
-
+/**
+ * POST /api/chat/escalate
+ * Admin takes manual control of a WhatsApp conversation (Take Over)
+ */
 export async function POST(request: Request) {
   try {
-    const body: EscalateRequest = await request.json()
-    const { conversationId, reason, assignedAgentId, locale } = body
+    const { conversationId, reason } = await request.json()
 
-    if (!conversationId || !reason) {
+    if (!conversationId) {
       return NextResponse.json(
-        { error: 'conversationId and reason are required' },
-        { status: 400 },
+        { error: 'conversationId is required' },
+        { status: 400 }
       )
     }
 
-    const db = getDb()
-
-    // Get conversation details
-    const convResult = await db.execute({
-      sql: 'SELECT * FROM conversations WHERE id = ?',
-      args: [conversationId],
-    })
-
-    if (convResult.rows.length === 0) {
+    // Get the authenticated user from Clerk
+    const { userId } = await auth()
+    if (!userId) {
       return NextResponse.json(
-        { error: 'Conversation not found' },
-        { status: 404 },
+        { error: 'Unauthorized' },
+        { status: 401 }
       )
     }
 
-    const conversation = convResult.rows[0]
-
-    // Find an available agent if not specified
-    let agentId = assignedAgentId
-    if (!agentId) {
-      const agentResult = await db.execute({
-        sql: `SELECT id FROM support_agents
-              WHERE status = 'available' AND current_conversations < max_conversations
-              ORDER BY current_conversations ASC
-              LIMIT 1`,
-        args: [],
-      })
-
-      if (agentResult.rows.length > 0) {
-        agentId = Number(agentResult.rows[0].id)
-      }
-    }
-
-    // Update conversation
-    const updateSql = `
-      UPDATE conversations
-      SET status = 'escalated',
-          assigned_agent_id = ?,
-          assigned_at = datetime('now'),
-          updated_at = datetime('now')
-      WHERE id = ?
-    `
-    await db.execute({ sql: updateSql, args: [agentId || null, conversationId] })
-
-    // If agent assigned, update to human_active
-    if (agentId) {
-      await db.execute({
-        sql: `UPDATE conversations SET status = 'human_active', updated_at = datetime('now') WHERE id = ?`,
-        args: [conversationId],
-      })
-
-      // Increment agent conversation count
-      await db.execute({
-        sql: `UPDATE support_agents SET current_conversations = current_conversations + 1, status = 'busy', last_active_at = datetime('now') WHERE id = ?`,
-        args: [agentId],
-      })
-    }
-
-    // Add system message about escalation
-    await db.execute({
-      sql: `INSERT INTO messages (conversation_id, sender_type, content, message_type)
-            VALUES (?, 'system', ?, 'escalation')`,
-      args: [conversationId, t(locale || 'en', 'chat.escalated', { reason })],
+    // Get the user's internal ID and role from the database using the clerk_id
+    const db = await import('@/lib/db').then(mod => mod.getDb())
+    const userResult = await db.execute({
+      sql: 'SELECT id, role_id FROM users WHERE clerk_id = ?',
+      args: [userId]
     })
 
-    // Trigger n8n escalation workflow
-    await triggerEscalation({
-      conversationId,
-      reason,
-      userIdentifier: String(conversation.user_identifier),
-      assignedAgentId: agentId,
-    })
+    if (userResult.rows.length === 0) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      )
+    }
+
+    const agentId = userResult.rows[0].id
+    const roleId = userResult.rows[0].role_id
+
+    // Check if the user is an agent/admin (has a role_id assigned)
+    if (roleId === null) {
+      return NextResponse.json(
+        { error: 'Forbidden: insufficient permissions' },
+        { status: 403 }
+      )
+    }
+
+    const conversation = await takeOverConversation(Number(conversationId), Number(agentId), reason)
+
+    if (!conversation) {
+      return NextResponse.json(
+        { error: 'Conversation not found or cannot be taken over' },
+        { status: 404 }
+      )
+    }
 
     return NextResponse.json({
       success: true,
-      assignedAgentId: agentId,
-      status: agentId ? 'human_active' : 'escalated',
+      conversation: {
+        id: conversation.id,
+        status: conversation.status,
+        assigned_agent_id: conversation.assigned_agent_id
+      }
     })
   } catch (error) {
-    console.error('[Chat API] Escalate error:', error)
+    console.error('Error in escalate endpoint:', error)
     return NextResponse.json(
-      { error: 'Failed to escalate conversation' },
-      { status: 500 },
+      { error: 'Internal server error' },
+      { status: 500 }
     )
   }
 }

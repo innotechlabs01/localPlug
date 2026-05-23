@@ -1,80 +1,78 @@
 import { NextResponse } from 'next/server'
-import { getDb } from '@/lib/db'
-import { t } from '@/lib/i18n/server'
+import { releaseToAIMode } from '@/lib/services/chat-service'
+import { auth } from '@clerk/nextjs/server'
 
-interface CloseRequest {
-  conversationId: number
-  closedBy: 'user' | 'agent' | 'ai'
-  reason?: string
-  locale?: string
-}
-
+/**
+ * POST /api/chat/close
+ * Admin releases conversation back to AI control (AI Mode)
+ */
 export async function POST(request: Request) {
   try {
-    const body: CloseRequest = await request.json()
-    const { conversationId, closedBy, reason, locale } = body
+    const { conversationId, closedBy } = await request.json()
 
     if (!conversationId) {
       return NextResponse.json(
         { error: 'conversationId is required' },
-        { status: 400 },
+        { status: 400 }
       )
     }
 
-    const db = getDb()
-
-    // Get conversation details
-    const convResult = await db.execute({
-      sql: 'SELECT * FROM conversations WHERE id = ?',
-      args: [conversationId],
-    })
-
-    if (convResult.rows.length === 0) {
+    // Get the authenticated user from Clerk
+    const { userId } = await auth()
+    if (!userId) {
       return NextResponse.json(
-        { error: 'Conversation not found' },
-        { status: 404 },
+        { error: 'Unauthorized' },
+        { status: 401 }
       )
     }
 
-    const conversation = convResult.rows[0]
-
-    // Update conversation status
-    await db.execute({
-      sql: `UPDATE conversations SET status = 'closed', updated_at = datetime('now') WHERE id = ?`,
-      args: [conversationId],
+    // Get the user's internal ID and role from the database using the clerk_id
+    const db = await import('@/lib/db').then(mod => mod.getDb())
+    const userResult = await db.execute({
+      sql: 'SELECT id, role_id FROM users WHERE clerk_id = ?',
+      args: [userId]
     })
 
-    // If agent was assigned, decrement their conversation count
-    if (conversation.assigned_agent_id) {
-      await db.execute({
-        sql: `UPDATE support_agents
-              SET current_conversations = MAX(0, current_conversations - 1),
-                  status = CASE WHEN current_conversations <= 1 THEN 'available' ELSE status END,
-                  last_active_at = datetime('now')
-              WHERE id = ?`,
-        args: [conversation.assigned_agent_id],
-      })
+    if (userResult.rows.length === 0) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      )
     }
 
-    // Add system message about closure
-    const closeMessage = reason
-      ? t(locale || 'en', 'chat.closed', { reason })
-      : `Conversation closed by ${closedBy}`
-    await db.execute({
-      sql: `INSERT INTO messages (conversation_id, sender_type, content, message_type)
-            VALUES (?, 'system', ?, 'text')`,
-      args: [conversationId, closeMessage],
-    })
+    const agentId = userResult.rows[0].id
+    const roleId = userResult.rows[0].role_id
+
+    // Check if the user is an agent/admin (has a role_id assigned)
+    if (roleId === null) {
+      return NextResponse.json(
+        { error: 'Forbidden: insufficient permissions' },
+        { status: 403 }
+      )
+    }
+
+    const conversation = await releaseToAIMode(Number(conversationId), Number(agentId), closedBy)
+
+    if (!conversation) {
+      return NextResponse.json(
+        { error: 'Conversation not found or cannot be released to AI mode' },
+        { status: 404 }
+      )
+    }
 
     return NextResponse.json({
       success: true,
-      closed: true,
+      conversation: {
+        id: conversation.id,
+        status: conversation.status,
+        assigned_agent_id: conversation.assigned_agent_id
+      }
     })
   } catch (error) {
-    console.error('[Chat API] Close error:', error)
+    console.error('Error in close endpoint:', error)
     return NextResponse.json(
-      { error: 'Failed to close conversation' },
-      { status: 500 },
+      { error: 'Internal server error' },
+      { status: 500 }
     )
   }
 }

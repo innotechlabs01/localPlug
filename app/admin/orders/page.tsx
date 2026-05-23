@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { I18nProvider, useI18n } from '@/lib/i18n'
+import { adminFetch } from '@/lib/admin/admin-fetch'
+import { RealtimeProvider } from '@/lib/admin/realtime-context'
+import { formatDateTime, getToday, getLocalDatePart } from '@/lib/date-utils'
 
 interface Order {
   id: number
@@ -9,58 +12,96 @@ interface Order {
   booking_reference: string
   customer_name: string
   customer_email: string
+  customer_phone: string
+  customer_country: string
   package_name: string
   package_price: number
+  currency: string
   status: string
   priority: string
   assigned_to: number | null
+  driver_name: string | null
+  driver_phone: string | null
+  driver_vehicle: string | null
+  driver_plate: string | null
+  dispatch_status: string
   payment_status: string
   flight_number: string | null
+  airline: string | null
   arrival_date: string | null
+  arrival_time: string | null
+  destination_address: string | null
+  customer_notes: string | null
   created_at: string
   updated_at: string
+  assigned_at: string | null
+  history?: { status: string; timestamp: string; description: string }[]
 }
 
 type StatusFilter = 'all' | 'new' | 'confirmed' | 'in_progress' | 'on_hold' | 'completed' | 'cancelled'
-type PriorityFilter = 'all' | 'low' | 'normal' | 'high' | 'urgent'
 
 function OrdersInner() {
   const { t } = useI18n()
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
-  const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>('all')
   const [searchQuery, setSearchQuery] = useState('')
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
+  const [showTodayOnly, setShowTodayOnly] = useState(false)
 
   useEffect(() => {
     const params = new URLSearchParams()
     if (statusFilter !== 'all') params.set('status', statusFilter)
-    if (priorityFilter !== 'all') params.set('priority', priorityFilter)
     if (searchQuery) params.set('search', searchQuery)
 
-    fetch(`/api/admin/orders?${params.toString()}`)
+    adminFetch(`/api/admin/orders?${params.toString()}`)
       .then(r => r.json())
       .then(data => {
         setOrders(data)
         setLoading(false)
       })
       .catch(() => setLoading(false))
-  }, [statusFilter, priorityFilter, searchQuery])
+  }, [statusFilter, searchQuery])
+
+  const today = getToday()
+  const filteredOrders = showTodayOnly
+    ? orders.filter(o => getLocalDatePart(o.arrival_date || o.created_at) === today)
+    : orders
+
+  const openOrderDetail = async (order: Order) => {
+    setDetailLoading(true)
+    setSelectedOrder(order)
+    try {
+      const res = await adminFetch(`/api/admin/orders/${order.id}`)
+      if (res.ok) {
+        const data = await res.json()
+        setSelectedOrder(data)
+      }
+    } catch (err) {
+      console.error('Failed to load order details:', err)
+    }
+    setDetailLoading(false)
+  }
+
+  const closeModal = () => {
+    setSelectedOrder(null)
+  }
 
   const statusColors: Record<string, string> = {
-    new: 'bg-blue-100 text-blue-800',
-    confirmed: 'bg-green-100 text-green-800',
-    in_progress: 'bg-yellow-100 text-yellow-800',
-    on_hold: 'bg-orange-100 text-orange-800',
-    completed: 'bg-emerald-100 text-emerald-800',
-    cancelled: 'bg-red-100 text-red-800',
+    new: 'bg-[rgba(59,130,246,0.12)] text-[#3b82f6]',
+    confirmed: 'bg-[rgba(16,185,129,0.12)] text-[#10b981]',
+    in_progress: 'bg-[rgba(245,158,11,0.12)] text-[#f59e0b]',
+    on_hold: 'bg-[rgba(245,158,11,0.12)] text-[#f59e0b]',
+    completed: 'bg-[rgba(16,185,129,0.12)] text-[#10b981]',
+    cancelled: 'bg-[rgba(239,68,80,0.12)] text-[#ef4450]',
   }
 
   const priorityColors: Record<string, string> = {
-    low: 'bg-cool-slate-100 text-cool-slate-600',
-    normal: 'bg-blue-100 text-blue-600',
-    high: 'bg-orange-100 text-orange-600',
-    urgent: 'bg-red-100 text-red-600',
+    low: 'bg-[rgba(100,104,128,0.12)] text-[#646880]',
+    normal: 'bg-[rgba(59,130,246,0.12)] text-[#3b82f6]',
+    high: 'bg-[rgba(245,158,11,0.12)] text-[#f59e0b]',
+    urgent: 'bg-[rgba(239,68,80,0.12)] text-[#ef4450]',
   }
 
   const statusCounts = orders.reduce((acc, order) => {
@@ -71,7 +112,7 @@ function OrdersInner() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-cool-slate-500">Loading orders...</div>
+        <div className="text-[#646880]">Loading orders...</div>
       </div>
     )
   }
@@ -81,11 +122,18 @@ function OrdersInner() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-display-lg text-slate-navy">{t.admin.orders.title}</h1>
-          <p className="text-body-md text-cool-slate-500 mt-1">{t.admin.orders.subtitle}</p>
+          <h1 className="text-[18px] font-semibold text-[#f0f2f5]">{t.admin.orders.title}</h1>
+          <p className="text-[13px] text-[#646880] mt-1">{t.admin.orders.subtitle}</p>
         </div>
-        <button className="px-4 py-2 bg-mountain-emerald text-white rounded-lg hover:bg-mountain-emerald/90 transition-colors text-label-md">
-          {t.admin.orders.newOrder}
+        <button
+          onClick={() => setShowTodayOnly(!showTodayOnly)}
+          className={`px-3 py-1.5 rounded-[6px] text-[12px] font-medium transition-all ${
+            showTodayOnly
+              ? 'bg-[#10b981] text-white'
+              : 'bg-[#181b25] text-[#9ca0b0] border border-[#282b38] hover:bg-[#202330]'
+          }`}
+        >
+          {showTodayOnly ? 'Today Only' : 'All Dates'}
         </button>
       </div>
 
@@ -95,11 +143,10 @@ function OrdersInner() {
           <button
             key={status}
             onClick={() => setStatusFilter(status)}
-            className={`px-4 py-2 rounded-lg text-label-md whitespace-nowrap transition-colors ${
-              statusFilter === status
-                ? 'bg-slate-navy text-white'
-                : 'bg-white text-cool-slate-600 hover:bg-cool-slate-100 border border-cool-slate-200'
-            }`}
+            className={`px-4 py-2 rounded-[6px] text-[13px] font-medium whitespace-nowrap transition-all ${statusFilter === status
+                ? 'bg-[#10b981] text-white'
+                : 'bg-[#181b25] text-[#9ca0b0] hover:bg-[#202330] border border-[#282b38]'
+              }`}
           >
             {t.admin.orders.status[status]}
             {status !== 'all' && (
@@ -119,99 +166,86 @@ function OrdersInner() {
             placeholder={t.admin.orders.searchPlaceholder}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-4 py-2 border border-cool-slate-200 rounded-lg text-body-md focus:outline-none focus:ring-2 focus:ring-mountain-emerald/20 focus:border-mountain-emerald"
+            className="w-full px-4 py-2 bg-[#0b0d14] border border-[#282b38] rounded-[6px] text-[13px] text-[#f0f2f5] placeholder:text-[#646880] outline-none focus:border-[#10b981] transition-all"
           />
         </div>
-        <select
-          value={priorityFilter}
-          onChange={(e) => setPriorityFilter(e.target.value as PriorityFilter)}
-          className="px-4 py-2 border border-cool-slate-200 rounded-lg text-body-md focus:outline-none focus:ring-2 focus:ring-mountain-emerald/20 focus:border-mountain-emerald"
-        >
-          <option value="all">{t.admin.orders.allPriorities}</option>
-          <option value="low">{t.admin.orders.priority.low}</option>
-          <option value="normal">{t.admin.orders.priority.normal}</option>
-          <option value="high">{t.admin.orders.priority.high}</option>
-          <option value="urgent">{t.admin.orders.priority.urgent}</option>
-        </select>
+        <span className="text-[12px] text-[#646880] self-center">
+          {orders.length} orders
+        </span>
       </div>
 
       {/* Orders Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-cool-slate-100 overflow-hidden">
+      <div className="bg-[#181b25] border border-[#282b38] rounded-[10px] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="bg-cool-slate-50 border-b border-cool-slate-100">
-                <th className="text-left text-label-sm text-cool-slate-500 font-medium px-6 py-3">{t.admin.orders.table.order}</th>
-                <th className="text-left text-label-sm text-cool-slate-500 font-medium px-6 py-3">{t.admin.orders.table.customer}</th>
-                <th className="text-left text-label-sm text-cool-slate-500 font-medium px-6 py-3">{t.admin.orders.table.package}</th>
-                <th className="text-left text-label-sm text-cool-slate-500 font-medium px-6 py-3">{t.admin.orders.table.flight}</th>
-                <th className="text-left text-label-sm text-cool-slate-500 font-medium px-6 py-3">{t.admin.orders.table.status}</th>
-                <th className="text-left text-label-sm text-cool-slate-500 font-medium px-6 py-3">{t.admin.orders.table.priority}</th>
-                <th className="text-left text-label-sm text-cool-slate-500 font-medium px-6 py-3">{t.admin.orders.table.payment}</th>
-                <th className="text-left text-label-sm text-cool-slate-500 font-medium px-6 py-3">{t.admin.orders.table.actions}</th>
+              <tr className="bg-[#111318] border-b border-[#282b38]">
+                <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880] px-6 py-3">{t.admin.orders.table.order}</th>
+                <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880] px-6 py-3">{t.admin.orders.table.customer}</th>
+                <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880] px-6 py-3">{t.admin.orders.table.package}</th>
+                <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880] px-6 py-3">{t.admin.orders.table.flight}</th>
+                <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880] px-6 py-3">{t.admin.orders.table.status}</th>
+                <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880] px-6 py-3">{t.admin.orders.table.priority}</th>
+                <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880] px-6 py-3">{t.admin.orders.table.payment}</th>
+                <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880] px-6 py-3">{t.admin.orders.table.actions}</th>
               </tr>
             </thead>
             <tbody>
-              {orders.map((order) => (
-                <tr key={order.id} className="border-b border-cool-slate-50 hover:bg-cool-slate-50 transition-colors">
+              {filteredOrders.map((order) => (
+                <tr key={order.id} className="border-b border-[#282b38] hover:bg-[#202330] transition-colors">
                   <td className="px-6 py-4">
                     <div>
-                      <p className="text-label-md text-slate-navy font-medium">{order.order_number}</p>
-                      <p className="text-body-sm text-cool-slate-400">{order.booking_reference}</p>
+                      <p className="text-[13px] font-medium text-[#f0f2f5]">{order.order_number}</p>
+                      <p className="text-[12px] text-[#646880]">{order.booking_reference}</p>
                     </div>
                   </td>
                   <td className="px-6 py-4">
                     <div>
-                      <p className="text-body-md text-cool-slate-600">{order.customer_name}</p>
-                      <p className="text-body-sm text-cool-slate-400">{order.customer_email}</p>
+                      <p className="text-[13px] text-[#9ca0b0]">{order.customer_name}</p>
+                      <p className="text-[12px] text-[#646880]">{order.customer_email}</p>
                     </div>
                   </td>
                   <td className="px-6 py-4">
                     <div>
-                      <p className="text-body-md text-cool-slate-600">{order.package_name}</p>
-                      <p className="text-body-sm text-cool-slate-400">${order.package_price} USD</p>
+                      <p className="text-[13px] text-[#9ca0b0]">{order.package_name}</p>
+                      <p className="text-[12px] text-[#646880]">${order.package_price} USD</p>
                     </div>
                   </td>
                   <td className="px-6 py-4">
                     <div>
-                      <p className="text-body-md text-cool-slate-600">{order.flight_number || '-'}</p>
-                      <p className="text-body-sm text-cool-slate-400">{order.arrival_date || '-'}</p>
+                      <p className="text-[13px] text-[#9ca0b0]">{order.flight_number || '-'}</p>
+                      <p className="text-[12px] text-[#646880]">{order.arrival_date || '-'}</p>
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-label-sm font-medium ${statusColors[order.status]}`}>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium ${statusColors[order.status]}`}>
                       {t.admin.orders.status[order.status as keyof typeof t.admin.orders.status] || order.status}
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-label-sm font-medium ${priorityColors[order.priority]}`}>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium ${priorityColors[order.priority]}`}>
                       {t.admin.orders.priority[order.priority as keyof typeof t.admin.orders.priority] || order.priority}
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-label-sm font-medium ${
-                      order.payment_status === 'completed' ? 'bg-green-100 text-green-800' :
-                      order.payment_status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium ${order.payment_status === 'completed' ? 'bg-[rgba(16,185,129,0.12)] text-[#10b981]' :
+                        order.payment_status === 'pending' ? 'bg-[rgba(245,158,11,0.12)] text-[#f59e0b]' :
+                          'bg-[rgba(239,68,80,0.12)] text-[#ef4450]'
+                      }`}>
                       {t.admin.orders.payment[order.payment_status as keyof typeof t.admin.orders.payment] || order.payment_status}
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <button className="p-1.5 hover:bg-cool-slate-100 rounded-lg transition-colors" title="View details">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                          <circle cx="12" cy="12" r="3" />
-                        </svg>
-                      </button>
-                      <button className="p-1.5 hover:bg-cool-slate-100 rounded-lg transition-colors" title="Edit">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-                          <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-                        </svg>
-                      </button>
-                    </div>
+                    <button
+                      className="p-1.5 hover:bg-[#202330] rounded-[4px] text-[#9ca0b0] transition-all"
+                      title="View details"
+                      onClick={() => openOrderDetail(order)}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -219,19 +253,158 @@ function OrdersInner() {
           </table>
         </div>
         {orders.length === 0 && (
-          <div className="p-12 text-center text-cool-slate-500">
+          <div className="p-12 text-center text-[#646880]">
             {t.admin.orders.noOrders}
           </div>
         )}
       </div>
+
+      {/* Order Detail Modal */}
+      {selectedOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={closeModal} />
+          <div className="relative w-full max-w-2xl max-h-[90vh] overflow-auto bg-[#181b25] border border-[#282b38] rounded-xl shadow-2xl">
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 border-b border-[#282b38]">
+              <div>
+                <h2 className="text-lg font-semibold text-[#f0f2f5]">{t.admin.orders.orderDetails || 'Order Details'}</h2>
+                <p className="text-sm text-[#646880]">{selectedOrder.order_number}</p>
+              </div>
+              <button onClick={closeModal} className="p-2 hover:bg-[#202330] rounded-lg transition-colors">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9ca0b0" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-5 space-y-6">
+              {/* Status Banner */}
+              <div className="flex items-center gap-3 p-4 bg-[#202330] rounded-lg">
+                <span className={`px-3 py-1 rounded-full text-xs font-medium ${selectedOrder.status === 'completed' ? 'bg-[rgba(16,185,129,0.2)] text-[#10b981]' :
+                    selectedOrder.status === 'cancelled' ? 'bg-[rgba(239,68,80,0.2)] text-[#ef4450]' :
+                      'bg-[rgba(59,130,246,0.2)] text-[#3b82f6]'
+                  }`}>
+                  {selectedOrder.status.toUpperCase()}
+                </span>
+                <span className="text-sm text-[#9ca0b0]">
+                  {selectedOrder.dispatch_status !== 'pending' ? `Dispatch: ${selectedOrder.dispatch_status}` : ''}
+                </span>
+              </div>
+
+              {/* Customer Info */}
+              <div>
+                <h3 className="text-sm font-medium text-[#646880] mb-3 uppercase tracking-wide">{t.admin.orders.table.customer || 'Customer'}</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-3 bg-[#202330] rounded-lg">
+                    <p className="text-xs text-[#646880]">Name</p>
+                    <p className="text-sm text-[#f0f2f5]">{selectedOrder.customer_name}</p>
+                  </div>
+                  <div className="p-3 bg-[#202330] rounded-lg">
+                    <p className="text-xs text-[#646880]">Email</p>
+                    <p className="text-sm text-[#f0f2f5]">{selectedOrder.customer_email}</p>
+                  </div>
+                  <div className="p-3 bg-[#202330] rounded-lg">
+                    <p className="text-xs text-[#646880]">Phone</p>
+                    <p className="text-sm text-[#f0f2f5]">{selectedOrder.customer_phone || '-'}</p>
+                  </div>
+                  <div className="p-3 bg-[#202330] rounded-lg">
+                    <p className="text-xs text-[#646880]">Country</p>
+                    <p className="text-sm text-[#f0f2f5]">{selectedOrder.customer_country || '-'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Service Info */}
+              <div>
+                <h3 className="text-sm font-medium text-[#646880] mb-3 uppercase tracking-wide">{t.admin.orders.table.package || 'Service'}</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-3 bg-[#202330] rounded-lg">
+                    <p className="text-xs text-[#646880]">Package</p>
+                    <p className="text-sm text-[#f0f2f5]">{selectedOrder.package_name}</p>
+                  </div>
+                  <div className="p-3 bg-[#202330] rounded-lg">
+                    <p className="text-xs text-[#646880]">Price</p>
+                    <p className="text-sm text-[#f0f2f5] font-semibold">${selectedOrder.package_price} {selectedOrder.currency?.toUpperCase()}</p>
+                  </div>
+                  <div className="p-3 bg-[#202330] rounded-lg">
+                    <p className="text-xs text-[#646880]">Flight</p>
+                    <p className="text-sm text-[#f0f2f5]">{selectedOrder.airline}{selectedOrder.flight_number || '-'}</p>
+                  </div>
+                  <div className="p-3 bg-[#202330] rounded-lg">
+                    <p className="text-xs text-[#646880]">Arrival</p>
+                    <p className="text-sm text-[#f0f2f5]">{selectedOrder.arrival_date} {selectedOrder.arrival_time || ''}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Driver Info (if assigned) */}
+              {selectedOrder.assigned_to && (
+                <div>
+                  <h3 className="text-sm font-medium text-[#646880] mb-3 uppercase tracking-wide">Driver</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-3 bg-[rgba(16,185,129,0.1)] border border-[rgba(16,185,129,0.2)] rounded-lg">
+                      <p className="text-xs text-[#646880]">Name</p>
+                      <p className="text-sm text-[#10b981]">{selectedOrder.driver_name}</p>
+                    </div>
+                    <div className="p-3 bg-[#202330] rounded-lg">
+                      <p className="text-xs text-[#646880]">Vehicle</p>
+                      <p className="text-sm text-[#f0f2f5]">{selectedOrder.driver_vehicle} ({selectedOrder.driver_plate})</p>
+                    </div>
+                    <div className="p-3 bg-[#202330] rounded-lg col-span-2">
+                      <p className="text-xs text-[#646880]">Phone</p>
+                      <p className="text-sm text-[#f0f2f5]">{selectedOrder.driver_phone || '-'}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Notes */}
+              {selectedOrder.customer_notes && (
+                <div>
+                  <h3 className="text-sm font-medium text-[#646880] mb-3 uppercase tracking-wide">Notes</h3>
+                  <div className="p-3 bg-[#202330] rounded-lg">
+                    <p className="text-sm text-[#9ca0b0]">{selectedOrder.customer_notes}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Timeline / History */}
+              <div>
+                <h3 className="text-sm font-medium text-[#646880] mb-3 uppercase tracking-wide">{t.admin.orders.timeline || 'Timeline'}</h3>
+                <div className="space-y-3">
+                  {(selectedOrder.history || []).map((item, idx) => (
+                    <div key={idx} className="flex items-start gap-3">
+                      <div className={`w-2 h-2 mt-1.5 rounded-full ${item.status === 'completed' ? 'bg-[#10b981]' :
+                          item.status === 'cancelled' ? 'bg-[#ef4450]' :
+                            item.status === 'assigned' ? 'bg-[#3b82f6]' :
+                              'bg-[#646880]'
+                        }`} />
+                      <div className="flex-1">
+                        <p className="text-sm text-[#f0f2f5]">{item.description}</p>
+                        <p className="text-xs text-[#646880]">{formatDateTime(item.timestamp)}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {(!selectedOrder.history || selectedOrder.history.length === 0) && (
+                    <p className="text-sm text-[#646880]">{t.admin.orders.noTimeline || 'No timeline available'}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
 export default function OrdersPage() {
   return (
-    <I18nProvider>
-      <OrdersInner />
-    </I18nProvider>
+    <RealtimeProvider>
+      <I18nProvider>
+        <OrdersInner />
+      </I18nProvider>
+    </RealtimeProvider>
   )
 }
