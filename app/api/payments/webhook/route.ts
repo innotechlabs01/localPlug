@@ -58,8 +58,19 @@ export async function POST(req: Request) {
     const arrivalDate = intent.metadata?.arrivalDate || ''
     const arrivalTime = intent.metadata?.arrivalTime || ''
 
-    // Trigger n8n payment confirmation
-    triggerPaymentConfirmation({
+    // Also update order payment_status
+      try {
+        const db2 = getDb()
+        await db2.execute({
+          sql: "UPDATE orders SET payment_status = 'paid', updated_at = datetime('now') WHERE booking_reference = ?",
+          args: [bookingRef],
+        })
+      } catch (dbErr2) {
+        console.error('[Payment Webhook] Update order payment_status failed:', dbErr2)
+      }
+
+      // Trigger n8n payment confirmation
+      triggerPaymentConfirmation({
       bookingReference: bookingRef,
       customerName,
       customerEmail,

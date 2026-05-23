@@ -24,22 +24,22 @@ function FooterInner() {
             <ul className="space-y-3">
               <li>
                 <a href="#services" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors">
-                  Airport Transfer
+                  {t.footer.links.airportTransfer}
                 </a>
               </li>
               <li>
                 <a href="#experiences" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors">
-                  City Tours
+                  {t.footer.links.cityTours}
                 </a>
               </li>
               <li>
                 <a href="#experiences" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors">
-                  Guatapé Trips
+                  {t.footer.links.guatapeTrips}
                 </a>
               </li>
               <li>
                 <a href="#pricing" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors">
-                  Nightlife VIP
+                  {t.footer.links.nightlifeVIP}
                 </a>
               </li>
             </ul>

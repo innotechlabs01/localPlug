@@ -1,7 +1,9 @@
 'use client'
 
 import { useI18n } from '@/lib/i18n'
+import { useState, useEffect } from 'react'
 import type { ReactNode } from 'react'
+import PhoneInputWithCountry from './phone-input-with-country'
 
 interface StepTravelerProfileProps {
   value: string
@@ -12,6 +14,10 @@ interface StepTravelerProfileProps {
   onNameChange: (name: string) => void
   phone: string
   onPhoneChange: (phone: string) => void
+  country: string
+  onCountryChange: (country: string) => void
+  language: string
+  onLanguageChange: (language: string) => void
 }
 
 const profileIcons: Record<string, ReactNode> = {
@@ -44,6 +50,38 @@ const profileIcons: Record<string, ReactNode> = {
   ),
 }
 
+interface LookupCountry {
+  code: string
+  name: string
+  flag: string
+}
+
+interface LookupLanguage {
+  code: string
+  name: string
+  native_name: string
+}
+
+interface LookupData {
+  countries: LookupCountry[]
+  languages: LookupLanguage[]
+}
+
+const fallbackCountries: LookupCountry[] = [
+  { code: 'US', name: 'USA', flag: '🇺🇸' }, { code: 'CO', name: 'Colombia', flag: '🇨🇴' },
+  { code: 'MX', name: 'Mexico', flag: '🇲🇽' }, { code: 'AR', name: 'Argentina', flag: '🇦🇷' },
+  { code: 'ES', name: 'Spain', flag: '🇪🇸' }, { code: 'GB', name: 'UK', flag: '🇬🇧' },
+  { code: 'CA', name: 'Canada', flag: '🇨🇦' }, { code: 'BR', name: 'Brazil', flag: '🇧🇷' },
+  { code: 'CL', name: 'Chile', flag: '🇨🇱' }, { code: 'FR', name: 'France', flag: '🇫🇷' },
+  { code: 'DE', name: 'Germany', flag: '🇩🇪' }, { code: 'OT', name: 'Other', flag: '🌍' },
+]
+
+const fallbackLanguages: LookupLanguage[] = [
+  { code: 'en', name: 'English', native_name: 'English' }, { code: 'es', name: 'Spanish', native_name: 'Español' },
+  { code: 'pt', name: 'Portuguese', native_name: 'Português' }, { code: 'fr', name: 'French', native_name: 'Français' },
+  { code: 'de', name: 'German', native_name: 'Deutsch' }, { code: 'ot', name: 'Other', native_name: 'Other' },
+]
+
 export default function StepTravelerProfile({
   value,
   onChange,
@@ -53,9 +91,26 @@ export default function StepTravelerProfile({
   onNameChange,
   phone,
   onPhoneChange,
+  country,
+  onCountryChange,
+  language,
+  onLanguageChange,
 }: StepTravelerProfileProps) {
   const { t } = useI18n()
   const profileT = t.booking.steps.profile
+
+  const [countries, setCountries] = useState<LookupCountry[]>(fallbackCountries)
+  const [languages, setLanguages] = useState<LookupLanguage[]>(fallbackLanguages)
+
+  useEffect(() => {
+    fetch('/api/admin/lookup')
+      .then(res => res.json())
+      .then((data: LookupData) => {
+        if (data.countries) setCountries(data.countries)
+        if (data.languages) setLanguages(data.languages)
+      })
+      .catch(() => {})
+  }, [])
 
   const profiles = [
     { id: 'family', title: profileT.family, description: profileT.familyDesc },
@@ -99,20 +154,38 @@ export default function StepTravelerProfile({
           />
         </div>
         <div>
-          <label htmlFor="traveler-phone" className="block text-label-md text-[var(--text-primary)] font-semibold mb-1.5">
-            {t.common.phone}
-          </label>
-          <input
-            id="traveler-phone"
-            type="tel"
+          <PhoneInputWithCountry
             value={phone}
-            onChange={(e) => onPhoneChange(e.target.value)}
+            onChange={onPhoneChange}
+            countryCode={country}
+            onCountryCodeChange={onCountryChange}
+            countries={countries}
             placeholder={t.booking.steps.profile.phonePlaceholder}
-            className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-elevated)] text-body-md text-white placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-gold)]/40 focus:border-[var(--accent-gold)] transition-all"
+            hint={t.booking.steps.profile.phoneHint}
           />
-          <p className="text-body-sm text-[var(--text-muted)] mt-1">
-            {t.booking.steps.profile.phoneHint}
-          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-label-md text-[var(--text-primary)] font-semibold mb-1.5">Country</label>
+            <select value={country} onChange={(e) => onCountryChange(e.target.value)}
+              className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-elevated)] text-body-md text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-gold)]/40 focus:border-[var(--accent-gold)] transition-all">
+              <option value="">Select country...</option>
+              {countries.map(c => (
+                <option key={c.code} value={c.code}>{c.flag} {c.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-label-md text-[var(--text-primary)] font-semibold mb-1.5">Language</label>
+            <select value={language} onChange={(e) => onLanguageChange(e.target.value)}
+              className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-elevated)] text-body-md text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-gold)]/40 focus:border-[var(--accent-gold)] transition-all">
+              <option value="">Select language...</option>
+              {languages.map(l => (
+                <option key={l.code} value={l.name}>{l.native_name || l.name}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 

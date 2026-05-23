@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { createFlightValidation } from './lib/flight-validation'
+import { getToday } from '@/lib/date-utils'
 
 interface FlightData {
   flightNumber: string
@@ -20,10 +21,15 @@ interface StepFlightLogisticsProps {
 }
 
 function getMinDate(): string {
-  const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const today = new Date(getToday() + 'T00:00:00')
   today.setDate(today.getDate() + 10)
-  return today.toISOString().split('T')[0]
+  return getToday().replace(/(\d{4})-(\d{2})-(\d{2})/, (_, y, m, d) => {
+    const date = new Date(Number(y), Number(m) - 1, Number(d) + 10)
+    const yy = date.getFullYear()
+    const mm = String(date.getMonth() + 1).padStart(2, '0')
+    const dd = String(date.getDate()).padStart(2, '0')
+    return `${yy}-${mm}-${dd}`
+  })
 }
 
 const flightValidation = createFlightValidation({ latency: 300 })
@@ -45,6 +51,12 @@ export default function StepFlightLogistics({ data, onChange }: StepFlightLogist
   }
 
   const minDate = getMinDate()
+
+  useEffect(() => {
+    if (data.needReturn && data.arrivalDate && data.returnDate && data.returnDate < data.arrivalDate) {
+      onChange({ ...data, returnDate: '' })
+    }
+  }, [data.arrivalDate, data.needReturn, data.returnDate])
 
   useEffect(() => {
     const airline = data.airline.trim()
@@ -163,7 +175,6 @@ export default function StepFlightLogistics({ data, onChange }: StepFlightLogist
           </div>
         </div>
 
-        {/* Return transportation toggle */}
         <label className="flex items-center gap-3 p-4 rounded-[var(--radius-md)] border border-[var(--border)] cursor-pointer hover:border-[var(--accent-gold)] transition-all duration-200 bg-[var(--bg-elevated)]">
           <input
             type="checkbox"
@@ -187,7 +198,7 @@ export default function StepFlightLogistics({ data, onChange }: StepFlightLogist
                 type="date"
                 value={data.returnDate}
                 onChange={handleChange('returnDate')}
-                min={minDate}
+                min={data.arrivalDate || minDate}
                 className="w-full px-3 py-3 rounded-[var(--radius-md)] text-body-md text-white bg-[var(--bg-elevated)] placeholder:text-[var(--text-muted)] transition-all duration-200 outline-none border border-[var(--border)] focus:border-[var(--accent-gold)] focus:ring-2 focus:ring-[var(--accent-gold)]/20 [color-scheme:dark]"
               />
             </div>

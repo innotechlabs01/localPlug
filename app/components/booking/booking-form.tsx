@@ -114,6 +114,9 @@ function BookingFormInner() {
   const [customerEmail, setCustomerEmail] = useState('')
   const [customerName, setCustomerName] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
+  const [customerCountry, setCustomerCountry] = useState('')
+  const [customerLanguage, setCustomerLanguage] = useState('')
+  const [customerNotes, setCustomerNotes] = useState('')
   const [destination, setDestination] = useState<DestinationData>({
     hasPlace: true,
     address: '',
@@ -160,6 +163,46 @@ function BookingFormInner() {
     if (step > 0) setStep((step - 1) as Step)
   }
 
+  const handlePaymentSuccess = async () => {
+    const booking = {
+      id: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      flight: flightData,
+      profile,
+      destination,
+      package: selectedPackage,
+      status: 'submitted' as const,
+      createdAt: new Date().toISOString(),
+      submittedAt: new Date().toISOString(),
+      customer: {
+        name: customerName,
+        email: customerEmail,
+        phone: customerPhone,
+        country: customerCountry,
+        language: customerLanguage,
+        notes: customerNotes,
+      },
+    }
+
+    logBookingEvent('Submitting booking after payment', { id: booking.id })
+
+    try {
+      await persistence.submit(booking)
+      logBookingEvent('Booking confirmed after payment', { id: booking.id })
+    } catch (err) {
+      logBookingError('Payment submission', err)
+      const toastId = showToast({
+        type: 'warning',
+        message: t.booking.toast.offline,
+        action: {
+          label: t.common.dismiss,
+          onClick: () => dismissToast(toastId),
+        },
+      })
+    } finally {
+      setSubmitted(true)
+    }
+  }
+
   const handleConfirm = async () => {
     setIsSubmitting(true)
 
@@ -172,6 +215,14 @@ function BookingFormInner() {
       status: 'submitted' as const,
       createdAt: new Date().toISOString(),
       submittedAt: new Date().toISOString(),
+      customer: {
+        name: customerName,
+        email: customerEmail,
+        phone: customerPhone,
+        country: customerCountry,
+        language: customerLanguage,
+        notes: customerNotes,
+      },
     }
 
     logBookingEvent('Submitting booking', { id: booking.id })
@@ -288,10 +339,19 @@ function BookingFormInner() {
                     onNameChange={setCustomerName}
                     phone={customerPhone}
                     onPhoneChange={setCustomerPhone}
+                    country={customerCountry}
+                    onCountryChange={setCustomerCountry}
+                    language={customerLanguage}
+                    onLanguageChange={setCustomerLanguage}
                   />
                 )}
                 {step === 2 && (
-                  <StepDestination data={destination} onChange={setDestination} />
+                  <StepDestination
+                    data={destination}
+                    onChange={setDestination}
+                    customerNotes={customerNotes}
+                    onCustomerNotesChange={setCustomerNotes}
+                  />
                 )}
                 {step === 3 && (
                   <StepPackages
@@ -309,7 +369,8 @@ function BookingFormInner() {
                     customerPhone={customerPhone}
                     flightData={flightData}
                     destinationAddress={destination.address}
-                    onPaymentSuccess={() => setSubmitted(true)}
+                    needReturn={flightData.needReturn}
+                    onPaymentSuccess={handlePaymentSuccess}
                     onPaymentError={() => {}}
                   />
                 )}

@@ -5,7 +5,7 @@ import en from './locales/en'
 import es from './locales/es'
 
 type Translations = typeof en
-type Lang = 'en' | 'es'
+export type Lang = 'en' | 'es'
 
 interface I18nContextValue {
   lang: Lang
@@ -20,24 +20,39 @@ const translations: Record<Lang, Translations> = { en, es }
 
 const STORAGE_KEY = 'localplug-lang'
 
-function getInitialLang(): Lang {
-  if (typeof window === 'undefined') return 'en'
+function setLangCookie(value: Lang) {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored === 'en' || stored === 'es') return stored
+    document.cookie = `${STORAGE_KEY}=${value};path=/;max-age=31536000;SameSite=Lax`
   } catch {
-    // localStorage unavailable — default to English
+    // cookie unavailable
   }
-  return 'en'
 }
 
-export function I18nProvider({ children }: { children: ReactNode }) {
-  const [lang, setLangState] = useState<Lang>(getInitialLang)
+export function I18nProvider({ children, initialLang }: { children: ReactNode; initialLang?: Lang }) {
+  const [lang, setLangState] = useState<Lang>(initialLang || 'en')
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY)
+      if (stored === 'en' || stored === 'es') {
+        if (stored !== lang) {
+          setLangState(stored)
+          setLangCookie(stored)
+        }
+        return
+      }
+    } catch {
+      // localStorage unavailable
+    }
+    localStorage.setItem(STORAGE_KEY, lang)
+    setLangCookie(lang)
+  }, [])
 
   const setLang = useCallback((newLang: Lang) => {
     setLangState(newLang)
     try {
       localStorage.setItem(STORAGE_KEY, newLang)
+      setLangCookie(newLang)
     } catch {
       // localStorage unavailable — state-only persistence
     }
@@ -48,6 +63,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       const next = prev === 'en' ? 'es' : 'en'
       try {
         localStorage.setItem(STORAGE_KEY, next)
+        setLangCookie(next)
       } catch {
         // localStorage unavailable — state-only persistence
       }
