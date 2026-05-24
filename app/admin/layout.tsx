@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useI18n } from '@/lib/i18n'
-import { useRealtime } from '@/lib/admin/realtime-context'
+import { RealtimeProvider, useRealtime } from '@/lib/admin/realtime-context'
 
 interface NavItem {
   labelKey: string
@@ -109,7 +109,7 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
       },
       {
         labelKey: 'analytics',
-        href: '/admin/intelligence',
+        href: '/admin/analytics',
         icon: (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
@@ -131,7 +131,11 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  return <AdminLayoutInner>{children}</AdminLayoutInner>
+  return (
+    <RealtimeProvider>
+      <AdminLayoutInner>{children}</AdminLayoutInner>
+    </RealtimeProvider>
+  )
 }
 
 function AdminLayoutInner({ children }: { children: React.ReactNode }) {
@@ -139,10 +143,28 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
-  const { t } = useI18n()
+  const { t, lang, setLang } = useI18n()
   const { notifications, unreadCount, markAsRead, markAllAsRead, stats } = useRealtime()
 
-  const pageTitle = t.admin.dashboard.title as string
+  const getPageTitle = (): string => {
+    const titleMap: Record<string, string> = {
+      '/admin': t.admin.dashboard.title as string,
+      '/admin/dispatch': t.admin.nav.dispatch as string,
+      '/admin/orders': t.admin.nav.reservations as string,
+      '/admin/drivers': t.admin.nav.drivers as string,
+      '/admin/logistics': t.admin.nav.fleet as string,
+      '/admin/customers': t.admin.nav.customers as string,
+      '/admin/ia-chat': t.admin.nav.support as string,
+      '/admin/team': t.admin.nav.employees as string,
+      '/admin/employees': t.admin.nav.employees as string,
+      '/admin/intelligence': t.admin.nav.analytics as string,
+      '/admin/grid': t.admin.nav.payments as string,
+      '/admin/agenda': 'Agenda',
+      '/admin/cases': 'Cases',
+      '/admin/reservations': t.admin.nav.reservations as string,
+    }
+    return titleMap[pathname] || t.admin.dashboard.title as string
+  }
 
   return (
     <div className="app-layout">
@@ -179,7 +201,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                     {item.icon}
                     <span>{t.admin.nav[item.labelKey as keyof typeof t.admin.nav] as string}</span>
                     {item.badge !== undefined && (
-                      <span className="nav-badge">{item.href === '/admin/dispatch' ? stats.pending_dispatch : item.badge}</span>
+                      <span className="nav-badge">{item.href === '/admin/dispatch' ? stats.pending_dispatch : item.href === '/admin/ia-chat' ? stats.escalated_conversations + stats.active_conversations : item.badge}</span>
                     )}
                   </Link>
                 )
@@ -211,7 +233,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                 <line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>
               </svg>
             </button>
-            <span className="page-title">{pageTitle}</span>
+            <span className="page-title">{getPageTitle()}</span>
             <span className="badge badge-accent" style={{ fontSize: 10 }}>
               {t.admin.dashboard.live as string}
             </span>
@@ -229,9 +251,11 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
             <select
               className="input"
               style={{ width: 'auto', padding: '6px 10px', fontSize: 12, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--fg)', outline: 'none' }}
+              value={lang}
+              onChange={(e) => setLang(e.target.value as 'en' | 'es')}
             >
-              <option>🇺🇸 EN</option>
-              <option>🇪🇸 ES</option>
+              <option value="en">EN</option>
+              <option value="es">ES</option>
             </select>
             <button className="icon-btn relative" onClick={() => setNotifOpen(!notifOpen)}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
