@@ -282,11 +282,9 @@ export default function SettingsPage() {
       </div>
 
       {/* Toast */}
-      {toast && (
-        <div className="fixed bottom-6 right-6 z-[2000] px-4 py-3 rounded-[8px] text-[13px] font-medium shadow-lg" style={{ background: 'var(--accent)', color: 'white' }}>
-          {toast}
-        </div>
-      )}
+      <div className="toast-stack">
+        {toast && <div className="toast visible">{toast}</div>}
+      </div>
     </div>
   )
 }

@@ -39,47 +39,55 @@ export default function ReservationTable({ reservations, onViewReservation }: Re
   }
 
   return (
-    <table className="w-full text-[12px]">
+    <table>
       <thead>
-        <tr className="border-b border-[var(--border)]">
-          <th className="text-left px-4 py-2.5 font-medium text-[var(--fg-muted)]">{labels.guest || 'Guest'}</th>
-          <th className="text-left px-4 py-2.5 font-medium text-[var(--fg-muted)]">{labels.country || 'Country'}</th>
-          <th className="text-left px-4 py-2.5 font-medium text-[var(--fg-muted)]">{labels.package || 'Package'}</th>
-          <th className="text-left px-4 py-2.5 font-medium text-[var(--fg-muted)]">{labels.arrival || 'Arrival'}</th>
-          <th className="text-left px-4 py-2.5 font-medium text-[var(--fg-muted)]">{labels.flight || 'Flight'}</th>
-          <th className="text-left px-4 py-2.5 font-medium text-[var(--fg-muted)]">{labels.status || 'Status'}</th>
-          <th className="text-left px-4 py-2.5 font-medium text-[var(--fg-muted)]">{labels.payment || 'Payment'}</th>
-          <th className="px-4 py-2.5"><span className="sr-only">Actions</span></th>
+        <tr>
+          <th>{labels.guest || 'Guest'}</th>
+          <th>{labels.country || 'Country'}</th>
+          <th>{labels.package || 'Package'}</th>
+          <th>{labels.arrival || 'Arrival'}</th>
+          <th>{labels.flight || 'Flight'}</th>
+          <th>{labels.status || 'Status'}</th>
+          <th>{labels.payment || 'Payment'}</th>
+          <th style={{ width: 80 }}>Actions</th>
         </tr>
       </thead>
-      <tbody className="divide-y divide-[var(--border-light)]">
+      <tbody>
         {reservations.map(r => (
-          <tr key={r.id} className="hover:bg-[var(--surface-hover)] cursor-pointer" onClick={() => onViewReservation(r)}>
-            <td className="px-4 py-3">
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0" style={{ backgroundColor: getAvatarColor(r.guest.firstName.charAt(0)) }}>
+          <tr key={r.id} onClick={() => onViewReservation(r)}>
+            <td>
+              <div className="guest-cell">
+                <div className="guest-avatar" style={{ background: getAvatarColor(r.guest.firstName.charAt(0)), color: 'white' }}>
                   {r.guest.firstName.charAt(0)}{r.guest.lastName.charAt(0)}
                 </div>
-                <span className="font-medium" style={{ color: 'var(--fg)' }}>{r.guest.firstName} {r.guest.lastName}</span>
+                {r.guest.firstName} {r.guest.lastName}
               </div>
             </td>
-            <td className="px-4 py-3 text-[var(--fg-secondary)]">
-              <span className="mr-1.5">{flags[r.guest.country || ''] || '🌍'}</span>
+            <td>
+              <span className="country-flag">{flags[r.guest.country || ''] || '🌍'}</span>
               {r.guest.country || 'Unknown'}
             </td>
-            <td className="px-4 py-3 text-[var(--fg-secondary)]">{r.service.name}</td>
-            <td className="px-4 py-3 text-[var(--fg-secondary)] font-mono">{formatDate(r.arrivalDate)} {r.arrivalTime?.substring(0, 5) || ''}</td>
-            <td className="px-4 py-3 text-[var(--fg-secondary)] font-mono">{r.flightInfo || '—'}</td>
-            <td className="px-4 py-3">
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${getStatusBadgeClass(r.status)}`}>{getStatusText(r.status)}</span>
+            <td>{r.service.name}</td>
+            <td style={{ fontFamily: 'var(--font-mono)' }}>{formatDate(r.arrivalDate)} {r.arrivalTime?.substring(0, 5) || ''}</td>
+            <td style={{ fontFamily: 'var(--font-mono)' }}>{r.flightInfo || '—'}</td>
+            <td>
+              <span className={`status-badge ${getStatusBadgeClass(r.status)}`}>{getStatusText(r.status)}</span>
             </td>
-            <td className="px-4 py-3">
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${getPaymentBadgeClass(r.paymentStatus)}`}>{getPaymentText(r.paymentStatus)}</span>
+            <td>
+              <span className={`payment-badge ${getPaymentBadgeClass(r.paymentStatus)}`}>{getPaymentText(r.paymentStatus)}</span>
             </td>
-            <td className="px-4 py-3">
-              <button className="p-1.5 rounded hover:bg-[var(--surface-active)] text-[var(--fg-muted)] hover:text-[var(--accent)]" onClick={e => { e.stopPropagation(); onViewReservation(r) }} title="View details">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-              </button>
+            <td>
+              <div className="action-btn-group">
+                <button className="action-btn view" onClick={e => { e.stopPropagation(); onViewReservation(r) }} title="View details">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+                <button className="action-btn whatsapp" onClick={e => { e.stopPropagation(); onViewReservation(r) }} title="WhatsApp">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+                </button>
+                <button className="action-btn more" onClick={e => { e.stopPropagation(); onViewReservation(r) }} title="More">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+                </button>
+              </div>
             </td>
           </tr>
         ))}
@@ -95,15 +103,15 @@ function getStatusText(status: string): string {
 
 function getStatusBadgeClass(status: string): string {
   const map: Record<string, string> = {
-    pending: 'bg-[rgba(250,204,21,0.15)] text-yellow-400',
-    confirmed: 'bg-[rgba(74,222,128,0.15)] text-green-400',
-    awaiting_payment: 'bg-[rgba(96,165,250,0.15)] text-blue-400',
-    assigned: 'bg-[rgba(167,139,250,0.15)] text-purple-400',
-    in_progress: 'bg-[rgba(99,102,241,0.15)] text-indigo-400',
-    completed: 'bg-[var(--surface-hover)] text-[var(--fg-secondary)]',
-    cancelled: 'bg-[var(--danger-soft)] text-[var(--danger)]',
+    pending: 'pending',
+    confirmed: 'confirmed',
+    awaiting_payment: 'awaiting',
+    assigned: 'assigned',
+    in_progress: 'in-progress',
+    completed: 'completed',
+    cancelled: 'cancelled',
   }
-  return map[status] || 'bg-[var(--surface-hover)] text-[var(--fg-muted)]'
+  return map[status] || 'pending'
 }
 
 function getPaymentText(status: string): string {
@@ -113,12 +121,12 @@ function getPaymentText(status: string): string {
 
 function getPaymentBadgeClass(status: string): string {
   const map: Record<string, string> = {
-    pending: 'bg-[rgba(250,204,21,0.15)] text-yellow-400',
-    paid: 'bg-[rgba(74,222,128,0.15)] text-green-400',
-    partial: 'bg-[rgba(96,165,250,0.15)] text-blue-400',
-    refunded: 'bg-[var(--danger-soft)] text-[var(--danger)]',
+    pending: 'pending',
+    paid: 'paid',
+    partial: 'partial',
+    refunded: 'refunded',
   }
-  return map[status] || 'bg-[var(--surface-hover)] text-[var(--fg-muted)]'
+  return map[status] || 'pending'
 }
 
 function getAvatarColor(letter: string): string {

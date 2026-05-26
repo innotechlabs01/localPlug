@@ -54,13 +54,13 @@ No setup tasks required.
 The inline style refactor (T007) can run in parallel across all files. Page-specific alignment (T008-T016) depends on T007 completing for that file.
 
 - [X] T007 [P] [US1] Replace hardcoded hex colors with CSS var(--*) across ALL admin pages — app/admin/*/page.tsx and component files
-- [ ] T008 [US1] Align Reservations page — KPI grid (6-col with colored top bars), filter pills, table+timeline layout, detail modal tabs in app/admin/reservations/components/*
-- [ ] T009 [P] [US1] Align Analytics page — KPI cards with top accent bars, chart area layout, top drivers table in app/admin/analytics/page.tsx
-- [ ] T010 [P] [US1] Align Customers page — slide-in panel styling matching HTML reference in app/admin/customers/page.tsx
-- [ ] T011 [P] [US1] Align Dispatch page — 3-column layout matching HTML reference in app/admin/dispatch/page.tsx
-- [ ] T012 [P] [US1] Align Drivers page — driver cards and side panel styling in app/admin/drivers/page.tsx
-- [ ] T013 [P] [US1] Align Fleet page — vehicle card styling and layout structure in app/admin/fleet/page.tsx
-- [ ] T014 [P] [US1] Align remaining pages — Employees, Inventory, Payments, Promotions, Settings, Support UI in app/admin/*/page.tsx
+- [X] T008 [US1] Align Reservations page — KPI grid (6-col with colored top bars), filter pills, table+timeline layout, detail modal tabs in app/admin/reservations/components/*
+- [X] T009 [P] [US1] Align Analytics page — KPI cards with top accent bars, chart area layout, top drivers table in app/admin/analytics/page.tsx
+- [X] T010 [P] [US1] Align Customers page — slide-in panel styling matching HTML reference in app/admin/customers/page.tsx
+- [X] T011 [P] [US1] Align Dispatch page — 3-column layout matching HTML reference in app/admin/dispatch/page.tsx
+- [X] T012 [P] [US1] Align Drivers page — driver cards and side panel styling in app/admin/drivers/page.tsx
+- [X] T013 [P] [US1] Align Fleet page — vehicle card styling and layout structure in app/admin/fleet/page.tsx
+- [X] T014 [P] [US1] Align remaining pages — Employees, Inventory, Payments, Promotions, Settings, Support UI in app/admin/*/page.tsx
 
 **Checkpoint**: All admin pages visually match the HTML reference in colors, spacing, typography, and layout. Sidebar routes work correctly.
 

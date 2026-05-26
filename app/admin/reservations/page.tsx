@@ -202,36 +202,36 @@ export default function AdminReservations() {
 
   return (
     <RealtimeProvider>
-      <div className="space-y-5">
+      <div className="reservations-page">
         <ReservationKPIs reservations={reservations} />
 
         <div className="flex flex-wrap items-end gap-3 bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)] p-4">
-          <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-medium text-[var(--fg-muted)]">{d.dateFrom || 'From'}</label>
-            <input type="date" className="bg-[var(--bg)] border border-[var(--border)] rounded-[var(--radius-sm)] px-3 py-1.5 text-[12px] text-[var(--fg)] outline-none focus:border-[var(--accent)]" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+          <div className="input-group">
+            <label className="input-label">{d.dateFrom || 'From'}</label>
+            <input type="date" className="input" style={{ fontSize: 12, padding: '6px 10px' }} value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
           </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-medium text-[var(--fg-muted)]">{d.dateTo || 'To'}</label>
-            <input type="date" className="bg-[var(--bg)] border border-[var(--border)] rounded-[var(--radius-sm)] px-3 py-1.5 text-[12px] text-[var(--fg)] outline-none focus:border-[var(--accent)]" value={dateTo} onChange={e => setDateTo(e.target.value)} />
+          <div className="input-group">
+            <label className="input-label">{d.dateTo || 'To'}</label>
+            <input type="date" className="input" style={{ fontSize: 12, padding: '6px 10px' }} value={dateTo} onChange={e => setDateTo(e.target.value)} />
           </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-medium text-[var(--fg-muted)]">{d.country || 'Country'}</label>
-            <select className="bg-[var(--bg)] border border-[var(--border)] rounded-[var(--radius-sm)] px-3 py-1.5 text-[12px] text-[var(--fg)] outline-none focus:border-[var(--accent)]" value={countryFilter} onChange={e => setCountryFilter(e.target.value)}>
+          <div className="input-group">
+            <label className="input-label">{d.country || 'Country'}</label>
+            <select className="input" style={{ fontSize: 12, padding: '6px 10px' }} value={countryFilter} onChange={e => setCountryFilter(e.target.value)}>
               <option value="">All</option>
               {countries.map(c => <option key={c.code} value={c.name}>{c.flag} {c.name}</option>)}
             </select>
           </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-medium text-[var(--fg-muted)]">{d.flight || 'Flight'}</label>
-            <input type="text" className="bg-[var(--bg)] border border-[var(--border)] rounded-[var(--radius-sm)] px-3 py-1.5 text-[12px] text-[var(--fg)] outline-none focus:border-[var(--accent)] w-28" placeholder="Search..." value={flightFilter} onChange={e => setFlightFilter(e.target.value)} />
+          <div className="input-group">
+            <label className="input-label">{d.flight || 'Flight'}</label>
+            <input type="text" className="input" style={{ fontSize: 12, padding: '6px 10px', width: 120 }} placeholder="Search..." value={flightFilter} onChange={e => setFlightFilter(e.target.value)} />
           </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-medium text-[var(--fg-muted)]">{d.package || 'Package'}</label>
-            <input type="text" className="bg-[var(--bg)] border border-[var(--border)] rounded-[var(--radius-sm)] px-3 py-1.5 text-[12px] text-[var(--fg)] outline-none focus:border-[var(--accent)] w-28" placeholder="Search..." value={packageFilter} onChange={e => setPackageFilter(e.target.value)} />
+          <div className="input-group">
+            <label className="input-label">{d.package || 'Package'}</label>
+            <input type="text" className="input" style={{ fontSize: 12, padding: '6px 10px', width: 120 }} placeholder="Search..." value={packageFilter} onChange={e => setPackageFilter(e.target.value)} />
           </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-medium text-[var(--fg-muted)]">{d.payment || 'Payment'}</label>
-            <select className="bg-[var(--bg)] border border-[var(--border)] rounded-[var(--radius-sm)] px-3 py-1.5 text-[12px] text-[var(--fg)] outline-none focus:border-[var(--accent)]" value={paymentFilter} onChange={e => setPaymentFilter(e.target.value)}>
+          <div className="input-group">
+            <label className="input-label">{d.payment || 'Payment'}</label>
+            <select className="input" style={{ fontSize: 12, padding: '6px 10px' }} value={paymentFilter} onChange={e => setPaymentFilter(e.target.value)}>
               <option value="all">All</option>
               <option value="pending">Pending</option>
               <option value="paid">Paid</option>
@@ -239,48 +239,59 @@ export default function AdminReservations() {
               <option value="refunded">Refunded</option>
             </select>
           </div>
-          <button className="text-[12px] text-[var(--fg-muted)] hover:text-[var(--fg)] px-3 py-1.5" onClick={() => { setDateFrom(''); setDateTo(''); setCountryFilter(''); setFlightFilter(''); setPackageFilter(''); setPaymentFilter('all') }}>
+          <button className="btn btn-ghost btn-sm" onClick={() => { setDateFrom(''); setDateTo(''); setCountryFilter(''); setFlightFilter(''); setPackageFilter(''); setPaymentFilter('all') }}>
             {d.clearFilters || 'Clear'}
           </button>
         </div>
 
         <ReservationFilters selectedFilter={selectedFilter} onFilterChange={setSelectedFilter} reservations={reservations} />
 
-        <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-5">
-          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)] overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
-              <span className="text-[13px] font-semibold" style={{ color: 'var(--fg)' }}>{d.allReservations || 'All Reservations'}</span>
-              <div className="flex items-center gap-2">
-                <button onClick={handleExportCSV} className="flex items-center gap-1.5 text-[12px] text-[var(--fg-secondary)] hover:text-[var(--fg)] bg-[var(--bg)] border border-[var(--border)] rounded-[var(--radius-sm)] px-3 py-1.5">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <div className="res-table-section">
+          <div className="res-table-card">
+            <div className="card-header">
+              <span className="card-title">{d.allReservations || 'All Reservations'}</span>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button onClick={handleExportCSV} className="btn btn-secondary btn-sm">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                   Export
                 </button>
               </div>
             </div>
-            <div className="overflow-x-auto">
+            <div className="table-wrap">
               <ReservationTable reservations={filteredReservations} onViewReservation={handleOpenModal} />
             </div>
           </div>
 
-          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)] overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
-              <span className="text-[13px] font-semibold" style={{ color: 'var(--fg)' }}>{d.upcomingArrivals || 'Upcoming Arrivals'}</span>
-              <span className="text-[10px] font-semibold bg-[var(--accent-soft)] text-[var(--accent)] px-2 py-0.5 rounded-full">
+          <div className="timeline-card">
+            <div className="card-header">
+              <span className="card-title">{d.upcomingArrivals || 'Upcoming Arrivals'}</span>
+              <span className="badge badge-accent" style={{ fontSize: 10 }}>
                 {upcomingArrivals.length} {d.todayLabel || 'Today'}
               </span>
             </div>
-            <div className="divide-y divide-[var(--border-light)] max-h-[500px] overflow-y-auto">
-              {upcomingArrivals.length > 0 ? upcomingArrivals.map(r => (
-                <div key={r.id} className="px-4 py-3 hover:bg-[var(--surface-hover)] cursor-pointer" onClick={() => handleOpenModal(r)}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[11px] text-[var(--fg-muted)] font-mono">{formatTime(r.arrivalTime)}</span>
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${getStatusBadgeClass(r.status)}`}>{getStatusText(r.status)}</span>
+            <div className="timeline-list">
+              {upcomingArrivals.length > 0 ? upcomingArrivals.map(r => {
+                const arrivalDate = new Date(`${r.arrivalDate}T${r.arrivalTime || '00:00'}`)
+                const isArrived = arrivalDate < new Date()
+                const dotClass = isArrived ? 'arrived' : r.status === 'pending' ? 'pending' : r.status === 'awaiting_payment' ? 'awaiting' : ''
+                return (
+                  <div key={r.id} className="timeline-item" onClick={() => handleOpenModal(r)} style={{ cursor: 'pointer' }}>
+                    <div className={`timeline-dot${dotClass ? ` ${dotClass}` : ''}`} style={{ marginTop: 6, position: 'relative', zIndex: 1 }} />
+                    <div className="timeline-body" style={{ padding: 0 }}>
+                      <div className="timeline-time">{formatTime(r.arrivalTime)} — {getStatusText(r.status)}</div>
+                      <div className="timeline-guest">{r.guest.firstName} {r.guest.lastName}</div>
+                      <div className="timeline-meta">
+                        {r.flightInfo && <span className="badge badge-info" style={{ fontSize: 10 }}>{r.flightInfo}</span>}
+                        {r.service.name}
+                      </div>
+                    </div>
+                    <div className="timeline-right">
+                      <span className={`status-badge ${getStatusBadgeSimple(r.status)}`} style={{ fontSize: 10 }}>{getStatusText(r.status)}</span>
+                    </div>
                   </div>
-                  <div className="text-[13px] font-medium" style={{ color: 'var(--fg)' }}>{r.guest.firstName} {r.guest.lastName}</div>
-                  <div className="text-[11px] text-[var(--fg-muted)] mt-0.5">{r.flightInfo} — {r.service.name}</div>
-                </div>
-              )) : (
-                <div className="px-4 py-8 text-center text-[13px] text-[var(--fg-muted)]">{d.noUpcomingArrivals || 'No upcoming arrivals'}</div>
+                )
+              }) : (
+                <div style={{ padding: '32px 18px', textAlign: 'center', fontSize: 13, color: 'var(--fg-muted)' }}>{d.noUpcomingArrivals || 'No upcoming arrivals'}</div>
               )}
             </div>
           </div>
@@ -320,4 +331,17 @@ function getStatusBadgeClass(status: string): string {
 function formatTime(timeStr: string | undefined): string {
   if (!timeStr) return '--:--'
   return timeStr.substring(0, 5)
+}
+
+function getStatusBadgeSimple(status: string): string {
+  const map: Record<string, string> = {
+    pending: 'pending',
+    confirmed: 'confirmed',
+    awaiting_payment: 'awaiting',
+    assigned: 'assigned',
+    in_progress: 'in-progress',
+    completed: 'completed',
+    cancelled: 'cancelled',
+  }
+  return map[status] || 'pending'
 }

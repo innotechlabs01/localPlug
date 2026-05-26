@@ -194,363 +194,332 @@ export default function CustomersPage() {
 
   return (
     <div style={{ paddingBottom: 40 }}>
-       {/* Header */}
-       <div className="flex items-center justify-between mb-5">
-         <div>
-           <h1 className="text-[18px] font-semibold text-fg">{d.title as string}</h1>
-           <p className="text-[13px] mt-0.5 text-fg-muted">{(d.subtitle as string).replace('{count}', String(kpi.total || customers.length))}</p>
-         </div>
-         <div className="flex items-center gap-2">
-           <button
-             onClick={exportCsv}
-             className="btn btn-secondary flex items-center gap-1.5"
-           >
-             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2 2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-             {d.export as string}
-           </button>
-           {/* <button
-             onClick={openNew}
-             className="px-4 py-2 text-[13px] font-medium rounded-[6px] transition-all flex items-center gap-1.5 text-white"
-             style={{ background: 'var(--accent)' }}
-           >
-             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-             {d.add as string}
-           </button> */}
-         </div>
-       </div>
-
-{/* KPI Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-[14px] mb-6">
+      <div className="customers-page">
+        {/* KPI Row */}
+        <div className="customer-kpi-row">
           {[
-            { label: d.kpiTotalCustomers || 'Total Customers', value: kpi.total ?? '—', color: 'var(--accent)' },
-            { label: d.kpiActiveMonth || 'Active This Month', value: kpi.active ?? '—', color: 'var(--info)' },
-            { label: d.kpiVipCustomers || 'VIP Customers', value: kpi.vip ?? '—', color: 'var(--gold)' },
-            { label: d.kpiReturningRate || 'Returning Rate', value: kpi.returning_rate ?? '—', color: 'var(--accent)' },
-            { label: d.kpiAvgLtv || 'Avg. LTV', value: formatCurrency(kpi.avg_ltv ?? 0), color: 'var(--accent-soft)' },
-            { label: d.kpiNpsScore || 'NPS Score', value: kpi.nps ?? '—', color: 'var(--gold)' },
+            { label: d.kpiTotalCustomers || 'Total Customers', value: kpi.total ?? '—', color: 'green' },
+            { label: d.kpiActiveMonth || 'Active This Month', value: kpi.active ?? '—', color: 'blue' },
+            { label: d.kpiVipCustomers || 'VIP Customers', value: kpi.vip ?? '—', color: 'gold' },
+            { label: d.kpiReturningRate || 'Returning Rate', value: kpi.returning_rate ?? '—', color: 'green' },
+            { label: d.kpiAvgLtv || 'Avg. LTV', value: formatCurrency(kpi.avg_ltv ?? 0), color: 'purple' },
+            { label: d.kpiNpsScore || 'NPS Score', value: kpi.nps ?? '—', color: 'gold' },
           ].map((card, i) => (
-            <div 
-              key={i} 
-              className="stat-card"
-              style={{ 
-                background: 'var(--surface)', 
-                border: '1px solid var(--border)', 
-                borderRadius: 'var(--radius-md)',
-                padding: '18px 16px',
-                textAlign: 'center',
-                transition: 'all var(--transition)'
-              }}
-            >
-              <div 
-                className="stat-value" 
-                style={{ 
-                  fontSize: '26px', 
-                  fontWeight: 700, 
-                  lineHeight: 1.1, 
-                  color: card.color 
-                }}
-              >
-                {card.value}
-              </div>
-              <div 
-                className="stat-label" 
-                style={{ 
-                  fontSize: '11px', 
-                  color: 'var(--fg-muted)', 
-                  fontWeight: 500, 
-                  marginTop: '4px' 
-                }}
-              >
-                {card.label}
-              </div>
+            <div key={i} className="customer-kpi">
+              <div className={`kpi-val ${card.color}`}>{card.value}</div>
+              <div className="kpi-label">{card.label}</div>
             </div>
           ))}
         </div>
 
-       {/* Toolbar */}
-       <div className="flex items-center gap-3 mb-4 flex-wrap">
-         <div className="relative flex-1 min-w-[200px] max-w-[320px]">
-           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="absolute left-3 top-1/2 -translate-y-1/2 text-fg-muted" />
-           <input
-             type="text"
-             placeholder={d.search as string}
-             value={search}
-             onChange={(e) => setSearch(e.target.value)}
-             className="input w-full"
-           />
-         </div>
-<select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="select"
-          >
-            <option value="all">{d.filterAll as string}</option>
-            <option value="active">{d.filterActive as string}</option>
-            <option value="inactive">{d.filterInactive as string}</option>
-          </select>
-          <select
-            value={vipFilter}
-            onChange={(e) => setVipFilter(e.target.value)}
-            className="select"
-          >
-            <option value="all">{d.vipFilterAll || 'All VIP Levels'}</option>
-            <option value="platinum">{d.vipPlatinum as string}</option>
-            <option value="gold">{d.vipGold as string}</option>
-            <option value="silver">{d.vipSilver as string}</option>
-            <option value="standard">{d.vipNone as string}</option>
-          </select>
-       </div>
-
-       {/* Table */}
-       <div className="table-wrap">
-         <table>
-           <thead>
-             <tr>
-               <th>{d.tableId as string}</th>
-               <th>{d.tableCustomer as string}</th>
-               <th>{d.tablePhone as string}</th>
-               <th>{d.tableCountry as string}</th>
-               <th>{d.tableTrips as string}</th>
-               <th>{d.tableLtv as string}</th>
-               <th>{d.tableStatus as string}</th>
-               <th>{d.tableLastTrip as string}</th>
-               <th>{d.tableCreated as string}</th>
-               <th>{d.tableActions as string}</th>
-             </tr>
-           </thead>
-<tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={10} className="text-center py-12">{d.loading as string}</td>
-                </tr>
-              ) : filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={10} className="text-center py-12">{d.noResults as string}</td>
-                </tr>
-              ) : (
-                filtered.map((customer) => (
-                  <tr
-                    key={customer.id}
-                    className="customer-row"
-                    data-status={customer.status}
-                    data-vip={customer.vip_level}
-                    onClick={() => { setSelectedCustomer(customer); setDetailTab('profile') }}
-                  >
-                    <td>
-                      <div className="customer-name-cell">
-                        <div 
-                          className="customer-avatar" 
-                          style={{ 
-                            background: getAvatarBg(customer.vip_level), 
-                            color: getAvatarColor(customer.vip_level) 
-                          }}
-                        >
-                          {getInitials(customer.name)}
-                        </div>
-                        <div>
-                          <div className="font-medium">{customer.name}</div>
-                          <div className="text-fg-muted text-xs">{customer.email}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <span className="country-flag">{getCountryFlag(customer.country)}</span> {customer.country || '—'}
-                    </td>
-                    <td>
-                      <span className={`badge ${customer.status === 'active' ? 'badge-accent' : 'badge-warning'}`}>
-                        {customer.status === 'active' ? d.statusActive as string : d.statusInactive as string}
-                      </span>
-                    </td>
-                    <td className="text-fg-secondary text-xs">{getRelativeTime(customer.last_trip_date)}</td>
-                    <td className="font-semibold">{customer.total_trips}</td>
-                    <td className="font-semibold font-mono">{formatCurrency(customer.lifetime_value)}</td>
-                    <td>
-                      <span className={`vip-badge ${customer.vip_level || 'standard'}`}>
-                        {vipLabel(d, customer.vip_level)}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="actions-group">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setSelectedCustomer(customer); setDetailTab('profile') }}
-                          className="action-btn"
-                          title="View"
-                        >
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); openEdit(customer) }}
-                          className="action-btn"
-                          title="Edit"
-                        >
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); deactivateCustomer(customer) }}
-                          className="action-btn danger"
-                          title="Delete"
-                        >
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                 ))
-               )}
-            </tbody>
-          </table>
+        {/* Toolbar */}
+        <div className="toolbar-row">
+          <div className="filter-group">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="input"
+              style={{ width: 'auto', padding: '6px 10px', fontSize: 12, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--fg)', outline: 'none' }}
+            >
+              <option value="all">{d.filterAll as string}</option>
+              <option value="active">{d.filterActive as string}</option>
+              <option value="inactive">{d.filterInactive as string}</option>
+            </select>
+          </div>
+          <div className="filter-group">
+            <select
+              value={vipFilter}
+              onChange={(e) => setVipFilter(e.target.value)}
+              className="input"
+              style={{ width: 'auto', padding: '6px 10px', fontSize: 12, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--fg)', outline: 'none' }}
+            >
+              <option value="all">{d.vipFilterAll || 'All VIP Levels'}</option>
+              <option value="platinum">{d.vipPlatinum as string}</option>
+              <option value="gold">{d.vipGold as string}</option>
+              <option value="silver">{d.vipSilver as string}</option>
+              <option value="standard">{d.vipNone as string}</option>
+            </select>
+          </div>
+          <button onClick={exportCsv} className="btn btn-primary btn-sm">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            {d.export as string}
+          </button>
+          <button onClick={openNew} className="btn btn-secondary btn-sm">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></svg>
+            {d.add as string}
+          </button>
         </div>
 
-        {/* Slide-in Detail Panel */}
-        {selectedCustomer && (
-          <div className="fixed inset-0 z-[1000] flex justify-end" onClick={() => setSelectedCustomer(null)}>
-            <div className="absolute inset-0 bg-black/50" />
-            <div
-              className="relative w-full max-w-[520px] h-full overflow-y-auto"
-              style={{ background: 'var(--surface)', borderLeft: '1px solid var(--border)' }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Panel Header */}
-              <div className="sticky top-0 z-10 px-6 py-4 flex items-center justify-between" style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-[15px]" style={{ background: 'var(--accent)' }}>
-                    {selectedCustomer.name.charAt(0)}
+        {/* Customer Table */}
+        <div className="card" style={{ margin: 0 }}>
+          <div className="card-header" style={{ padding: '12px 16px' }}>
+            <span className="card-title" style={{ fontSize: 13 }}>{d.title as string}</span>
+            <span style={{ fontSize: 11, color: 'var(--fg-muted)' }}>{(d.subtitle as string).replace('{count}', String(kpi.total || customers.length))}</span>
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Customer</th>
+                  <th>Country</th>
+                  <th>Status</th>
+                  <th>Last Trip</th>
+                  <th>Trips</th>
+                  <th>LTV</th>
+                  <th>VIP Level</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={8} className="text-center py-12">{d.loading as string}</td>
+                  </tr>
+                ) : filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="text-center py-12">{d.noResults as string}</td>
+                  </tr>
+                ) : (
+                  filtered.map((customer) => (
+                    <tr
+                      key={customer.id}
+                      className="customer-row"
+                      data-status={customer.status}
+                      data-vip={customer.vip_level}
+                      onClick={() => { setSelectedCustomer(customer); setDetailTab('profile') }}
+                    >
+                      <td>
+                        <div className="table-customer-name">
+                          <div
+                            className="table-customer-avatar"
+                            style={{
+                              background: getAvatarBg(customer.vip_level),
+                              color: getAvatarColor(customer.vip_level)
+                            }}
+                          >
+                            {getInitials(customer.name)}
+                          </div>
+                          <div>
+                            <div className="font-medium">{customer.name}</div>
+                            <div style={{ color: 'var(--fg-muted)', fontSize: 12 }}>{customer.email}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span className="country-flag">{getCountryFlag(customer.country)}</span> {customer.country || '—'}
+                      </td>
+                      <td>
+                        <span className={`badge ${customer.status === 'active' ? 'badge-accent' : 'badge-warning'}`} style={{ fontSize: 10, padding: '2px 8px' }}>
+                          {customer.status === 'active' ? d.statusActive as string : d.statusInactive as string}
+                        </span>
+                      </td>
+                      <td style={{ fontSize: 12, color: 'var(--fg-secondary)' }}>{getRelativeTime(customer.last_trip_date)}</td>
+                      <td style={{ fontWeight: 600 }}>{customer.total_trips}</td>
+                      <td style={{ fontWeight: 600, fontFamily: 'var(--font-mono)' }}>{formatCurrency(customer.lifetime_value)}</td>
+                      <td>
+                        <span className={`vip-badge ${customer.vip_level || 'standard'}`}>
+                          {vipLabel(d, customer.vip_level)}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="actions-group">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setSelectedCustomer(customer); setDetailTab('profile') }}
+                            className="action-btn"
+                            title="View"
+                          >
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); openEdit(customer) }}
+                            className="action-btn"
+                            title="Edit"
+                          >
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); deactivateCustomer(customer) }}
+                            className="action-btn danger"
+                            title="Delete"
+                          >
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* Panel Overlay */}
+      <div
+        className={`panel-overlay ${selectedCustomer ? 'open' : ''}`}
+        onClick={() => setSelectedCustomer(null)}
+      />
+
+      {/* Slide-in Detail Panel */}
+      {selectedCustomer && (
+        <div className={`detail-panel open`}>
+          <div className="panel-header">
+            <span className="panel-header-title">{selectedCustomer.name}</span>
+            <button className="panel-close" onClick={() => setSelectedCustomer(null)}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div className="panel-body">
+            {/* Profile Summary */}
+            <div className="profile-summary">
+              <div
+                className="profile-avatar-large"
+                style={{
+                  background: getAvatarBg(selectedCustomer.vip_level),
+                  color: getAvatarColor(selectedCustomer.vip_level)
+                }}
+              >
+                {getInitials(selectedCustomer.name)}
+              </div>
+              <div className="profile-info">
+                <div className="profile-name">
+                  {selectedCustomer.name}{' '}
+                  <span className={`vip-badge ${selectedCustomer.vip_level || 'standard'}`}>
+                    {vipLabel(d, selectedCustomer.vip_level)}
+                  </span>
+                </div>
+                <div className="profile-meta">
+                  <span>{getCountryFlag(selectedCustomer.country)} {selectedCustomer.country || '—'}</span>
+                  <span>&middot;</span>
+                  <span>{selectedCustomer.phone || '—'}</span>
+                </div>
+                <div className="profile-meta">
+                  <span>{selectedCustomer.email}</span>
+                  <span>&middot;</span>
+                  <span>{selectedCustomer.languages || '—'}</span>
+                </div>
+                <div className="profile-stats">
+                  <div className="profile-stat">
+                    <div className="profile-stat-num">{selectedCustomer.total_trips}</div>
+                    <div className="profile-stat-label">Trips</div>
                   </div>
-                  <div>
-                    <div className="text-[15px] font-semibold" style={{ color: 'var(--fg)' }}>{selectedCustomer.name}</div>
-                    <div className="text-[12px]" style={{ color: 'var(--fg-muted)' }}>#{selectedCustomer.id}</div>
+                  <div className="profile-stat">
+                    <div className="profile-stat-num" style={{ fontFamily: 'var(--font-mono)' }}>{formatCurrency(selectedCustomer.lifetime_value)}</div>
+                    <div className="profile-stat-label">LTV</div>
+                  </div>
+                  <div className="profile-stat">
+                    <div className="profile-stat-num">{formatDate(selectedCustomer.created_at) || '—'}</div>
+                    <div className="profile-stat-label">Since</div>
                   </div>
                 </div>
-                <button onClick={() => setSelectedCustomer(null)} className="p-1.5 rounded-[4px] transition-all" style={{ color: 'var(--fg-muted)' }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </div>
+            </div>
+
+            {/* Tab navigation */}
+            <div className="tabs" style={{ marginBottom: 0 }}>
+              {(['profile', 'reservations', 'preferences', 'support', 'tags'] as TabKey[]).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setDetailTab(tab)}
+                  className={`tab ${detailTab === tab ? 'active' : ''}`}
+                >
+                  {d[`detail${tab.charAt(0).toUpperCase()}${tab.slice(1)}` as keyof typeof d] as string || tab}
                 </button>
-              </div>
+              ))}
+            </div>
 
-              {/* Tabs */}
-              <div className="tabs sticky top-[60px]">
-                {(['profile', 'reservations', 'preferences', 'support', 'tags'] as TabKey[]).map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setDetailTab(tab)}
-                    className={detailTab === tab ? 'tab-active' : ''}
-                  >
-                    {d[`detail${tab.charAt(0).toUpperCase() + tab.slice(1)}` as keyof typeof d] as string || tab}
-                  </button>
-                ))}
-              </div>
-
-              <div className="p-6">
-                {detailTab === 'profile' && (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <div className="text-sm font-medium text-fg-muted mb-1">{d.profileName as string}</div>
-                        <div className="base-text text-fg">{selectedCustomer.name}</div>
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-fg-muted mb-1">{d.profileEmail as string}</div>
-                        <div className="base-text text-fg">{selectedCustomer.email}</div>
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-fg-muted mb-1">{d.profilePhone as string}</div>
-                        <div className="base-text text-fg">{selectedCustomer.phone || '—'}</div>
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-fg-muted mb-1">{d.profileCountry as string}</div>
-                        <div className="base-text text-fg">{selectedCustomer.country || '—'}</div>
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-fg-muted mb-1">{d.profileLanguages as string}</div>
-                        <div className="base-text text-fg">{selectedCustomer.languages || '—'}</div>
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-fg-muted mb-1">{d.profileVipLevel as string}</div>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium ${VIP_BADGES[selectedCustomer.vip_level] || VIP_BADGES['standard']}`}>
-                          {vipLabel(d, selectedCustomer.vip_level)}
-                        </span>
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-fg-muted mb-1">{d.profileStatus as string}</div>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-sm font-medium ${STATUS_BADGES[selectedCustomer.status] || STATUS_BADGES['inactive']}`}>
-                          {selectedCustomer.status === 'active' ? d.statusActive as string : d.statusInactive as string}
-                        </span>
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-fg-muted mb-1">{d.profileMemberSince as string}</div>
-                        <div className="base-text text-fg">{formatDate(selectedCustomer.created_at)}</div>
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-fg-muted mb-1">{d.profileTotalTrips as string}</div>
-                        <div className="base-text text-fg">{selectedCustomer.total_trips}</div>
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-fg-muted mb-1">{d.profileLifetimeValue as string}</div>
-                        <div className="base-text font-semibold text-accent">{formatCurrency(selectedCustomer.lifetime_value)}</div>
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-fg-muted mb-1">{d.profileLastTrip as string}</div>
-                        <div className="base-text text-fg">{formatDate(selectedCustomer.last_trip_date)}</div>
-                      </div>
+            {/* Tab Content */}
+            {detailTab === 'profile' && (
+              <div>
+                <div className="panel-section-title">{d.profileName as string || 'Profile'}</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--fg-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>{d.profilePhone as string || 'Phone'}</div>
+                      <div style={{ fontSize: 13, color: 'var(--fg)' }}>{selectedCustomer.phone || '—'}</div>
                     </div>
-                    <div className="flex gap-2 pt-2">
-                      <button
-                        onClick={() => openEdit(selectedCustomer)}
-                        className="btn btn-primary w-full"
-                      >
-                        {d.modalEdit as string}
-                      </button>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--fg-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>{d.profileCountry as string || 'Country'}</div>
+                      <div style={{ fontSize: 13, color: 'var(--fg)' }}>{selectedCustomer.country || '—'}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--fg-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>{d.profileLanguages as string || 'Languages'}</div>
+                      <div style={{ fontSize: 13, color: 'var(--fg)' }}>{selectedCustomer.languages || '—'}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--fg-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>{d.profileVipLevel as string || 'VIP Level'}</div>
+                      <span className={`vip-badge ${selectedCustomer.vip_level || 'standard'}`}>
+                        {vipLabel(d, selectedCustomer.vip_level)}
+                      </span>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--fg-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>{d.profileStatus as string || 'Status'}</div>
+                      <span className={`badge ${selectedCustomer.status === 'active' ? 'badge-accent' : 'badge-warning'}`} style={{ fontSize: 10, padding: '2px 8px' }}>
+                        {selectedCustomer.status === 'active' ? d.statusActive as string : d.statusInactive as string}
+                      </span>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--fg-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>{d.profileMemberSince as string || 'Member Since'}</div>
+                      <div style={{ fontSize: 13, color: 'var(--fg)' }}>{formatDate(selectedCustomer.created_at)}</div>
                     </div>
                   </div>
-                )}
-
-                {detailTab === 'reservations' && (
-                  <div className="py-8 text-center text-fg-muted">
-                    {d.noReservations as string}
+                  <div className="flex gap-2 pt-2">
+                    <button onClick={() => openEdit(selectedCustomer)} className="btn btn-primary w-full">
+                      {d.modalEdit as string}
+                    </button>
                   </div>
-                )}
+                </div>
+              </div>
+            )}
 
-                {detailTab === 'preferences' && (
-                  <div className="py-8 text-center text-fg-muted">
-                    {d.noPreferences as string}
-                  </div>
-                )}
+            {detailTab === 'reservations' && (
+              <div className="py-8 text-center" style={{ color: 'var(--fg-muted)' }}>
+                {d.noReservations as string}
+              </div>
+            )}
 
-                {detailTab === 'support' && (
-                  <div>
-                    <p className="text-[13px] py-8 text-center" style={{ color: 'var(--fg-muted)' }}>{d.noSupport as string}</p>
-                  </div>
-                )}
+            {detailTab === 'preferences' && (
+              <div className="py-8 text-center" style={{ color: 'var(--fg-muted)' }}>
+                {d.noPreferences as string}
+              </div>
+            )}
 
-                {detailTab === 'tags' && (
-                  <div className="space-y-6">
-                    <div className="text-[13px] font-medium mb-2" style={{ color: 'var(--fg)' }}>{d.tagsTitle as string}</div>
-                    {(() => {
-                      let tags: string[] = []
-                      try { tags = JSON.parse(selectedCustomer.tags || '[]') } catch {}
-                      return tags.length > 0 ? (
-                        <div className="flex flex-wrap gap-1.5">
-                          {tags.map((tag, i) => (
-                            <span key={i} className="px-2.5 py-1 text-[11px] font-medium rounded-full" style={{ background: 'rgba(59,130,246,0.12)', color: 'var(--info)' }}>{tag}</span>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-[13px]" style={{ color: 'var(--fg-muted)' }}>{d.noTags as string}</p>
-                      )
-                    })()}
-                  </div>
-                )}
+            {detailTab === 'support' && (
+              <div className="py-8 text-center" style={{ color: 'var(--fg-muted)' }}>
+                {d.noSupport as string}
+              </div>
+            )}
 
-                {/* Notes section */}
-                <div className="space-y-6">
-                  <div className="text-[13px] font-medium mb-2" style={{ color: 'var(--fg)' }}>{d.notesTitle as string}</div>
-                  <p className="text-[13px]" style={{ color: selectedCustomer.notes ? 'var(--fg-secondary)' : 'var(--fg-muted)' }}>
+            {detailTab === 'tags' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div>
+                  <div className="panel-section-title">{d.tagsTitle as string || 'Tags'}</div>
+                  {(() => {
+                    let tags: string[] = []
+                    try { tags = JSON.parse(selectedCustomer.tags || '[]') } catch {}
+                    return tags.length > 0 ? (
+                      <div className="tags-wrap">
+                        {tags.map((tag, i) => (
+                          <span key={i} className="tag-item active">{tag}</span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p style={{ fontSize: 13, color: 'var(--fg-muted)' }}>{d.noTags as string}</p>
+                    )
+                  })()}
+                </div>
+                <div>
+                  <div className="panel-section-title">{d.notesTitle as string || 'Notes'}</div>
+                  <p style={{ fontSize: 13, color: selectedCustomer.notes ? 'var(--fg-secondary)' : 'var(--fg-muted)' }}>
                     {selectedCustomer.notes || (d.noTags as string)}
                   </p>
                 </div>
               </div>
-            </div>
+            )}
           </div>
-        )}
+        </div>
+      )}
 
       {/* Add/Edit Modal */}
       {showForm && (
@@ -617,8 +586,8 @@ export default function CustomersPage() {
 
       {/* Toast */}
       {toast && (
-        <div className="fixed bottom-6 right-6 z-[2000] px-4 py-3 rounded-[8px] text-[13px] font-medium shadow-lg animate-in" style={{ background: toast.type === 'success' ? 'var(--accent)' : 'var(--danger)', color: 'white' }}>
-          {toast.message}
+        <div className="toast" style={{ background: toast.type === 'success' ? 'var(--accent)' : 'var(--danger)', color: 'white' }}>
+          <span>{toast.message}</span>
         </div>
       )}
     </div>

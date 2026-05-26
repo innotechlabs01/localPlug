@@ -21,7 +21,7 @@ export default function ReservationTimeline({ reservations }: ReservationTimelin
 
   if (upcomingArrivals.length === 0) {
     return (
-      <div className="text-center py-8 text-muted">
+      <div style={{ padding: '32px 18px', textAlign: 'center', fontSize: 13, color: 'var(--fg-muted)' }}>
         No upcoming arrivals
       </div>
     )
@@ -29,61 +29,35 @@ export default function ReservationTimeline({ reservations }: ReservationTimelin
 
   return (
     <div className="timeline-list">
-      {upcomingArrivals.map((reservation, index) => (
-        <div key={reservation.id} className="timeline-item">
-          <div className="timeline-line">
-            <div 
-              className={`timeline-dot ${getStatusClass(reservation.status)}`} 
-              // Add arrived class if it's in the past
-              {...(new Date(`${reservation.arrivalDate}T${reservation.arrivalTime || '00:00'}`) < new Date() ? 
-                { className: 'timeline-dot arrived' } : {})}
-            />
+      {upcomingArrivals.map(reservation => {
+        const arrivalDate = new Date(`${reservation.arrivalDate}T${reservation.arrivalTime || '00:00'}`)
+        const isArrived = arrivalDate < new Date()
+        const dotClass = isArrived ? 'arrived' : reservation.status === 'pending' ? 'pending' : reservation.status === 'awaiting_payment' ? 'awaiting' : ''
+        return (
+          <div key={reservation.id} className="timeline-item">
+            <div className={`timeline-dot${dotClass ? ` ${dotClass}` : ''}`} style={{ marginTop: 6, position: 'relative', zIndex: 1 }} />
+            <div className="timeline-body" style={{ padding: 0 }}>
+              <div className="timeline-time">
+                {formatTime(reservation.arrivalTime)} — {getStatusText(reservation.status)}
+              </div>
+              <div className="timeline-guest">
+                {reservation.guest.firstName} {reservation.guest.lastName}
+              </div>
+              <div className="timeline-meta">
+                {reservation.flightInfo && <span className="badge badge-info" style={{ fontSize: 10 }}>{reservation.flightInfo}</span>}
+                {reservation.service.name}
+              </div>
+            </div>
+            <div className="timeline-right">
+              <span className={`status-badge ${getStatusBadgeClass(reservation.status)}`} style={{ fontSize: 10 }}>
+                {getStatusText(reservation.status)}
+              </span>
+            </div>
           </div>
-          <div className="timeline-body">
-            <div className="timeline-time">
-              {formatTime(reservation.arrivalTime)} — {getStatusText(reservation.status)}
-            </div>
-            <div className="timeline-guest">
-              {reservation.guest.firstName} {reservation.guest.lastName}
-            </div>
-            <div className="timeline-meta">
-              <span className="badge badge-info" style={{ fontSize: '10px' }}>
-                {reservation.flightInfo || ''}
-              </span> {reservation.service.name}
-            </div>
-          </div>
-          <div className="timeline-right">
-            <span 
-              className={`status-badge ${getStatusBadgeClass(reservation.status)}`} 
-              style={{ fontSize: '10px' }}
-            >
-              {getStatusText(reservation.status)}
-            </span>
-          </div>
-          {/* Add connecting line except for last item */}
-          {index < upcomingArrivals.length - 1 && (
-            <div className="timeline-line">
-              <div className="timeline-dot" style={{ borderColor: 'var(--border-light)' }} />
-            </div>
-          )}
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
-}
-
-// Helper functions
-function getStatusClass(status: string): string {
-  const statusMap: Record<string, string> = {
-    pending: 'border-warning',
-    confirmed: 'border-success',
-    awaiting_payment: 'border-info',
-    assigned: 'border-primary',
-    in_progress: 'border-secondary',
-    completed: 'border-neutral',
-    cancelled: 'border-error'
-  }
-  return statusMap[status] || 'border-warning'
 }
 
 function getStatusBadgeClass(status: string): string {

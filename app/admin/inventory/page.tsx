@@ -36,6 +36,7 @@ export default function InventoryPage() {
   const d = (t.admin as any).inventory ?? {};
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [toast, setToast] = useState<string | null>(null);
+  const [restockModal, setRestockModal] = useState(false);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -62,13 +63,26 @@ export default function InventoryPage() {
   const lowItems = useMemo(() => items.filter(i => i.status !== 'ok'), []);
 
   return (
-    <div className="space-y-6">
+    <div className="inv-page">
+      <section className="inv-hero">
+        <div>
+          <h1>{d.title || 'Inventory'}</h1>
+          <p>{d.subtitle || 'Stock and supplier management'}</p>
+        </div>
+        <div className="inv-actions">
+          <button className="btn btn-primary btn-sm" onClick={() => setRestockModal(true)}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Restock
+          </button>
+        </div>
+      </section>
+
       {/* Restock Alerts */}
       {lowItems.length > 0 && (
         <div className="restock-banner danger">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
           <span><strong>{lowItems.length} items critically low:</strong> {lowItems.map(i => `${i.name} (${i.stock})`).join(', ')}</span>
-          <button className="btn btn-sm" style={{ marginLeft: 'auto', background: 'var(--danger)', color: 'white', border: 'none' }} onClick={() => showToast('Restock initiated')}>
+          <button className="btn btn-sm" style={{ marginLeft: 'auto', background: 'var(--danger)', color: 'white', border: 'none' }} onClick={() => setRestockModal(true)}>
             Restock Now
           </button>
         </div>
@@ -145,53 +159,118 @@ export default function InventoryPage() {
           </div>
         </div>
 
-        {/* Restock Suggestions */}
-        <div className="card">
-          <div className="card-header">
-            <span className="card-title">Restock Suggestions</span>
-            <span className="badge badge-danger">{lowItems.length} needs action</span>
-          </div>
-          <div className="card-body" style={{ padding: '12px 16px' }}>
-            {lowItems.length === 0 ? (
-              <p className="text-fg-muted text-center py-6">{d.noAlerts || 'All items well stocked'}</p>
-            ) : lowItems.map(item => (
-              <div key={item.id} className="restock-suggest" style={{
-                display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0',
-                borderBottom: '1px solid var(--border-light)'
-              }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                  style={{ color: item.status === 'reorder' ? 'var(--danger)' : 'var(--warning)', flexShrink: 0 }}>
-                  {item.status === 'reorder' ? (
-                    <><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></>
-                  ) : (
-                    <><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></>
-                  )}
-                </svg>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 500 }}>{item.name}</div>
-                  <div style={{ fontSize: 11, color: 'var(--fg-muted)' }}>
-                    Stock: {item.stock} · {item.usagePerWeek}/week · Order from {item.supplier}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Restock Suggestions */}
+          <div className="card">
+            <div className="card-header">
+              <span className="card-title">Restock Suggestions</span>
+              <span className="badge badge-danger">{lowItems.length} needs action</span>
+            </div>
+            <div className="card-body" style={{ padding: '12px 16px' }}>
+              {lowItems.length === 0 ? (
+                <p className="text-fg-muted text-center py-6">{d.noAlerts || 'All items well stocked'}</p>
+              ) : lowItems.map(item => (
+                <div key={item.id} className="restock-suggest">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                    style={{ color: item.status === 'reorder' ? 'var(--danger)' : 'var(--warning)', flexShrink: 0 }}>
+                    {item.status === 'reorder' ? (
+                      <><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></>
+                    ) : (
+                      <><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></>
+                    )}
+                  </svg>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 500 }}>{item.name}</div>
+                    <div style={{ fontSize: 11, color: 'var(--fg-muted)' }}>
+                      Stock: {item.stock} · {item.usagePerWeek}/week · Order from {item.supplier}
+                    </div>
                   </div>
+                  <button
+                    className={`btn btn-sm ${item.status === 'reorder' ? 'btn-primary' : 'btn-warning'}`}
+                    onClick={() => showToast(`Restock ordered: ${item.name}`)}
+                  >
+                    Order
+                  </button>
                 </div>
-                <button
-                  className={`btn btn-sm ${item.status === 'reorder' ? 'btn-primary' : 'btn-warning'}`}
-                  onClick={() => showToast(`Restock ordered: ${item.name}`)}
-                >
-                  Order
-                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Recent Activity */}
+          <div className="card">
+            <div className="card-header">
+              <span className="card-title">{d.recentActivity || 'Recent Activity'}</span>
+            </div>
+            <div className="card-body" style={{ padding: '12px 16px' }}>
+              <div className="inv-history-item">
+                <div className="inv-direction inv-in">+</div>
+                <div style={{ flex: 1 }}><div style={{ fontSize: 13 }}>Restocked Welcome Kits</div><div style={{ fontSize: 11, color: 'var(--fg-muted)' }}>+50 units · 2h ago</div></div>
               </div>
-            ))}
+              <div className="inv-history-item">
+                <div className="inv-direction inv-out">−</div>
+                <div style={{ flex: 1 }}><div style={{ fontSize: 13 }}>SIM assigned to booking #1245</div><div style={{ fontSize: 11, color: 'var(--fg-muted)' }}>1 unit · 4h ago</div></div>
+              </div>
+              <div className="inv-history-item">
+                <div className="inv-direction inv-out">−</div>
+                <div style={{ flex: 1 }}><div style={{ fontSize: 13 }}>Welcome Kit — VIP Guest</div><div style={{ fontSize: 11, color: 'var(--fg-muted)' }}>1 unit · Yesterday</div></div>
+              </div>
+              <div className="inv-history-item">
+                <div className="inv-direction inv-in">+</div>
+                <div style={{ flex: 1 }}><div style={{ fontSize: 13 }}>New SIM shipment arrived</div><div style={{ fontSize: 11, color: 'var(--fg-muted)' }}>+100 units · Yesterday</div></div>
+              </div>
+              <div className="inv-history-item">
+                <div className="inv-direction inv-out">−</div>
+                <div style={{ flex: 1 }}><div style={{ fontSize: 13 }}>Gift bag — James R.</div><div style={{ fontSize: 11, color: 'var(--fg-muted)' }}>1 unit · Yesterday</div></div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Toast */}
-      {toast && (
-        <div className="fixed bottom-6 right-6 z-[2000] px-4 py-3 rounded-[8px] text-[13px] font-medium shadow-lg"
-          style={{ background: 'var(--accent)', color: 'white' }}>
-          {toast}
+      {/* Restock Modal */}
+      {restockModal && (
+        <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setRestockModal(false) }}>
+          <div className="modal" style={{ maxWidth: 480 }}>
+            <div className="modal-header">
+              <h2>{d.modalTitle || 'Restock Inventory'}</h2>
+              <button className="close-btn" onClick={() => setRestockModal(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              <div className="form-group">
+                <label>{d.itemLabel || 'Item'}</label>
+                <select className="input">
+                  {items.map(i => <option key={i.id}>{i.name}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>{d.quantityLabel || 'Quantity'}</label>
+                <input className="input" type="number" defaultValue={100} min={1} />
+              </div>
+              <div className="form-group">
+                <label>{d.supplierLabel || 'Supplier'}</label>
+                <input className="input" value="PrintPro MDE" readOnly style={{ color: 'var(--fg-muted)' }} />
+              </div>
+              <div className="form-group">
+                <label>{d.deliveryLabel || 'Estimated delivery'}</label>
+                <input className="input" value="4 business days" readOnly style={{ color: 'var(--fg-muted)' }} />
+              </div>
+              <div className="form-group">
+                <label>{d.notesLabel || 'Notes'}</label>
+                <textarea className="input" rows={3} placeholder="Order notes..." style={{ resize: 'vertical' }}></textarea>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setRestockModal(false)}>{d.cancel || 'Cancel'}</button>
+              <button className="btn btn-primary" onClick={() => { setRestockModal(false); showToast(d.restockPlaced || 'Restock ordered') }}>{d.placeOrder || 'Place Order'}</button>
+            </div>
+          </div>
         </div>
       )}
+
+      {/* Toast */}
+      <div className="toast-stack">
+        {toast && <div className="toast visible">{toast}</div>}
+      </div>
     </div>
   );
 }

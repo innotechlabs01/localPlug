@@ -381,18 +381,18 @@ export default function DriversPage() {
                          {drv.name}
                          {drv.vip_compatible ? <span className="badge vip">VIP</span> : null}
                        </div>
-                       <div className="driver-meta">{drv.languages} · {drv.city || 'Medellín'}</div>
+                        <div className="driver-meta">{drv.languages} · {drv.city || 'Medellín'}{drv.phone ? ` · ${drv.phone}` : ''}</div>
                      </div>
                    </div>
-                   <span className={`badge ${drv.status === 'available' ? 'available' : drv.status === 'busy' ? 'assigned' : 'offline'}`}>
-                     {statusLabels[drv.status || ''] || drv.status}
-                   </span>
+                    <span className={statusClasses[drv.status || ''] || 'badge'}>
+                      {statusLabels[drv.status || ''] || drv.status}
+                    </span>
                  </div>
 
                  <div className="flex gap-1.5 flex-wrap">
-                   <span className={`badge ${docStatus(drv) === 'valid' ? 'valid' : docStatus(drv) === 'warning' ? 'warning' : docStatus(drv) === 'expired' ? 'expired' : 'pending'}`}>
-                     {docStatus(drv) === 'valid' ? (d.rosterValid || 'Valid') : docStatus(drv) === 'warning' ? (d.rosterExpiring || 'Expiring') : docStatus(drv) === 'expired' ? (d.rosterExpired || 'Expired') : (d.rosterPending || 'Pending')}
-                   </span>
+                    <span className={docClasses[docStatus(drv)] || 'badge'}>
+                      {docStatus(drv) === 'valid' ? (d.rosterValid || 'Valid') : docStatus(drv) === 'warning' ? (d.rosterExpiring || 'Expiring') : docStatus(drv) === 'expired' ? (d.rosterExpired || 'Expired') : (d.rosterPending || 'Pending')}
+                    </span>
                    {drv.vip_compatible === 1 && <span className="badge vip">{d.rosterVip || 'VIP'}</span>}
                  </div>
 
@@ -431,172 +431,171 @@ export default function DriversPage() {
            </div>
         </div>
 
-         {/* ── RIGHT: SIDE STACK ── */}
-         <aside className="hidden sm:block w-[360px] sticky top-[76px]">
-           {/* Profile */}
-           <div className="panel">
-             <div className="panel-header flex items-center justify-between pb-2">
-               <span className="panel-title font-medium text-fg">{d.profileTitle || 'Driver profile'}</span>
-               <button
-                 className="btn btn-sm btn-secondary"
-                 onClick={() => {
-                   if (window.confirm('Suspend driver access?')) {
-                     showToast(d.toastStatus || 'Driver status updated')
-                   }
-                 }}
-               >
-                 {d.profileActions || 'Actions'}
-               </button>
-             </div>
-             <div className="panel-body p-4">
-               {!selected ? (
-                 <p className="text-fg-muted text-center py-8">
-                   {d.profileSelect || 'Select a driver to view profile'}
-                 </p>
-               ) : (
-                 <>
-                   <div className="flex items-center gap-3.5">
-                     <div className="w-[4.25rem] h-[4.25rem] rounded-[20px] flex items-center justify-center text-white font-extrabold text-[21px] flex-shrink-0" style={{ background: getAvatarColor(selected.name, selected.vip_compatible || undefined) }}>
-                       {selected.photo_url ? (
-                         <img src={selected.photo_url} alt={selected.name || ''} className="w-full h-full rounded-[20px] object-cover" />
-                       ) : getInit(selected.name)}
-                     </div>
-                     <div>
-                       <h2 className="text-[18px] font-bold text-fg">{selected.name}</h2>
-                       <div className="text-fg-muted text-[12px] mt-1 flex">
-                         {(selected.category || d.profileStandard || 'Standard')} · {selected.plate}
-                       </div>
-                       <div className="flex gap-1.5 flex-wrap mt-2">
-                         <span className={statusClasses[selected.status || ''] || 'badge'}>
-                           {statusLabels[selected.status || ''] || selected.status}
-                         </span>
-                         <span className={docClasses[docStatus(selected)] || 'badge'}>
-                           {docStatus(selected) === 'valid' ? (d.profileValid || 'Valid') : docStatus(selected) === 'warning' ? (d.profileExpiring || 'Expiring soon') : (d.profileExpired || 'Expired')}
-                         </span>
-                         {selected.vip_compatible === 1 && (
-                           <span className="badge badge-gold">
-                             {d.profileVip || 'VIP services'}
-                           </span>
-                         )}
-                       </div>
-                     </div>
-                   </div>
-                   <div className="grid grid-cols-2 gap-3 mt-4">
-                     {[
-                       [d.profileEmail || 'Email', selected.email || '—'],
-                       [d.profilePhone || 'Phone', selected.phone || '—'],
-                       [d.profileLanguages || 'Languages', selected.languages || '—'],
-                       [d.profileAssignment || 'Current assignment', selected.active_orders ? `${selected.active_orders} active` : 'Unassigned'],
-                       [d.profileVehicle || 'Vehicle', selected.vehicle || '—'],
-                       [d.profileCapacity || 'Capacity', selected.capacity || selected.experience_level || '—'],
-                       [d.profileLastActive || 'Last active', selected.status === 'available' ? 'Online' : selected.status === 'busy' ? 'In service' : '—'],
-                       [d.profileEligibility || 'Eligibility', docStatus(selected) === 'valid' && selected.status !== 'suspended' ? (d.profileAllowed || 'Assignment allowed') : (d.profileRestricted || 'Assignment restricted')],
-                     ].map(([label, value]) => (
-                       <div key={label}>
-                         <label className="block text-xs text-fg-muted uppercase tracking-[0.4px] mb-0.5">{label}</label>
-                         <div className="text-fg text-[13px] leading-[1.45]">{value}</div>
-                       </div>
-                     ))}
-                   </div>
-                 </>
-               )}
-             </div>
-           </div>
-
-           {/* Compliance */}
-           <div className="panel mt-4">
-             <div className="panel-header flex items-center justify-between pb-2">
-               <span className="panel-title font-medium text-fg">{d.complianceTitle || 'Compliance validation'}</span>
-             </div>
-             <div className="panel-body p-4">
-               {!selected ? (
-                 <p className="text-fg-muted text-center py-6">
-                   {d.complianceNone || 'No driver selected'}
-                 </p>
-               ) : (
-                 <>
-                   <div className="space-y-2.5">
-                     {[
-                       [d.complianceLicense || 'Driver license', selected.license_expiry || d.complianceValid || 'Valid'],
-                       [d.complianceSoat || 'SOAT insurance', selected.soat_expiry || d.complianceValid || 'Valid'],
-                       [d.complianceInspection || 'Technical inspection', selected.tech_inspection_expiry || d.complianceValid || 'Valid'],
-                       [d.complianceInsurance || 'Vehicle insurance', selected.insurance_expiry || d.complianceValid || 'Valid'],
-                     ].map(([name, value]) => {
-                       const lower = value.toLowerCase()
-                       const s = lower.includes('expir') ? 'warning' : lower.includes('expired') || lower.includes('missing') ? 'expired' : 'valid'
-                       return (
-                         <div key={name} className="flex items-center justify-between border-b border-border-light py-2">
-                           <div className="flex items-center gap-2">
-                             <div className="font-medium text-fg">{name}</div>
-                             <div className="text-fg-muted text-[11px]">{value}</div>
-                           </div>
-                           <span className={docClasses[s] || 'badge'}>
-                             {s === 'valid' ? (d.complianceValid || 'Valid') : s === 'warning' ? (d.complianceExpiring || 'Expiring') : (d.complianceExpired || 'Expired')}
-                           </span>
-                         </div>
-                         );
-                       })}
+          {/* ── RIGHT: SIDE STACK ── */}
+          <aside className="side-stack">
+            {/* Profile */}
+            <div className="panel">
+              <div className="panel-header flex items-center justify-between pb-2">
+                <span className="panel-title font-medium text-fg">{d.profileTitle || 'Driver profile'}</span>
+                <button
+                  className="btn btn-sm btn-secondary"
+                  onClick={() => {
+                    if (window.confirm('Suspend driver access?')) {
+                      showToast(d.toastStatus || 'Driver status updated')
+                    }
+                  }}
+                >
+                  {d.profileActions || 'Actions'}
+                </button>
+              </div>
+              <div className="panel-body p-4">
+                {!selected ? (
+                  <p className="text-fg-muted text-center py-8">
+                    {d.profileSelect || 'Select a driver to view profile'}
+                  </p>
+                ) : (
+                  <>
+                    <div className="profile-top">
+                      <div className="profile-photo" style={{ background: getAvatarColor(selected.name, selected.vip_compatible || undefined) }}>
+                        {selected.photo_url ? (
+                          <img src={selected.photo_url} alt={selected.name || ''} className="w-full h-full rounded-[20px] object-cover" />
+                        ) : getInit(selected.name)}
+                      </div>
+                      <div>
+                        <h2 className="text-[18px] font-bold text-fg">{selected.name}</h2>
+                        <div className="sub">
+                          {(selected.category || d.profileStandard || 'Standard')} · {selected.plate}
+                        </div>
+                        <div className="flex gap-1.5 flex-wrap mt-2">
+                          <span className={statusClasses[selected.status || ''] || 'badge'}>
+                            {statusLabels[selected.status || ''] || selected.status}
+                          </span>
+                          <span className={docClasses[docStatus(selected)] || 'badge'}>
+                            {docStatus(selected) === 'valid' ? (d.profileValid || 'Valid') : docStatus(selected) === 'warning' ? (d.profileExpiring || 'Expiring soon') : (d.profileExpired || 'Expired')}
+                          </span>
+                          {selected.vip_compatible === 1 && (
+                            <span className="badge badge-gold">
+                              {d.profileVip || 'VIP services'}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                   <div className={`alert-box ${docStatus(selected)} p-4 mt-4 rounded-[12px] border border-border`}>
-                     {docStatus(selected) === 'valid'
-                       ? (d.complianceOk || 'Driver is operationally eligible for assignment.')
-                       : docStatus(selected) === 'expired'
-                         ? (d.complianceBlocked || 'Assignment blocked until compliance is restored.')
-                         : (d.complianceWarn || 'Driver can be monitored but needs verification before assignment.')}
-                   </div>
-                 </>
-               )}
-             </div>
-           </div>
+                    <div className="info-grid">
+                      {[
+                        [d.profileEmail || 'Email', selected.email || '—'],
+                        [d.profilePhone || 'Phone', selected.phone || '—'],
+                        [d.profileLanguages || 'Languages', selected.languages || '—'],
+                        [d.profileAssignment || 'Current assignment', selected.active_orders ? `${selected.active_orders} active` : 'Unassigned'],
+                        [d.profileVehicle || 'Vehicle', selected.vehicle || '—'],
+                        [d.profileCapacity || 'Capacity', selected.capacity || selected.experience_level || '—'],
+                        [d.profileLastActive || 'Last active', selected.status === 'available' ? 'Online' : selected.status === 'busy' ? 'In service' : '—'],
+                        [d.profileEligibility || 'Eligibility', docStatus(selected) === 'valid' && selected.status !== 'suspended' ? (d.profileAllowed || 'Assignment allowed') : (d.profileRestricted || 'Assignment restricted')],
+                      ].map(([label, value]) => (
+                        <div key={label} className="info-item">
+                          <label>{label}</label>
+                          <div>{value}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
 
-           {/* Performance */}
-           <div className="panel mt-4">
-             <div className="panel-header flex items-center justify-between pb-2">
-               <span className="panel-title font-medium text-fg">{d.perfTitle || 'Performance & condition'}</span>
-             </div>
-             <div className="panel-body p-4">
-               {!selected ? (
-                 <p className="text-fg-muted text-center py-6">
-                   {d.perfNone || 'No driver selected'}
-                 </p>
-               ) : (
-                 <>
-                   <div className="flex items-center gap-3.5 mt-4">
-                     <div className="w-[5.125rem] h-[5.125rem] rounded-full flex items-center justify-center text-fg font-extrabold text-[18px] relative" style={{ background: `conic-gradient(#10b981 ${Math.round((selected.rating || 0) * 20)}%, #1e2130 0)` }}>
-                       <div className="absolute inset-[0.5rem] rounded-full bg-[var(--bg)]" />
-                       <span className="relative z-[1]">{Math.round((selected.rating || 0) * 20)}</span>
+            {/* Compliance */}
+            <div className="panel">
+              <div className="panel-header flex items-center justify-between pb-2">
+                <span className="panel-title font-medium text-fg">{d.complianceTitle || 'Compliance validation'}</span>
+              </div>
+              <div className="panel-body p-4">
+                {!selected ? (
+                  <p className="text-fg-muted text-center py-6">
+                    {d.complianceNone || 'No driver selected'}
+                  </p>
+                ) : (
+                  <>
+                    <div className="compliance-list">
+                      {[
+                        [d.complianceLicense || 'Driver license', selected.license_expiry || d.complianceValid || 'Valid'],
+                        [d.complianceSoat || 'SOAT insurance', selected.soat_expiry || d.complianceValid || 'Valid'],
+                        [d.complianceInspection || 'Technical inspection', selected.tech_inspection_expiry || d.complianceValid || 'Valid'],
+                        [d.complianceInsurance || 'Vehicle insurance', selected.insurance_expiry || d.complianceValid || 'Valid'],
+                      ].map(([name, value]) => {
+                        const lower = value.toLowerCase()
+                        const s = lower.includes('expir') ? 'warning' : lower.includes('expired') || lower.includes('missing') ? 'expired' : 'valid'
+                        return (
+                          <div key={name} className="compliance-row">
+                            <div>
+                              <div className="doc-name">{name}</div>
+                              <div className="doc-date">{value}</div>
+                            </div>
+                            <span className={docClasses[s] || 'badge'}>
+                              {s === 'valid' ? (d.complianceValid || 'Valid') : s === 'warning' ? (d.complianceExpiring || 'Expiring') : (d.complianceExpired || 'Expired')}
+                            </span>
+                          </div>
+                          );
+                        })}
                      </div>
-                     <div>
-                       <div className="font-bold text-fg">{d.perfScore || 'Vehicle condition score'}</div>
-                       <div className="text-fg-muted text-[12px] mt-1">
-                         {d.perfScoreDesc || 'Cleanliness, interior, exterior, and mechanical inspection summary.'}
-                       </div>
-                     </div>
-                   </div>
-                   <div className="grid gap-2.5 mt-4">
-                     {[
-                       [d.perfTrips || 'Trips completed', String(selected.total_trips || 0), Math.min((selected.total_trips || 0) / 4, 92)],
-                       [d.perfRevenue || 'Revenue generated', `$${(selected.total_trips || 0) * 68}`, Math.min((selected.total_trips || 0) / 4, 78)],
-                       [d.perfVip || 'VIP services completed', String(selected.vip_compatible ? Math.round((selected.total_trips || 0) * 0.45) : 0), selected.vip_compatible ? 84 : 34],
-                       [d.perfCancel || 'Cancellation rate', selected.total_trips ? '3.2%' : '0%', selected.total_trips ? 68 : 100],
-                       [d.perfSatisfaction || 'Customer satisfaction', String(selected.rating || 'New'), selected.rating ? Math.round(selected.rating * 20) : 0],
-                     ].map(([name, value, pct]) => (
-                       <div key={name}>
-                         <div className="flex justify-between mb-1">
-                           <span className="text-fg">{name}</span>
-                           <strong className="text-fg">{value}</strong>
-                         </div>
-                         <div className="h-[0.4375rem] rounded-full bg-[var(--border-light)] overflow-hidden">
-                           <div className="h-full w-[${pct}%] bg-accent transition-[width_0.3s_ease]" />
-                         </div>
-                       </div>
-                     ))}
-                   </div>
-                 </>
-               )}
-             </div>
-           </div>
-         </aside>
+                    <div className={`alert-box ${docStatus(selected)} p-4 mt-4 rounded-[12px] border border-border`}>
+                      {docStatus(selected) === 'valid'
+                        ? (d.complianceOk || 'Driver is operationally eligible for assignment.')
+                        : docStatus(selected) === 'expired'
+                          ? (d.complianceBlocked || 'Assignment blocked until compliance is restored.')
+                          : (d.complianceWarn || 'Driver can be monitored but needs verification before assignment.')}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Performance */}
+            <div className="panel">
+              <div className="panel-header flex items-center justify-between pb-2">
+                <span className="panel-title font-medium text-fg">{d.perfTitle || 'Performance & condition'}</span>
+              </div>
+              <div className="panel-body p-4">
+                {!selected ? (
+                  <p className="text-fg-muted text-center py-6">
+                    {d.perfNone || 'No driver selected'}
+                  </p>
+                ) : (
+                  <>
+                    <div className="condition-score">
+                      <div className="score-ring" style={{ background: `conic-gradient(#10b981 ${Math.round((selected.rating || 0) * 20)}%, #1e2130 0)` }}>
+                        <span>{Math.round((selected.rating || 0) * 20)}</span>
+                      </div>
+                      <div>
+                        <div className="font-bold text-fg">{d.perfScore || 'Vehicle condition score'}</div>
+                        <div className="text-fg-muted text-[12px] mt-1">
+                          {d.perfScoreDesc || 'Cleanliness, interior, exterior, and mechanical inspection summary.'}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="metric-list">
+                      {[
+                        [d.perfTrips || 'Trips completed', String(selected.total_trips || 0), Math.min((selected.total_trips || 0) / 4, 92)],
+                        [d.perfRevenue || 'Revenue generated', `$${(selected.total_trips || 0) * 68}`, Math.min((selected.total_trips || 0) / 4, 78)],
+                        [d.perfVip || 'VIP services completed', String(selected.vip_compatible ? Math.round((selected.total_trips || 0) * 0.45) : 0), selected.vip_compatible ? 84 : 34],
+                        [d.perfCancel || 'Cancellation rate', selected.total_trips ? '3.2%' : '0%', selected.total_trips ? 68 : 100],
+                        [d.perfSatisfaction || 'Customer satisfaction', String(selected.rating || 'New'), selected.rating ? Math.round(selected.rating * 20) : 0],
+                      ].map(([name, value, pct]) => (
+                        <div key={name} className="metric-row">
+                          <div className="metric-top">
+                            <span>{name}</span>
+                            <strong>{value}</strong>
+                          </div>
+                          <div className="meter">
+                            <div className="meter-fill" style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </aside>
       </div>
 
       {/* ── CREATE DRIVER MODAL ── */}

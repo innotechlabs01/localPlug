@@ -63,7 +63,12 @@ export default function PaymentsPage() {
     const completed = payments.filter(p => p.status === 'completed').reduce((s, p) => s + p.amount, 0)
     const pending = payments.filter(p => p.status === 'pending').reduce((s, p) => s + p.amount, 0)
     const refunds = payments.filter(p => p.status === 'refunded').reduce((s, p) => s + p.amount, 0)
-    return { totalRev, totalFees, totalNet, completed, pending, refunds }
+    const successfulCount = payments.filter(p => p.status === 'completed').length
+    const failedCount = payments.filter(p => p.status === 'failed').length
+    const pendingCount = payments.filter(p => p.status === 'pending').length
+    const driverPayouts = payouts.reduce((s, p) => s + p.amount, 0)
+    const stripeBalance = totalNet - refunds
+    return { totalRev, totalFees, totalNet, completed, pending, refunds, successfulCount, failedCount, pendingCount, driverPayouts, stripeBalance }
   }, [])
 
   const selected = useMemo(() => payments.find(p => p.id === selectedId), [selectedId])
@@ -75,29 +80,49 @@ export default function PaymentsPage() {
         <div className="section-title">Payment Overview</div>
         <div className="pay-kpi-row">
           {[
-            { label: 'Total Revenue', value: kpi.totalRev, sub: '+12.5% vs last week', iconClass: 'green' },
-            { label: 'Pending', value: kpi.pending, sub: 'Awaiting confirmation', iconClass: 'amber' },
-            { label: 'Completed', value: kpi.completed, sub: 'Settled', iconClass: 'blue' },
-            { label: 'Refunds', value: kpi.refunds, sub: '3 this month', iconClass: 'red' },
-            { label: 'Fees', value: kpi.totalFees, sub: '2.9% + $0.30 per tx', iconClass: 'teal' },
-            { label: 'Net Revenue', value: kpi.totalNet, sub: 'After fees', iconClass: 'gold' },
+            { label: 'Total Revenue (Month)', value: formatCurrency(kpi.totalRev), sub: '+12.5% vs last week', iconClass: 'green' },
+            { label: 'Successful Payments', value: String(kpi.successfulCount), sub: 'Completed', iconClass: 'green' },
+            { label: 'Failed / Declined', value: String(kpi.failedCount), sub: 'Needs review', iconClass: 'red' },
+            { label: 'Pending', value: String(kpi.pendingCount), sub: 'Awaiting confirmation', iconClass: 'amber' },
+            { label: 'Driver Payouts', value: formatCurrency(kpi.driverPayouts), sub: 'This period', iconClass: 'blue' },
+            { label: 'Stripe Balance', value: formatCurrency(kpi.stripeBalance), sub: 'Available for payout', iconClass: 'purple' },
           ].map((card, idx) => (
             <div key={idx} className="pay-kpi">
               <div className="kpi-top">
                 <div className={`kpi-icon ${card.iconClass}`}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     {idx === 0 && <><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></>}
-                    {idx === 1 && <><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>}
-                    {idx === 2 && <><polyline points="20 6 9 17 4 12"/></>}
-                    {idx === 3 && <><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></>}
-                    {idx === 4 && <><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></>}
-                    {idx === 5 && <><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></>}
+                    {idx === 1 && <><polyline points="20 6 9 17 4 12"/></>}
+                    {idx === 2 && <><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></>}
+                    {idx === 3 && <><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>}
+                    {idx === 4 && <><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/></>}
+                    {idx === 5 && <><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></>}
                   </svg>
                 </div>
               </div>
               <div className="kpi-label">{card.label}</div>
-              <div className="kpi-value">{formatCurrency(card.value)}</div>
+              <div className="kpi-value">{card.value}</div>
               <div className="kpi-sub neutral">{card.sub}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── REVENUE BY SERVICE ── */}
+      <div>
+        <div className="section-title">Revenue by Service</div>
+        <div className="pay-revenue-grid">
+          {[
+            { label: 'Airport Transfers', amount: 4250, pct: 68, accent: true },
+            { label: 'VIP Tours', amount: 3150, pct: 52, accent: false },
+            { label: 'City Tours', amount: 1280, pct: 34, accent: true },
+            { label: 'Hotel Shuttles', amount: 960, pct: 28, accent: false },
+            { label: 'Long Distance', amount: 640, pct: 18, accent: true },
+          ].map((svc, idx) => (
+            <div key={idx} className="rev-card">
+              <div className="rev-amount">{formatCurrency(svc.amount)}</div>
+              <div className="rev-label">{svc.label}</div>
+              <div className={`rev-pct ${svc.accent ? 'accent' : ''}`}>{svc.pct}%</div>
             </div>
           ))}
         </div>
@@ -126,31 +151,20 @@ export default function PaymentsPage() {
           <div className="table-wrap">
             <table>
               <thead>
-                <tr><th>ID</th><th>Guest</th><th>Service</th><th>Amount</th><th>Fee</th><th>Net</th><th>Status</th><th>Date</th><th>Actions</th></tr>
+                <tr><th>Transaction ID</th><th>Customer</th><th>Package</th><th>Amount</th><th>Method</th><th>Status</th><th>Date</th></tr>
               </thead>
               <tbody>
                 {filtered.length === 0 ? (
-                  <tr><td colSpan={9} className="text-center py-12 text-fg-muted">{d.noResults || 'No payments found'}</td></tr>
+                  <tr><td colSpan={7} className="text-center py-12 text-fg-muted">{d.noResults || 'No payments found'}</td></tr>
                 ) : filtered.map(p => (
                   <tr key={p.id} className="hover:bg-surface-hover transition-colors cursor-pointer" onClick={() => setSelectedId(p.id)}>
                     <td className="font-mono text-fg-muted">#{p.id}</td>
                     <td><span style={{ fontWeight: 500 }}>{p.guest}</span></td>
                     <td>{p.service}</td>
                     <td className="font-mono font-semibold">{formatCurrency(p.amount)}</td>
-                    <td className="font-mono text-fg-muted">{formatCurrency(p.fee)}</td>
-                    <td className="font-mono font-semibold">{formatCurrency(p.net)}</td>
+                    <td>{p.method}</td>
                     <td><span className={statusBadges[p.status]}>{p.status.charAt(0).toUpperCase() + p.status.slice(1)}</span></td>
                     <td className="text-fg-muted">{p.date}</td>
-                    <td>
-                      <div className="table-actions" style={{ gap: 2 }}>
-                        <button className="action-btn" onClick={(e) => { e.stopPropagation(); showToast(`View details for ${p.guest}`) }} title="View">
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                        </button>
-                        <button className="action-btn" onClick={(e) => { e.stopPropagation(); showToast(`Receipt for ${p.guest}`) }} title="Receipt">
-                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-                        </button>
-                      </div>
-                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -162,21 +176,40 @@ export default function PaymentsPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Stripe Overview */}
           <div className="stripe-card">
-            <div className="stripe-header">
-              <div className="stripe-icon">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--info)' }}>
-                  <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
-                </svg>
-              </div>
-              <div>
-                <div className="stripe-title">Stripe Gateway</div>
-                <div className="stripe-sub">Connected · Live mode</div>
-              </div>
-            </div>
+            <div className="stripe-title">Stripe Gateway</div>
+            <div className="stripe-balance">{formatCurrency(kpi.stripeBalance)}</div>
+            <div className="stripe-sub">Connected · Live mode</div>
             <div className="stripe-detail"><span className="label">Total processed</span><span className="value">{formatCurrency(kpi.totalRev)}</span></div>
             <div className="stripe-detail"><span className="label">Pending settlement</span><span className="value">{formatCurrency(kpi.pending)}</span></div>
             <div className="stripe-detail"><span className="label">Next payout</span><span className="value">May 25, 2026</span></div>
             <div className="stripe-detail"><span className="label">Processing fee rate</span><span className="value">2.9% + $0.30</span></div>
+          </div>
+
+          {/* Payment Summary */}
+          <div className="card">
+            <div className="card-header">
+              <span className="card-title">Payment Summary</span>
+            </div>
+            <div className="card-body" style={{ padding: '12px 16px' }}>
+              <div className="pay-summary">
+                <div className="pay-summary-row">
+                  <span className="label">Total Revenue</span>
+                  <span className="value">{formatCurrency(kpi.totalRev)}</span>
+                </div>
+                <div className="pay-summary-row">
+                  <span className="label">Stripe Fees</span>
+                  <span className="value" style={{ color: 'var(--danger)' }}>-{formatCurrency(kpi.totalFees)}</span>
+                </div>
+                <div className="pay-summary-row">
+                  <span className="label">Refunds</span>
+                  <span className="value" style={{ color: 'var(--warning)' }}>-{formatCurrency(kpi.refunds)}</span>
+                </div>
+                <div className="summary-total">
+                  <span className="label">Net Revenue</span>
+                  <span className="value">{formatCurrency(kpi.totalNet)}</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Recent Payouts */}

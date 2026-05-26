@@ -200,6 +200,74 @@ export default function FleetPage() {
         </div>
       </div>
 
+      {/* ── MAINTENANCE SCHEDULE ── */}
+      <div>
+        <div className="section-title">Maintenance Schedule</div>
+        <div className="maintenance-grid">
+          {[
+            { vehicle: 'Toyota Hilux', plate: 'MDE-223', task: 'Oil change & inspection', date: 'May 28, 2026', priority: 'high', assignee: 'Taller MDE' },
+            { vehicle: 'BMW X5', plate: 'MDE-511', task: 'Brake pad replacement', date: 'Jun 2, 2026', priority: 'medium', assignee: 'Bavaria Motors' },
+            { vehicle: 'Chevrolet Traverse', plate: 'MDE-334', task: 'Tire rotation & alignment', date: 'Jun 5, 2026', priority: 'low', assignee: 'In-house' },
+          ].map((item, idx) => (
+            <div key={idx} className="maintenance-card">
+              <div className="maint-vehicle">{item.vehicle}</div>
+              <div className="maint-plate">{item.plate}</div>
+              <div className="maint-task">{item.task}</div>
+              <div className="maint-meta">
+                <span className={`badge ${item.priority === 'high' ? 'badge-warning' : item.priority === 'medium' ? 'badge-info' : 'badge'}`}>
+                  {item.priority}
+                </span>
+                <span style={{ color: 'var(--fg-muted)', fontSize: 11 }}>{item.date}</span>
+              </div>
+              <div className="maint-assignee">{item.assignee}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── FLEET ANALYTICS ── */}
+      <div>
+        <div className="section-title">Fleet Analytics</div>
+        <div className="fleet-analytics">
+          <div className="analytics-card">
+            <div className="card-header"><span className="card-title">Fuel Consumption</span></div>
+            <div className="card-body">
+              <div className="fuel-bar">
+                {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map((day, i) => (
+                  <div key={day} className="fuel-bar-col">
+                    <div className={`bar ${i < 5 ? 'accent' : 'muted'}`} style={{ height: `${40 + Math.abs(Math.sin(i * 0.8)) * 50 + 10}%` }} />
+                    <span className="bar-label">{day.slice(0, 2)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="analytics-card">
+            <div className="card-header"><span className="card-title">Fleet Utilization</span></div>
+            <div className="card-body">
+              <div className="util-number">78%</div>
+              <div className="util-label">Active fleet rate</div>
+              <div className="util-gauge">
+                <div className="ring">78</div>
+                <div>
+                  <div style={{ fontSize: 12, color: 'var(--fg-secondary)' }}>12 of 15 vehicles</div>
+                  <div style={{ fontSize: 11, color: 'var(--fg-muted)', marginTop: 2 }}>in service today</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="analytics-card">
+            <div className="card-header"><span className="card-title">Key Metrics</span></div>
+            <div className="card-body">
+              <div className="metric-item"><span className="label">Avg. trip duration</span><span className="value">42 min</span></div>
+              <div className="metric-item"><span className="label">Revenue per vehicle</span><span className="value">$2,840</span></div>
+              <div className="metric-item"><span className="label">Maintenance cost</span><span className="value">$12.5k</span></div>
+              <div className="metric-item"><span className="label">Driver utilization</span><span className="value">86%</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* ── VEHICLE DETAIL MODAL ── */}
       {selectedVehicle && (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6" onClick={() => setSelectedVehicle(null)}>

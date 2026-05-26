@@ -363,7 +363,7 @@ export default function DispatchPage() {
               </div>
 
               {/* Timeline */}
-              <div className="dp-timeline-bar">
+              <div className="dp-detail-timeline">
                 {dispatchStatuses.map((s, i) => {
                   const currentStep = getStatusStep(selectedOrder.dispatch_status)
                   const completed = i < currentStep || (i === currentStep && s === 'completed')
@@ -637,7 +637,7 @@ export default function DispatchPage() {
       )}
 
       {/* ── Notifications Stack ── */}
-      <div className="notif-stack">
+      <div className="dp-notif-stack">
         {notifications.map(n => (
           <div key={n.id} className="dp-notif">
             <div className={`dp-notif-icon ${n.type === 'success' || n.type === 'assign' ? 'success' : n.type === 'warning' || n.type === 'unassign' ? 'warning' : 'info'}`}>

@@ -141,264 +141,220 @@ export default function EmployeesPage() {
    }
 
    return (
-     <div className="space-y-6">
-       {/* ── Header ── */}
-       <div className="flex items-end justify-between gap-4 flex-wrap">
+     <div className="emp-page">
+       <section className="emp-hero">
          <div>
-           <h1 className="text-[22px] font-bold text-fg tracking-tight">{d.title || 'Employees'}</h1>
-           <p className="text-[13px] text-fg-muted mt-1.5 max-w-[760px] leading-relaxed">
-             {d.subtitle || `Manage your team — ${stats.total} members`}
-           </p>
+           <h1>{d.title || 'Employees'}</h1>
+           <p>{d.subtitle || `Manage your team — ${stats.total} members`}</p>
          </div>
-         <div className="flex gap-2">
-           <button className="btn btn-secondary"
+         <div className="emp-toolbar">
+           <button className="btn btn-secondary btn-sm"
              onClick={() => showToast('Export queued')}>{d.export_ || 'Export'}</button>
-           <button className="btn btn-primary"
-             onClick={openCreate}>{d.add || '+ Add'}</button>
+           <button className="btn btn-primary btn-sm"
+             onClick={openCreate}>{d.add || '+ Add Employee'}</button>
          </div>
-       </div>
+       </section>
 
-       {/* ── Filter Chips ── */}
-       <div className="flex gap-2 flex-wrap">
+       <div className="emp-filters">
          {['all', 'active', 'inactive', 'on_route', 'verified', 'pending', 'needs_review'].map(f => (
            <button key={f}
-             className={`chip ${filter === f ? 'chip-active' : ''}`}
+             className={`chip ${filter === f ? 'active' : ''}`}
              onClick={() => setFilter(f)}>
              {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1).replace('_', ' ')}
            </button>
          ))}
        </div>
 
-       {/* ── KPIs ── */}
-       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+       <div className="emp-kpis">
          {[
-           [d.kpis?.total || 'Total', String(stats.total), d.kpis?.teamMembers || 'Team members'],
-           [d.kpis?.active || 'Active', String(stats.active), d.kpis?.currentlyWorking || 'Currently working'],
-           [d.kpis?.onRoute || 'On Route', String(stats.onRoute), d.kpis?.inService || 'In service'],
-           [d.kpis?.avgRating || 'Avg Rating', stats.avgRating, d.kpis?.performance || 'Performance'],
-           [d.kpis?.totalTrips || 'Total Trips', String(stats.totalTrips), d.kpis?.allTime || 'All time'],
-           [d.kpis?.expiringDocs || 'Expiring Docs', String(stats.expiringDocs), d.kpis?.needsReview || 'Needs review'],
-         ].map(([label, value, sub]) => (
-           <div key={label} className="stat-card">
+           [d.kpis?.total || 'Total', String(stats.total)],
+           [d.kpis?.active || 'Active', String(stats.active)],
+           [d.kpis?.onRoute || 'On Route', String(stats.onRoute)],
+           [d.kpis?.avgRating || 'Avg Rating', stats.avgRating],
+           [d.kpis?.totalTrips || 'Total Trips', String(stats.totalTrips)],
+           [d.kpis?.expiringDocs || 'Expiring Docs', String(stats.expiringDocs)],
+         ].map(([label, value]) => (
+           <div key={label} className="stat-card card-glass">
              <div className="stat-label">{label}</div>
              <div className="stat-value">{value}</div>
-             <div className="stat-change text-fg-muted">{sub}</div>
            </div>
          ))}
        </div>
 
-       {/* ── Main Layout ── */}
-       <div className="grid grid-cols-1 xl:grid-cols-[1.3fr_0.7fr] gap-4 items-start">
+       <div className="emp-layout">
          {/* ── Left: Table ── */}
-         <div className="panel">
-           <div className="panel-header flex items-center justify-between pb-2">
-             <span className="panel-title font-medium text-fg">{d.tableTitle || 'Employees'}</span>
-             <span className="text-fg-muted text-[12px]">{filtered.length} shown</span>
-           </div>
-           <div className="panel-body p-4">
-             <div className="flex items-center gap-3 mb-4">
-               <div className="relative w-[200px]">
-                 <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-fg-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                   <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-                 </svg>
-                 <input
-                   placeholder={d.searchPlaceholder || 'Search employees...'}
-                   value={search}
-                   onChange={e => setSearch(e.target.value)}
-                   className="input w-full"
-                 />
-               </div>
+         <section className="panel">
+           <div className="panel-header">
+             <div className="panel-title">{d.tableTitle || 'Employee Directory'} <span className="count">{filtered.length} visible</span></div>
+             <div className="emp-toolbar">
+               <button className="btn btn-secondary btn-sm" onClick={() => showToast('Filters opened')}>Filter</button>
+               <button className="btn btn-secondary btn-sm" onClick={() => showToast('Export CSV')}>{d.export_ || 'Export'}</button>
              </div>
-             <div className="table-wrap">
-               <table>
-                 <thead>
+           </div>
+           <div className="table-wrap">
+             <table className="emp-table">
+               <thead>
+                 <tr>
+                   <th>{d.tableName || 'Employee'}</th>
+                   <th>{d.tableRole || 'Role'}</th>
+                   <th>{d.tableStatus || 'Status'}</th>
+                   <th>{d.tableTrips || 'Trips'}</th>
+                   <th>{d.tableRating || 'Rating'}</th>
+                   <th>Actions</th>
+                 </tr>
+               </thead>
+               <tbody>
+                 {filtered.length === 0 ? (
                    <tr>
-                     <th>{d.tableName || 'Employee'}</th>
-                     <th>{d.tableRole || 'Role'}</th>
-                     <th>{d.tableStatus || 'Status'}</th>
-                     <th>{d.tableTrips || 'Trips'}</th>
-                     <th>{d.tableRating || 'Rating'}</th>
-                     <th></th>
+                     <td colSpan={6} className="text-fg-muted text-center py-8">{d.noResults || 'No employees found'}</td>
                    </tr>
-                 </thead>
-                 <tbody>
-                   {filtered.length === 0 ? (
-                     <tr>
-                       <td colSpan={6} className="text-fg-muted text-center py-8">{d.noResults || 'No employees found'}</td>
-                     </tr>
-                   ) : filtered.map(emp => (
-                     <tr key={emp.id} className="hover:bg-surface-hover transition-colors cursor-pointer" onClick={() => setSelectedId(emp.id)} style={{ background: selectedId === emp.id ? 'surface-hover' : '' }}>
-                       <td className="flex items-center gap-3">
-                         <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-[13px] flex-shrink-0" style={{ background: getAvatarColor(emp.name) }}>
+                 ) : filtered.map(emp => (
+                   <tr key={emp.id} className="emp-row" onClick={() => setSelectedId(emp.id)}>
+                     <td>
+                       <div className="emp-person">
+                         <div className="emp-avatar" style={{ background: getAvatarColor(emp.name) }}>
                            {getInit(emp.name)}
                          </div>
                          <div>
-                           <div className="font-medium text-fg">{emp.name}</div>
-                           <div className="text-fg-muted">{emp.email}</div>
+                           <div className="emp-name">{emp.name}</div>
+                           <div className="emp-meta">{emp.email}</div>
                          </div>
-                       </td>
-                       <td className="flex items-center gap-1.5">
-                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-semibold border ${
-                           getRoleBadge(emp.role_name)
-                             ? `bg-[${theme.accentSoft}] text-[${theme.accent}] border-[${theme.accent}]`
-                             : 'bg-[var(--bg)] text-[var(--fg-secondary)] border-[var(--border)]'
-                         }`}
-                           style={getRoleBadge(emp.role_name) ? {
-                             background: emp.role_name === 'admin' ? theme.accentSoft : emp.role_name === 'ops' ? theme.infoSoft : theme.warningSoft,
-                             color: emp.role_name === 'admin' ? theme.accent : emp.role_name === 'ops' ? theme.info : theme.warning,
-                             borderColor: emp.role_name === 'admin' ? theme.accent : emp.role_name === 'ops' ? theme.info : theme.warning,
-                           } : {}}>
-                           {emp.role_name || '—'}
-                         </span>
-                       </td>
-                        <td className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-semibold ${
-                          emp.employee_status === 'active'
-                            ? 'bg-[rgba(16,185,129,0.12)] text-[#10b981]'
-                            : emp.employee_status === 'inactive'
-                              ? 'bg-[rgba(100,104,128,0.15)] text-[#646880]'
-                              : emp.employee_status === 'suspended'
-                                ? 'bg-[rgba(239,68,80,0.12)] text-[#ef4450]'
-                                : 'bg-[rgba(245,158,11,0.12)] text-[#f59e0b]'
-                        }`}>
-                         {emp.employee_status || '—'}
-                       </td>
-                       <td className="text-center text-fg-muted">{emp.total_trips || 0}</td>
-                       <td className="text-center text-fg-muted">{emp.rating ? `★ ${emp.rating}` : '—'}</td>
-                       <td className="text-right">
-                         <button className="btn btn-sm btn-secondary" onClick={e => { e.stopPropagation(); openEdit(emp) }}>
-                           {d.edit || 'Edit'}
-                         </button>
-                       </td>
-                     </tr>
-                   ))}
-                 </tbody>
-               </table>
-             </div>
+                       </div>
+                     </td>
+                     <td>
+                       <span className={`badge-role ${getRoleBadge(emp.role_name)}`}>
+                         {emp.role_name || '—'}
+                       </span>
+                     </td>
+                     <td>
+                       <span className={`badge-status ${emp.employee_status === 'active' ? 'active' : emp.employee_status === 'inactive' ? 'inactive' : emp.employee_status === 'suspended' ? 'suspended' : 'leave'}`}>
+                         {emp.employee_status === 'leave' ? 'On Leave' : (emp.employee_status || '—')}
+                       </span>
+                     </td>
+                     <td>{emp.total_trips || 0}</td>
+                     <td>{emp.rating ? `★ ${emp.rating}` : '—'}</td>
+                     <td>
+                       <div className="inline-actions">
+                         <button className="mini-btn" onClick={() => showToast('Audit log opened')}>Log</button>
+                         <button className="mini-btn" onClick={e => { e.stopPropagation(); openEdit(emp) }}>{d.edit || 'Edit'}</button>
+                       </div>
+                     </td>
+                   </tr>
+                 ))}
+               </tbody>
+             </table>
            </div>
-         </div>
+         </section>
 
          {/* ── Right: Side Panel ── */}
-         <aside className="hidden sm:block w-[360px] sticky top-[76px]">
-           {/* Profile */}
-           <div className="panel">
-             <div className="panel-header flex items-center justify-between pb-2">
-               <span className="panel-title font-medium text-fg">{d.sidePanel?.profile || 'Employee Profile'}</span>
+         <aside className="side-stack">
+           <section className="side-card">
+             <div className="panel-header">
+               <div className="panel-title">{d.sidePanel?.profile || 'Selected Profile'} <span className="count">{selected?.role_name || '—'}</span></div>
                {selected && (
-                 <button className="btn btn-sm btn-secondary" onClick={() => openEdit(selected)}>
-                   Edit
-                 </button>
+                 <button className="btn btn-secondary btn-sm" onClick={() => openEdit(selected)}>Edit</button>
                )}
              </div>
-             <div className="panel-body p-4">
+             <div className="content">
                {!selected ? (
-                 <p className="text-fg-muted text-center py-8">{d.selectPrompt || 'Select an employee to view profile'}</p>
+                 <p style={{ color: 'var(--fg-muted)', textAlign: 'center', padding: '32px 0' }}>{d.selectPrompt || 'Select an employee to view profile'}</p>
                ) : (
                  <>
-                   <div className="flex items-center gap-3.5 mb-4">
-                     <div className="w-[4.25rem] h-[4.25rem] rounded-[20px] flex items-center justify-center text-white font-extrabold text-[21px] flex-shrink-0" style={{ background: getAvatarColor(selected.name) }}>
+                   <div className="profile-top">
+                     <div className="profile-photo" style={{ background: getAvatarColor(selected.name) }}>
                        {getInit(selected.name)}
                      </div>
                      <div>
-                       <h2 className="text-[18px] font-bold text-fg">{selected.name}</h2>
-                       <p className="text-[12px] text-fg-muted">{selected.role_name || '—'}</p>
-                       <span className={`mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${
-                         selected.employee_status === 'active'
-                            ? 'bg-[rgba(16,185,129,0.12)] text-[#10b981]'
-                            : 'bg-[rgba(100,104,128,0.15)] text-[#646880]'
-                         }`}>{selected.employee_status || '—'}</span>
-                      </div>
-                   </div>
-                   <div className="grid grid-cols-2 gap-3">
-                     {[
-                       [d.formEmail || 'Email', selected.email || '—'],
-                       [d.formPhone || 'Phone', selected.phone || '—'],
-                       [d.formRole || 'Role', selected.role_name || '—'],
-                       ['Trips', String(selected.total_trips || 0)],
-                       ['Rating', selected.rating ? `★ ${selected.rating}` : '—'],
-                       ['Joined', selected.created_at ? new Date(selected.created_at).toLocaleDateString() : '—'],
-                     ].map(([label, value]) => (
-                       <div key={label}>
-                         <label className="block text-xs text-fg-muted uppercase tracking-[0.4px] mb-0.5">{label}</label>
-                         <div className="base-text text-fg">{value}</div>
+                       <h2>{selected.name}</h2>
+                       <div className="sub">{selected.role_name || '—'}</div>
+                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                         <span className={`badge-role ${getRoleBadge(selected.role_name)}`}>{selected.role_name || '—'}</span>
+                         <span className={`badge-status ${selected.employee_status === 'active' ? 'active' : selected.employee_status === 'inactive' ? 'inactive' : selected.employee_status === 'suspended' ? 'suspended' : 'leave'}`}>
+                           {selected.employee_status === 'leave' ? 'On Leave' : (selected.employee_status || '—')}
+                         </span>
                        </div>
-                     ))}
+                     </div>
                    </div>
+                   <div className="info-grid" style={{ marginTop: 16 }}>
+                     <div className="info-item"><label>{d.formEmail || 'Email'}</label><div>{selected.email || '—'}</div></div>
+                     <div className="info-item"><label>{d.formPhone || 'Phone'}</label><div>{selected.phone || '—'}</div></div>
+                     <div className="info-item"><label>{d.formRole || 'Role'}</label><div>{selected.role_name || '—'}</div></div>
+                     <div className="info-item"><label>Trips</label><div>{selected.total_trips || 0}</div></div>
+                     <div className="info-item"><label>Rating</label><div>{selected.rating ? `★ ${selected.rating}` : '—'}</div></div>
+                     <div className="info-item"><label>Joined</label><div>{selected.created_at ? new Date(selected.created_at).toLocaleDateString() : '—'}</div></div>
+                   </div>
+                   <div className="audit" id="selNote">Employee record active since {selected.created_at ? new Date(selected.created_at).toLocaleDateString() : '—'}</div>
                  </>
                )}
              </div>
-           </div>
+           </section>
 
-           {/* Recent Activity */}
-           <div className="panel mt-4">
-             <div className="panel-header flex items-center justify-between pb-2">
-               <span className="panel-title font-medium text-fg">{d.sidePanel?.recentActivity || 'Recent Activity'}</span>
+           <section className="side-card">
+             <div className="panel-header">
+               <div className="panel-title">{d.sidePanel?.recentActivity || 'Recent Activity'}</div>
              </div>
-             <div className="panel-body p-4">
+             <div className="content activity-list">
                {!selected ? (
-                 <p className="text-fg-muted text-center py-6">{d.noSelection || 'No employee selected'}</p>
+                 <p style={{ color: 'var(--fg-muted)', padding: '12px 0', fontSize: 13 }}>{d.noSelection || 'No employee selected'}</p>
                ) : (
-                 <div className="space-y-2.5">
-                   {[
-                     { dot: theme.accent, text: 'Profile updated', time: '2h ago' },
-                     { dot: theme.info, text: 'Trip #128 completed', time: '5h ago' },
-                     { dot: theme.warning, text: 'Documents verified', time: '1d ago' },
-                   ].map((act, i) => (
-                     <div key={i} className="flex items-start gap-2.5 mb-2.5 border-t border-border-light pt-2">
-                       <div className="w-2.5 h-2.5 rounded-full mt-0.5" style={{ background: act.dot }} />
-                       <div className="base-text text-fg">{act.text}</div>
-                       <div className="text-fg-muted text-[11px] whitespace-nowrap">{act.time}</div>
-                     </div>
-                   ))}
-                 </div>
+                 [
+                   { dot: theme.accent, text: 'Profile updated', time: '2h ago' },
+                   { dot: theme.info, text: 'Trip #128 completed', time: '5h ago' },
+                   { dot: theme.warning, text: 'Documents verified', time: '1d ago' },
+                 ].map((act, i) => (
+                   <div key={i} className="activity-item">
+                     <div className="activity-dot" style={{ background: act.dot }} />
+                     <div>{act.text}</div>
+                     <div className="activity-time">{act.time}</div>
+                   </div>
+                 ))
                )}
              </div>
-           </div>
+           </section>
          </aside>
-        </div>
+       </div>
 
       {/* ── Create/Edit Modal ── */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
-          <div className="absolute inset-0 bg-black/62" onClick={() => setModalOpen(false)} />
-          <div className="relative w-full max-w-[600px] max-h-[90vh] overflow-auto bg-[#0b0d14] border border-[#282b38] rounded-2xl shadow-2xl">
-            <div className="flex items-center justify-between p-5 border-b border-[#282b38]">
+        <div className="modal-overlay">
+          <div className="modal-backdrop" onClick={() => setModalOpen(false)} />
+          <div className="modal max-w-[600px]">
+            <div className="modal-header">
               <div>
-                <h2 className="text-[18px] font-bold text-[#f0f2f5]">{editEmp ? (d.modalEdit || 'Edit Employee') : (d.modalAdd || 'Add Employee')}</h2>
-                <p className="text-[12px] text-[#646880] mt-1">{d.modalDesc || 'Employee registration and role assignment.'}</p>
+                <h2>{editEmp ? (d.modalEdit || 'Edit Employee') : (d.modalAdd || 'Add Employee')}</h2>
+                <p>{d.modalDesc || 'Employee registration and role assignment.'}</p>
               </div>
-              <button className="text-[#646880] hover:text-[#f0f2f5] text-2xl" onClick={() => setModalOpen(false)}>×</button>
+              <button className="close-btn" onClick={() => setModalOpen(false)}>×</button>
             </div>
 
-            <div className="p-5 grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-[#646880]">{d.formName || 'Full name'}</label>
-                <input className="w-full px-3 py-2 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none" placeholder="e.g. John Doe"
+            <div className="modal-body grid grid-cols-2 gap-3">
+              <div className="form-group">
+                <label>{d.formName || 'Full name'}</label>
+                <input placeholder="e.g. John Doe"
                   value={form.name || ''} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} />
               </div>
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-[#646880]">{d.formEmail || 'Email'}</label>
-                <input className="w-full px-3 py-2 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none" placeholder="email@company.com"
+              <div className="form-group">
+                <label>{d.formEmail || 'Email'}</label>
+                <input placeholder="email@company.com"
                   value={form.email || ''} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} />
               </div>
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-[#646880]">{d.formPhone || 'Phone'}</label>
-                <input className="w-full px-3 py-2 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none" placeholder="+57 300 000 0000"
+              <div className="form-group">
+                <label>{d.formPhone || 'Phone'}</label>
+                <input placeholder="+57 300 000 0000"
                   value={form.phone || ''} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} />
               </div>
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-[#646880]">{d.formRole || 'Role'}</label>
-                <select className="w-full px-3 py-2 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none"
-                  value={form.role_id || ''} onChange={e => setForm(p => ({ ...p, role_id: e.target.value }))}>
+              <div className="form-group">
+                <label>{d.formRole || 'Role'}</label>
+                <select value={form.role_id || ''} onChange={e => setForm(p => ({ ...p, role_id: e.target.value }))}>
                   <option value="">{d.selectRole || 'Select role...'}</option>
                   {roles.map(r => (
                     <option key={r.id} value={r.id}>{r.name}</option>
                   ))}
                 </select>
               </div>
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-[#646880]">{d.formStatus || 'Status'}</label>
-                <select className="w-full px-3 py-2 bg-[#181b25] border border-[#282b38] rounded-lg text-[13px] text-[#f0f2f5] outline-none"
-                  value={form.employee_status || 'active'} onChange={e => setForm(p => ({ ...p, employee_status: e.target.value }))}>
+              <div className="form-group">
+                <label>{d.formStatus || 'Status'}</label>
+                <select value={form.employee_status || 'active'} onChange={e => setForm(p => ({ ...p, employee_status: e.target.value }))}>
                   <option value="active">Active</option>
                   <option value="inactive">Inactive</option>
                   <option value="suspended">Suspended</option>
@@ -407,9 +363,9 @@ export default function EmployeesPage() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2.5 px-5 py-4 border-t border-[#282b38]">
-              <button className="px-4 py-2 border border-[#282b38] text-[13px] text-[#9ca0b0] rounded-lg hover:bg-[#202330] transition-all" onClick={() => setModalOpen(false)}>{d.cancel || 'Cancel'}</button>
-              <button className="px-4 py-2 bg-[#10b981] text-white text-[13px] font-medium rounded-lg hover:bg-[#059669] transition-all" onClick={handleSubmit}>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setModalOpen(false)}>{d.cancel || 'Cancel'}</button>
+              <button className="btn btn-primary" onClick={handleSubmit}>
                 {editEmp ? (d.saveChanges || 'Update') : (d.modalAdd || 'Create')}
               </button>
             </div>
@@ -418,18 +374,11 @@ export default function EmployeesPage() {
       )}
 
       {/* ── Toasts ── */}
-      <div className="fixed bottom-6 right-6 space-y-2 z-[800]">
+      <div className="toast-stack">
         {notif.map(n => (
-          <div key={n.id} className="bg-[#181b25] border border-[#282b38] text-[#f0f2f5] px-4 py-3 rounded-xl shadow-2xl text-[13px] animate-slide-up">
-            {n.msg}
-          </div>
+          <div key={n.id} className="toast visible">{n.msg}</div>
         ))}
       </div>
-
-      <style>{`
-        @keyframes slide-up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-slide-up { animation: slide-up 300ms ease; }
-      `}</style>
     </div>
   )
 }

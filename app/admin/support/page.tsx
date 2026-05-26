@@ -35,6 +35,13 @@ export default function SupportPage() {
   const qreplies = ['I\'ll look into that right away', 'Let me check your reservation', 'Can you provide more details?', 'Thank you for your patience']
 
   return (
+    <div className="support-page">
+      <section className="support-hero">
+        <div>
+          <h1>{d.title || 'Support Center'}</h1>
+          <p>{d.subtitle || 'Manage guest communications and support tickets.'}</p>
+        </div>
+      </section>
     <div className="support-layout">
       {/* ── Conversation List ── */}
       <div className="conv-list">
@@ -143,6 +150,7 @@ export default function SupportPage() {
           </button>
         </div>
       </div>
+    </div>
     </div>
   )
 }
