@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { useAuth } from '@clerk/nextjs'
 import { useI18n } from '@/lib/i18n'
 import { RealtimeProvider, useRealtime } from '@/lib/admin/realtime-context'
 
@@ -215,12 +216,30 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 }
 
 function AdminLayoutInner({ children }: { children: React.ReactNode }) {
+  const { isLoaded, isSignedIn } = useAuth()
   const pathname = usePathname()
+  const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const { t, lang, setLang } = useI18n()
   const { notifications, unreadCount, markAsRead, markAllAsRead, stats } = useRealtime()
+
+  if (isLoaded && !isSignedIn) {
+    router.push('/sign-in')
+    return null
+  }
+
+  if (!isLoaded) {
+    return (
+      <div className="flex items-center justify-center min-h-screen" style={{ background: 'var(--bg-dark)' }}>
+        <div className="text-center" style={{ color: 'var(--fg-muted)' }}>
+          <div className="animate-spin w-8 h-8 border-2 border-t-transparent rounded-full mx-auto mb-4" style={{ borderColor: 'var(--border)', borderTopColor: 'var(--accent)' }} />
+          Loading...
+        </div>
+      </div>
+    )
+  }
 
   const getPageTitle = (): string => {
     const titleMap: Record<string, string> = {

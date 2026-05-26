@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
+import { auth } from '@clerk/nextjs/server'
 
 // ── GET /api/admin/dispatch ──
 // Query params: status, priority, search, tab (all|pending|assigned|enroute|vip)
 // Returns: { orders: [...], drivers: [...], counts: { pending, assigned, enroute } }
 export async function GET(req: Request) {
+  const { userId } = await auth()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const db = getDb()
   const { searchParams } = new URL(req.url)
 
@@ -82,6 +85,8 @@ export async function GET(req: Request) {
 // ── PUT /api/admin/dispatch ──
 // Body: { action: 'assign' | 'unassign' | 'status', ... }
 export async function PUT(req: Request) {
+  const { userId } = await auth()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const db = getDb()
   const body = await req.json()
   const { action } = body
