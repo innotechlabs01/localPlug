@@ -3,21 +3,36 @@
 import { useState, useMemo } from 'react';
 import { useI18n } from '@/lib/i18n';
 
+interface DocumentItem {
+  name: string; status: string; state: 'ok' | 'warn' | 'bad'
+}
+interface DriverHistory {
+  name: string; period: string
+}
+interface MaintenanceEntry {
+  date: string; desc: string; cost: string
+}
 interface Vehicle {
   id: number; name: string; plate: string; category: string; status: string
   driver: string | null; driverInit: string | null; soatOk: boolean; inspOk: boolean
   year: string; capacity: string
+  emoji: string
+  documents: DocumentItem[]
+  driverHistory: DriverHistory[]
+  maintenanceLog: MaintenanceEntry[]
+  nextService: string
+  trips: number; km: number; revenue: number
 }
 
 const allVehicles: Vehicle[] = [
-  { id: 1, name: 'Mercedes V-Class', plate: 'MDE-782', category: 'vip-suv', status: 'available', driver: 'Carlos M.', driverInit: 'CM', soatOk: true, inspOk: true, year: '2024', capacity: '7 pax' },
-  { id: 2, name: 'BMW X5', plate: 'MDE-511', category: 'suv', status: 'in_service', driver: 'María G.', driverInit: 'MG', soatOk: true, inspOk: false, year: '2023', capacity: '5 pax' },
-  { id: 3, name: 'Mercedes S-Class', plate: 'VIP-001', category: 'luxury', status: 'available', driver: 'Felipe L.', driverInit: 'FL', soatOk: true, inspOk: true, year: '2025', capacity: '4 pax' },
-  { id: 4, name: 'Toyota Hilux', plate: 'MDE-223', category: 'standard', status: 'maintenance', driver: null, driverInit: null, soatOk: true, inspOk: false, year: '2022', capacity: '5 pax' },
-  { id: 5, name: 'Chevrolet Traverse', plate: 'MDE-334', category: 'suv', status: 'available', driver: 'Diego P.', driverInit: 'DP', soatOk: true, inspOk: true, year: '2023', capacity: '7 pax' },
-  { id: 6, name: 'Porsche Cayenne', plate: 'MDE-890', category: 'luxury', status: 'available', driver: 'Laura C.', driverInit: 'LC', soatOk: true, inspOk: true, year: '2024', capacity: '5 pax' },
-  { id: 7, name: 'Toyota Hiace', plate: 'MDE-567', category: 'van', status: 'in_service', driver: 'Pedro A.', driverInit: 'PA', soatOk: true, inspOk: true, year: '2023', capacity: '14 pax' },
-  { id: 8, name: 'Nissan Pathfinder', plate: 'MDE-678', category: 'suv', status: 'available', driver: null, driverInit: null, soatOk: true, inspOk: true, year: '2024', capacity: '7 pax' },
+  { id: 1, name: 'Mercedes V-Class', plate: 'MDE-782', category: 'vip-suv', status: 'available', driver: 'Carlos M.', driverInit: 'CM', soatOk: true, inspOk: true, year: '2024', capacity: '7 pax', emoji: '🚐', trips: 128, km: 18400, revenue: 48600, nextService: '18,000 km or Nov 2026', documents: [{ name: 'SOAT Insurance', status: 'Valid until Dec 2026', state: 'ok' }, { name: 'Technical Inspection', status: 'Valid until Mar 2027', state: 'ok' }, { name: 'Comprehensive Insurance', status: 'Valid until Oct 2026', state: 'ok' }], driverHistory: [{ name: 'Carlos M.', period: 'Mar 2025 — Present' }, { name: 'Andrés R.', period: 'Nov 2024 — Feb 2025' }], maintenanceLog: [{ date: 'Apr 10, 2026', desc: 'Oil change', cost: '$180' }, { date: 'Jan 22, 2026', desc: 'Brake pads replacement', cost: '$340' }, { date: 'Sep 15, 2025', desc: 'General service (20K km)', cost: '$520' }] },
+  { id: 2, name: 'BMW X5', plate: 'MDE-511', category: 'suv', status: 'in_service', driver: 'María G.', driverInit: 'MG', soatOk: true, inspOk: false, year: '2023', capacity: '5 pax', emoji: '🚙', trips: 94, km: 22300, revenue: 35200, nextService: 'Tomorrow (oil change)', documents: [{ name: 'SOAT Insurance', status: 'Valid until Oct 2026', state: 'ok' }, { name: 'Technical Inspection', status: 'Expiring Aug 2026', state: 'warn' }, { name: 'Comprehensive Insurance', status: 'Valid until Sep 2026', state: 'ok' }], driverHistory: [{ name: 'María G.', period: 'Jan 2025 — Present' }], maintenanceLog: [{ date: 'May 20, 2026', desc: 'Oil change due', cost: '—' }] },
+  { id: 3, name: 'Mercedes S-Class', plate: 'VIP-001', category: 'luxury', status: 'available', driver: 'Felipe L.', driverInit: 'FL', soatOk: true, inspOk: true, year: '2025', capacity: '4 pax', emoji: '👑', trips: 56, km: 8900, revenue: 62400, nextService: '15,000 km (est. Aug 2026)', documents: [{ name: 'SOAT Insurance', status: 'Valid until Feb 2027', state: 'ok' }, { name: 'Technical Inspection', status: 'Valid until Jan 2027', state: 'ok' }, { name: 'Comprehensive Insurance', status: 'Valid until Mar 2027', state: 'ok' }], driverHistory: [{ name: 'Felipe L.', period: 'Feb 2025 — Present' }], maintenanceLog: [{ date: 'Jun 1, 2026', desc: 'Software update', cost: '$0' }, { date: 'Mar 10, 2026', desc: 'General service (5K km)', cost: '$420' }] },
+  { id: 4, name: 'Toyota Hilux', plate: 'MDE-223', category: 'standard', status: 'maintenance', driver: null, driverInit: null, soatOk: true, inspOk: false, year: '2022', capacity: '5 pax', emoji: '🚗', trips: 210, km: 45600, revenue: 28100, nextService: 'Jul 15 (inspection)', documents: [{ name: 'SOAT Insurance', status: 'Valid until Jan 2027', state: 'ok' }, { name: 'Technical Inspection', status: 'Expired — Jul 15 scheduled', state: 'bad' }, { name: 'Comprehensive Insurance', status: 'Valid until Jun 2026', state: 'warn' }], driverHistory: [{ name: 'Andrés R.', period: 'Jun 2024 — Feb 2025' }, { name: 'Pedro A.', period: 'Jan 2023 — May 2024' }], maintenanceLog: [{ date: 'Jul 8, 2026', desc: 'Technical inspection appointment', cost: '—' }, { date: 'May 12, 2026', desc: 'Transmission service', cost: '$680' }, { date: 'Feb 20, 2026', desc: 'Tire replacement (4x)', cost: '$520' }] },
+  { id: 5, name: 'Chevrolet Traverse', plate: 'MDE-334', category: 'suv', status: 'available', driver: 'Diego P.', driverInit: 'DP', soatOk: true, inspOk: true, year: '2023', capacity: '7 pax', emoji: '🚙', trips: 72, km: 12100, revenue: 22300, nextService: 'Aug 1 (SOAT renewal)', documents: [{ name: 'SOAT Insurance', status: 'Expiring Aug 1, 2026', state: 'warn' }, { name: 'Technical Inspection', status: 'Valid until Nov 2026', state: 'ok' }, { name: 'Comprehensive Insurance', status: 'Valid until Dec 2026', state: 'ok' }], driverHistory: [{ name: 'Diego P.', period: 'Aug 2024 — Present' }], maintenanceLog: [{ date: 'Apr 5, 2026', desc: 'Oil change', cost: '$120' }, { date: 'Jan 18, 2026', desc: 'General checkup', cost: '$200' }] },
+  { id: 6, name: 'Porsche Cayenne', plate: 'MDE-890', category: 'luxury', status: 'available', driver: 'Laura C.', driverInit: 'LC', soatOk: true, inspOk: true, year: '2024', capacity: '5 pax', emoji: '👑', trips: 41, km: 6700, revenue: 38600, nextService: '15,000 km', documents: [{ name: 'SOAT Insurance', status: 'Valid until Apr 2027', state: 'ok' }, { name: 'Technical Inspection', status: 'Valid until Mar 2027', state: 'ok' }, { name: 'Comprehensive Insurance', status: 'Valid until Jun 2027', state: 'ok' }], driverHistory: [{ name: 'Laura C.', period: 'Jan 2025 — Present' }], maintenanceLog: [{ date: 'May 15, 2026', desc: 'First service (5K km)', cost: '$580' }] },
+  { id: 7, name: 'Toyota Hiace', plate: 'MDE-567', category: 'van', status: 'in_service', driver: 'Pedro A.', driverInit: 'PA', soatOk: true, inspOk: true, year: '2023', capacity: '14 pax', emoji: '🚐', trips: 186, km: 38200, revenue: 41500, nextService: '45,000 km (est. Sep 2026)', documents: [{ name: 'SOAT Insurance', status: 'Valid until Sep 2026', state: 'ok' }, { name: 'Technical Inspection', status: 'Valid until Oct 2026', state: 'ok' }, { name: 'Comprehensive Insurance', status: 'Valid until Aug 2026', state: 'ok' }], driverHistory: [{ name: 'Pedro A.', period: 'Jun 2024 — Present' }, { name: 'Carlos M.', period: 'Jan 2024 — May 2024' }], maintenanceLog: [{ date: 'Apr 22, 2026', desc: 'Brake service', cost: '$290' }, { date: 'Jan 5, 2026', desc: 'Oil change + filter', cost: '$160' }, { date: 'Aug 30, 2025', desc: 'AC repair', cost: '$380' }] },
+  { id: 8, name: 'Nissan Pathfinder', plate: 'MDE-678', category: 'suv', status: 'available', driver: null, driverInit: null, soatOk: true, inspOk: true, year: '2024', capacity: '7 pax', emoji: '🚙', trips: 63, km: 14800, revenue: 19200, nextService: '20,000 km (est. Oct 2026)', documents: [{ name: 'SOAT Insurance', status: 'Valid until Nov 2026', state: 'ok' }, { name: 'Technical Inspection', status: 'Valid until Dec 2026', state: 'ok' }, { name: 'Comprehensive Insurance', status: 'Valid until Feb 2027', state: 'ok' }], driverHistory: [{ name: 'Sofia R.', period: 'Oct 2024 — Mar 2026' }], maintenanceLog: [{ date: 'Mar 8, 2026', desc: 'Oil change', cost: '$110' }, { date: 'Dec 12, 2025', desc: 'Tire rotation', cost: '$60' }] },
 ]
 
 const categories = [
@@ -270,28 +285,22 @@ export default function FleetPage() {
 
       {/* ── VEHICLE DETAIL MODAL ── */}
       {selectedVehicle && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6" onClick={() => setSelectedVehicle(null)}>
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-          <div
-            className="relative w-full max-w-[520px] rounded-[14px] overflow-hidden"
-            style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)' }}>
-              <h3 className="text-[15px] font-semibold" style={{ color: 'var(--fg)' }}>{selectedVehicle.name}</h3>
-              <button onClick={() => setSelectedVehicle(null)} className="p-1.5 rounded-[4px] transition-all" style={{ color: 'var(--fg-muted)' }}>
+        <div className="modal-overlay open" onClick={() => setSelectedVehicle(null)}>
+          <div className="modal modal-wide" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">{selectedVehicle.name}</span>
+              <button className="icon-btn" onClick={() => setSelectedVehicle(null)}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>
-            <div className="p-6 space-y-4">
-              <div className="flex gap-4">
-                <div className="w-[100px] h-[80px] rounded-[8px] flex items-center justify-center text-[28px] flex-shrink-0" style={{ background: 'var(--bg-secondary)' }}>
-                  {statusEmoji[selectedVehicle.status] || '🚗'}
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-[18px] font-semibold" style={{ color: 'var(--fg)' }}>{selectedVehicle.name}</h3>
-                  <div className="text-[13px] font-mono" style={{ color: 'var(--fg-muted)' }}>{selectedVehicle.plate}</div>
-                  <div className="flex gap-1.5 mt-2 flex-wrap">
+            <div className="modal-body">
+              {/* Vehicle Detail Header */}
+              <div className="vehicle-detail-header">
+                <div className="vehicle-detail-image">{selectedVehicle.emoji}</div>
+                <div className="vehicle-detail-info">
+                  <h3>{selectedVehicle.name}</h3>
+                  <div className="plate">{selectedVehicle.plate}</div>
+                  <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
                     <span className={getBadgeClass(selectedVehicle.status)}>
                       {selectedVehicle.status === 'in_service' ? 'In Service' : selectedVehicle.status.charAt(0).toUpperCase() + selectedVehicle.status.slice(1)}
                     </span>
@@ -299,27 +308,71 @@ export default function FleetPage() {
                   </div>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] uppercase tracking-[0.4px]" style={{ color: 'var(--fg-muted)' }}>Driver</label>
-                  <div className="text-[13px]" style={{ color: 'var(--fg)' }}>{selectedVehicle.driver || 'Unassigned'}</div>
-                </div>
-                <div>
-                  <label className="block text-[11px] uppercase tracking-[0.4px]" style={{ color: 'var(--fg-muted)' }}>Year</label>
-                  <div className="text-[13px]" style={{ color: 'var(--fg)' }}>{selectedVehicle.year}</div>
-                </div>
-                <div>
-                  <label className="block text-[11px] uppercase tracking-[0.4px]" style={{ color: 'var(--fg-muted)' }}>Capacity</label>
-                  <div className="text-[13px]" style={{ color: 'var(--fg)' }}>{selectedVehicle.capacity}</div>
-                </div>
-                <div>
-                  <label className="block text-[11px] uppercase tracking-[0.4px]" style={{ color: 'var(--fg-muted)' }}>Plate</label>
-                  <div className="text-[13px] font-mono" style={{ color: 'var(--fg)' }}>{selectedVehicle.plate}</div>
-                </div>
+
+              {/* Info Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+                {[
+                  { label: 'Driver', value: selectedVehicle.driver || 'Unassigned' },
+                  { label: 'Year', value: selectedVehicle.year },
+                  { label: 'Capacity', value: selectedVehicle.capacity },
+                  { label: 'Trips', value: selectedVehicle.trips },
+                  { label: 'Distance', value: `${selectedVehicle.km.toLocaleString()} km` },
+                  { label: 'Revenue', value: `$${selectedVehicle.revenue.toLocaleString()}` },
+                  { label: 'Next Service', value: selectedVehicle.nextService },
+                ].map(f => (
+                  <div key={f.label} style={{ padding: '6px 0', borderBottom: '1px solid var(--border-light)' }}>
+                    <div style={{ fontSize: 11, color: 'var(--fg-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: 0.4 }}>{f.label}</div>
+                    <div style={{ fontSize: 13, color: 'var(--fg)', fontWeight: 500, marginTop: 2 }}>{f.value}</div>
+                  </div>
+                ))}
               </div>
-              <div className="flex gap-2 pt-2">
-                <button onClick={() => setSelectedVehicle(null)} className="btn btn-secondary w-full">{d.close || 'Close'}</button>
+
+              {/* Documents */}
+              <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.6, color: 'var(--fg-muted)', marginBottom: 8 }}>Documents & Compliance</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+                {selectedVehicle.documents.map((doc, i) => {
+                  const docIcon = doc.state === 'ok' ? '✅' : doc.state === 'warn' ? '⚠️' : '❌'
+                  const cls = doc.state === 'ok' ? 'green' : doc.state === 'warn' ? 'amber' : 'blue'
+                  return (
+                    <div key={i} className="detail-doc">
+                      <div className={`detail-doc-icon ${cls}`}>{docIcon}</div>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--fg)' }}>{doc.name}</div>
+                        <div style={{ fontSize: 11, color: 'var(--fg-muted)' }}>{doc.status}</div>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
+
+              {/* Driver History */}
+              <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.6, color: 'var(--fg-muted)', marginBottom: 8 }}>Driver History</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 16 }}>
+                {selectedVehicle.driverHistory.map((dh, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border-light)', fontSize: 13 }}>
+                    <span style={{ color: 'var(--fg)', fontWeight: 500 }}>{dh.name}</span>
+                    <span style={{ color: 'var(--fg-muted)' }}>{dh.period}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Maintenance Log */}
+              <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.6, color: 'var(--fg-muted)', marginBottom: 8 }}>Maintenance Log</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
+                {selectedVehicle.maintenanceLog.map((m, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border-light)', fontSize: 12 }}>
+                    <div>
+                      <span style={{ color: 'var(--fg)', fontWeight: 500 }}>{m.desc}</span>
+                      <span style={{ color: 'var(--fg-muted)', marginLeft: 8 }}>{m.date}</span>
+                    </div>
+                    <span style={{ color: 'var(--fg-secondary)', fontWeight: 500 }}>{m.cost}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setSelectedVehicle(null)}>{d.close || 'Close'}</button>
+              <button className="btn btn-primary">Edit Vehicle</button>
             </div>
           </div>
         </div>

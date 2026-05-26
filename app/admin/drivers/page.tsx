@@ -562,7 +562,7 @@ export default function DriversPage() {
                 ) : (
                   <>
                     <div className="condition-score">
-                      <div className="score-ring" style={{ background: `conic-gradient(#10b981 ${Math.round((selected.rating || 0) * 20)}%, #1e2130 0)` }}>
+                      <div className="score-ring" style={{ background: `conic-gradient(var(--accent) ${Math.round((selected.rating || 0) * 20)}%, var(--border-light) 0)` }}>
                         <span>{Math.round((selected.rating || 0) * 20)}</span>
                       </div>
                       <div>
@@ -612,7 +612,7 @@ export default function DriversPage() {
             style={{
               width: 'min(900px, 100%)', maxHeight: '90vh', overflow: 'auto',
               borderRadius: 16, background: 'var(--bg)',
-              border: '1px solid #282b38',
+              border: '1px solid var(--border)',
             }}
             onClick={e => e.stopPropagation()}
           >
@@ -669,13 +669,13 @@ export default function DriversPage() {
               {/* Step 1: Personal */}
               {createStep === 1 && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalName || 'Full name'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalNamePlace || 'e.g. Alejandro Restrepo'} value={formData.name || ''} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>ID / passport</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder="CC 1.037.***" /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalPhone || 'Phone'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalPhonePlace || '+57 300 000 0000'} value={formData.phone || ''} onChange={e => setFormData(p => ({ ...p, phone: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalEmail || 'Email'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalEmailPlace || 'driver@company.com'} value={formData.email || ''} onChange={e => setFormData(p => ({ ...p, email: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalLang || 'Languages'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalLangPlace || 'Spanish, English, Portuguese'} value={formData.languages || ''} onChange={e => setFormData(p => ({ ...p, languages: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalName || 'Full name'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalNamePlace || 'e.g. Alejandro Restrepo'} value={formData.name || ''} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>ID / passport</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder="CC 1.037.***" /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalPhone || 'Phone'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalPhonePlace || '+57 300 000 0000'} value={formData.phone || ''} onChange={e => setFormData(p => ({ ...p, phone: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalEmail || 'Email'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalEmailPlace || 'driver@company.com'} value={formData.email || ''} onChange={e => setFormData(p => ({ ...p, email: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalLang || 'Languages'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalLangPlace || 'Spanish, English, Portuguese'} value={formData.languages || ''} onChange={e => setFormData(p => ({ ...p, languages: e.target.value }))} /></div>
                   <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalVehicleType || 'Vehicle type'}</label>
-                    <select style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }}
+                    <select style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }}
                       value={formData.category || ''} onChange={e => setFormData(p => ({ ...p, category: e.target.value }))}>
                       <option value="">{d.modalTypePlace || 'Select type...'}</option>
                       <option value="vip">{d.modalTypeVip || 'VIP SUV'}</option>
@@ -685,13 +685,13 @@ export default function DriversPage() {
                       <option value="standard">{d.modalTypeStandard || 'Standard'}</option>
                     </select>
                   </div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalLicense || 'License expiration'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} value={formData.license_expiry || ''} onChange={e => setFormData(p => ({ ...p, license_expiry: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalSoat || 'SOAT expiration'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} value={formData.soat_expiry || ''} onChange={e => setFormData(p => ({ ...p, soat_expiry: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalLicense || 'License expiration'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} value={formData.license_expiry || ''} onChange={e => setFormData(p => ({ ...p, license_expiry: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalSoat || 'SOAT expiration'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} value={formData.soat_expiry || ''} onChange={e => setFormData(p => ({ ...p, soat_expiry: e.target.value }))} /></div>
                   <div style={{ gridColumn: '1 / -1' }}>
                     <label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>'Other expirations'</label>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-                      <div><label style={{ display: 'block', fontSize: 10, color: 'var(--fg-secondary)', marginBottom: 4 }}>{d.modalInspection || 'Tech inspection'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} value={formData.tech_inspection_expiry || ''} onChange={e => setFormData(p => ({ ...p, tech_inspection_expiry: e.target.value }))} /></div>
-                      <div><label style={{ display: 'block', fontSize: 10, color: 'var(--fg-secondary)', marginBottom: 4 }}>{d.modalInsurance || 'Insurance'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} value={formData.insurance_expiry || ''} onChange={e => setFormData(p => ({ ...p, insurance_expiry: e.target.value }))} /></div>
+                      <div><label style={{ display: 'block', fontSize: 10, color: 'var(--fg-secondary)', marginBottom: 4 }}>{d.modalInspection || 'Tech inspection'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} value={formData.tech_inspection_expiry || ''} onChange={e => setFormData(p => ({ ...p, tech_inspection_expiry: e.target.value }))} /></div>
+                      <div><label style={{ display: 'block', fontSize: 10, color: 'var(--fg-secondary)', marginBottom: 4 }}>{d.modalInsurance || 'Insurance'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} value={formData.insurance_expiry || ''} onChange={e => setFormData(p => ({ ...p, insurance_expiry: e.target.value }))} /></div>
                     </div>
                   </div>
                   <div style={{ gridColumn: '1 / -1' }}>
@@ -706,7 +706,7 @@ export default function DriversPage() {
                   </div>
                   <div style={{ gridColumn: '1 / -1' }}>
                     <label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalNotes || 'Operational notes'}</label>
-                    <textarea rows={3} style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none', resize: 'none' }}
+                    <textarea rows={3} style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none', resize: 'none' }}
                       placeholder={d.modalNotesPlace || 'VIP handling notes, airport authorization, language preferences...'}
                       value={formData.notes || ''} onChange={e => setFormData(p => ({ ...p, notes: e.target.value }))} />
                   </div>
@@ -716,10 +716,10 @@ export default function DriversPage() {
               {/* Step 2: Emergency */}
               {createStep === 2 && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalEmergContact || 'Emergency contact'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalEmergPlace || 'Contact name'} value={formData.emergency_contact || ''} onChange={e => setFormData(p => ({ ...p, emergency_contact: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalEmergPhone || 'Emergency phone'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalEmergPhonePlace || '+57 300 000 0000'} value={formData.emergency_phone || ''} onChange={e => setFormData(p => ({ ...p, emergency_phone: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalEmergContact || 'Emergency contact'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalEmergPlace || 'Contact name'} value={formData.emergency_contact || ''} onChange={e => setFormData(p => ({ ...p, emergency_contact: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalEmergPhone || 'Emergency phone'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalEmergPhonePlace || '+57 300 000 0000'} value={formData.emergency_phone || ''} onChange={e => setFormData(p => ({ ...p, emergency_phone: e.target.value }))} /></div>
                   <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalExpLevel || 'Experience level'}</label>
-                    <select style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }}
+                    <select style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }}
                       value={formData.experienceLevel || ''} onChange={e => setFormData(p => ({ ...p, experienceLevel: e.target.value }))}>
                       <option value="">{d.modalExpPlace || 'Select...'}</option>
                       <option value="Standard">{d.modalExpStd || 'Standard'}</option>
@@ -727,27 +727,27 @@ export default function DriversPage() {
                       <option value="Lead">{d.modalExpLead || 'Lead'}</option>
                     </select>
                   </div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalCity || 'City'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalCityPlace || 'e.g. Medellín'} value={formData.city || ''} onChange={e => setFormData(p => ({ ...p, city: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalCity || 'City'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalCityPlace || 'e.g. Medellín'} value={formData.city || ''} onChange={e => setFormData(p => ({ ...p, city: e.target.value }))} /></div>
                 </div>
               )}
 
               {/* Step 3: License & docs */}
               {createStep === 3 && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalLicense || 'License expiry'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} value={formData.license_expiry || ''} onChange={e => setFormData(p => ({ ...p, license_expiry: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalSoat || 'SOAT expiry'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} value={formData.soat_expiry || ''} onChange={e => setFormData(p => ({ ...p, soat_expiry: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalInspection || 'Tech inspection'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} value={formData.tech_inspection_expiry || ''} onChange={e => setFormData(p => ({ ...p, tech_inspection_expiry: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalInsurance || 'Insurance expiry'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} value={formData.insurance_expiry || ''} onChange={e => setFormData(p => ({ ...p, insurance_expiry: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalLicense || 'License expiry'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} value={formData.license_expiry || ''} onChange={e => setFormData(p => ({ ...p, license_expiry: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalSoat || 'SOAT expiry'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} value={formData.soat_expiry || ''} onChange={e => setFormData(p => ({ ...p, soat_expiry: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalInspection || 'Tech inspection'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} value={formData.tech_inspection_expiry || ''} onChange={e => setFormData(p => ({ ...p, tech_inspection_expiry: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalInsurance || 'Insurance expiry'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} value={formData.insurance_expiry || ''} onChange={e => setFormData(p => ({ ...p, insurance_expiry: e.target.value }))} /></div>
                 </div>
               )}
 
               {/* Step 4: Vehicle */}
               {createStep === 4 && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalVehicle || 'Vehicle'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalVehiclePlace || 'e.g. Mercedes V-Class'} value={formData.vehicle || ''} onChange={e => setFormData(p => ({ ...p, vehicle: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalPlate || 'Plate'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalPlatePlace || 'e.g. ABC-123'} value={formData.plate || ''} onChange={e => setFormData(p => ({ ...p, plate: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalVehicle || 'Vehicle'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalVehiclePlace || 'e.g. Mercedes V-Class'} value={formData.vehicle || ''} onChange={e => setFormData(p => ({ ...p, vehicle: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalPlate || 'Plate'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalPlatePlace || 'e.g. ABC-123'} value={formData.plate || ''} onChange={e => setFormData(p => ({ ...p, plate: e.target.value }))} /></div>
                   <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalVehicleType || 'Vehicle type'}</label>
-                    <select style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }}
+                    <select style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }}
                       value={formData.category || ''} onChange={e => setFormData(p => ({ ...p, category: e.target.value }))}>
                       <option value="">{d.modalTypePlace || 'Select type...'}</option>
                       <option value="standard">{d.modalTypeStandard || 'Standard'}</option>
@@ -757,9 +757,9 @@ export default function DriversPage() {
                       <option value="van">{d.modalTypeVan || 'Van'}</option>
                     </select>
                   </div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalYear || 'Vehicle year'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalYearPlace || 'e.g. 2024'} value={formData.year || ''} onChange={e => setFormData(p => ({ ...p, year: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalCapacity || 'Capacity'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalCapacityPlace || 'e.g. 4 pax'} value={formData.capacity || ''} onChange={e => setFormData(p => ({ ...p, capacity: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalPhotoUrl || 'Photo URL'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalPhotoPlace || 'https://example.com/photo.jpg'} value={formData.photo_url || ''} onChange={e => setFormData(p => ({ ...p, photo_url: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalYear || 'Vehicle year'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalYearPlace || 'e.g. 2024'} value={formData.year || ''} onChange={e => setFormData(p => ({ ...p, year: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalCapacity || 'Capacity'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalCapacityPlace || 'e.g. 4 pax'} value={formData.capacity || ''} onChange={e => setFormData(p => ({ ...p, capacity: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalPhotoUrl || 'Photo URL'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalPhotoPlace || 'https://example.com/photo.jpg'} value={formData.photo_url || ''} onChange={e => setFormData(p => ({ ...p, photo_url: e.target.value }))} /></div>
                 </div>
               )}
 
@@ -778,7 +778,7 @@ export default function DriversPage() {
                   </div>
                   <div style={{ gridColumn: '1 / -1' }}>
                     <label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalNotes || 'Operational notes'}</label>
-                    <textarea rows={3} style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none', resize: 'none' }}
+                    <textarea rows={3} style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none', resize: 'none' }}
                       placeholder={d.modalNotesPlace || 'VIP handling notes...'}
                       value={formData.notes || ''} onChange={e => setFormData(p => ({ ...p, notes: e.target.value }))} />
                   </div>
@@ -788,7 +788,7 @@ export default function DriversPage() {
               {/* Step 6: Review */}
               {createStep === 6 && (
                 <div style={{
-                  padding: 16, background: 'var(--surface)', border: '1px solid #282b38',
+                  padding: 16, background: 'var(--surface)', border: '1px solid var(--border)',
                   borderRadius: 8, marginTop: 4, fontSize: 13, color: 'var(--fg-muted)', lineHeight: 1.65,
                 }}>
                   'Review all driver information before saving. All actions will be logged.'
@@ -815,7 +815,7 @@ export default function DriversPage() {
                 {createStep > 1 ? (
                   <button
                     style={{
-                      padding: '10px 16px', border: '1px solid #282b38', borderRadius: 8,
+                      padding: '10px 16px', border: '1px solid var(--border)', borderRadius: 8,
                       fontSize: 13, color: 'var(--fg-muted)', background: 'transparent', cursor: 'pointer',
                     }}
                     className="hover:bg-[#202330] transition-all"
@@ -840,7 +840,7 @@ export default function DriversPage() {
                     <>
                       <button
                         style={{
-                          padding: '10px 16px', border: '1px solid #282b38', borderRadius: 8,
+                          padding: '10px 16px', border: '1px solid var(--border)', borderRadius: 8,
                           fontSize: 13, color: 'var(--fg-muted)', background: 'transparent', cursor: 'pointer',
                         }}
                         className="hover:bg-[#202330] transition-all"
@@ -850,7 +850,7 @@ export default function DriversPage() {
                       </button>
                       <button
                         style={{
-                          padding: '10px 16px', border: '1px solid #282b38', borderRadius: 8,
+                          padding: '10px 16px', border: '1px solid var(--border)', borderRadius: 8,
                           fontSize: 13, color: 'var(--fg-muted)', background: 'transparent', cursor: 'pointer',
                         }}
                         className="hover:bg-[#202330] transition-all"
@@ -881,7 +881,7 @@ export default function DriversPage() {
       <div style={{ position: 'fixed', bottom: 24, right: 24, display: 'grid', gap: 8, zIndex: 800 }}>
         {notif.map(n => (
           <div key={n.id} style={{
-            background: 'var(--surface)', border: '1px solid #282b38', color: 'var(--fg)',
+            background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--fg)',
             padding: '12px 16px', borderRadius: 12, fontSize: 13, zIndex: 800,
           }}>
             {n.msg}

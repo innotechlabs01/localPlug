@@ -76,14 +76,14 @@ The inline style refactor (T007) can run in parallel across all files. Page-spec
 
 These tasks depend on US1 completion for their respective page files (the visual structure must be aligned before adding new components).
 
-- [ ] T015 [US3] Add date navigation bar to admin layout — prev/next arrows, Today button, date range label, Day/Week/Month/Year toggle in app/admin/layout.tsx
-- [ ] T016 [US3] Implement SVG line charts and bar charts with gradients in app/admin/analytics/page.tsx
-- [ ] T017 [US3] Implement 5-step conversion funnel visualization in app/admin/analytics/page.tsx
-- [ ] T018 [P] [US3] Implement fleet analytics section — utilization gauge ring, fuel efficiency bars, maintenance schedule in app/admin/fleet/page.tsx
-- [ ] T019 [P] [US3] Implement vehicle detail modal with document check and health indicators in app/admin/fleet/page.tsx
-- [ ] T020 [US3] Implement driver condition score ring using conic gradient SVG in app/admin/drivers/page.tsx
-- [ ] T021 [P] [US3] Add referral sources section to app/admin/promotions/page.tsx
-- [ ] T022 [P] [US3] Add search bar to inventory table in app/admin/inventory/page.tsx
+- [X] T015 [US3] Add date navigation bar to admin layout — prev/next arrows, Today button, date range label, Day/Week/Month/Year toggle in app/admin/layout.tsx
+- [X] T016 [US3] Implement SVG line charts and bar charts with gradients in app/admin/analytics/page.tsx
+- [X] T017 [US3] Implement 5-step conversion funnel visualization in app/admin/analytics/page.tsx
+- [X] T018 [P] [US3] Implement fleet analytics section — utilization gauge ring, fuel efficiency bars, maintenance schedule in app/admin/fleet/page.tsx
+- [X] T019 [P] [US3] Implement vehicle detail modal with document check and health indicators in app/admin/fleet/page.tsx
+- [X] T020 [US3] Implement driver condition score ring using conic gradient SVG in app/admin/drivers/page.tsx
+- [X] T021 [P] [US3] Add referral sources section to app/admin/promotions/page.tsx
+- [X] T022 [P] [US3] Add search bar to inventory table in app/admin/inventory/page.tsx
 
 **Checkpoint**: All missing components from the HTML reference are now implemented and rendering correctly.
 

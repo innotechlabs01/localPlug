@@ -130,6 +130,82 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
   },
 ]
 
+function DateNav() {
+  const now = new Date()
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December']
+  const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
+  const [date, setDate] = useState(now)
+  const [view, setView] = useState<'day' | 'week' | 'month' | 'year'>('day')
+
+  const formatLabel = () => {
+    if (view === 'day') return `${dayNames[date.getDay()]}, ${months[date.getMonth()]} ${date.getDate()}`
+    if (view === 'week') {
+      const s = new Date(date); s.setDate(date.getDate() - date.getDay() + 1)
+      const e = new Date(s); e.setDate(s.getDate() + 6)
+      return `${months[s.getMonth()]} ${s.getDate()} – ${months[e.getMonth()]} ${e.getDate()}`
+    }
+    if (view === 'month') return `${months[date.getMonth()]} ${date.getFullYear()}`
+    return `${date.getFullYear()}`
+  }
+
+  const formatSub = () => {
+    if (view === 'day') return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`
+    if (view === 'week') return `Week ${Math.ceil(((date.getTime() - new Date(date.getFullYear(),0,1).getTime()) / 86400000 + 1) / 7)}`
+    if (view === 'month') return `${Math.ceil(date.getDate() / 7)} of 4 weeks`
+    return 'Fiscal Year'
+  }
+
+  const goPrev = () => {
+    const d = new Date(date)
+    if (view === 'day') d.setDate(d.getDate() - 1)
+    else if (view === 'week') d.setDate(d.getDate() - 7)
+    else if (view === 'month') d.setMonth(d.getMonth() - 1)
+    else d.setFullYear(d.getFullYear() - 1)
+    setDate(d)
+  }
+
+  const goNext = () => {
+    const d = new Date(date)
+    if (view === 'day') d.setDate(d.getDate() + 1)
+    else if (view === 'week') d.setDate(d.getDate() + 7)
+    else if (view === 'month') d.setMonth(d.getMonth() + 1)
+    else d.setFullYear(d.getFullYear() + 1)
+    setDate(d)
+  }
+
+  const goToday = () => setDate(new Date())
+
+  return (
+    <div className="date-nav">
+      <div className="date-nav-left">
+        <button className="date-arrow" onClick={goPrev}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <button className="date-today-btn" onClick={goToday}>Today</button>
+        <button className="date-arrow" onClick={goNext}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+      </div>
+      <div className="date-nav-center">
+        <span className="date-range-label">{formatLabel()}</span>
+        <span className="date-range-sub">{formatSub()}</span>
+      </div>
+      <div className="date-nav-right">
+        <div className="date-view-toggle">
+          {(['day', 'week', 'month', 'year'] as const).map(v => (
+            <button key={v} className={`date-view-btn ${view === v ? 'active' : ''}`} onClick={() => setView(v)}>
+              {v.charAt(0).toUpperCase() + v.slice(1)}
+            </button>
+          ))}
+        </div>
+        <button className="date-calendar-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <RealtimeProvider>
@@ -325,6 +401,9 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         </header>
+
+        {/* ── Global Date Navigation ── */}
+        <DateNav />
 
         <div className="content">
           {children}
