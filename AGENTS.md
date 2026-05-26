@@ -41,4 +41,9 @@ specs/013-return-date-validation/plan.md
 For context about diagnosing and fixing Evolution API QR connection failure, refer to:
 specs/014-fix-evolution-qr-connection/plan.md
 
+For context about aligning the admin UI with the HTML reference design, refer to:
+specs/016-admin-ui-alignment/plan.md
+specs/016-admin-ui-alignment/quickstart.md
+specs/016-admin-ui-alignment/research.md
+
 <!-- SPECKIT END -->
