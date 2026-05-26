@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, use } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { adminFetch } from '@/lib/admin/admin-fetch'
 
@@ -55,7 +55,8 @@ interface CaseTask {
   updated_at: string
 }
 
-export default function CaseDetailPage({ params }: { params: { id: string } }) {
+export default function CaseDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
   const { t } = useI18n()
   const [activeTab, setActiveTab] = useState<'timeline' | 'documents' | 'tasks'>('timeline')
   const [caseData, setCaseData] = useState<CaseData | null>(null)
@@ -68,7 +69,7 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
   const loadCase = useCallback(async () => {
     try {
       setLoading(true)
-      const res = await adminFetch(`/api/admin/cases?id=${params.id}`)
+      const res = await adminFetch(`/api/admin/cases?id=${id}`)
       const data = await res.json()
       setCaseData(data.case)
       setEvents(data.events || [])
@@ -79,7 +80,7 @@ export default function CaseDetailPage({ params }: { params: { id: string } }) {
     } finally {
       setLoading(false)
     }
-  }, [params.id])
+  }, [id])
 
   useEffect(() => { loadCase() }, [loadCase])
 
