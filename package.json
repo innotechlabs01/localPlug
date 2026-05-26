@@ -28,13 +28,13 @@
     ]
   },
   "dependencies": {
-    "@clerk/nextjs": "^7.3.7",
+    "@clerk/nextjs": "^7.4.1",
     "@libsql/client": "^0.17.3",
     "@stripe/react-stripe-js": "^6.3.0",
     "@stripe/stripe-js": "^9.5.0",
-    "next": "^16.2.6",
-    "react": "^19.2.6",
-    "react-dom": "^19.2.6",
+    "next": "^15.5.18",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "stripe": "^22.1.1"
   },
   "devDependencies": {
@@ -44,8 +44,8 @@
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
     "@types/node": "^25.8.0",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
+    "@types/react": "^18.3.29",
+    "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^6.0.2",
     "autoprefixer": "^10.5.0",
     "dotenv": "^17.4.2",
@@ -57,7 +57,7 @@
     "postcss": "^8.5.14",
     "prettier": "^3.8.3",
     "tailwindcss": "^3.4.19",
-    "typescript": "^6.0.3",
+    "typescript": "^5.8.3",
     "vitest": "^4.1.6"
   }
 }

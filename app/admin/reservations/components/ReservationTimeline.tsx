@@ -33,10 +33,7 @@ export default function ReservationTimeline({ reservations }: ReservationTimelin
         <div key={reservation.id} className="timeline-item">
           <div className="timeline-line">
             <div 
-              className={`timeline-dot ${getStatusClass(reservation.status)}`} 
-              // Add arrived class if it's in the past
-              {...(new Date(`${reservation.arrivalDate}T${reservation.arrivalTime || '00:00'}`) < new Date() ? 
-                { className: 'timeline-dot arrived' } : {})}
+              className={`timeline-dot ${getStatusClass(reservation.status)} ${new Date(`${reservation.arrivalDate}T${reservation.arrivalTime || '00:00'}`) < new Date() ? 'arrived' : ''}`}
             />
           </div>
           <div className="timeline-body">
