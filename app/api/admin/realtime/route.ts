@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
+import { auth } from '@clerk/nextjs/server'
 
 export async function GET(req: Request) {
+  const { userId } = await auth()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const db = getDb()
   const { searchParams } = new URL(req.url)
   const since = searchParams.get('since')

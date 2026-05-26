@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { getTrmRate, convertCopToUsd } from '@/lib/trm'
+import { auth } from '@clerk/nextjs/server'
 
 // Fixed driver payment per trip in COP
 const DRIVER_PAYMENT_COP = 150000
 
 export async function GET() {
+  const { userId } = await auth()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const db = getDb()
   const trmRate = await getTrmRate()
 
