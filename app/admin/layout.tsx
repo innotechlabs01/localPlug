@@ -64,7 +64,7 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
       },
       {
         labelKey: 'fleet',
-        href: '/admin/logistics',
+        href: '/admin/fleet',
         icon: (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M5 17h14M5 17a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2M8 21h8"/>
@@ -99,7 +99,7 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
     items: [
       {
         labelKey: 'employees',
-        href: '/admin/team',
+        href: '/admin/employees',
         icon: (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
@@ -118,7 +118,7 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
       },
       {
         labelKey: 'payments',
-        href: '/admin/grid',
+        href: '/admin/payments',
         icon: (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <line x1="12" y1="1" x2="12" y2="23"/>
