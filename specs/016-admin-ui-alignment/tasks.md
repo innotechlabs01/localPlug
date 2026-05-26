@@ -93,13 +93,13 @@ These tasks depend on US1 completion for their respective page files (the visual
 
 **Purpose**: Final verification — UI matches, functionality preserved, no regressions.
 
-- [ ] T023 Verify each admin page visually matches its HTML reference — side-by-side comparison
-- [ ] T024 Verify all existing functionality preserved (data fetching, modals, filters, CRUD)
-- [ ] T025 [P] Verify responsive design at 3 breakpoints: mobile (390px), tablet (768px), desktop (1280px)
-- [ ] T026 [P] Verify no hardcoded hex colors remain in any app/admin/*.tsx file
-- [ ] T027 [P] Run type checking: `npx tsc --noEmit`
-- [ ] T028 [P] Run linting: `npm run lint`
-- [ ] T029 Run `pnpm dev` and manually verify top 3 pages load without errors
+- [X] T023 Verify each admin page visually matches its HTML reference — side-by-side comparison
+- [X] T024 Verify all existing functionality preserved (data fetching, modals, filters, CRUD)
+- [X] T025 [P] Verify responsive design at 3 breakpoints: mobile (390px), tablet (768px), desktop (1280px)
+- [X] T026 [P] Verify no hardcoded hex colors remain in any app/admin/*.tsx file
+- [X] T027 [P] Run type checking: `npx tsc --noEmit`
+- [X] T028 [P] Run linting: `npm run lint`
+- [X] T029 Run `pnpm dev` and manually verify top 3 pages load without errors
 
 ---
 
