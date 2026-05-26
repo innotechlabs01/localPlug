@@ -18,7 +18,7 @@ interface Driver {
 }
 
 const catColors: Record<string, string> = {
-  standard: '#6366f1', suv: '#3b82f6', vip: '#d4a84b', luxury: '#10b981', van: '#f59e0b'
+  standard: 'var(--info)', suv: 'var(--info)', vip: 'var(--gold)', luxury: 'var(--accent)', van: 'var(--warning)'
 }
 
 const statusLabels: Record<string, string> = {
@@ -26,19 +26,19 @@ const statusLabels: Record<string, string> = {
 }
 
 const statusClasses: Record<string, string> = {
-  available: 'bg-[rgba(16,185,129,0.12)] text-[#10b981]',
-  busy: 'bg-[rgba(59,130,246,0.12)] text-[#3b82f6]',
-  offline: 'bg-[rgba(100,104,128,0.15)] text-[#646880]',
-  suspended: 'bg-[rgba(239,68,80,0.12)] text-[#ef4450]',
-  pending: 'bg-[rgba(245,158,11,0.12)] text-[#f59e0b]',
-  inactive: 'bg-[rgba(100,104,128,0.15)] text-[#646880]',
+  available: 'badge badge-accent',
+  busy: 'badge badge-info',
+  offline: 'badge',
+  suspended: 'badge badge-danger',
+  pending: 'badge badge-warning',
+  inactive: 'badge',
 }
 
 const docClasses: Record<string, string> = {
-  valid: 'bg-[rgba(16,185,129,0.12)] text-[#10b981]',
-  warning: 'bg-[rgba(245,158,11,0.12)] text-[#f59e0b]',
-  expired: 'bg-[rgba(239,68,80,0.12)] text-[#ef4450]',
-  pending: 'bg-[rgba(100,104,128,0.15)] text-[#646880]',
+  valid: 'badge badge-accent',
+  warning: 'badge badge-warning',
+  expired: 'badge badge-danger',
+  pending: 'badge',
 }
 
 export default function DriversPage() {
@@ -117,8 +117,8 @@ export default function DriversPage() {
 
   const getAvatarColor = (name: string | null, vip?: number) => {
     const hash = (name || '').charCodeAt(0) || 0
-    const cs = ['#10b981', '#3b82f6', '#d4a84b', '#6366f1', '#059669', '#0f172a']
-    return vip ? 'linear-gradient(135deg, #0f172a, #d4a84b)' : `linear-gradient(135deg, ${cs[hash % cs.length]}, #0f172a)`
+    const cs = ['var(--accent)', 'var(--info)', 'var(--gold)', 'var(--info)', 'var(--accent-hover)', 'var(--bg)']
+    return vip ? 'linear-gradient(135deg, var(--bg), var(--gold))' : `linear-gradient(135deg, ${cs[hash % cs.length]}, var(--bg))`
   }
 
   const docStatus = (d: Driver): string => {
@@ -222,655 +222,381 @@ export default function DriversPage() {
 
   return (
     <div className="drivers-page" style={{ padding: 0 }}>
-      {/* ── HERO ── */}
-      <div style={{
-        padding: '22px 24px 10px',
-        display: 'flex',
-        alignItems: 'flex-end',
-        justifyContent: 'space-between',
-        gap: '16px',
-        flexWrap: 'wrap',
-      }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: 24, letterSpacing: '-0.02em', fontWeight: 700, color: '#f0f2f5' }}>
-            {d.headerTitle || 'Drivers Management'}
-          </h1>
-          <p style={{ margin: '8px 0 0', color: '#646880', fontSize: 13, maxWidth: 760, lineHeight: 1.55 }}>
-            {d.headerDesc || 'Operational driver roster, vehicle eligibility, compliance validation, and assignment readiness for premium airport pickups and VIP tourism services in Medellín.'}
-          </p>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <button
-            className="px-3 py-2 border border-[#282b38] text-[12px] text-[#9ca0b0] rounded-lg hover:bg-[#202330] transition-all font-medium"
-            onClick={() => showToast(d.toastCompliance || 'Compliance report queued')}
-          >
-            {d.exportCompliance || 'Export compliance'}
-          </button>
-          <button
-            className="px-4 py-2 bg-[#10b981] text-white text-[13px] font-medium rounded-lg hover:bg-[#059669] transition-all"
-            onClick={openCreateModal}
-          >
-            {d.create || 'Create Driver'}
-          </button>
-        </div>
-      </div>
+       {/* ── HERO ── */}
+       <div className="drivers-hero">
+         <div>
+           <h1 className="text-[24px] font-bold tracking-tighter text-fg">
+             {d.headerTitle || 'Drivers Management'}
+           </h1>
+           <p className="mt-2 text-[13px] text-fg-muted max-w-[760px] leading-[1.55]">
+             {d.headerDesc || 'Operational driver roster, vehicle eligibility, compliance validation, and assignment readiness for premium airport pickups and VIP tourism services in Medellín.'}
+           </p>
+         </div>
+         <div className="drivers-toolbar flex items-center gap-2.5 flex-wrap">
+           <button
+             className="px-3 py-2 border border-border text-fg-muted rounded-md hover:bg-surface-hover transition-all font-medium"
+             onClick={() => showToast(d.toastCompliance || 'Compliance report queued')}
+           >
+             {d.exportCompliance || 'Export compliance'}
+           </button>
+           <button
+             className="px-4 py-2 bg-accent text-white text-[13px] font-medium rounded-md hover:bg-[#059669] transition-all"
+             onClick={openCreateModal}
+           >
+             {d.create || 'Create Driver'}
+           </button>
+         </div>
+       </div>
 
-      {/* ── FILTER CHIPS ── */}
-      <div style={{
-        padding: '0 24px 16px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 8,
-        flexWrap: 'wrap',
-      }}>
-        {[
-          ['all', d.filterAll || 'All drivers'],
-          ['available', d.filterAvailable || 'Available'],
-          ['assigned', d.filterAssigned || 'Assigned'],
-          ['pending', d.filterPending || 'Pending verification'],
-          ['expired', d.filterExpired || 'Expired documents'],
-          ['vip', d.filterVip || 'VIP eligible'],
-          ['suspended', d.filterSuspended || 'Suspended'],
-        ].map(([key, label]) => (
-          <button
-            key={key}
-            onClick={() => setFilter(key)}
-            style={{
-              border: `1px solid ${filter === key ? '#10b981' : '#282b38'}`,
-              background: filter === key ? 'rgba(16,185,129,0.12)' : '#181b25',
-              color: filter === key ? '#10b981' : '#646880',
-              padding: '7px 12px',
-              borderRadius: 999,
-              fontSize: 12,
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              fontWeight: 500,
-            }}
-            onMouseEnter={e => {
-              if (filter !== key) {
-                e.currentTarget.style.borderColor = '#10b981'
-                e.currentTarget.style.color = '#f0f2f5'
-              }
-            }}
-            onMouseLeave={e => {
-              if (filter !== key) {
-                e.currentTarget.style.borderColor = '#282b38'
-                e.currentTarget.style.color = '#646880'
-              }
-            }}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+       {/* ── FILTER CHIPS ── */}
+       <div className="drivers-filters px-6 py-4 flex items-center gap-2 flex-wrap">
+         {[
+           ['all', d.filterAll || 'All drivers'],
+           ['available', d.filterAvailable || 'Available'],
+           ['assigned', d.filterAssigned || 'Assigned'],
+           ['pending', d.filterPending || 'Pending verification'],
+           ['expired', d.filterExpired || 'Expired documents'],
+           ['vip', d.filterVip || 'VIP eligible'],
+           ['suspended', d.filterSuspended || 'Suspended'],
+         ].map(([key, label]) => (
+           <button
+             key={key}
+             onClick={() => setFilter(key)}
+             className={`chip ${filter === key ? 'chip-active' : ''}`}
+           >
+             {label}
+           </button>
+         ))}
+       </div>
 
-      {/* ── KPI ROW ── */}
-      <div style={{
-        padding: '0 24px 20px',
-        display: 'grid',
-        gridTemplateColumns: 'repeat(6, minmax(0, 1fr))',
-        gap: 12,
-      }}>
-        {[
-          [d.kpiTotal || 'Total drivers', String(stats.total), d.kpiSubPlus || '+3 this month', true],
-          [d.kpiAvailable || 'Available now', String(stats.available), d.kpiSubAirport || 'Airport ready', true],
-          [d.kpiAssigned || 'Assigned trips', String(stats.assigned), d.kpiSubServices || 'Live services', false],
-          [d.kpiVip || 'VIP eligible', String(stats.vip), d.kpiSubLuxury || 'Luxury certified', true],
-          [d.kpiAlerts || 'Compliance alerts', String(stats.alerts), d.kpiSubReview || 'Needs review', false],
-          [d.kpiAvgRating || 'Avg rating', stats.avg, d.kpiSubTop || 'Top quartile', true],
-        ].map(([label, value, sub, positive], idx) => (
-          <div key={`kpi-${idx}`} style={{
-            background: '#181b25',
-            border: '1px solid #282b38',
-            borderRadius: 12,
-            padding: 16,
-          }}>
-            <div style={{ fontSize: 11, color: '#646880', textTransform: 'uppercase', letterSpacing: '0.4px' }}>{label}</div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: '#f0f2f5', marginTop: 4 }}>{value}</div>
-            <div style={{
-              fontSize: 11,
-              marginTop: 4,
-              color: positive ? '#10b981' : '#f59e0b',
-            }}>{sub}</div>
-          </div>
-        ))}
-      </div>
+       {/* ── KPI ROW ── */}
+       <div className="drivers-kpis grid-6">
+         {[
+           [d.kpiTotal || 'Total drivers', String(stats.total), d.kpiSubPlus || '+3 this month', true],
+           [d.kpiAvailable || 'Available now', String(stats.available), d.kpiSubAirport || 'Airport ready', true],
+           [d.kpiAssigned || 'Assigned trips', String(stats.assigned), d.kpiSubServices || 'Live services', false],
+           [d.kpiVip || 'VIP eligible', String(stats.vip), d.kpiSubLuxury || 'Luxury certified', true],
+           [d.kpiAlerts || 'Compliance alerts', String(stats.alerts), d.kpiSubReview || 'Needs review', false],
+           [d.kpiAvgRating || 'Avg rating', stats.avg, d.kpiSubTop || 'Top quartile', true],
+         ].map(([label, value, sub, positive], idx) => (
+           <div key={`kpi-${idx}`} className="stat-card">
+             <div className="stat-label">{label}</div>
+             <div className="stat-value">{value}</div>
+             <div className={`stat-change ${positive ? 'up' : 'down'}`}>{sub}</div>
+           </div>
+         ))}
+       </div>
 
-      {/* ── OPS ALERTS + ELIGIBILITY ── */}
-      <div style={{
-        padding: '0 24px 18px',
-        display: 'grid',
-        gridTemplateColumns: '1.15fr 0.85fr',
-        gap: 12,
-      }}>
-        {/* Alert panel */}
-        <div style={{
-          background: 'linear-gradient(135deg, rgba(239,68,80,0.08), transparent 48%), #181b25',
-          border: '1px solid #282b38',
-          borderRadius: 12,
-          padding: '16px 18px',
-          display: 'grid',
-          gap: 12,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, fontSize: 13, fontWeight: 700, color: '#f0f2f5' }}>
-            <span>{d.alertsTitle || 'Operational compliance alerts'}</span>
-            <span style={{
-              padding: '4px 9px',
-              borderRadius: 999,
-              fontSize: 10.5,
-              fontWeight: 700,
-              background: 'rgba(245,158,11,0.12)',
-              color: '#f59e0b',
-            }}>
-              {d.alertsOpen?.replace('{count}', String(stats.alerts)) || `${stats.alerts} open`}
-            </span>
-          </div>
-          {filteredAlerts.length === 0 ? (
-            <p style={{ fontSize: 13, color: '#646880', padding: '24px 0', textAlign: 'center' }}>{d.alertsNone || 'No compliance alerts'}</p>
-          ) : (
-            filteredAlerts.map(driver => (
-              <div key={driver.id} style={{
-                display: 'grid',
-                gridTemplateColumns: 'auto 1fr auto',
-                gap: 10,
-                alignItems: 'center',
-                padding: '10px 0',
-                borderTop: '1px solid #1e2130',
-              }}>
-                <span style={{
-                  width: 9, height: 9, borderRadius: '50%',
-                  background: driver.doc_status === 'expired' ? '#ef4450' : '#f59e0b',
-                  boxShadow: `0 0 0 4px ${driver.doc_status === 'expired' ? 'rgba(239,68,80,0.12)' : 'rgba(245,158,11,0.12)'}`,
-                }} />
-                <div>
-                  <strong style={{ display: 'block', fontSize: 13, color: '#f0f2f5' }}>{driver.name}</strong>
-                  <span style={{ color: '#646880', fontSize: 12 }}>{docReason(driver).join(', ') || 'Documents expired'} — {driver.vehicle} ({driver.plate})</span>
-                </div>
-                <button
-                  style={{
-                    padding: '4px 8px', fontSize: 11, color: '#9ca0b0',
-                    border: '1px solid #282b38', borderRadius: 8,
-                    background: 'transparent', cursor: 'pointer',
-                  }}
-                  onClick={() => { setSelectedId(driver.id); setFilter('expired') }}
-                >
-                  {d.alertsReview || 'Review'}
-                </button>
-              </div>
-            ))
-          )}
-        </div>
+       {/* ── OPS ALERTS + ELIGIBILITY ── */}
+       <div className="ops-alerts grid-2">
+         {/* Alert panel */}
+         <div className="alert-panel">
+           <div className="alert-title">
+             <span>{d.alertsTitle || 'Operational compliance alerts'}</span>
+             <span className="badge badge-warning">
+               {d.alertsOpen?.replace('{count}', String(stats.alerts)) || `${stats.alerts} open`}
+             </span>
+           </div>
+           {filteredAlerts.length === 0 ? (
+             <p className="text-fg-muted py-6 text-center">{d.alertsNone || 'No compliance alerts'}</p>
+           ) : (
+             filteredAlerts.map(driver => (
+               <div key={driver.id} className="alert-row">
+                 <span className={`status-dot ${driver.doc_status === 'expired' ? 'danger' : ''}`} />
+                 <div className="alert-copy">
+                   <strong>{driver.name}</strong>
+                   <span>{docReason(driver).join(', ') || 'Documents expired'} — {driver.vehicle} ({driver.plate})</span>
+                 </div>
+                 <button
+                   className="btn btn-sm btn-secondary"
+                   onClick={() => { setSelectedId(driver.id); setFilter('expired') }}
+                 >
+                   {d.alertsReview || 'Review'}
+                 </button>
+               </div>
+             ))
+           )}
+         </div>
 
-        {/* Eligibility panel */}
-        <div style={{
-          background: '#181b25',
-          border: '1px solid #282b38',
-          borderRadius: 12,
-          padding: '16px 18px',
-        }}>
-          <h3 style={{ fontSize: 13, marginBottom: 12, color: '#f0f2f5', fontWeight: 700 }}>{d.eligibilityTitle || 'Assignment eligibility'}</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
-            {[
-              [drivers.filter(drv => drv.status === 'available').length, d.eligibilityPickup || 'Eligible for airport pickup'],
-              [stats.vip, d.eligibilityVip || 'Eligible for VIP guests'],
-              [stats.alerts, d.eligibilityRestricted || 'Restricted by compliance'],
-              [stats.total ? '6 min' : '—', d.eligibilityEta || 'Avg airport ETA'],
-            ].map(([val, lab], idx) => (
-              <div key={idx} style={{
-                padding: 12,
-                border: '1px solid #1e2130',
-                borderRadius: 8,
-                background: '#0b0d14',
-              }}>
-                <strong style={{ display: 'block', fontSize: 18, lineHeight: 1.1, color: '#f0f2f5' }}>{val}</strong>
-                <span style={{ color: '#646880', fontSize: 11 }}>{lab}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+         {/* Eligibility panel */}
+         <div className="eligibility-panel">
+           <h3>{d.eligibilityTitle || 'Assignment eligibility'}</h3>
+           <div className="eligibility-grid grid-2">
+             {[
+               [drivers.filter(drv => drv.status === 'available').length, d.eligibilityPickup || 'Eligible for airport pickup'],
+               [stats.vip, d.eligibilityVip || 'Eligible for VIP guests'],
+               [stats.alerts, d.eligibilityRestricted || 'Restricted by compliance'],
+               [stats.total ? '6 min' : '—', d.eligibilityEta || 'Avg airport ETA'],
+             ].map(([val, lab], idx) => (
+               <div key={idx} className="eligibility-item">
+                 <strong>{val}</strong>
+                 <span>{lab}</span>
+               </div>
+             ))}
+           </div>
+         </div>
+       </div>
 
       {/* ── MAIN LAYOUT ── */}
-      <div style={{
-        padding: '0 24px 24px',
-        display: 'grid',
-        gridTemplateColumns: 'minmax(0, 1.28fr) minmax(360px, 0.72fr)',
-        gap: 16,
-        alignItems: 'start',
-      }}>
+      <div className="drivers-layout">
         {/* ── LEFT: DRIVER ROSTER ── */}
-        <div style={{
-          background: '#181b25',
-          border: '1px solid #282b38',
-          borderRadius: 12,
-          overflow: 'hidden',
-        }}>
-          <div style={{
-            padding: '16px 18px',
-            borderBottom: '1px solid #1e2130',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 12,
-            flexWrap: 'wrap',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, fontWeight: 700, color: '#f0f2f5' }}>
+        <div className="panel">
+          <div className="panel-header">
+            <div className="panel-title">
               <span>{d.rosterTitle || 'Driver roster'}</span>
-              <span style={{ color: '#646880', fontWeight: 500, fontSize: 12 }}>{filtered.length} shown</span>
+              <span className="count">{filtered.length} shown</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <div style={{ position: 'relative' }}>
-                <svg className="absolute left-3 top-1/2 -translate-y-1/2" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#646880" strokeWidth="2" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }}>
-                  <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-                </svg>
+              <div className="dp-search-bar" style={{ margin: 0 }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
                 <input
-                  style={{
-                    width: 200, padding: '7px 10px 7px 32px', background: '#0b0d14',
-                    border: '1px solid #282b38', borderRadius: 8,
-                    fontSize: 12, color: '#f0f2f5', outline: 'none',
-                  }}
                   placeholder={d.rosterSearch || 'Search drivers, plates, vehicles...'}
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                 />
               </div>
-              <button
-                style={{
-                  padding: '7px 12px', border: '1px solid #282b38', borderRadius: 8,
-                  fontSize: 12, color: '#9ca0b0', background: 'transparent', cursor: 'pointer',
-                }}
-                className="hover:bg-[#202330] transition-all"
-                onClick={() => showToast('Card view active')}
-              >
-                Cards
-              </button>
-              <button
-                style={{
-                  padding: '7px 12px', border: '1px solid #282b38', borderRadius: 8,
-                  fontSize: 12, color: '#9ca0b0', background: 'transparent', cursor: 'pointer',
-                }}
-                className="hover:bg-[#202330] transition-all"
-                onClick={() => showToast('Table view ready for implementation handoff')}
-              >
-                Table
-              </button>
+              <button className="btn btn-sm btn-secondary" onClick={() => showToast('Card view active')}>Cards</button>
+              <button className="btn btn-sm btn-secondary" onClick={() => showToast('Table view ready')}>Table</button>
             </div>
           </div>
 
-          <div style={{
-            padding: 14,
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-            gap: 12,
-          }}>
-            {filtered.length === 0 ? (
-              <div style={{ gridColumn: '1 / -1', padding: 32, textAlign: 'center', color: '#646880', fontSize: 13 }}>
-                {d.rosterNoMatch || 'No drivers match the current filter.'}
-              </div>
-            ) : filtered.map(drv => {
-              const isSelected = drv.id === selectedId
-              return (
-                <div
-                  key={drv.id}
-                  style={{
-                    border: `1px solid ${isSelected ? '#10b981' : '#1e2130'}`,
-                    borderRadius: 12,
-                    background: isSelected
-                      ? '#202330'
-                      : 'linear-gradient(180deg, rgba(255,255,255,0.025), transparent 34%), #0b0d14',
-                    padding: 14,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                  }}
-                  className={isSelected ? '' : 'hover:border-[#10b981] hover:bg-[#202330]'}
-                  onClick={() => setSelectedId(drv.id)}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', marginBottom: 12 }}>
-                    <div style={{ display: 'flex', gap: 11, minWidth: 0 }}>
-                      <div style={{
-                        width: 44, height: 44, borderRadius: 14,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        color: '#fff', fontWeight: 800, fontSize: 13,
-                        background: getAvatarColor(drv.name, drv.vip_compatible || undefined),
-                        flex: '0 0 auto',
-                      }}>
-                        {getInit(drv.name)}
-                      </div>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontWeight: 700, fontSize: 14, color: '#f0f2f5' }}>{drv.name}</div>
-                        <div style={{ color: '#646880', fontSize: 12, marginTop: 2 }}>{drv.phone}</div>
-                        <div style={{ color: '#646880', fontSize: 12, marginTop: 2 }}>{drv.languages} · {drv.city || 'Medellín'}</div>
-                      </div>
-                    </div>
-                    <span style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 5,
-                      padding: '4px 9px', borderRadius: 999, fontSize: 10.5, fontWeight: 700,
-                      whiteSpace: 'nowrap',
-                      ...(statusClasses[drv.status || ''] ? {
-                        background: statusClasses[drv.status || ''].split(' ')[0],
-                        color: statusClasses[drv.status || ''].split(' ')[1],
-                      } : { background: 'rgba(100,104,128,0.15)', color: '#646880' }),
-                    }}>
-                      {statusLabels[drv.status || ''] || drv.status}
-                    </span>
-                  </div>
+           <div className="driver-grid">
+             {filtered.length === 0 ? (
+               <p className="text-fg-muted text-center py-12 grid-col-span-2">{d.rosterNoMatch || 'No drivers match filters'}</p>
+             ) : filtered.map(drv => (
+               <div
+                 key={drv.id}
+                 className={`driver-card ${selectedId === drv.id ? 'active' : ''}`}
+                 onClick={() => setSelectedId(drv.id)}
+               >
+                 <div className="driver-head">
+                   <div className="driver-person">
+                     <div className="driver-avatar" style={{ background: getAvatarColor(drv.name, drv.vip_compatible || undefined) }}>
+                       {drv.photo_url ? (
+                         <img src={drv.photo_url} alt={drv.name || ''} style={{ width: '100%', height: '100%', borderRadius: 14, objectFit: 'cover' }} />
+                       ) : getInit(drv.name)}
+                     </div>
+                     <div>
+                       <div className="driver-name">
+                         {drv.name}
+                         {drv.vip_compatible ? <span className="badge vip">VIP</span> : null}
+                       </div>
+                       <div className="driver-meta">{drv.languages} · {drv.city || 'Medellín'}</div>
+                     </div>
+                   </div>
+                   <span className={`badge ${drv.status === 'available' ? 'available' : drv.status === 'busy' ? 'assigned' : 'offline'}`}>
+                     {statusLabels[drv.status || ''] || drv.status}
+                   </span>
+                 </div>
 
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    <span style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 5,
-                      padding: '4px 9px', borderRadius: 999, fontSize: 10.5, fontWeight: 700,
-                      ...(docClasses[docStatus(drv)] ? {
-                        background: docClasses[docStatus(drv)].split(' ')[0],
-                        color: docClasses[docStatus(drv)].split(' ')[1],
-                      } : { background: 'rgba(16,185,129,0.12)', color: '#10b981' }),
-                    }}>
-                      {docStatus(drv) === 'valid' ? (d.rosterValid || 'Valid') : docStatus(drv) === 'warning' ? (d.rosterExpiring || 'Expiring soon') : docStatus(drv) === 'expired' ? (d.rosterExpired || 'Expired') : (d.rosterPending || 'Pending')}
-                    </span>
-                    {drv.vip_compatible === 1 && (
-                      <span style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 5,
-                        padding: '4px 9px', borderRadius: 999, fontSize: 10.5, fontWeight: 700,
-                        background: 'rgba(212,168,75,0.15)', color: '#d4a84b',
-                      }}>
-                        {d.rosterVip || 'VIP compatible'}
-                      </span>
-                    )}
-                  </div>
+                 <div className="flex gap-1.5 flex-wrap">
+                   <span className={`badge ${docStatus(drv) === 'valid' ? 'valid' : docStatus(drv) === 'warning' ? 'warning' : docStatus(drv) === 'expired' ? 'expired' : 'pending'}`}>
+                     {docStatus(drv) === 'valid' ? (d.rosterValid || 'Valid') : docStatus(drv) === 'warning' ? (d.rosterExpiring || 'Expiring') : docStatus(drv) === 'expired' ? (d.rosterExpired || 'Expired') : (d.rosterPending || 'Pending')}
+                   </span>
+                   {drv.vip_compatible === 1 && <span className="badge vip">{d.rosterVip || 'VIP'}</span>}
+                 </div>
 
-                  <div style={{
-                    display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8,
-                    margin: '12px 0',
-                  }}>
-                    {[
-                      [drv.rating || 'New', d.rosterRating || 'Rating'],
-                      [drv.total_trips || 0, d.rosterTrips || 'Trips'],
-                      [drv.status === 'available' ? '4 min' : drv.active_orders ? 'In service' : '—', d.rosterEta || 'Airport ETA'],
-                    ].map(([val, lab], idx) => (
-                      <div key={idx} style={{
-                        padding: 9, borderRadius: 8,
-                        background: '#181b25', border: '1px solid #1e2130',
-                      }}>
-                        <strong style={{ display: 'block', fontSize: 14, color: '#f0f2f5' }}>{val}</strong>
-                        <span style={{ color: '#646880', fontSize: 10.5 }}>{lab}</span>
-                      </div>
-                    ))}
-                  </div>
+                 <div className="driver-stats">
+                   <div className="driver-stat">
+                     <strong>{drv.rating || 'New'}</strong>
+                     <span>{d.rosterRating || 'Rating'}</span>
+                   </div>
+                   <div className="driver-stat">
+                     <strong>{drv.total_trips || 0}</strong>
+                     <span>{d.rosterTrips || 'Trips'}</span>
+                   </div>
+                   <div className="driver-stat">
+                     <strong>{drv.status === 'available' ? '4 min' : drv.active_orders ? 'In service' : '—'}</strong>
+                     <span>{d.rosterEta || 'ETA'}</span>
+                   </div>
+                 </div>
 
-                  <div style={{
-                    display: 'flex', justifyContent: 'space-between', gap: 10,
-                    paddingTop: 12, borderTop: '1px solid #1e2130',
-                    color: '#9ca0b0', fontSize: 12,
-                  }}>
-                    <span>
-                      <strong style={{ color: '#f0f2f5' }}>{drv.vehicle || '—'}</strong><br />
-                      {drv.plate} · {drv.year || '—'}
-                    </span>
-                    <span>
-                      {catColors[drv.category || ''] ? (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                          <span style={{ width: 8, height: 8, borderRadius: '50%', display: 'inline-block', background: catColors[drv.category || ''] }} />
-                          {drv.category}
-                        </span>
-                      ) : '—'}
-                      <br />{drv.capacity || drv.experience_level || '—'}
-                    </span>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+                 <div className="vehicle-strip">
+                   <span>
+                     <strong className="text-fg">{drv.vehicle || '—'}</strong><br />
+                     {drv.plate} · {drv.year || '—'}
+                   </span>
+                   <span>
+                     {catColors[drv.category || ''] ? (
+                       <span className="flex items-center gap-1">
+                         <span className="h-1.5 w-1.5 rounded-full" style={{ background: catColors[drv.category || ''] }} />
+                         {drv.category}
+                       </span>
+                     ) : '—'}
+                     <br />{drv.capacity || drv.experience_level || '—'}
+                   </span>
+                 </div>
+               </div>
+             ))}
+           </div>
         </div>
 
-        {/* ── RIGHT: SIDE STACK ── */}
-        <aside style={{ display: 'grid', gap: 16, position: 'sticky', top: 76 }}>
-          {/* Profile */}
-          <div style={{
-            background: '#181b25', border: '1px solid #282b38', borderRadius: 12, overflow: 'hidden',
-          }}>
-            <div style={{
-              padding: '16px 18px',
-              borderBottom: '1px solid #1e2130',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 12,
-            }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: '#f0f2f5' }}>{d.profileTitle || 'Driver profile'}</span>
-              <button
-                style={{
-                  padding: '4px 8px', fontSize: 11, color: '#9ca0b0',
-                  border: '1px solid #282b38', borderRadius: 8,
-                  background: 'transparent', cursor: 'pointer',
-                }}
-                className="hover:bg-[#202330] transition-all"
-                onClick={() => {
-                  if (window.confirm('Suspend driver access?')) {
-                    showToast(d.toastStatus || 'Driver status updated and audit log recorded')
-                  }
-                }}
-              >
-                {d.profileActions || 'Actions'}
-              </button>
-            </div>
-            <div style={{ padding: '16px 18px' }}>
-              {!selected ? (
-                <p style={{ fontSize: 13, color: '#646880', textAlign: 'center', padding: '24px 0' }}>
-                  {d.profileSelect || 'Select a driver to view profile'}
-                </p>
-              ) : (
-                <>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                    <div style={{
-                      width: 68, height: 68, borderRadius: 20,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: '#fff', fontWeight: 800, fontSize: 21,
-                      background: getAvatarColor(selected.name, selected.vip_compatible || undefined),
-                      flex: '0 0 auto',
-                    }}>
-                      {selected.photo_url ? (
-                        <img src={selected.photo_url} alt={selected.name || ''} style={{ width: '100%', height: '100%', borderRadius: 20, objectFit: 'cover' }} />
-                      ) : getInit(selected.name)}
-                    </div>
-                    <div>
-                      <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#f0f2f5' }}>{selected.name}</h2>
-                      <div style={{ color: '#646880', fontSize: 12, marginTop: 3 }}>
-                        {(selected.category || d.profileStandard || 'Standard')} · {selected.plate}
-                      </div>
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
-                        <span style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 5,
-                          padding: '4px 9px', borderRadius: 999, fontSize: 10.5, fontWeight: 700,
-                          ...(statusClasses[selected.status || ''] ? {
-                            background: statusClasses[selected.status || ''].split(' ')[0],
-                            color: statusClasses[selected.status || ''].split(' ')[1],
-                          } : { background: 'rgba(100,104,128,0.15)', color: '#646880' }),
-                        }}>
-                          {statusLabels[selected.status || ''] || selected.status}
-                        </span>
-                        <span style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 5,
-                          padding: '4px 9px', borderRadius: 999, fontSize: 10.5, fontWeight: 700,
-                          ...(docClasses[docStatus(selected)] ? {
-                            background: docClasses[docStatus(selected)].split(' ')[0],
-                            color: docClasses[docStatus(selected)].split(' ')[1],
-                          } : { background: 'rgba(16,185,129,0.12)', color: '#10b981' }),
-                        }}>
-                          {docStatus(selected) === 'valid' ? (d.profileValid || 'Valid') : docStatus(selected) === 'warning' ? (d.profileExpiring || 'Expiring soon') : (d.profileExpired || 'Expired')}
-                        </span>
-                        {selected.vip_compatible === 1 && (
-                          <span style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 5,
-                            padding: '4px 9px', borderRadius: 999, fontSize: 10.5, fontWeight: 700,
-                            background: 'rgba(212,168,75,0.15)', color: '#d4a84b',
-                          }}>
-                            {d.profileVip || 'VIP services'}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{
-                    display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 16,
-                  }}>
-                    {[
-                      [d.profileEmail || 'Email', selected.email || '—'],
-                      [d.profilePhone || 'Phone', selected.phone || '—'],
-                      [d.profileLanguages || 'Languages', selected.languages || '—'],
-                      [d.profileAssignment || 'Current assignment', selected.active_orders ? `${selected.active_orders} active` : 'Unassigned'],
-                      [d.profileVehicle || 'Vehicle', selected.vehicle || '—'],
-                      [d.profileCapacity || 'Capacity', selected.capacity || selected.experience_level || '—'],
-                      [d.profileLastActive || 'Last active', selected.status === 'available' ? 'Online' : selected.status === 'busy' ? 'In service' : '—'],
-                      [d.profileEligibility || 'Eligibility', docStatus(selected) === 'valid' && selected.status !== 'suspended' ? (d.profileAllowed || 'Assignment allowed') : (d.profileRestricted || 'Assignment restricted')],
-                    ].map(([label, value]) => (
-                      <div key={label}>
-                        <label style={{
-                          display: 'block', fontSize: 10, color: '#646880',
-                          textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 3,
-                        }}>{label}</label>
-                        <div style={{ fontSize: 13, lineHeight: 1.45, color: '#f0f2f5' }}>{value}</div>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
+         {/* ── RIGHT: SIDE STACK ── */}
+         <aside className="hidden sm:block w-[360px] sticky top-[76px]">
+           {/* Profile */}
+           <div className="panel">
+             <div className="panel-header flex items-center justify-between pb-2">
+               <span className="panel-title font-medium text-fg">{d.profileTitle || 'Driver profile'}</span>
+               <button
+                 className="btn btn-sm btn-secondary"
+                 onClick={() => {
+                   if (window.confirm('Suspend driver access?')) {
+                     showToast(d.toastStatus || 'Driver status updated')
+                   }
+                 }}
+               >
+                 {d.profileActions || 'Actions'}
+               </button>
+             </div>
+             <div className="panel-body p-4">
+               {!selected ? (
+                 <p className="text-fg-muted text-center py-8">
+                   {d.profileSelect || 'Select a driver to view profile'}
+                 </p>
+               ) : (
+                 <>
+                   <div className="flex items-center gap-3.5">
+                     <div className="w-[4.25rem] h-[4.25rem] rounded-[20px] flex items-center justify-center text-white font-extrabold text-[21px] flex-shrink-0" style={{ background: getAvatarColor(selected.name, selected.vip_compatible || undefined) }}>
+                       {selected.photo_url ? (
+                         <img src={selected.photo_url} alt={selected.name || ''} className="w-full h-full rounded-[20px] object-cover" />
+                       ) : getInit(selected.name)}
+                     </div>
+                     <div>
+                       <h2 className="text-[18px] font-bold text-fg">{selected.name}</h2>
+                       <div className="text-fg-muted text-[12px] mt-1 flex">
+                         {(selected.category || d.profileStandard || 'Standard')} · {selected.plate}
+                       </div>
+                       <div className="flex gap-1.5 flex-wrap mt-2">
+                         <span className={statusClasses[selected.status || ''] || 'badge'}>
+                           {statusLabels[selected.status || ''] || selected.status}
+                         </span>
+                         <span className={docClasses[docStatus(selected)] || 'badge'}>
+                           {docStatus(selected) === 'valid' ? (d.profileValid || 'Valid') : docStatus(selected) === 'warning' ? (d.profileExpiring || 'Expiring soon') : (d.profileExpired || 'Expired')}
+                         </span>
+                         {selected.vip_compatible === 1 && (
+                           <span className="badge badge-gold">
+                             {d.profileVip || 'VIP services'}
+                           </span>
+                         )}
+                       </div>
+                     </div>
+                   </div>
+                   <div className="grid grid-cols-2 gap-3 mt-4">
+                     {[
+                       [d.profileEmail || 'Email', selected.email || '—'],
+                       [d.profilePhone || 'Phone', selected.phone || '—'],
+                       [d.profileLanguages || 'Languages', selected.languages || '—'],
+                       [d.profileAssignment || 'Current assignment', selected.active_orders ? `${selected.active_orders} active` : 'Unassigned'],
+                       [d.profileVehicle || 'Vehicle', selected.vehicle || '—'],
+                       [d.profileCapacity || 'Capacity', selected.capacity || selected.experience_level || '—'],
+                       [d.profileLastActive || 'Last active', selected.status === 'available' ? 'Online' : selected.status === 'busy' ? 'In service' : '—'],
+                       [d.profileEligibility || 'Eligibility', docStatus(selected) === 'valid' && selected.status !== 'suspended' ? (d.profileAllowed || 'Assignment allowed') : (d.profileRestricted || 'Assignment restricted')],
+                     ].map(([label, value]) => (
+                       <div key={label}>
+                         <label className="block text-xs text-fg-muted uppercase tracking-[0.4px] mb-0.5">{label}</label>
+                         <div className="text-fg text-[13px] leading-[1.45]">{value}</div>
+                       </div>
+                     ))}
+                   </div>
+                 </>
+               )}
+             </div>
+           </div>
 
-          {/* Compliance */}
-          <div style={{
-            background: '#181b25', border: '1px solid #282b38', borderRadius: 12, overflow: 'hidden',
-          }}>
-            <div style={{
-              padding: '16px 18px',
-              borderBottom: '1px solid #1e2130',
-            }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: '#f0f2f5' }}>{d.complianceTitle || 'Compliance validation'}</span>
-            </div>
-            <div style={{ padding: '16px 18px' }}>
-              {!selected ? (
-                <p style={{ fontSize: 13, color: '#646880', textAlign: 'center', padding: '16px 0' }}>
-                  {d.complianceNone || 'No driver selected'}
-                </p>
-              ) : (
-                <>
-                  <div style={{ display: 'grid', gap: 10 }}>
-                    {[
-                      [d.complianceLicense || 'Driver license', selected.license_expiry || d.complianceValid || 'Valid'],
-                      [d.complianceSoat || 'SOAT insurance', selected.soat_expiry || d.complianceValid || 'Valid'],
-                      [d.complianceInspection || 'Technical inspection', selected.tech_inspection_expiry || d.complianceValid || 'Valid'],
-                      [d.complianceInsurance || 'Vehicle insurance', selected.insurance_expiry || d.complianceValid || 'Valid'],
-                    ].map(([name, value]) => {
-                      const lower = value.toLowerCase()
-                      const s = lower.includes('expir') ? 'warning' : lower.includes('expired') || lower.includes('missing') ? 'expired' : 'valid'
-                      return (
-                        <div key={name} style={{
-                          display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'center',
-                          padding: '10px 0', borderBottom: '1px solid #1e2130',
-                        }}>
-                          <div>
-                            <div style={{ fontWeight: 600, fontSize: 13, color: '#f0f2f5' }}>{name}</div>
-                            <div style={{ color: '#646880', fontSize: 11, marginTop: 2 }}>{value}</div>
-                          </div>
-                          <span style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 5,
-                            padding: '4px 9px', borderRadius: 999, fontSize: 10.5, fontWeight: 700,
-                            ...(docClasses[s] ? {
-                              background: docClasses[s].split(' ')[0],
-                              color: docClasses[s].split(' ')[1],
-                            } : { background: 'rgba(16,185,129,0.12)', color: '#10b981' }),
-                          }}>
-                            {s === 'valid' ? (d.complianceValid || 'Valid') : s === 'warning' ? (d.complianceExpiring || 'Expiring') : (d.complianceExpired || 'Expired')}
-                          </span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                  <div style={{
-                    marginTop: 14, padding: 12, borderRadius: 8, fontSize: 12, fontWeight: 600,
-                    ...(docStatus(selected) === 'valid'
-                      ? { background: 'rgba(16,185,129,0.12)', color: '#10b981' }
-                      : docStatus(selected) === 'expired'
-                        ? { background: 'rgba(239,68,80,0.12)', color: '#ef4450' }
-                        : { background: 'rgba(245,158,11,0.12)', color: '#f59e0b' }
-                    ),
-                  }}>
-                    {docStatus(selected) === 'valid'
-                      ? (d.complianceOk || 'Driver is operationally eligible for assignment.')
-                      : docStatus(selected) === 'expired'
-                        ? (d.complianceBlocked || 'Assignment blocked until compliance is restored.')
-                        : (d.complianceWarn || 'Driver can be monitored but needs verification before assignment.')}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
+           {/* Compliance */}
+           <div className="panel mt-4">
+             <div className="panel-header flex items-center justify-between pb-2">
+               <span className="panel-title font-medium text-fg">{d.complianceTitle || 'Compliance validation'}</span>
+             </div>
+             <div className="panel-body p-4">
+               {!selected ? (
+                 <p className="text-fg-muted text-center py-6">
+                   {d.complianceNone || 'No driver selected'}
+                 </p>
+               ) : (
+                 <>
+                   <div className="space-y-2.5">
+                     {[
+                       [d.complianceLicense || 'Driver license', selected.license_expiry || d.complianceValid || 'Valid'],
+                       [d.complianceSoat || 'SOAT insurance', selected.soat_expiry || d.complianceValid || 'Valid'],
+                       [d.complianceInspection || 'Technical inspection', selected.tech_inspection_expiry || d.complianceValid || 'Valid'],
+                       [d.complianceInsurance || 'Vehicle insurance', selected.insurance_expiry || d.complianceValid || 'Valid'],
+                     ].map(([name, value]) => {
+                       const lower = value.toLowerCase()
+                       const s = lower.includes('expir') ? 'warning' : lower.includes('expired') || lower.includes('missing') ? 'expired' : 'valid'
+                       return (
+                         <div key={name} className="flex items-center justify-between border-b border-border-light py-2">
+                           <div className="flex items-center gap-2">
+                             <div className="font-medium text-fg">{name}</div>
+                             <div className="text-fg-muted text-[11px]">{value}</div>
+                           </div>
+                           <span className={docClasses[s] || 'badge'}>
+                             {s === 'valid' ? (d.complianceValid || 'Valid') : s === 'warning' ? (d.complianceExpiring || 'Expiring') : (d.complianceExpired || 'Expired')}
+                           </span>
+                         </div>
+                         );
+                       })}
+                    </div>
+                   <div className={`alert-box ${docStatus(selected)} p-4 mt-4 rounded-[12px] border border-border`}>
+                     {docStatus(selected) === 'valid'
+                       ? (d.complianceOk || 'Driver is operationally eligible for assignment.')
+                       : docStatus(selected) === 'expired'
+                         ? (d.complianceBlocked || 'Assignment blocked until compliance is restored.')
+                         : (d.complianceWarn || 'Driver can be monitored but needs verification before assignment.')}
+                   </div>
+                 </>
+               )}
+             </div>
+           </div>
 
-          {/* Performance */}
-          <div style={{
-            background: '#181b25', border: '1px solid #282b38', borderRadius: 12, overflow: 'hidden',
-          }}>
-            <div style={{
-              padding: '16px 18px',
-              borderBottom: '1px solid #1e2130',
-            }}>
-              <span style={{ fontSize: 14, fontWeight: 700, color: '#f0f2f5' }}>{d.perfTitle || 'Performance & condition'}</span>
-            </div>
-            <div style={{ padding: '16px 18px' }}>
-              {!selected ? (
-                <p style={{ fontSize: 13, color: '#646880', textAlign: 'center', padding: '16px 0' }}>
-                  {d.perfNone || 'No driver selected'}
-                </p>
-              ) : (
-                <>
-                  <div style={{
-                    display: 'grid', gridTemplateColumns: '82px 1fr', gap: 14, alignItems: 'center',
-                  }}>
-                    <div style={{
-                      width: 82, height: 82, borderRadius: '50%',
-                      display: 'grid', placeItems: 'center',
-                      fontWeight: 800, fontSize: 18, color: '#f0f2f5',
-                      position: 'relative',
-                      background: `conic-gradient(#10b981 ${Math.round((selected.rating || 0) * 20)}%, #1e2130 0)`,
-                    }}>
-                      <div style={{
-                        position: 'absolute', inset: 8, borderRadius: '50%', background: '#181b25',
-                      }} />
-                      <span style={{ position: 'relative', zIndex: 1 }}>{Math.round((selected.rating || 0) * 20)}</span>
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: 700, color: '#f0f2f5' }}>{d.perfScore || 'Vehicle condition score'}</div>
-                      <div style={{ color: '#646880', fontSize: 12, marginTop: 4 }}>
-                        {d.perfScoreDesc || 'Cleanliness, interior, exterior, and mechanical inspection summary.'}
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{ display: 'grid', gap: 10, marginTop: 16 }}>
-                    {[
-                      [d.perfTrips || 'Trips completed', String(selected.total_trips || 0), Math.min((selected.total_trips || 0) / 4, 92)],
-                      [d.perfRevenue || 'Revenue generated', `$${(selected.total_trips || 0) * 68}`, Math.min((selected.total_trips || 0) / 4, 78)],
-                      [d.perfVip || 'VIP services completed', String(selected.vip_compatible ? Math.round((selected.total_trips || 0) * 0.45) : 0), selected.vip_compatible ? 84 : 34],
-                      [d.perfCancel || 'Cancellation rate', selected.total_trips ? '3.2%' : '0%', selected.total_trips ? 68 : 100],
-                      [d.perfSatisfaction || 'Customer satisfaction', String(selected.rating || 'New'), selected.rating ? Math.round(selected.rating * 20) : 0],
-                    ].map(([name, value, pct]) => (
-                      <div key={name}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginBottom: 5 }}>
-                          <span style={{ color: '#f0f2f5' }}>{name}</span>
-                          <strong style={{ color: '#f0f2f5' }}>{value}</strong>
-                        </div>
-                        <div style={{ height: 7, borderRadius: 999, background: '#1e2130', overflow: 'hidden' }}>
-                          <div style={{
-                            height: '100%', borderRadius: 'inherit', background: '#10b981',
-                            width: `${pct}%`, transition: 'width 0.3s ease',
-                          }} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </aside>
+           {/* Performance */}
+           <div className="panel mt-4">
+             <div className="panel-header flex items-center justify-between pb-2">
+               <span className="panel-title font-medium text-fg">{d.perfTitle || 'Performance & condition'}</span>
+             </div>
+             <div className="panel-body p-4">
+               {!selected ? (
+                 <p className="text-fg-muted text-center py-6">
+                   {d.perfNone || 'No driver selected'}
+                 </p>
+               ) : (
+                 <>
+                   <div className="flex items-center gap-3.5 mt-4">
+                     <div className="w-[5.125rem] h-[5.125rem] rounded-full flex items-center justify-center text-fg font-extrabold text-[18px] relative" style={{ background: `conic-gradient(#10b981 ${Math.round((selected.rating || 0) * 20)}%, #1e2130 0)` }}>
+                       <div className="absolute inset-[0.5rem] rounded-full bg-[var(--bg)]" />
+                       <span className="relative z-[1]">{Math.round((selected.rating || 0) * 20)}</span>
+                     </div>
+                     <div>
+                       <div className="font-bold text-fg">{d.perfScore || 'Vehicle condition score'}</div>
+                       <div className="text-fg-muted text-[12px] mt-1">
+                         {d.perfScoreDesc || 'Cleanliness, interior, exterior, and mechanical inspection summary.'}
+                       </div>
+                     </div>
+                   </div>
+                   <div className="grid gap-2.5 mt-4">
+                     {[
+                       [d.perfTrips || 'Trips completed', String(selected.total_trips || 0), Math.min((selected.total_trips || 0) / 4, 92)],
+                       [d.perfRevenue || 'Revenue generated', `$${(selected.total_trips || 0) * 68}`, Math.min((selected.total_trips || 0) / 4, 78)],
+                       [d.perfVip || 'VIP services completed', String(selected.vip_compatible ? Math.round((selected.total_trips || 0) * 0.45) : 0), selected.vip_compatible ? 84 : 34],
+                       [d.perfCancel || 'Cancellation rate', selected.total_trips ? '3.2%' : '0%', selected.total_trips ? 68 : 100],
+                       [d.perfSatisfaction || 'Customer satisfaction', String(selected.rating || 'New'), selected.rating ? Math.round(selected.rating * 20) : 0],
+                     ].map(([name, value, pct]) => (
+                       <div key={name}>
+                         <div className="flex justify-between mb-1">
+                           <span className="text-fg">{name}</span>
+                           <strong className="text-fg">{value}</strong>
+                         </div>
+                         <div className="h-[0.4375rem] rounded-full bg-[var(--border-light)] overflow-hidden">
+                           <div className="h-full w-[${pct}%] bg-accent transition-[width_0.3s_ease]" />
+                         </div>
+                       </div>
+                     ))}
+                   </div>
+                 </>
+               )}
+             </div>
+           </div>
+         </aside>
       </div>
 
       {/* ── CREATE DRIVER MODAL ── */}
@@ -886,7 +612,7 @@ export default function DriversPage() {
           <div
             style={{
               width: 'min(900px, 100%)', maxHeight: '90vh', overflow: 'auto',
-              borderRadius: 16, background: '#0b0d14',
+              borderRadius: 16, background: 'var(--bg)',
               border: '1px solid #282b38',
             }}
             onClick={e => e.stopPropagation()}
@@ -897,15 +623,15 @@ export default function DriversPage() {
               display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
             }}>
               <div>
-                <h2 style={{ fontSize: 18, margin: 0, fontWeight: 700, color: '#f0f2f5' }}>
+                <h2 style={{ fontSize: 18, margin: 0, fontWeight: 700, color: 'var(--fg)' }}>
                   {editDriver ? (d.modalEdit || 'Edit driver') : (d.modalCreate || 'Create driver')}
                 </h2>
-                <p style={{ color: '#646880', fontSize: 12, marginTop: 4 }}>
+                <p style={{ color: 'var(--fg-secondary)', fontSize: 12, marginTop: 4 }}>
                   {editDriver ? (d.modalEditDesc || 'Update driver information. All changes will be logged.') : (d.modalCreateDesc || 'Guided registration for driver, vehicle, documents, and compliance review.')}
                 </p>
               </div>
               <button
-                style={{ color: '#646880', background: 'none', border: 'none', cursor: 'pointer', fontSize: 22 }}
+                style={{ color: 'var(--fg-secondary)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 22 }}
                 onClick={() => setModalOpen(false)}
               >
                 &times;
@@ -925,9 +651,9 @@ export default function DriversPage() {
                   const stepNum = idx + 1
                   return (
                     <div key={stepNum} style={{
-                      border: `1px solid ${createStep >= stepNum ? '#10b981' : '#282b38'}`,
-                      background: createStep >= stepNum ? 'rgba(16,185,129,0.12)' : '#181b25',
-                      color: createStep >= stepNum ? '#10b981' : '#646880',
+                      border: `1px solid ${createStep >= stepNum ? 'var(--accent)' : 'var(--border)'}`,
+                      background: createStep >= stepNum ? 'rgba(16,185,129,0.12)' : 'var(--surface)',
+                      color: createStep >= stepNum ? 'var(--accent)' : 'var(--fg-secondary)',
                       borderRadius: 8, padding: 10, fontSize: 11, fontWeight: 700, textAlign: 'center',
                     }}>
                       {stepLabel}
@@ -937,20 +663,20 @@ export default function DriversPage() {
               </div>
 
               {/* Step navigation */}
-              <p style={{ fontSize: 12, color: '#646880', marginBottom: 16 }}>
+              <p style={{ fontSize: 12, color: 'var(--fg-secondary)', marginBottom: 16 }}>
                 {`Step ${createStep} of 6`}
               </p>
 
               {/* Step 1: Personal */}
               {createStep === 1 && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalName || 'Full name'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} placeholder={d.modalNamePlace || 'e.g. Alejandro Restrepo'} value={formData.name || ''} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>ID / passport</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} placeholder="CC 1.037.***" /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalPhone || 'Phone'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} placeholder={d.modalPhonePlace || '+57 300 000 0000'} value={formData.phone || ''} onChange={e => setFormData(p => ({ ...p, phone: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalEmail || 'Email'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} placeholder={d.modalEmailPlace || 'driver@company.com'} value={formData.email || ''} onChange={e => setFormData(p => ({ ...p, email: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalLang || 'Languages'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} placeholder={d.modalLangPlace || 'Spanish, English, Portuguese'} value={formData.languages || ''} onChange={e => setFormData(p => ({ ...p, languages: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalVehicleType || 'Vehicle type'}</label>
-                    <select style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }}
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalName || 'Full name'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalNamePlace || 'e.g. Alejandro Restrepo'} value={formData.name || ''} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>ID / passport</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder="CC 1.037.***" /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalPhone || 'Phone'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalPhonePlace || '+57 300 000 0000'} value={formData.phone || ''} onChange={e => setFormData(p => ({ ...p, phone: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalEmail || 'Email'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalEmailPlace || 'driver@company.com'} value={formData.email || ''} onChange={e => setFormData(p => ({ ...p, email: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalLang || 'Languages'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalLangPlace || 'Spanish, English, Portuguese'} value={formData.languages || ''} onChange={e => setFormData(p => ({ ...p, languages: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalVehicleType || 'Vehicle type'}</label>
+                    <select style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }}
                       value={formData.category || ''} onChange={e => setFormData(p => ({ ...p, category: e.target.value }))}>
                       <option value="">{d.modalTypePlace || 'Select type...'}</option>
                       <option value="vip">{d.modalTypeVip || 'VIP SUV'}</option>
@@ -960,28 +686,28 @@ export default function DriversPage() {
                       <option value="standard">{d.modalTypeStandard || 'Standard'}</option>
                     </select>
                   </div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalLicense || 'License expiration'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} value={formData.license_expiry || ''} onChange={e => setFormData(p => ({ ...p, license_expiry: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalSoat || 'SOAT expiration'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} value={formData.soat_expiry || ''} onChange={e => setFormData(p => ({ ...p, soat_expiry: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalLicense || 'License expiration'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} value={formData.license_expiry || ''} onChange={e => setFormData(p => ({ ...p, license_expiry: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalSoat || 'SOAT expiration'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} value={formData.soat_expiry || ''} onChange={e => setFormData(p => ({ ...p, soat_expiry: e.target.value }))} /></div>
                   <div style={{ gridColumn: '1 / -1' }}>
-                    <label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>'Other expirations'</label>
+                    <label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>'Other expirations'</label>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-                      <div><label style={{ display: 'block', fontSize: 10, color: '#646880', marginBottom: 4 }}>{d.modalInspection || 'Tech inspection'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} value={formData.tech_inspection_expiry || ''} onChange={e => setFormData(p => ({ ...p, tech_inspection_expiry: e.target.value }))} /></div>
-                      <div><label style={{ display: 'block', fontSize: 10, color: '#646880', marginBottom: 4 }}>{d.modalInsurance || 'Insurance'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} value={formData.insurance_expiry || ''} onChange={e => setFormData(p => ({ ...p, insurance_expiry: e.target.value }))} /></div>
+                      <div><label style={{ display: 'block', fontSize: 10, color: 'var(--fg-secondary)', marginBottom: 4 }}>{d.modalInspection || 'Tech inspection'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} value={formData.tech_inspection_expiry || ''} onChange={e => setFormData(p => ({ ...p, tech_inspection_expiry: e.target.value }))} /></div>
+                      <div><label style={{ display: 'block', fontSize: 10, color: 'var(--fg-secondary)', marginBottom: 4 }}>{d.modalInsurance || 'Insurance'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} value={formData.insurance_expiry || ''} onChange={e => setFormData(p => ({ ...p, insurance_expiry: e.target.value }))} /></div>
                     </div>
                   </div>
                   <div style={{ gridColumn: '1 / -1' }}>
-                    <label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>Document uploads</label>
+                    <label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>Document uploads</label>
                     <div style={{
                       minHeight: 86, border: '1px dashed #282b38', borderRadius: 8,
                       display: 'grid', placeItems: 'center', textAlign: 'center',
-                      color: '#646880', background: '#0b0d14', fontSize: 12,
+                      color: 'var(--fg-secondary)', background: 'var(--bg)', fontSize: 12,
                     }}>
                       Drop license, SOAT, technical inspection, insurance, vehicle photos
                     </div>
                   </div>
                   <div style={{ gridColumn: '1 / -1' }}>
-                    <label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalNotes || 'Operational notes'}</label>
-                    <textarea rows={3} style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none', resize: 'none' }}
+                    <label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalNotes || 'Operational notes'}</label>
+                    <textarea rows={3} style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none', resize: 'none' }}
                       placeholder={d.modalNotesPlace || 'VIP handling notes, airport authorization, language preferences...'}
                       value={formData.notes || ''} onChange={e => setFormData(p => ({ ...p, notes: e.target.value }))} />
                   </div>
@@ -991,10 +717,10 @@ export default function DriversPage() {
               {/* Step 2: Emergency */}
               {createStep === 2 && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalEmergContact || 'Emergency contact'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} placeholder={d.modalEmergPlace || 'Contact name'} value={formData.emergency_contact || ''} onChange={e => setFormData(p => ({ ...p, emergency_contact: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalEmergPhone || 'Emergency phone'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} placeholder={d.modalEmergPhonePlace || '+57 300 000 0000'} value={formData.emergency_phone || ''} onChange={e => setFormData(p => ({ ...p, emergency_phone: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalExpLevel || 'Experience level'}</label>
-                    <select style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }}
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalEmergContact || 'Emergency contact'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalEmergPlace || 'Contact name'} value={formData.emergency_contact || ''} onChange={e => setFormData(p => ({ ...p, emergency_contact: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalEmergPhone || 'Emergency phone'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalEmergPhonePlace || '+57 300 000 0000'} value={formData.emergency_phone || ''} onChange={e => setFormData(p => ({ ...p, emergency_phone: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalExpLevel || 'Experience level'}</label>
+                    <select style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }}
                       value={formData.experienceLevel || ''} onChange={e => setFormData(p => ({ ...p, experienceLevel: e.target.value }))}>
                       <option value="">{d.modalExpPlace || 'Select...'}</option>
                       <option value="Standard">{d.modalExpStd || 'Standard'}</option>
@@ -1002,27 +728,27 @@ export default function DriversPage() {
                       <option value="Lead">{d.modalExpLead || 'Lead'}</option>
                     </select>
                   </div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalCity || 'City'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} placeholder={d.modalCityPlace || 'e.g. Medellín'} value={formData.city || ''} onChange={e => setFormData(p => ({ ...p, city: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalCity || 'City'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalCityPlace || 'e.g. Medellín'} value={formData.city || ''} onChange={e => setFormData(p => ({ ...p, city: e.target.value }))} /></div>
                 </div>
               )}
 
               {/* Step 3: License & docs */}
               {createStep === 3 && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalLicense || 'License expiry'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} value={formData.license_expiry || ''} onChange={e => setFormData(p => ({ ...p, license_expiry: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalSoat || 'SOAT expiry'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} value={formData.soat_expiry || ''} onChange={e => setFormData(p => ({ ...p, soat_expiry: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalInspection || 'Tech inspection'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} value={formData.tech_inspection_expiry || ''} onChange={e => setFormData(p => ({ ...p, tech_inspection_expiry: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalInsurance || 'Insurance expiry'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} value={formData.insurance_expiry || ''} onChange={e => setFormData(p => ({ ...p, insurance_expiry: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalLicense || 'License expiry'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} value={formData.license_expiry || ''} onChange={e => setFormData(p => ({ ...p, license_expiry: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalSoat || 'SOAT expiry'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} value={formData.soat_expiry || ''} onChange={e => setFormData(p => ({ ...p, soat_expiry: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalInspection || 'Tech inspection'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} value={formData.tech_inspection_expiry || ''} onChange={e => setFormData(p => ({ ...p, tech_inspection_expiry: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalInsurance || 'Insurance expiry'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} value={formData.insurance_expiry || ''} onChange={e => setFormData(p => ({ ...p, insurance_expiry: e.target.value }))} /></div>
                 </div>
               )}
 
               {/* Step 4: Vehicle */}
               {createStep === 4 && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalVehicle || 'Vehicle'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} placeholder={d.modalVehiclePlace || 'e.g. Mercedes V-Class'} value={formData.vehicle || ''} onChange={e => setFormData(p => ({ ...p, vehicle: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalPlate || 'Plate'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} placeholder={d.modalPlatePlace || 'e.g. ABC-123'} value={formData.plate || ''} onChange={e => setFormData(p => ({ ...p, plate: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalVehicleType || 'Vehicle type'}</label>
-                    <select style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }}
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalVehicle || 'Vehicle'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalVehiclePlace || 'e.g. Mercedes V-Class'} value={formData.vehicle || ''} onChange={e => setFormData(p => ({ ...p, vehicle: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalPlate || 'Plate'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalPlatePlace || 'e.g. ABC-123'} value={formData.plate || ''} onChange={e => setFormData(p => ({ ...p, plate: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalVehicleType || 'Vehicle type'}</label>
+                    <select style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }}
                       value={formData.category || ''} onChange={e => setFormData(p => ({ ...p, category: e.target.value }))}>
                       <option value="">{d.modalTypePlace || 'Select type...'}</option>
                       <option value="standard">{d.modalTypeStandard || 'Standard'}</option>
@@ -1032,9 +758,9 @@ export default function DriversPage() {
                       <option value="van">{d.modalTypeVan || 'Van'}</option>
                     </select>
                   </div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalYear || 'Vehicle year'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} placeholder={d.modalYearPlace || 'e.g. 2024'} value={formData.year || ''} onChange={e => setFormData(p => ({ ...p, year: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalCapacity || 'Capacity'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} placeholder={d.modalCapacityPlace || 'e.g. 4 pax'} value={formData.capacity || ''} onChange={e => setFormData(p => ({ ...p, capacity: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalPhotoUrl || 'Photo URL'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none' }} placeholder={d.modalPhotoPlace || 'https://example.com/photo.jpg'} value={formData.photo_url || ''} onChange={e => setFormData(p => ({ ...p, photo_url: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalYear || 'Vehicle year'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalYearPlace || 'e.g. 2024'} value={formData.year || ''} onChange={e => setFormData(p => ({ ...p, year: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalCapacity || 'Capacity'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalCapacityPlace || 'e.g. 4 pax'} value={formData.capacity || ''} onChange={e => setFormData(p => ({ ...p, capacity: e.target.value }))} /></div>
+                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalPhotoUrl || 'Photo URL'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalPhotoPlace || 'https://example.com/photo.jpg'} value={formData.photo_url || ''} onChange={e => setFormData(p => ({ ...p, photo_url: e.target.value }))} /></div>
                 </div>
               )}
 
@@ -1042,18 +768,18 @@ export default function DriversPage() {
               {createStep === 5 && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
                   <div style={{ gridColumn: '1 / -1' }}>
-                    <label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>Document uploads</label>
+                    <label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>Document uploads</label>
                     <div style={{
                       minHeight: 86, border: '1px dashed #282b38', borderRadius: 8,
                       display: 'grid', placeItems: 'center', textAlign: 'center',
-                      color: '#646880', background: '#0b0d14', fontSize: 12,
+                      color: 'var(--fg-secondary)', background: 'var(--bg)', fontSize: 12,
                     }}>
                       Drop license, SOAT, technical inspection, insurance, vehicle photos
                     </div>
                   </div>
                   <div style={{ gridColumn: '1 / -1' }}>
-                    <label style={{ display: 'block', fontSize: 11, color: '#646880', marginBottom: 6, fontWeight: 600 }}>{d.modalNotes || 'Operational notes'}</label>
-                    <textarea rows={3} style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', outline: 'none', resize: 'none' }}
+                    <label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalNotes || 'Operational notes'}</label>
+                    <textarea rows={3} style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid #282b38', background: 'var(--surface)', color: 'var(--fg)', outline: 'none', resize: 'none' }}
                       placeholder={d.modalNotesPlace || 'VIP handling notes...'}
                       value={formData.notes || ''} onChange={e => setFormData(p => ({ ...p, notes: e.target.value }))} />
                   </div>
@@ -1063,8 +789,8 @@ export default function DriversPage() {
               {/* Step 6: Review */}
               {createStep === 6 && (
                 <div style={{
-                  padding: 16, background: '#181b25', border: '1px solid #282b38',
-                  borderRadius: 8, marginTop: 4, fontSize: 13, color: '#9ca0b0', lineHeight: 1.65,
+                  padding: 16, background: 'var(--surface)', border: '1px solid #282b38',
+                  borderRadius: 8, marginTop: 4, fontSize: 13, color: 'var(--fg-muted)', lineHeight: 1.65,
                 }}>
                   'Review all driver information before saving. All actions will be logged.'
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginTop: 16 }}>
@@ -1074,8 +800,8 @@ export default function DriversPage() {
                       ['Type', formData.category], ['City', formData.city],
                     ].map(([label, value]) => (
                       <div key={label}>
-                        <label style={{ display: 'block', fontSize: 10, color: '#646880', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 3 }}>{label}</label>
-                        <div style={{ fontSize: 13, color: '#f0f2f5' }}>{value || '—'}</div>
+                        <label style={{ display: 'block', fontSize: 10, color: 'var(--fg-secondary)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 3 }}>{label}</label>
+                        <div style={{ fontSize: 13, color: 'var(--fg)' }}>{value || '—'}</div>
                       </div>
                     ))}
                   </div>
@@ -1091,7 +817,7 @@ export default function DriversPage() {
                   <button
                     style={{
                       padding: '10px 16px', border: '1px solid #282b38', borderRadius: 8,
-                      fontSize: 13, color: '#9ca0b0', background: 'transparent', cursor: 'pointer',
+                      fontSize: 13, color: 'var(--fg-muted)', background: 'transparent', cursor: 'pointer',
                     }}
                     className="hover:bg-[#202330] transition-all"
                     onClick={() => setCreateStep(s => s - 1)}
@@ -1103,7 +829,7 @@ export default function DriversPage() {
                   {createStep < 6 ? (
                     <button
                       style={{
-                        padding: '10px 20px', background: '#10b981', color: '#fff',
+                        padding: '10px 20px', background: 'var(--accent)', color: '#fff',
                         border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer',
                       }}
                       className="hover:bg-[#059669] transition-all"
@@ -1116,7 +842,7 @@ export default function DriversPage() {
                       <button
                         style={{
                           padding: '10px 16px', border: '1px solid #282b38', borderRadius: 8,
-                          fontSize: 13, color: '#9ca0b0', background: 'transparent', cursor: 'pointer',
+                          fontSize: 13, color: 'var(--fg-muted)', background: 'transparent', cursor: 'pointer',
                         }}
                         className="hover:bg-[#202330] transition-all"
                         onClick={() => setModalOpen(false)}
@@ -1126,7 +852,7 @@ export default function DriversPage() {
                       <button
                         style={{
                           padding: '10px 16px', border: '1px solid #282b38', borderRadius: 8,
-                          fontSize: 13, color: '#9ca0b0', background: 'transparent', cursor: 'pointer',
+                          fontSize: 13, color: 'var(--fg-muted)', background: 'transparent', cursor: 'pointer',
                         }}
                         className="hover:bg-[#202330] transition-all"
                         onClick={() => showToast(d.toastDraft || 'Draft saved')}
@@ -1135,7 +861,7 @@ export default function DriversPage() {
                       </button>
                       <button
                         style={{
-                          padding: '10px 20px', background: '#10b981', color: '#fff',
+                          padding: '10px 20px', background: 'var(--accent)', color: '#fff',
                           border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer',
                         }}
                         className="hover:bg-[#059669] transition-all"
@@ -1156,7 +882,7 @@ export default function DriversPage() {
       <div style={{ position: 'fixed', bottom: 24, right: 24, display: 'grid', gap: 8, zIndex: 800 }}>
         {notif.map(n => (
           <div key={n.id} style={{
-            background: '#181b25', border: '1px solid #282b38', color: '#f0f2f5',
+            background: 'var(--surface)', border: '1px solid #282b38', color: 'var(--fg)',
             padding: '12px 16px', borderRadius: 12, fontSize: 13, zIndex: 800,
           }}>
             {n.msg}

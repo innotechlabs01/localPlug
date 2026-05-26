@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { getPayment, setPayment } from '@/app/components/booking/lib/payment-store'
+import { rateLimitMiddleware } from '@/lib/rate-limit'
 import type { PaymentRecord } from '@/app/components/booking/lib/types'
 
 function getStripe(): Stripe {
@@ -10,6 +11,9 @@ function getStripe(): Stripe {
 }
 
 export async function POST(req: Request) {
+  const rateLimitResponse = rateLimitMiddleware(req)
+  if (rateLimitResponse) return rateLimitResponse
+
   try {
     const body = await req.json()
     const { bookingReference, paymentIntentId } = body as {

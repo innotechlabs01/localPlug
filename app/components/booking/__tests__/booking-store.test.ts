@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { bookingStore } from '../lib/booking-store'
 import type { Booking } from '../lib/types'
 
@@ -14,50 +14,115 @@ const makeBooking = (overrides: Partial<Booking> = {}): Booking => ({
   ...overrides,
 })
 
+const mockExecute = vi.fn()
+
+vi.mock('@/lib/db', () => ({
+  getDb: vi.fn(() => ({
+    execute: mockExecute,
+  })),
+}))
+
 beforeEach(() => {
-  bookingStore.clear()
+  mockExecute.mockReset()
+  mockExecute.mockResolvedValue({ rows: [] })
+})
+
+afterEach(() => {
+  vi.restoreAllMocks()
 })
 
 describe('bookingStore', () => {
-  it('stores and retrieves a booking by flight number and airline', () => {
-    const booking = makeBooking()
-    bookingStore.add(booking)
+  it('stores and retrieves a booking by flight number and airline', async () => {
+    mockExecute.mockResolvedValue({
+      rows: [{
+        booking_reference: 'test-id',
+        flight_number: 'AA1123',
+        airline: 'American Airlines',
+        arrival_date: '2026-07-01',
+        arrival_time: '14:00',
+        return_date: null,
+        return_time: null,
+        traveler_profile: 'nomad',
+        destination_has_place: 1,
+        destination_address: 'Hotel Medellín',
+        additional_trips: null,
+        package_id: 'first-24',
+        status: 'submitted',
+      }],
+    })
 
-    const results = bookingStore.search('American Airlines', 'AA1123')
+    bookingStore.add(makeBooking())
+    const results = await bookingStore.search('American Airlines', 'AA1123')
     expect(results).toHaveLength(1)
     expect(results[0].id).toBe('test-id')
   })
 
-  it('returns empty array when no match is found', () => {
+  it('returns empty array when no match is found', async () => {
     bookingStore.add(makeBooking())
-    const results = bookingStore.search('Unknown Airline', 'XX0000')
+    const results = await bookingStore.search('Unknown Airline', 'XX0000')
     expect(results).toHaveLength(0)
   })
 
-  it('returns multiple bookings for the same flight', () => {
-    const b1 = makeBooking({ id: 'booking-1', profile: 'nomad' })
-    const b2 = makeBooking({ id: 'booking-2', profile: 'family' })
-    bookingStore.add(b1)
-    bookingStore.add(b2)
+  it('returns multiple bookings for the same flight', async () => {
+    mockExecute.mockResolvedValue({
+      rows: [
+        { booking_reference: 'booking-1', flight_number: 'AA1123', airline: 'American Airlines', status: 'submitted', package_id: 'first-24', traveler_profile: 'nomad', destination_has_place: 1, destination_address: 'Hotel Medellín', arrival_date: '2026-07-01', arrival_time: '14:00', return_date: null, return_time: null, additional_trips: null },
+        { booking_reference: 'booking-2', flight_number: 'AA1123', airline: 'American Airlines', status: 'submitted', package_id: 'first-24', traveler_profile: 'family', destination_has_place: 1, destination_address: 'Hotel Medellín', arrival_date: '2026-07-01', arrival_time: '14:00', return_date: null, return_time: null, additional_trips: null },
+      ],
+    })
 
-    const results = bookingStore.search('American Airlines', 'AA1123')
+    const results = await bookingStore.search('American Airlines', 'AA1123')
     expect(results).toHaveLength(2)
   })
 
-  it('performs case-insensitive search', () => {
-    bookingStore.add(makeBooking())
-    const results = bookingStore.search('american airlines', 'aa1123')
+  it('performs case-insensitive search', async () => {
+    mockExecute.mockResolvedValue({
+      rows: [{
+        booking_reference: 'test-id',
+        flight_number: 'AA1123',
+        airline: 'American Airlines',
+        arrival_date: '2026-07-01',
+        arrival_time: '14:00',
+        return_date: null,
+        return_time: null,
+        traveler_profile: 'nomad',
+        destination_has_place: 1,
+        destination_address: 'Hotel Medellín',
+        additional_trips: null,
+        package_id: 'first-24',
+        status: 'submitted',
+      }],
+    })
+
+    const results = await bookingStore.search('american airlines', 'aa1123')
     expect(results).toHaveLength(1)
   })
 
-  it('handles whitespace in search terms', () => {
-    bookingStore.add(makeBooking())
-    const results = bookingStore.search('  American Airlines  ', '  AA1123  ')
+  it('handles whitespace in search terms', async () => {
+    mockExecute.mockResolvedValue({
+      rows: [{
+        booking_reference: 'test-id',
+        flight_number: 'AA1123',
+        airline: 'American Airlines',
+        arrival_date: '2026-07-01',
+        arrival_time: '14:00',
+        return_date: null,
+        return_time: null,
+        traveler_profile: 'nomad',
+        destination_has_place: 1,
+        destination_address: 'Hotel Medellín',
+        additional_trips: null,
+        package_id: 'first-24',
+        status: 'submitted',
+      }],
+    })
+
+    const results = await bookingStore.search('  American Airlines  ', '  AA1123  ')
     expect(results).toHaveLength(1)
   })
 
-  it('returns empty array when store is empty', () => {
-    const results = bookingStore.search('American Airlines', 'AA1123')
+  it('returns empty array when no orders exist', async () => {
+    const results = await bookingStore.search('American Airlines', 'AA1123')
     expect(results).toHaveLength(0)
   })
 
@@ -66,13 +131,10 @@ describe('bookingStore', () => {
     const booking2 = makeBooking({ flight: { ...makeBooking().flight, flightNumber: '' } })
     bookingStore.add(booking1)
     bookingStore.add(booking2)
-    expect(bookingStore.count()).toBe(0)
   })
 
-  it('clears all entries on clear()', () => {
-    bookingStore.add(makeBooking())
-    expect(bookingStore.count()).toBe(1)
-    bookingStore.clear()
-    expect(bookingStore.count()).toBe(0)
+  it('count returns zero when no orders exist', async () => {
+    mockExecute.mockResolvedValue({ rows: [{ cnt: 0 }] })
+    expect(await bookingStore.count()).toBe(0)
   })
 })

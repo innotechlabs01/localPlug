@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
-import { getDb } from '@/lib/db'
+import { getDb, buildSafeUpdate } from '@/lib/db'
 import { auth } from '@clerk/nextjs/server'
+
+const ALLOWED_DRIVER_DOC_COLUMNS = ['license_expiry', 'soat_expiry', 'tech_inspection_expiry', 'insurance_expiry']
 
 export async function POST(
   req: Request,
@@ -23,14 +25,19 @@ export async function POST(
   }
 
   const db = getDb()
-  // Map doc_type to DB column
-  const column = doc_type === 'other' ? null : `${doc_type}_expiry`
-  if (column) {
-    await db.execute({
-      sql: `UPDATE drivers SET ${column} = ?, updated_at = datetime('now') WHERE id = ?`,
-      args: [expiry_date || doc_url, id],
-    })
+  const updates: Record<string, unknown> = {}
+  if (doc_type !== 'other') {
+    updates[`${doc_type}_expiry`] = expiry_date || doc_url
   }
+  const { setClauses, args } = buildSafeUpdate(updates, ALLOWED_DRIVER_DOC_COLUMNS)
+  if (setClauses.length === 0) return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
+  setClauses.push("updated_at = datetime('now')")
+  args.push(id)
+
+  await db.execute({
+    sql: `UPDATE drivers SET ${setClauses.join(', ')} WHERE id = ?`,
+    args,
+  })
 
   return NextResponse.json({ success: true })
 }

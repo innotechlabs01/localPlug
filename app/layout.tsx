@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { cookies } from 'next/headers'
+import { ClerkProvider } from '@clerk/nextjs'
 import { Playfair_Display, Plus_Jakarta_Sans } from 'next/font/google'
 import { I18nProvider, type Lang } from '@/lib/i18n'
 import ChatWidget from '@/app/components/chat/ChatWidget'
@@ -86,10 +87,12 @@ export default async function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
-        <I18nProvider initialLang={initialLang}>
-          {children}
-          <ChatWidget />
-        </I18nProvider>
+        <ClerkProvider>
+          <I18nProvider initialLang={initialLang}>
+            {children}
+            <ChatWidget />
+          </I18nProvider>
+        </ClerkProvider>
       </body>
     </html>
   )

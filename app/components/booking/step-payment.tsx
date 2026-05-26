@@ -10,8 +10,8 @@ const stripePromise = getStripe()
 
 const PACKAGE_PRICES_USD: Record<string, number> = {
   'smooth-landing': 89,
-  'first-24': 149,
-  'full-insider': 249,
+  'first-24': 159,
+  'full-insider': 269,
 }
 
 const RETURN_TRIP_CHARGE = 48
@@ -129,40 +129,40 @@ export default function StepPayment({
             <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
             <polyline points="14 2 14 8 20 8" />
           </svg>
-          Booking Details
+          {paymentT.summaryTitle}
         </h4>
 
         <div className="space-y-0">
           {packageT?.subtitle && (
             <div className="flex justify-between py-3 border-b border-[var(--border)] text-sm">
-              <span className="text-[var(--text-secondary)]">Experience</span>
+              <span className="text-[var(--text-secondary)]">{paymentT.summaryExperience}</span>
               <span className="text-white font-medium">{packageName}</span>
             </div>
           )}
           <div className="flex justify-between py-3 border-b border-[var(--border)] text-sm">
-            <span className="text-[var(--text-secondary)]">Arrival</span>
+            <span className="text-[var(--text-secondary)]">{paymentT.summaryArrival}</span>
             <span className="text-white font-medium">{flightData.arrivalDate || '-'}</span>
           </div>
           <div className="flex justify-between py-3 border-b border-[var(--border)] text-sm">
-            <span className="text-[var(--text-secondary)]">Flight</span>
+            <span className="text-[var(--text-secondary)]">{paymentT.summaryFlight}</span>
             <span className="text-white font-medium">{flightData.flightNumber || '-'}</span>
           </div>
           <div className="flex justify-between py-3 border-b border-[var(--border)] text-sm">
-            <span className="text-[var(--text-secondary)]">Destination</span>
-            <span className="text-white font-medium">{destinationAddress || 'To be confirmed'}</span>
+            <span className="text-[var(--text-secondary)]">{paymentT.summaryDestination}</span>
+            <span className="text-white font-medium">{destinationAddress || paymentT.summaryToBeConfirmed}</span>
           </div>
           <div className="flex justify-between py-3 border-b border-[var(--border)] text-sm">
-            <span className="text-[var(--text-secondary)]">Plan</span>
+            <span className="text-[var(--text-secondary)]">{paymentT.summaryPlan}</span>
             <span className="text-white font-medium">{packageName}</span>
           </div>
           {hasReturn && (
             <div className="flex justify-between py-3 border-b border-[var(--border)] text-sm">
-              <span className="text-[var(--text-secondary)]">Return trip</span>
+              <span className="text-[var(--text-secondary)]">{paymentT.summaryReturnTrip}</span>
               <span className="text-white font-medium">${RETURN_TRIP_CHARGE} USD</span>
             </div>
           )}
           <div className="flex justify-between py-3 text-base font-bold">
-            <span className="text-[var(--text-secondary)]">Total</span>
+            <span className="text-[var(--text-secondary)]">{paymentT.summaryTotal}</span>
             <span className="text-[var(--accent-gold)]">${totalPrice} USD</span>
           </div>
         </div>

@@ -6,17 +6,12 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const since = searchParams.get('since')
 
-  const sinceCondition = since ? `AND created_at > '${since}'` : ''
+  const ordersQuery = since
+    ? { sql: `SELECT id, order_number, customer_name, package_name, status, dispatch_status, created_at FROM orders WHERE created_at > ? ORDER BY created_at DESC LIMIT 20`, args: [since] }
+    : { sql: `SELECT id, order_number, customer_name, package_name, status, dispatch_status, created_at FROM orders ORDER BY created_at DESC LIMIT 20`, args: [] }
 
   const [orders, conversations, stats] = await Promise.all([
-    // New orders since last check
-    db.execute(`
-      SELECT id, order_number, customer_name, package_name, status, dispatch_status, created_at
-      FROM orders
-      WHERE 1=1 ${sinceCondition}
-      ORDER BY created_at DESC
-      LIMIT 20
-    `),
+    db.execute(ordersQuery),
 
     // Active/escalated conversations
     db.execute(`
@@ -33,7 +28,7 @@ export async function GET(req: Request) {
       SELECT
         (SELECT COUNT(*) FROM orders WHERE status = 'new') as new_orders,
         (SELECT COUNT(*) FROM orders WHERE status = 'in_progress') as in_progress_orders,
-        (SELECT COUNT(*) FROM orders WHERE dispatch_status = 'pending') as pending_dispatch,
+        (SELECT COUNT(*) FROM orders WHERE dispatch_status = 'pending' OR dispatch_status IS NULL) as pending_dispatch,
         (SELECT COUNT(*) FROM orders WHERE dispatch_status = 'assigned') as assigned_dispatch,
         (SELECT COUNT(*) FROM conversations WHERE status = 'escalated') as escalated_conversations,
         (SELECT COUNT(*) FROM conversations WHERE status = 'human_active') as active_conversations,

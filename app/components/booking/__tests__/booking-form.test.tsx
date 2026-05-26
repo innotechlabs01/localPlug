@@ -3,10 +3,6 @@ import { render, screen, fireEvent, act } from '@testing-library/react'
 import { I18nProvider } from '@/lib/i18n'
 import BookingForm from '../booking-form'
 
-beforeEach(() => {
-  localStorage.removeItem('__mock_fail')
-})
-
 vi.mock('../lib/persistence', () => ({
   createPersistence: () => ({
     saveDraft: vi.fn(async () => {}),

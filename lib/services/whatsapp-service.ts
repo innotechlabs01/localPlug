@@ -1,6 +1,7 @@
 import { getDb } from '@/lib/db';
 import { PaymentRecord } from '../payment-record';
 import { Conversation } from '../conversation';
+import { detectLanguage } from '../language-utils';
 
 // Simple logging function - in a real application, you would use a proper logging library
 function log(level: 'info' | 'warn' | 'error', message: string, meta?: any): void {
@@ -307,60 +308,33 @@ export async function processIncomingWhatsAppMessage(eventData: any): Promise<Co
   return conversation;
 }
 
-// Simple OpenAI client for generating responses
-// In a real application, you would use the official OpenAI Node.js library
 async function generateOpenAIResponse(messages: Array<{role: string, content: string}>, temperature = 0.7, maxTokens = 500): Promise<string> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     throw new Error('OPENAI_API_KEY is not configured');
   }
 
-  // In a real implementation, we would call the OpenAI API here
-  // For this task, we'll simulate the response based on the last user message
-  const lastUserMessage = messages.find(m => m.role === 'user')?.content || '';
-  
-  // Simple response generation based on keywords in the message
-  // This is a placeholder - in reality, we would call the OpenAI API
-  const lowerMessage = lastUserMessage.toLowerCase();
-  
-  // Detect language of the user's message
-  const userLanguage = (text: string) => /[ñáéíóúü]/i.test(text) ? 'es' : 'en';
-  const detectedLang = userLanguage(lastUserMessage);
-  
-  // Generate a contextual response based on common booking-related queries
-  let response = '';
-  
-  if (lowerMessage.includes('hola') || lowerMessage.includes('hello') || lowerMessage.includes('hi')) {
-    response = detectedLang === 'es' 
-      ? '¡Hola! ¿En qué puedo ayudarte con tu reserva?' 
-      : 'Hello! How can I help you with your booking?';
-  } else if (lowerMessage.includes('reserva') || lowerMessage.includes('booking') || lowerMessage.includes('cita')) {
-    response = detectedLang === 'es'
-      ? 'Para verificar tu reserva, necesito tu número de referencia de reserva. ¿Podrías proporcionármelo?'
-      : 'To check your booking, I need your booking reference number. Could you please provide it?';
-  } else if (lowerMessage.includes('fecha') || lowerMessage.includes('date') || lowerMessage.includes('llegada') || lowerMessage.includes('arrival')) {
-    response = detectedLang === 'es'
-      ? 'Tu fecha de llegada está confirmada en tu reserva. ¿Necesitas modificarla o tienes alguna otra pregunta?'
-      : 'Your arrival date is confirmed in your booking. Do you need to modify it or do you have any other questions?';
-  } else if (lowerMessage.includes('pago') || lowerMessage.includes('payment') || lowerMessage.includes('costo') || lowerMessage.includes('cost')) {
-    response = detectedLang === 'es'
-      ? 'Tu pago ha sido procesado correctamente. Si necesitas un recibo, por favor avísame.'
-      : 'Your payment has been processed successfully. If you need a receipt, please let me know.';
-  } else if (lowerMessage.includes('cancelar') || lowerMessage.includes('cancel')) {
-    response = detectedLang === 'es'
-      ? 'Entiendo que deseas cancelar tu reserva. Para proceder con la cancelación, necesito verificar algunos detalles. ¿Podrías proporcionar tu número de referencia de reserva?'
-      : 'I understand you want to cancel your booking. To proceed with the cancellation, I need to verify some details. Could you please provide your booking reference number?';
-  } else {
-    // Default response
-    response = detectedLang === 'es'
-      ? 'Gracias por tu mensaje. Estoy aquí para ayudarte con cualquier pregunta sobre tu reserva. ¿En qué más puedo asistirte?'
-      : 'Thank you for your message. I\'m here to help you with any questions about your booking. How else can I assist you?';
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: messages.map(m => ({ role: m.role as 'system' | 'user' | 'assistant', content: m.content })),
+      temperature,
+      max_tokens: maxTokens,
+    }),
+  })
+
+  if (!response.ok) {
+    const errorBody = await response.text()
+    throw new Error(`OpenAI API error ${response.status}: ${errorBody}`)
   }
 
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  return response;
+  const data = await response.json()
+  return data.choices?.[0]?.message?.content?.trim() || ''
 }
 
 /**
@@ -377,9 +351,7 @@ export async function generateAIResponse(conversation: Conversation, userMessage
     userMessageLength: userMessage.length 
   });
 
-  // Detect the language of the user's message
-  const userLanguage = (text: string) => /[ñáéíóúü]/i.test(text) ? 'es' : 'en';
-  const detectedLang = userLanguage(userMessage);
+  const detectedLang = detectLanguage(userMessage) || 'en';
   log('info', 'Detected user language', { 
     language: detectedLang,
     userMessage: userMessage.substring(0, 50) + (userMessage.length > 50 ? '...' : '') 
@@ -419,25 +391,12 @@ export async function generateAIResponse(conversation: Conversation, userMessage
   return aiResponse;
 }
 
-// Export the normalize function for use in other modules
 export { normalizeToE164, isValidE164 } from '../phone-utils';
-// Export the detectLanguage function for use in other modules
 export { detectLanguage } from '../language-utils';
 
-/**
- * Generates a personalized welcome message based on the payment record.
- * Detects language from the booking data (assuming we have language in the guest data).
- * For simplicity, we'll use English as default and Spanish if the customer name suggests Spanish preference.
- * In a real system, we would have language stored in the payment record or guest data.
- */
 function generateWelcomeMessage(paymentRecord: PaymentRecord): string {
-  // Simple language detection: if the name contains common Spanish characters or patterns, use Spanish
-  // This is a placeholder - in reality, we would have language stored in the database
-  const spanishIndicators = /[ñáéíóúü]/i;
-  const isSpanish = spanishIndicators.test(paymentRecord.customer_name) || 
-                   paymentRecord.customer_name.toLowerCase().includes('juan') ||
-                   paymentRecord.customer_name.toLowerCase().includes('maría') ||
-                   paymentRecord.customer_name.toLowerCase().includes('josé');
+  const lang = detectLanguage(paymentRecord.customer_name || '');
+  const isSpanish = lang === 'es';
 
   if (isSpanish) {
     return `¡Hola ${paymentRecord.customer_name}! Gracias por tu reserva. Tu referencia de reserva es ${paymentRecord.booking_reference}. Paquete: ${paymentRecord.package_name}. Fecha de llegada: ${new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}. ¡Estamos emocionados de recibirte!`;

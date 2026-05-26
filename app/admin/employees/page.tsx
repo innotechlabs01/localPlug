@@ -15,13 +15,13 @@ interface Role {
 }
 
 const theme = {
-  bg: '#0b0d14', surface: '#181b25', surfaceHover: '#202330', border: '#282b38', borderLight: '#1e2130',
-  fg: '#f0f2f5', fgSecondary: '#9ca0b0', fgMuted: '#646880',
-  accent: '#10b981', accentSoft: 'rgba(16,185,129,0.12)',
-  warning: '#f59e0b', warningSoft: 'rgba(245,158,11,0.12)',
-  danger: '#ef4450', dangerSoft: 'rgba(239,68,80,0.12)',
-  info: '#3b82f6', infoSoft: 'rgba(59,130,246,0.12)',
-  gold: '#d4a84b',
+  bg: 'var(--bg)', surface: 'var(--surface)', surfaceHover: 'var(--surface-hover)', border: 'var(--border)', borderLight: 'var(--surface-active)',
+  fg: 'var(--fg)', fgSecondary: 'var(--fg-muted)', fgMuted: 'var(--fg-secondary)',
+  accent: 'var(--accent)', accentSoft: 'rgba(16,185,129,0.12)',
+  warning: 'var(--warning)', warningSoft: 'rgba(245,158,11,0.12)',
+  danger: 'var(--danger)', dangerSoft: 'rgba(239,68,80,0.12)',
+  info: 'var(--info)', infoSoft: 'rgba(59,130,246,0.12)',
+  gold: 'var(--gold)',
   radiusSm: '6px', radiusMd: '10px',
 }
 
@@ -94,8 +94,8 @@ export default function EmployeesPage() {
 
   const getAvatarColor = (name: string | null) => {
     const hash = (name || '').charCodeAt(0) || 0
-    const cs = ['#10b981', '#3b82f6', '#d4a84b', '#6366f1', '#059669', '#0f172a']
-    return `linear-gradient(135deg, ${cs[hash % cs.length]}, #0f172a)`
+    const cs = ['var(--accent)', 'var(--info)', 'var(--gold)', 'var(--info)', 'var(--accent-hover)', 'var(--bg)']
+    return `linear-gradient(135deg, ${cs[hash % cs.length]}, var(--bg))`
   }
 
   const getRoleBadge = (role: string | null) => {
@@ -136,232 +136,225 @@ export default function EmployeesPage() {
     } catch { showToast('Error saving employee') }
   }
 
-  if (loading) {
-    return <div className="flex items-center justify-center h-64 text-[#646880]">{d.loading || 'Loading...'}</div>
-  }
+   if (loading) {
+     return <div className="flex items-center justify-center h-64 text-[#646880]">{d.loading || 'Loading...'}</div>
+   }
 
-  return (
-    <div className="space-y-6">
-      {/* ── Header ── */}
-      <div className="flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-[22px] font-bold text-[#f0f2f5] tracking-tight">{d.title || 'Employees'}</h1>
-          <p className="text-[13px] text-[#646880] mt-1.5 max-w-[760px] leading-relaxed">
-            {d.subtitle || `Manage your team — ${stats.total} members`}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <button className="px-3 py-2 border border-[#282b38] text-[12px] text-[#9ca0b0] rounded-lg hover:bg-[#202330] transition-all font-medium"
-            onClick={() => showToast('Export queued')}>{d.export_ || 'Export'}</button>
-          <button className="px-4 py-2 bg-[#10b981] text-white text-[13px] font-medium rounded-lg hover:bg-[#059669] transition-all"
-            onClick={openCreate}>{d.add || '+ Add'}</button>
-        </div>
-      </div>
+   return (
+     <div className="space-y-6">
+       {/* ── Header ── */}
+       <div className="flex items-end justify-between gap-4 flex-wrap">
+         <div>
+           <h1 className="text-[22px] font-bold text-fg tracking-tight">{d.title || 'Employees'}</h1>
+           <p className="text-[13px] text-fg-muted mt-1.5 max-w-[760px] leading-relaxed">
+             {d.subtitle || `Manage your team — ${stats.total} members`}
+           </p>
+         </div>
+         <div className="flex gap-2">
+           <button className="btn btn-secondary"
+             onClick={() => showToast('Export queued')}>{d.export_ || 'Export'}</button>
+           <button className="btn btn-primary"
+             onClick={openCreate}>{d.add || '+ Add'}</button>
+         </div>
+       </div>
 
-      {/* ── Filter Chips ── */}
-      <div className="flex gap-2 flex-wrap">
-        {['all', 'active', 'inactive', 'on_route', 'verified', 'pending', 'needs_review'].map(f => (
-          <button key={f}
-            className={`px-3 py-1.5 rounded-full text-[12px] font-medium transition-all border ${
-              filter === f
-                ? 'bg-[rgba(16,185,129,0.12)] text-[#10b981] border-[#10b981]'
-                : 'bg-[#181b25] text-[#646880] border-[#282b38] hover:border-[#10b981] hover:text-[#f0f2f5]'
-            }`}
-            onClick={() => setFilter(f)}>
-            {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1).replace('_', ' ')}
-          </button>
-        ))}
-      </div>
+       {/* ── Filter Chips ── */}
+       <div className="flex gap-2 flex-wrap">
+         {['all', 'active', 'inactive', 'on_route', 'verified', 'pending', 'needs_review'].map(f => (
+           <button key={f}
+             className={`chip ${filter === f ? 'chip-active' : ''}`}
+             onClick={() => setFilter(f)}>
+             {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1).replace('_', ' ')}
+           </button>
+         ))}
+       </div>
 
-      {/* ── KPIs ── */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        {[
-          [d.kpis?.total || 'Total', String(stats.total), d.kpis?.teamMembers || 'Team members'],
-          [d.kpis?.active || 'Active', String(stats.active), d.kpis?.currentlyWorking || 'Currently working'],
-          [d.kpis?.onRoute || 'On Route', String(stats.onRoute), d.kpis?.inService || 'In service'],
-          [d.kpis?.avgRating || 'Avg Rating', stats.avgRating, d.kpis?.performance || 'Performance'],
-          [d.kpis?.totalTrips || 'Total Trips', String(stats.totalTrips), d.kpis?.allTime || 'All time'],
-          [d.kpis?.expiringDocs || 'Expiring Docs', String(stats.expiringDocs), d.kpis?.needsReview || 'Needs review'],
-        ].map(([label, value, sub]) => (
-          <div key={label} className="bg-[#181b25] border border-[#282b38] rounded-xl p-4">
-            <p className="text-[11px] text-[#646880] uppercase tracking-wide">{label}</p>
-            <p className="text-[24px] font-bold text-[#f0f2f5] mt-1">{value}</p>
-            <p className="text-[11px] text-[#10b981] mt-1">{sub}</p>
-          </div>
-        ))}
-      </div>
+       {/* ── KPIs ── */}
+       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+         {[
+           [d.kpis?.total || 'Total', String(stats.total), d.kpis?.teamMembers || 'Team members'],
+           [d.kpis?.active || 'Active', String(stats.active), d.kpis?.currentlyWorking || 'Currently working'],
+           [d.kpis?.onRoute || 'On Route', String(stats.onRoute), d.kpis?.inService || 'In service'],
+           [d.kpis?.avgRating || 'Avg Rating', stats.avgRating, d.kpis?.performance || 'Performance'],
+           [d.kpis?.totalTrips || 'Total Trips', String(stats.totalTrips), d.kpis?.allTime || 'All time'],
+           [d.kpis?.expiringDocs || 'Expiring Docs', String(stats.expiringDocs), d.kpis?.needsReview || 'Needs review'],
+         ].map(([label, value, sub]) => (
+           <div key={label} className="stat-card">
+             <div className="stat-label">{label}</div>
+             <div className="stat-value">{value}</div>
+             <div className="stat-change text-fg-muted">{sub}</div>
+           </div>
+         ))}
+       </div>
 
-      {/* ── Main Layout ── */}
-      <div className="grid grid-cols-1 xl:grid-cols-[1.3fr_0.7fr] gap-4 items-start">
-        {/* ── Left: Table ── */}
-        <div className="bg-[#181b25] border border-[#282b38] rounded-xl overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2130]">
-            <div className="flex items-center gap-2.5">
-              <span className="text-[14px] font-bold text-[#f0f2f5]">{d.tableTitle || 'Employees'}</span>
-              <span className="text-[12px] text-[#646880] font-medium">{filtered.length} shown</span>
-            </div>
-            <div className="relative">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#646880]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-              </svg>
-              <input className="w-[200px] pl-9 pr-3 py-1.5 bg-[#0b0d14] border border-[#282b38] rounded-lg text-[12px] text-[#f0f2f5] placeholder:text-[#646880] outline-none focus:border-[#10b981] transition-all"
-                placeholder={d.searchPlaceholder || 'Search employees...'}
-                value={search} onChange={e => setSearch(e.target.value)} />
-            </div>
-          </div>
+       {/* ── Main Layout ── */}
+       <div className="grid grid-cols-1 xl:grid-cols-[1.3fr_0.7fr] gap-4 items-start">
+         {/* ── Left: Table ── */}
+         <div className="panel">
+           <div className="panel-header flex items-center justify-between pb-2">
+             <span className="panel-title font-medium text-fg">{d.tableTitle || 'Employees'}</span>
+             <span className="text-fg-muted text-[12px]">{filtered.length} shown</span>
+           </div>
+           <div className="panel-body p-4">
+             <div className="flex items-center gap-3 mb-4">
+               <div className="relative w-[200px]">
+                 <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-fg-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                   <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                 </svg>
+                 <input
+                   placeholder={d.searchPlaceholder || 'Search employees...'}
+                   value={search}
+                   onChange={e => setSearch(e.target.value)}
+                   className="input w-full"
+                 />
+               </div>
+             </div>
+             <div className="table-wrap">
+               <table>
+                 <thead>
+                   <tr>
+                     <th>{d.tableName || 'Employee'}</th>
+                     <th>{d.tableRole || 'Role'}</th>
+                     <th>{d.tableStatus || 'Status'}</th>
+                     <th>{d.tableTrips || 'Trips'}</th>
+                     <th>{d.tableRating || 'Rating'}</th>
+                     <th></th>
+                   </tr>
+                 </thead>
+                 <tbody>
+                   {filtered.length === 0 ? (
+                     <tr>
+                       <td colSpan={6} className="text-fg-muted text-center py-8">{d.noResults || 'No employees found'}</td>
+                     </tr>
+                   ) : filtered.map(emp => (
+                     <tr key={emp.id} className="hover:bg-surface-hover transition-colors cursor-pointer" onClick={() => setSelectedId(emp.id)} style={{ background: selectedId === emp.id ? 'surface-hover' : '' }}>
+                       <td className="flex items-center gap-3">
+                         <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-[13px] flex-shrink-0" style={{ background: getAvatarColor(emp.name) }}>
+                           {getInit(emp.name)}
+                         </div>
+                         <div>
+                           <div className="font-medium text-fg">{emp.name}</div>
+                           <div className="text-fg-muted">{emp.email}</div>
+                         </div>
+                       </td>
+                       <td className="flex items-center gap-1.5">
+                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-semibold border ${
+                           getRoleBadge(emp.role_name)
+                             ? `bg-[${theme.accentSoft}] text-[${theme.accent}] border-[${theme.accent}]`
+                             : 'bg-[var(--bg)] text-[var(--fg-secondary)] border-[var(--border)]'
+                         }`}
+                           style={getRoleBadge(emp.role_name) ? {
+                             background: emp.role_name === 'admin' ? theme.accentSoft : emp.role_name === 'ops' ? theme.infoSoft : theme.warningSoft,
+                             color: emp.role_name === 'admin' ? theme.accent : emp.role_name === 'ops' ? theme.info : theme.warning,
+                             borderColor: emp.role_name === 'admin' ? theme.accent : emp.role_name === 'ops' ? theme.info : theme.warning,
+                           } : {}}>
+                           {emp.role_name || '—'}
+                         </span>
+                       </td>
+                        <td className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-semibold ${
+                          emp.employee_status === 'active'
+                            ? 'bg-[rgba(16,185,129,0.12)] text-[#10b981]'
+                            : emp.employee_status === 'inactive'
+                              ? 'bg-[rgba(100,104,128,0.15)] text-[#646880]'
+                              : emp.employee_status === 'suspended'
+                                ? 'bg-[rgba(239,68,80,0.12)] text-[#ef4450]'
+                                : 'bg-[rgba(245,158,11,0.12)] text-[#f59e0b]'
+                        }`}>
+                         {emp.employee_status || '—'}
+                       </td>
+                       <td className="text-center text-fg-muted">{emp.total_trips || 0}</td>
+                       <td className="text-center text-fg-muted">{emp.rating ? `★ ${emp.rating}` : '—'}</td>
+                       <td className="text-right">
+                         <button className="btn btn-sm btn-secondary" onClick={e => { e.stopPropagation(); openEdit(emp) }}>
+                           {d.edit || 'Edit'}
+                         </button>
+                       </td>
+                     </tr>
+                   ))}
+                 </tbody>
+               </table>
+             </div>
+           </div>
+         </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-[rgba(255,255,255,0.02)]">
-                  <th className="text-left text-[11px] font-semibold uppercase tracking-[0.4px] text-[#646880] px-4 py-3.5">{d.tableName || 'Employee'}</th>
-                  <th className="text-left text-[11px] font-semibold uppercase tracking-[0.4px] text-[#646880] px-4 py-3.5">{d.tableRole || 'Role'}</th>
-                  <th className="text-left text-[11px] font-semibold uppercase tracking-[0.4px] text-[#646880] px-4 py-3.5">{d.tableStatus || 'Status'}</th>
-                  <th className="text-left text-[11px] font-semibold uppercase tracking-[0.4px] text-[#646880] px-4 py-3.5">{d.tableTrips || 'Trips'}</th>
-                  <th className="text-left text-[11px] font-semibold uppercase tracking-[0.4px] text-[#646880] px-4 py-3.5">{d.tableRating || 'Rating'}</th>
-                  <th className="text-left text-[11px] font-semibold uppercase tracking-[0.4px] text-[#646880] px-4 py-3.5"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.length === 0 ? (
-                  <tr><td colSpan={6} className="p-12 text-center text-[#646880] text-[13px]">{d.noResults || 'No employees found'}</td></tr>
-                ) : filtered.map(emp => (
-                  <tr key={emp.id}
-                    className="border-b border-[#1e2130] hover:bg-[#0b0d14] cursor-pointer transition-colors"
-                    onClick={() => setSelectedId(emp.id)}
-                    style={{ background: selectedId === emp.id ? theme.surfaceHover : '' }}>
-                    <td className="px-4 py-3.5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-[13px] flex-shrink-0"
-                          style={{ background: getAvatarColor(emp.name) }}>
-                          {getInit(emp.name)}
-                        </div>
-                        <div>
-                          <div className="text-[13px] font-semibold text-[#f0f2f5]">{emp.name}</div>
-                          <div className="text-[12px] text-[#646880]">{emp.email}</div>
-                        </div>
+         {/* ── Right: Side Panel ── */}
+         <aside className="hidden sm:block w-[360px] sticky top-[76px]">
+           {/* Profile */}
+           <div className="panel">
+             <div className="panel-header flex items-center justify-between pb-2">
+               <span className="panel-title font-medium text-fg">{d.sidePanel?.profile || 'Employee Profile'}</span>
+               {selected && (
+                 <button className="btn btn-sm btn-secondary" onClick={() => openEdit(selected)}>
+                   Edit
+                 </button>
+               )}
+             </div>
+             <div className="panel-body p-4">
+               {!selected ? (
+                 <p className="text-fg-muted text-center py-8">{d.selectPrompt || 'Select an employee to view profile'}</p>
+               ) : (
+                 <>
+                   <div className="flex items-center gap-3.5 mb-4">
+                     <div className="w-[4.25rem] h-[4.25rem] rounded-[20px] flex items-center justify-center text-white font-extrabold text-[21px] flex-shrink-0" style={{ background: getAvatarColor(selected.name) }}>
+                       {getInit(selected.name)}
+                     </div>
+                     <div>
+                       <h2 className="text-[18px] font-bold text-fg">{selected.name}</h2>
+                       <p className="text-[12px] text-fg-muted">{selected.role_name || '—'}</p>
+                       <span className={`mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                         selected.employee_status === 'active'
+                            ? 'bg-[rgba(16,185,129,0.12)] text-[#10b981]'
+                            : 'bg-[rgba(100,104,128,0.15)] text-[#646880]'
+                         }`}>{selected.employee_status || '—'}</span>
                       </div>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${
-                        getRoleBadge(emp.role_name)
-                          ? `bg-[${theme.accentSoft}] text-[${theme.accent}] border-[${theme.accent}]`
-                          : 'bg-[#0b0d14] text-[#9ca0b0] border-[#282b38]'
-                      }`}
-                        style={getRoleBadge(emp.role_name) ? {
-                          background: emp.role_name === 'admin' ? theme.accentSoft : emp.role_name === 'ops' ? theme.infoSoft : theme.warningSoft,
-                          color: emp.role_name === 'admin' ? theme.accent : emp.role_name === 'ops' ? theme.info : theme.warning,
-                          borderColor: emp.role_name === 'admin' ? theme.accent : emp.role_name === 'ops' ? theme.info : theme.warning,
-                        } : {}}>
-                        {emp.role_name || '—'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold ${
-                        emp.employee_status === 'active'
-                          ? 'bg-[rgba(16,185,129,0.12)] text-[#10b981]'
-                          : emp.employee_status === 'inactive'
-                            ? 'bg-[rgba(100,104,128,0.15)] text-[#646880]'
-                            : emp.employee_status === 'suspended'
-                              ? 'bg-[rgba(239,68,80,0.12)] text-[#ef4450]'
-                              : 'bg-[rgba(245,158,11,0.12)] text-[#f59e0b]'
-                      }`}>
-                        {emp.employee_status || '—'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5 text-[13px] text-[#9ca0b0]">{emp.total_trips || 0}</td>
-                    <td className="px-4 py-3.5 text-[13px] text-[#9ca0b0]">{emp.rating ? `★ ${emp.rating}` : '—'}</td>
-                    <td className="px-4 py-3.5">
-                      <button className="border border-[#282b38] bg-[#181b25] text-[#f0f2f5] rounded-lg px-2.5 py-1.5 text-[12px] cursor-pointer hover:border-[#10b981] hover:text-[#10b981] transition-all"
-                        onClick={e => { e.stopPropagation(); openEdit(emp) }}>
-                        {d.edit || 'Edit'}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                   </div>
+                   <div className="grid grid-cols-2 gap-3">
+                     {[
+                       [d.formEmail || 'Email', selected.email || '—'],
+                       [d.formPhone || 'Phone', selected.phone || '—'],
+                       [d.formRole || 'Role', selected.role_name || '—'],
+                       ['Trips', String(selected.total_trips || 0)],
+                       ['Rating', selected.rating ? `★ ${selected.rating}` : '—'],
+                       ['Joined', selected.created_at ? new Date(selected.created_at).toLocaleDateString() : '—'],
+                     ].map(([label, value]) => (
+                       <div key={label}>
+                         <label className="block text-xs text-fg-muted uppercase tracking-[0.4px] mb-0.5">{label}</label>
+                         <div className="base-text text-fg">{value}</div>
+                       </div>
+                     ))}
+                   </div>
+                 </>
+               )}
+             </div>
+           </div>
 
-        {/* ── Right: Side Panel ── */}
-        <div className="space-y-4 sticky top-20">
-          {/* Profile */}
-          <div className="bg-[#181b25] border border-[#282b38] rounded-xl overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2130]">
-              <span className="text-[14px] font-bold text-[#f0f2f5]">{d.sidePanel?.profile || 'Employee Profile'}</span>
-              {selected && (
-                <button className="px-2 py-1 text-[11px] text-[#9ca0b0] border border-[#282b38] rounded-lg hover:bg-[#202330] transition-all"
-                  onClick={() => openEdit(selected)}>Edit</button>
-              )}
-            </div>
-            <div className="p-4">
-              {!selected ? (
-                <p className="text-[13px] text-[#646880] text-center py-8">{d.selectPrompt || 'Select an employee to view profile'}</p>
-              ) : (
-                <>
-                  <div className="flex items-center gap-3.5 mb-4">
-                    <div className="w-16 h-16 rounded-[18px] flex items-center justify-center text-white font-bold text-[20px] flex-shrink-0"
-                      style={{ background: getAvatarColor(selected.name) }}>
-                      {getInit(selected.name)}
-                    </div>
-                    <div>
-                      <h2 className="text-[18px] font-bold text-[#f0f2f5]">{selected.name}</h2>
-                      <p className="text-[12px] text-[#646880]">{selected.role_name || '—'}</p>
-                      <span className={`mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${
-                        selected.employee_status === 'active'
-                          ? 'bg-[rgba(16,185,129,0.12)] text-[#10b981]'
-                          : 'bg-[rgba(100,104,128,0.15)] text-[#646880]'
-                      }`}>{selected.employee_status || '—'}</span>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    {[
-                      [d.formEmail || 'Email', selected.email || '—'],
-                      [d.formPhone || 'Phone', selected.phone || '—'],
-                      [d.formRole || 'Role', selected.role_name || '—'],
-                      ['Trips', String(selected.total_trips || 0)],
-                      ['Rating', selected.rating ? `★ ${selected.rating}` : '—'],
-                      ['Joined', selected.created_at ? new Date(selected.created_at).toLocaleDateString() : '—'],
-                    ].map(([label, value]) => (
-                      <div key={label}>
-                        <label className="block text-[10px] text-[#646880] uppercase tracking-wider mb-1">{label}</label>
-                        <div className="text-[13px] text-[#f0f2f5]">{value}</div>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Recent Activity */}
-          <div className="bg-[#181b25] border border-[#282b38] rounded-xl overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-[#1e2130]">
-              <span className="text-[14px] font-bold text-[#f0f2f5]">{d.sidePanel?.recentActivity || 'Recent Activity'}</span>
-            </div>
-            <div className="p-4">
-              {!selected ? (
-                <p className="text-[13px] text-[#646880] text-center py-4">{d.noSelection || 'No employee selected'}</p>
-              ) : (
-                <div className="space-y-2.5">
-                  {[
-                    { dot: theme.accent, text: 'Profile updated', time: '2h ago' },
-                    { dot: theme.info, text: 'Trip #128 completed', time: '5h ago' },
-                    { dot: theme.warning, text: 'Documents verified', time: '1d ago' },
-                  ].map((act, i) => (
-                    <div key={i} className="grid grid-cols-[10px_1fr_auto] gap-2.5 items-start pb-2.5 border-b border-[#1e2130] last:border-b-0 last:pb-0">
-                      <div className="w-2.5 h-2.5 rounded-full mt-1" style={{ background: act.dot }} />
-                      <div className="text-[13px] text-[#f0f2f5]">{act.text}</div>
-                      <div className="text-[11px] text-[#646880] whitespace-nowrap">{act.time}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+           {/* Recent Activity */}
+           <div className="panel mt-4">
+             <div className="panel-header flex items-center justify-between pb-2">
+               <span className="panel-title font-medium text-fg">{d.sidePanel?.recentActivity || 'Recent Activity'}</span>
+             </div>
+             <div className="panel-body p-4">
+               {!selected ? (
+                 <p className="text-fg-muted text-center py-6">{d.noSelection || 'No employee selected'}</p>
+               ) : (
+                 <div className="space-y-2.5">
+                   {[
+                     { dot: theme.accent, text: 'Profile updated', time: '2h ago' },
+                     { dot: theme.info, text: 'Trip #128 completed', time: '5h ago' },
+                     { dot: theme.warning, text: 'Documents verified', time: '1d ago' },
+                   ].map((act, i) => (
+                     <div key={i} className="flex items-start gap-2.5 mb-2.5 border-t border-border-light pt-2">
+                       <div className="w-2.5 h-2.5 rounded-full mt-0.5" style={{ background: act.dot }} />
+                       <div className="base-text text-fg">{act.text}</div>
+                       <div className="text-fg-muted text-[11px] whitespace-nowrap">{act.time}</div>
+                     </div>
+                   ))}
+                 </div>
+               )}
+             </div>
+           </div>
+         </aside>
         </div>
-      </div>
 
       {/* ── Create/Edit Modal ── */}
       {modalOpen && (

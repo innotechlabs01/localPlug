@@ -1,8 +1,13 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
+import { getTrmRate, convertCopToUsd } from '@/lib/trm'
+
+// Fixed driver payment per trip in COP
+const DRIVER_PAYMENT_COP = 150000
 
 export async function GET() {
   const db = getDb()
+  const trmRate = await getTrmRate()
 
   const kpiQueries = await Promise.all([
     db.execute("SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as total FROM payments WHERE status = 'completed'"),
@@ -74,7 +79,8 @@ export async function GET() {
     `SELECT o.id, o.order_number, o.booking_reference, o.customer_name, o.package_name,
             o.package_price, o.currency, COALESCE(pay.status, o.payment_status) as payment_status,
             o.assigned_to, o.created_at,
-            d.name as driver_name, d.vehicle as driver_vehicle, d.plate as driver_plate
+            d.name as driver_name, d.vehicle as driver_vehicle, d.plate as driver_plate,
+            d.total_trips as driver_total_trips
      FROM orders o
      LEFT JOIN drivers d ON o.assigned_to = d.id
      LEFT JOIN payments pay ON o.booking_reference = pay.booking_reference
@@ -82,20 +88,29 @@ export async function GET() {
      ORDER BY o.created_at DESC
      LIMIT 50`
   )
-  const payouts = payoutsResult.rows.map(r => ({
-    id: Number(r.id),
-    order_number: r.order_number as string,
-    booking_reference: r.booking_reference as string,
-    customer_name: r.customer_name as string,
-    package_name: r.package_name as string,
-    package_price: Number(r.package_price),
-    currency: (r.currency as string)?.toUpperCase() || 'USD',
-    payment_status: r.payment_status as string,
-    driver_name: r.driver_name as string,
-    driver_vehicle: r.driver_vehicle as string,
-    driver_plate: r.driver_plate as string,
-    created_at: r.created_at as string,
-  }))
+  const payouts = payoutsResult.rows.map(r => {
+    const grossRevenue = Number(r.package_price)
+    const driverPaymentCOP = DRIVER_PAYMENT_COP
+    const driverPaymentUSD = convertCopToUsd(driverPaymentCOP, trmRate)
+    return {
+      id: Number(r.id),
+      order_number: r.order_number as string,
+      booking_reference: r.booking_reference as string,
+      customer_name: r.customer_name as string,
+      package_name: r.package_name as string,
+      package_price: grossRevenue,
+      currency: (r.currency as string)?.toUpperCase() || 'USD',
+      payment_status: r.payment_status as string,
+      driver_name: r.driver_name as string,
+      driver_vehicle: r.driver_vehicle as string,
+      driver_plate: r.driver_plate as string,
+      driver_total_trips: Number(r.driver_total_trips || 0),
+      driver_payment_cop: driverPaymentCOP,
+      driver_payment_usd: driverPaymentUSD,
+      gross_revenue: grossRevenue,
+      created_at: r.created_at as string,
+    }
+  })
 
   const completedTransactions = transactions.filter(t => t.status === 'completed')
   const avgTransaction = completedTransactions.length > 0
@@ -113,7 +128,7 @@ export async function GET() {
     chargebacks: 0,
     pendingPayout: payouts
       .filter(p => p.payment_status === 'pending')
-      .reduce((acc, p) => acc + p.package_price, 0),
+      .reduce((acc, p) => acc + p.driver_payment_usd, 0),
     lastPayout: 6340,
   }
 
@@ -123,5 +138,10 @@ export async function GET() {
     transactions,
     payouts,
     summary,
+    trm: {
+      rate: trmRate,
+      fetchedAt: new Date().toISOString(),
+      source: 'exchangerate-api.com',
+    },
   })
 }

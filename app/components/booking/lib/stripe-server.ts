@@ -1,8 +1,6 @@
 import Stripe from 'stripe'
+import { getPackageName } from '@/lib/pricing'
 import type { PaymentRecord, PaymentStatus } from './types'
-
-const MOCK_FAIL_KEY = '__mock_fail'
-const MOCK_STRIPE_FAIL_KEY = '__mock_stripe_fail'
 
 let _stripe: Stripe | null = null
 
@@ -27,11 +25,8 @@ export async function createPaymentIntent(params: {
   arrivalDate?: string
   arrivalTime?: string
   customerPhone?: string
+  needReturn?: boolean
 }): Promise<{ clientSecret: string; paymentIntentId: string }> {
-  if (typeof window !== 'undefined' && localStorage.getItem(MOCK_STRIPE_FAIL_KEY) === 'true') {
-    throw new Error('Stripe API unavailable (simulated)')
-  }
-
   const stripe = getStripe()
   const intent = await stripe.paymentIntents.create({
     amount: params.amount,
@@ -46,6 +41,7 @@ export async function createPaymentIntent(params: {
       arrivalDate: params.arrivalDate || '',
       arrivalTime: params.arrivalTime || '',
       customerPhone: params.customerPhone || '',
+      needReturn: params.needReturn ? 'true' : 'false',
     },
     automatic_payment_methods: { enabled: true },
   })
@@ -106,11 +102,3 @@ export function buildPaymentRecordFromWebhook(
   }
 }
 
-function getPackageName(id: string): string {
-  const names: Record<string, string> = {
-    'smooth-landing': 'The VIP Arrival',
-    'first-24': 'The 24h Insider',
-    'full-insider': 'The Peace of Mind',
-  }
-  return names[id] || id
-}

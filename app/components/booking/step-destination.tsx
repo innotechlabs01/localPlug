@@ -173,8 +173,8 @@ export default function StepDestination({ data, onChange, customerNotes = '', on
 
         {onCustomerNotesChange && (
           <div className="mt-6">
-            <label className="block text-label-md text-[var(--text-primary)] font-semibold mb-1.5">Special Requests (optional)</label>
-            <textarea rows={3} placeholder="Any special requests or additional information..."
+            <label className="block text-label-md text-[var(--text-primary)] font-semibold mb-1.5">{destT.specialRequests}</label>
+            <textarea rows={3} placeholder={destT.specialRequestsPlaceholder}
               value={customerNotes} onChange={(e) => onCustomerNotesChange(e.target.value)}
               className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-elevated)] text-body-md text-white placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-gold)]/40 focus:border-[var(--accent-gold)] transition-all resize-none" />
           </div>

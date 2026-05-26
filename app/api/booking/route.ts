@@ -1,20 +1,13 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { bookingStore } from '@/app/components/booking/lib/booking-store'
-
-const PACKAGE_NAMES: Record<string, string> = {
-  'smooth-landing': 'Smooth Landing',
-  'first-24': 'First 24 Hours',
-  'full-insider': 'Full Insider',
-}
-
-const PACKAGE_PRICES: Record<string, number> = {
-  'smooth-landing': 89,
-  'first-24': 149,
-  'full-insider': 249,
-}
+import { getPackageName, getPackageTotal } from '@/lib/pricing'
+import { rateLimitMiddleware } from '@/lib/rate-limit'
 
 export async function POST(request: Request) {
+  const rateLimitResponse = rateLimitMiddleware(request)
+  if (rateLimitResponse) return rateLimitResponse
+
   try {
     const body = await request.json()
 
@@ -32,7 +25,7 @@ export async function POST(request: Request) {
     const flight = body.flight || {}
     const dest = body.destination || {}
     const needReturn = flight.needReturn ?? false
-    const packagePrice = (PACKAGE_PRICES[pkg] || 0) + (needReturn ? 48 : 0)
+    const packagePrice = getPackageTotal(pkg, needReturn)
 
     await db.execute({
       sql: `INSERT INTO orders (
@@ -54,7 +47,7 @@ export async function POST(request: Request) {
         flight.returnDate || null,
         flight.returnTime || null,
         pkg,
-        PACKAGE_NAMES[pkg] || pkg,
+        getPackageName(pkg),
         packagePrice,
         'usd',
         flight.flightNumber || null,

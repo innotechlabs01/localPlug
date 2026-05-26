@@ -89,18 +89,18 @@ function OrdersInner() {
   }
 
   const statusColors: Record<string, string> = {
-    new: 'bg-[rgba(59,130,246,0.12)] text-[#3b82f6]',
-    confirmed: 'bg-[rgba(16,185,129,0.12)] text-[#10b981]',
-    in_progress: 'bg-[rgba(245,158,11,0.12)] text-[#f59e0b]',
-    on_hold: 'bg-[rgba(245,158,11,0.12)] text-[#f59e0b]',
-    completed: 'bg-[rgba(16,185,129,0.12)] text-[#10b981]',
+    new: 'bg-[rgba(59,130,246,0.12)] text-[var(--info)]',
+    confirmed: 'bg-[rgba(16,185,129,0.12)] text-[var(--accent)]',
+    in_progress: 'bg-[rgba(245,158,11,0.12)] text-[var(--warning)]',
+    on_hold: 'bg-[rgba(245,158,11,0.12)] text-[var(--warning)]',
+    completed: 'bg-[rgba(16,185,129,0.12)] text-[var(--accent)]',
     cancelled: 'bg-[rgba(239,68,80,0.12)] text-[#ef4450]',
   }
 
   const priorityColors: Record<string, string> = {
-    low: 'bg-[rgba(100,104,128,0.12)] text-[#646880]',
-    normal: 'bg-[rgba(59,130,246,0.12)] text-[#3b82f6]',
-    high: 'bg-[rgba(245,158,11,0.12)] text-[#f59e0b]',
+    low: 'bg-[rgba(100,104,128,0.12)] text-[var(--fg-secondary)]',
+    normal: 'bg-[rgba(59,130,246,0.12)] text-[var(--info)]',
+    high: 'bg-[rgba(245,158,11,0.12)] text-[var(--warning)]',
     urgent: 'bg-[rgba(239,68,80,0.12)] text-[#ef4450]',
   }
 
@@ -112,7 +112,7 @@ function OrdersInner() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-[#646880]">Loading orders...</div>
+        <div className="text-[var(--fg-secondary)]">Loading orders...</div>
       </div>
     )
   }
@@ -122,15 +122,15 @@ function OrdersInner() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-[18px] font-semibold text-[#f0f2f5]">{t.admin.orders.title}</h1>
-          <p className="text-[13px] text-[#646880] mt-1">{t.admin.orders.subtitle}</p>
+          <h1 className="text-[18px] font-semibold text-[var(--fg)]">{t.admin.orders.title}</h1>
+          <p className="text-[13px] text-[var(--fg-secondary)] mt-1">{t.admin.orders.subtitle}</p>
         </div>
         <button
           onClick={() => setShowTodayOnly(!showTodayOnly)}
           className={`px-3 py-1.5 rounded-[6px] text-[12px] font-medium transition-all ${
             showTodayOnly
-              ? 'bg-[#10b981] text-white'
-              : 'bg-[#181b25] text-[#9ca0b0] border border-[#282b38] hover:bg-[#202330]'
+              ? 'bg-[var(--accent)] text-white'
+              : 'bg-[var(--surface)] text-[var(--fg-muted)] border border-[var(--border)] hover:bg-[#202330]'
           }`}
         >
           {showTodayOnly ? 'Today Only' : 'All Dates'}
@@ -144,8 +144,8 @@ function OrdersInner() {
             key={status}
             onClick={() => setStatusFilter(status)}
             className={`px-4 py-2 rounded-[6px] text-[13px] font-medium whitespace-nowrap transition-all ${statusFilter === status
-                ? 'bg-[#10b981] text-white'
-                : 'bg-[#181b25] text-[#9ca0b0] hover:bg-[#202330] border border-[#282b38]'
+                ? 'bg-[var(--accent)] text-white'
+                : 'bg-[var(--surface)] text-[var(--fg-muted)] hover:bg-[#202330] border border-[var(--border)]'
               }`}
           >
             {t.admin.orders.status[status]}
@@ -166,55 +166,55 @@ function OrdersInner() {
             placeholder={t.admin.orders.searchPlaceholder}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-4 py-2 bg-[#0b0d14] border border-[#282b38] rounded-[6px] text-[13px] text-[#f0f2f5] placeholder:text-[#646880] outline-none focus:border-[#10b981] transition-all"
+            className="w-full px-4 py-2 bg-[var(--bg)] border border-[var(--border)] rounded-[6px] text-[13px] text-[var(--fg)] placeholder:text-[var(--fg-secondary)] outline-none focus:border-[var(--accent)] transition-all"
           />
         </div>
-        <span className="text-[12px] text-[#646880] self-center">
+        <span className="text-[12px] text-[var(--fg-secondary)] self-center">
           {orders.length} orders
         </span>
       </div>
 
       {/* Orders Table */}
-      <div className="bg-[#181b25] border border-[#282b38] rounded-[10px] overflow-hidden">
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[10px] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="bg-[#111318] border-b border-[#282b38]">
-                <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880] px-6 py-3">{t.admin.orders.table.order}</th>
-                <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880] px-6 py-3">{t.admin.orders.table.customer}</th>
-                <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880] px-6 py-3">{t.admin.orders.table.package}</th>
-                <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880] px-6 py-3">{t.admin.orders.table.flight}</th>
-                <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880] px-6 py-3">{t.admin.orders.table.status}</th>
-                <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880] px-6 py-3">{t.admin.orders.table.priority}</th>
-                <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880] px-6 py-3">{t.admin.orders.table.payment}</th>
-                <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880] px-6 py-3">{t.admin.orders.table.actions}</th>
+              <tr className="bg-[#111318] border-b border-[var(--border)]">
+                <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[var(--fg-secondary)] px-6 py-3">{t.admin.orders.table.order}</th>
+                <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[var(--fg-secondary)] px-6 py-3">{t.admin.orders.table.customer}</th>
+                <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[var(--fg-secondary)] px-6 py-3">{t.admin.orders.table.package}</th>
+                <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[var(--fg-secondary)] px-6 py-3">{t.admin.orders.table.flight}</th>
+                <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[var(--fg-secondary)] px-6 py-3">{t.admin.orders.table.status}</th>
+                <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[var(--fg-secondary)] px-6 py-3">{t.admin.orders.table.priority}</th>
+                <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[var(--fg-secondary)] px-6 py-3">{t.admin.orders.table.payment}</th>
+                <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[var(--fg-secondary)] px-6 py-3">{t.admin.orders.table.actions}</th>
               </tr>
             </thead>
             <tbody>
               {filteredOrders.map((order) => (
-                <tr key={order.id} className="border-b border-[#282b38] hover:bg-[#202330] transition-colors">
+                <tr key={order.id} className="border-b border-[var(--border)] hover:bg-[#202330] transition-colors">
                   <td className="px-6 py-4">
                     <div>
-                      <p className="text-[13px] font-medium text-[#f0f2f5]">{order.order_number}</p>
-                      <p className="text-[12px] text-[#646880]">{order.booking_reference}</p>
+                      <p className="text-[13px] font-medium text-[var(--fg)]">{order.order_number}</p>
+                      <p className="text-[12px] text-[var(--fg-secondary)]">{order.booking_reference}</p>
                     </div>
                   </td>
                   <td className="px-6 py-4">
                     <div>
-                      <p className="text-[13px] text-[#9ca0b0]">{order.customer_name}</p>
-                      <p className="text-[12px] text-[#646880]">{order.customer_email}</p>
+                      <p className="text-[13px] text-[var(--fg-muted)]">{order.customer_name}</p>
+                      <p className="text-[12px] text-[var(--fg-secondary)]">{order.customer_email}</p>
                     </div>
                   </td>
                   <td className="px-6 py-4">
                     <div>
-                      <p className="text-[13px] text-[#9ca0b0]">{order.package_name}</p>
-                      <p className="text-[12px] text-[#646880]">${order.package_price} USD</p>
+                      <p className="text-[13px] text-[var(--fg-muted)]">{order.package_name}</p>
+                      <p className="text-[12px] text-[var(--fg-secondary)]">${order.package_price} USD</p>
                     </div>
                   </td>
                   <td className="px-6 py-4">
                     <div>
-                      <p className="text-[13px] text-[#9ca0b0]">{order.flight_number || '-'}</p>
-                      <p className="text-[12px] text-[#646880]">{order.arrival_date || '-'}</p>
+                      <p className="text-[13px] text-[var(--fg-muted)]">{order.flight_number || '-'}</p>
+                      <p className="text-[12px] text-[var(--fg-secondary)]">{order.arrival_date || '-'}</p>
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -228,8 +228,8 @@ function OrdersInner() {
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium ${order.payment_status === 'completed' ? 'bg-[rgba(16,185,129,0.12)] text-[#10b981]' :
-                        order.payment_status === 'pending' ? 'bg-[rgba(245,158,11,0.12)] text-[#f59e0b]' :
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium ${order.payment_status === 'completed' ? 'bg-[rgba(16,185,129,0.12)] text-[var(--accent)]' :
+                        order.payment_status === 'pending' ? 'bg-[rgba(245,158,11,0.12)] text-[var(--warning)]' :
                           'bg-[rgba(239,68,80,0.12)] text-[#ef4450]'
                       }`}>
                       {t.admin.orders.payment[order.payment_status as keyof typeof t.admin.orders.payment] || order.payment_status}
@@ -237,7 +237,7 @@ function OrdersInner() {
                   </td>
                   <td className="px-6 py-4">
                     <button
-                      className="p-1.5 hover:bg-[#202330] rounded-[4px] text-[#9ca0b0] transition-all"
+                      className="p-1.5 hover:bg-[#202330] rounded-[4px] text-[var(--fg-muted)] transition-all"
                       title="View details"
                       onClick={() => openOrderDetail(order)}
                     >
@@ -253,7 +253,7 @@ function OrdersInner() {
           </table>
         </div>
         {orders.length === 0 && (
-          <div className="p-12 text-center text-[#646880]">
+          <div className="p-12 text-center text-[var(--fg-secondary)]">
             {t.admin.orders.noOrders}
           </div>
         )}
@@ -263,15 +263,15 @@ function OrdersInner() {
       {selectedOrder && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={closeModal} />
-          <div className="relative w-full max-w-2xl max-h-[90vh] overflow-auto bg-[#181b25] border border-[#282b38] rounded-xl shadow-2xl">
+          <div className="relative w-full max-w-2xl max-h-[90vh] overflow-auto bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-2xl">
             {/* Header */}
-            <div className="flex items-center justify-between p-5 border-b border-[#282b38]">
+            <div className="flex items-center justify-between p-5 border-b border-[var(--border)]">
               <div>
-                <h2 className="text-lg font-semibold text-[#f0f2f5]">{t.admin.orders.orderDetails || 'Order Details'}</h2>
-                <p className="text-sm text-[#646880]">{selectedOrder.order_number}</p>
+                <h2 className="text-lg font-semibold text-[var(--fg)]">{t.admin.orders.orderDetails || 'Order Details'}</h2>
+                <p className="text-sm text-[var(--fg-secondary)]">{selectedOrder.order_number}</p>
               </div>
               <button onClick={closeModal} className="p-2 hover:bg-[#202330] rounded-lg transition-colors">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9ca0b0" strokeWidth="2">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--fg-muted)" strokeWidth="2">
                   <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
               </button>
@@ -281,59 +281,59 @@ function OrdersInner() {
             <div className="p-5 space-y-6">
               {/* Status Banner */}
               <div className="flex items-center gap-3 p-4 bg-[#202330] rounded-lg">
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${selectedOrder.status === 'completed' ? 'bg-[rgba(16,185,129,0.2)] text-[#10b981]' :
+                <span className={`px-3 py-1 rounded-full text-xs font-medium ${selectedOrder.status === 'completed' ? 'bg-[rgba(16,185,129,0.2)] text-[var(--accent)]' :
                     selectedOrder.status === 'cancelled' ? 'bg-[rgba(239,68,80,0.2)] text-[#ef4450]' :
-                      'bg-[rgba(59,130,246,0.2)] text-[#3b82f6]'
+                      'bg-[rgba(59,130,246,0.2)] text-[var(--info)]'
                   }`}>
                   {selectedOrder.status.toUpperCase()}
                 </span>
-                <span className="text-sm text-[#9ca0b0]">
+                <span className="text-sm text-[var(--fg-muted)]">
                   {selectedOrder.dispatch_status !== 'pending' ? `Dispatch: ${selectedOrder.dispatch_status}` : ''}
                 </span>
               </div>
 
               {/* Customer Info */}
               <div>
-                <h3 className="text-sm font-medium text-[#646880] mb-3 uppercase tracking-wide">{t.admin.orders.table.customer || 'Customer'}</h3>
+                <h3 className="text-sm font-medium text-[var(--fg-secondary)] mb-3 uppercase tracking-wide">{t.admin.orders.table.customer || 'Customer'}</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-3 bg-[#202330] rounded-lg">
-                    <p className="text-xs text-[#646880]">Name</p>
-                    <p className="text-sm text-[#f0f2f5]">{selectedOrder.customer_name}</p>
+                    <p className="text-xs text-[var(--fg-secondary)]">Name</p>
+                    <p className="text-sm text-[var(--fg)]">{selectedOrder.customer_name}</p>
                   </div>
                   <div className="p-3 bg-[#202330] rounded-lg">
-                    <p className="text-xs text-[#646880]">Email</p>
-                    <p className="text-sm text-[#f0f2f5]">{selectedOrder.customer_email}</p>
+                    <p className="text-xs text-[var(--fg-secondary)]">Email</p>
+                    <p className="text-sm text-[var(--fg)]">{selectedOrder.customer_email}</p>
                   </div>
                   <div className="p-3 bg-[#202330] rounded-lg">
-                    <p className="text-xs text-[#646880]">Phone</p>
-                    <p className="text-sm text-[#f0f2f5]">{selectedOrder.customer_phone || '-'}</p>
+                    <p className="text-xs text-[var(--fg-secondary)]">Phone</p>
+                    <p className="text-sm text-[var(--fg)]">{selectedOrder.customer_phone || '-'}</p>
                   </div>
                   <div className="p-3 bg-[#202330] rounded-lg">
-                    <p className="text-xs text-[#646880]">Country</p>
-                    <p className="text-sm text-[#f0f2f5]">{selectedOrder.customer_country || '-'}</p>
+                    <p className="text-xs text-[var(--fg-secondary)]">Country</p>
+                    <p className="text-sm text-[var(--fg)]">{selectedOrder.customer_country || '-'}</p>
                   </div>
                 </div>
               </div>
 
               {/* Service Info */}
               <div>
-                <h3 className="text-sm font-medium text-[#646880] mb-3 uppercase tracking-wide">{t.admin.orders.table.package || 'Service'}</h3>
+                <h3 className="text-sm font-medium text-[var(--fg-secondary)] mb-3 uppercase tracking-wide">{t.admin.orders.table.package || 'Service'}</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-3 bg-[#202330] rounded-lg">
-                    <p className="text-xs text-[#646880]">Package</p>
-                    <p className="text-sm text-[#f0f2f5]">{selectedOrder.package_name}</p>
+                    <p className="text-xs text-[var(--fg-secondary)]">Package</p>
+                    <p className="text-sm text-[var(--fg)]">{selectedOrder.package_name}</p>
                   </div>
                   <div className="p-3 bg-[#202330] rounded-lg">
-                    <p className="text-xs text-[#646880]">Price</p>
-                    <p className="text-sm text-[#f0f2f5] font-semibold">${selectedOrder.package_price} {selectedOrder.currency?.toUpperCase()}</p>
+                    <p className="text-xs text-[var(--fg-secondary)]">Price</p>
+                    <p className="text-sm text-[var(--fg)] font-semibold">${selectedOrder.package_price} {selectedOrder.currency?.toUpperCase()}</p>
                   </div>
                   <div className="p-3 bg-[#202330] rounded-lg">
-                    <p className="text-xs text-[#646880]">Flight</p>
-                    <p className="text-sm text-[#f0f2f5]">{selectedOrder.airline}{selectedOrder.flight_number || '-'}</p>
+                    <p className="text-xs text-[var(--fg-secondary)]">Flight</p>
+                    <p className="text-sm text-[var(--fg)]">{selectedOrder.airline}{selectedOrder.flight_number || '-'}</p>
                   </div>
                   <div className="p-3 bg-[#202330] rounded-lg">
-                    <p className="text-xs text-[#646880]">Arrival</p>
-                    <p className="text-sm text-[#f0f2f5]">{selectedOrder.arrival_date} {selectedOrder.arrival_time || ''}</p>
+                    <p className="text-xs text-[var(--fg-secondary)]">Arrival</p>
+                    <p className="text-sm text-[var(--fg)]">{selectedOrder.arrival_date} {selectedOrder.arrival_time || ''}</p>
                   </div>
                 </div>
               </div>
@@ -341,19 +341,19 @@ function OrdersInner() {
               {/* Driver Info (if assigned) */}
               {selectedOrder.assigned_to && (
                 <div>
-                  <h3 className="text-sm font-medium text-[#646880] mb-3 uppercase tracking-wide">Driver</h3>
+                  <h3 className="text-sm font-medium text-[var(--fg-secondary)] mb-3 uppercase tracking-wide">Driver</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-3 bg-[rgba(16,185,129,0.1)] border border-[rgba(16,185,129,0.2)] rounded-lg">
-                      <p className="text-xs text-[#646880]">Name</p>
-                      <p className="text-sm text-[#10b981]">{selectedOrder.driver_name}</p>
+                      <p className="text-xs text-[var(--fg-secondary)]">Name</p>
+                      <p className="text-sm text-[var(--accent)]">{selectedOrder.driver_name}</p>
                     </div>
                     <div className="p-3 bg-[#202330] rounded-lg">
-                      <p className="text-xs text-[#646880]">Vehicle</p>
-                      <p className="text-sm text-[#f0f2f5]">{selectedOrder.driver_vehicle} ({selectedOrder.driver_plate})</p>
+                      <p className="text-xs text-[var(--fg-secondary)]">Vehicle</p>
+                      <p className="text-sm text-[var(--fg)]">{selectedOrder.driver_vehicle} ({selectedOrder.driver_plate})</p>
                     </div>
                     <div className="p-3 bg-[#202330] rounded-lg col-span-2">
-                      <p className="text-xs text-[#646880]">Phone</p>
-                      <p className="text-sm text-[#f0f2f5]">{selectedOrder.driver_phone || '-'}</p>
+                      <p className="text-xs text-[var(--fg-secondary)]">Phone</p>
+                      <p className="text-sm text-[var(--fg)]">{selectedOrder.driver_phone || '-'}</p>
                     </div>
                   </div>
                 </div>
@@ -362,32 +362,32 @@ function OrdersInner() {
               {/* Notes */}
               {selectedOrder.customer_notes && (
                 <div>
-                  <h3 className="text-sm font-medium text-[#646880] mb-3 uppercase tracking-wide">Notes</h3>
+                  <h3 className="text-sm font-medium text-[var(--fg-secondary)] mb-3 uppercase tracking-wide">Notes</h3>
                   <div className="p-3 bg-[#202330] rounded-lg">
-                    <p className="text-sm text-[#9ca0b0]">{selectedOrder.customer_notes}</p>
+                    <p className="text-sm text-[var(--fg-muted)]">{selectedOrder.customer_notes}</p>
                   </div>
                 </div>
               )}
 
               {/* Timeline / History */}
               <div>
-                <h3 className="text-sm font-medium text-[#646880] mb-3 uppercase tracking-wide">{t.admin.orders.timeline || 'Timeline'}</h3>
+                <h3 className="text-sm font-medium text-[var(--fg-secondary)] mb-3 uppercase tracking-wide">{t.admin.orders.timeline || 'Timeline'}</h3>
                 <div className="space-y-3">
                   {(selectedOrder.history || []).map((item, idx) => (
                     <div key={idx} className="flex items-start gap-3">
-                      <div className={`w-2 h-2 mt-1.5 rounded-full ${item.status === 'completed' ? 'bg-[#10b981]' :
+                      <div className={`w-2 h-2 mt-1.5 rounded-full ${item.status === 'completed' ? 'bg-[var(--accent)]' :
                           item.status === 'cancelled' ? 'bg-[#ef4450]' :
-                            item.status === 'assigned' ? 'bg-[#3b82f6]' :
-                              'bg-[#646880]'
+                            item.status === 'assigned' ? 'bg-[var(--info)]' :
+                              'bg-[var(--fg-secondary)]'
                         }`} />
                       <div className="flex-1">
-                        <p className="text-sm text-[#f0f2f5]">{item.description}</p>
-                        <p className="text-xs text-[#646880]">{formatDateTime(item.timestamp)}</p>
+                        <p className="text-sm text-[var(--fg)]">{item.description}</p>
+                        <p className="text-xs text-[var(--fg-secondary)]">{formatDateTime(item.timestamp)}</p>
                       </div>
                     </div>
                   ))}
                   {(!selectedOrder.history || selectedOrder.history.length === 0) && (
-                    <p className="text-sm text-[#646880]">{t.admin.orders.noTimeline || 'No timeline available'}</p>
+                    <p className="text-sm text-[var(--fg-secondary)]">{t.admin.orders.noTimeline || 'No timeline available'}</p>
                   )}
                 </div>
               </div>

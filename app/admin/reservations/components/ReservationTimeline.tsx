@@ -1,4 +1,4 @@
-import { Reservation } from '@/lib/reservations-api'
+import type { Reservation } from '@/lib/reservations-types'
 
 interface ReservationTimelineProps {
   reservations: Reservation[]
@@ -63,7 +63,7 @@ export default function ReservationTimeline({ reservations }: ReservationTimelin
           {/* Add connecting line except for last item */}
           {index < upcomingArrivals.length - 1 && (
             <div className="timeline-line">
-              <div className="timeline-dot" style={{ borderColor: '#e5e7eb' }} />
+              <div className="timeline-dot" style={{ borderColor: 'var(--border-light)' }} />
             </div>
           )}
         </div>

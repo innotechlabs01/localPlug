@@ -94,6 +94,54 @@ async function main() {
     return
   }
 
+  if (mode === 'clean-for-testing') {
+    console.log('🧹 Cleaning database for testing (preserving drivers & reference data)...\n')
+
+    // Tables to DELETE all rows from (transactional/generated data)
+    const tablesToClean = [
+      'orders',
+      'payments',
+      'order_status_history',
+      'order_comments',
+      'conversations',
+      'messages',
+      'chat_sessions',
+      'whatsapp_events',
+      'customers',
+      'cases',
+      'case_events',
+      'case_documents',
+      'case_tasks',
+      'employee_activity',
+    ]
+
+    for (const table of tablesToClean) {
+      try {
+        await db.execute(`DELETE FROM ${table}`)
+        console.log(`  ✓ ${table} cleaned`)
+      } catch (err: any) {
+        const msg = err.message || ''
+        if (msg.includes('no such table')) {
+          console.log(`  ⏭ ${table} (table does not exist, skipping)`)
+        } else {
+          console.error(`  ✗ ${table} FAILED: ${msg}`)
+        }
+      }
+    }
+
+    // Reset sqlite_sequence for cleaned tables
+    try {
+      await db.execute("DELETE FROM sqlite_sequence WHERE name IN ('orders','payments','order_status_history','conversations','messages','chat_sessions','whatsapp_events','customers','cases','case_events','case_documents','case_tasks')")
+      console.log('  ✓ autoincrement counters reset')
+    } catch {
+      // sqlite_sequence might not exist
+    }
+
+    console.log('\n✅ Database cleaned! Preserved: drivers, users, roles, lookup tables')
+    await db.close()
+    return
+  }
+
   // Default: apply all migrations
   const files = await getMigrationFiles()
   console.log(`Found ${files.length} migrations`)

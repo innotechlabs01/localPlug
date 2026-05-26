@@ -13,3 +13,24 @@ export function getDb() {
   }
   return _client
 }
+
+/**
+ * Safely build SET clause for UPDATE queries.
+ * Only allows column names in the whitelist, preventing SQL injection via column names.
+ */
+export function buildSafeUpdate(
+  updates: Record<string, unknown>,
+  allowedColumns: string[],
+): { setClauses: string[]; args: (string | number | boolean | null)[] } {
+  const setClauses: string[] = []
+  const args: (string | number | boolean | null)[] = []
+
+  for (const [key, value] of Object.entries(updates)) {
+    if (value !== undefined && key !== 'id' && allowedColumns.includes(key)) {
+      setClauses.push(`${key} = ?`)
+      args.push(value as string | number | boolean | null)
+    }
+  }
+
+  return { setClauses, args }
+}

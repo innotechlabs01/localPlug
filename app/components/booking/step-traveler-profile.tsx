@@ -67,20 +67,6 @@ interface LookupData {
   languages: LookupLanguage[]
 }
 
-const fallbackCountries: LookupCountry[] = [
-  { code: 'US', name: 'USA', flag: '🇺🇸' }, { code: 'CO', name: 'Colombia', flag: '🇨🇴' },
-  { code: 'MX', name: 'Mexico', flag: '🇲🇽' }, { code: 'AR', name: 'Argentina', flag: '🇦🇷' },
-  { code: 'ES', name: 'Spain', flag: '🇪🇸' }, { code: 'GB', name: 'UK', flag: '🇬🇧' },
-  { code: 'CA', name: 'Canada', flag: '🇨🇦' }, { code: 'BR', name: 'Brazil', flag: '🇧🇷' },
-  { code: 'CL', name: 'Chile', flag: '🇨🇱' }, { code: 'FR', name: 'France', flag: '🇫🇷' },
-  { code: 'DE', name: 'Germany', flag: '🇩🇪' }, { code: 'OT', name: 'Other', flag: '🌍' },
-]
-
-const fallbackLanguages: LookupLanguage[] = [
-  { code: 'en', name: 'English', native_name: 'English' }, { code: 'es', name: 'Spanish', native_name: 'Español' },
-  { code: 'pt', name: 'Portuguese', native_name: 'Português' }, { code: 'fr', name: 'French', native_name: 'Français' },
-  { code: 'de', name: 'German', native_name: 'Deutsch' }, { code: 'ot', name: 'Other', native_name: 'Other' },
-]
 
 export default function StepTravelerProfile({
   value,
@@ -99,8 +85,9 @@ export default function StepTravelerProfile({
   const { t } = useI18n()
   const profileT = t.booking.steps.profile
 
-  const [countries, setCountries] = useState<LookupCountry[]>(fallbackCountries)
-  const [languages, setLanguages] = useState<LookupLanguage[]>(fallbackLanguages)
+  const [countries, setCountries] = useState<LookupCountry[]>([])
+  const [languages, setLanguages] = useState<LookupLanguage[]>([])
+  const [lookupError, setLookupError] = useState(false)
 
   useEffect(() => {
     fetch('/api/admin/lookup')
@@ -109,7 +96,10 @@ export default function StepTravelerProfile({
         if (data.countries) setCountries(data.countries)
         if (data.languages) setLanguages(data.languages)
       })
-      .catch(() => {})
+      .catch(() => {
+        setLookupError(true)
+        console.error('[StepTravelerProfile] Failed to load lookup data')
+      })
   }, [])
 
   const profiles = [
@@ -167,20 +157,20 @@ export default function StepTravelerProfile({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-label-md text-[var(--text-primary)] font-semibold mb-1.5">Country</label>
+            <label className="block text-label-md text-[var(--text-primary)] font-semibold mb-1.5">{profileT.country}</label>
             <select value={country} onChange={(e) => onCountryChange(e.target.value)}
               className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-elevated)] text-body-md text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-gold)]/40 focus:border-[var(--accent-gold)] transition-all">
-              <option value="">Select country...</option>
+              <option value="">{profileT.selectCountry}</option>
               {countries.map(c => (
                 <option key={c.code} value={c.code}>{c.flag} {c.name}</option>
               ))}
             </select>
           </div>
           <div>
-            <label className="block text-label-md text-[var(--text-primary)] font-semibold mb-1.5">Language</label>
+            <label className="block text-label-md text-[var(--text-primary)] font-semibold mb-1.5">{profileT.language}</label>
             <select value={language} onChange={(e) => onLanguageChange(e.target.value)}
               className="w-full px-4 py-3 rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-elevated)] text-body-md text-white focus:outline-none focus:ring-2 focus:ring-[var(--accent-gold)]/40 focus:border-[var(--accent-gold)] transition-all">
-              <option value="">Select language...</option>
+              <option value="">{profileT.selectLanguage}</option>
               {languages.map(l => (
                 <option key={l.code} value={l.name}>{l.native_name || l.name}</option>
               ))}

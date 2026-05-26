@@ -14,30 +14,19 @@ interface AuthModalProps {
 
 function AuthModal({ open, onClose }: AuthModalProps) {
   if (!open) return null
-
   return (
     <div className="dp-modal-overlay" onClick={onClose}>
       <div className="dp-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 380 }}>
         <div className="dp-modal-header">
-          <span style={{ fontSize: 16, fontWeight: 600, color: '#f0f2f5' }}>Sesión Expirada</span>
+          <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--fg)' }}>Sesión Expirada</span>
         </div>
         <div className="dp-modal-body">
-          <p style={{ fontSize: 13, color: '#9ca0b0', marginBottom: 16 }}>
+          <p style={{ fontSize: 13, color: 'var(--fg-muted)', marginBottom: 16 }}>
             Tu sesión ha expirado. Por favor inicia sesión nuevamente para continuar.
           </p>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button
-              onClick={onClose}
-              style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid #282b38', background: 'transparent', color: '#f0f2f5', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
-            >
-              Cerrar
-            </button>
-            <button
-              onClick={() => window.location.href = '/'}
-              style={{ padding: '8px 16px', borderRadius: 6, border: 'none', background: '#10b981', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-            >
-              Ir al Inicio
-            </button>
+            <button onClick={onClose} style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--fg)', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>Cerrar</button>
+            <button onClick={() => window.location.href = '/'} style={{ padding: '8px 16px', borderRadius: 6, border: 'none', background: 'var(--accent)', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Ir al Inicio</button>
           </div>
         </div>
       </div>
@@ -69,25 +58,33 @@ interface DispatchData {
   orders: Order[]; drivers: Driver[]; counts: { pending: number; assigned: number; enroute: number; pickedup: number }
 }
 
-const theme = {
-  bg: '#0b0d14', surface: '#181b25', surfaceHover: '#202330', border: '#282b38', borderLight: '#1e2130',
-  fg: '#f0f2f5', fgSecondary: '#9ca0b0', fgMuted: '#646880',
-  accent: '#10b981', accentSoft: 'rgba(16,185,129,0.12)', accentGlow: 'rgba(16,185,129,0.2)',
-  warning: '#f59e0b', warningSoft: 'rgba(245,158,11,0.12)',
-  danger: '#ef4450', dangerSoft: 'rgba(239,68,80,0.12)',
-  info: '#3b82f6', infoSoft: 'rgba(59,130,246,0.12)',
-  gold: '#d4a84b', goldSoft: 'rgba(212,168,75,0.15)',
-  radiusSm: '6px', radiusMd: '10px', fontMono: "'JetBrains Mono', ui-monospace, monospace",
+const T = {
+  bg: 'var(--bg)', surface: 'var(--surface)', surfaceHover: 'var(--surface-hover)', border: 'var(--border)', borderLight: 'var(--surface-active)',
+  fg: 'var(--fg)', fgSecondary: 'var(--fg-muted)', fgMuted: 'var(--fg-secondary)',
+  accent: 'var(--accent)', accentSoft: 'rgba(16,185,129,0.12)', accentGlow: 'rgba(16,185,129,0.2)',
+  warning: 'var(--warning)', warningSoft: 'rgba(245,158,11,0.12)',
+  danger: 'var(--danger)', dangerSoft: 'rgba(239,68,80,0.12)',
+  info: 'var(--info)', infoSoft: 'rgba(59,130,246,0.12)',
+  gold: 'var(--gold)', goldSoft: 'rgba(212,168,75,0.15)',
+  radiusSm: '6px', radiusMd: '10px',
+  fontMono: "'JetBrains Mono', ui-monospace, monospace",
 }
 
 const dispatchStatuses = ['pending', 'assigned', 'enroute', 'pickedup', 'completed'] as const
+const STATUS_LABELS: Record<string, string> = { pending: 'Pending', assigned: 'Assigned', enroute: 'En Route', pickedup: 'Picked Up', completed: 'Completed' }
+
+const COUNTRY_FLAGS: Record<string, string> = {
+  'Argentina': '🇦🇷', 'USA': '🇺🇸', 'United States': '🇺🇸', 'Spain': '🇪🇸', 'Mexico': '🇲🇽',
+  'UK': '🇬🇧', 'United Kingdom': '🇬🇧', 'Colombia': '🇨🇴', 'Canada': '🇨🇦', 'Italy': '🇮🇹',
+  'Brazil': '🇧🇷', 'Germany': '🇩🇪', 'France': '🇫🇷', 'Chile': '🇨🇱', 'Peru': '🇵🇪',
+}
 
 export default function DispatchPage() {
   const { t } = useI18n()
   const d = t.admin.dispatch
   const [data, setData] = useState<DispatchData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState('all')
+  const [tab, setTab] = useState<string>('all')
   const [search, setSearch] = useState('')
   const [query, setQuery] = useState('')
   const [driverCat, setDriverCat] = useState('all')
@@ -96,7 +93,6 @@ export default function DispatchPage() {
   const [modalDriverId, setModalDriverId] = useState<number | null>(null)
   const [assignedDrivers, setAssignedDrivers] = useState<Record<number, number>>({})
   const [notifications, setNotifications] = useState<{ id: number; type: string; title: string; desc: string }[]>([])
-
   const [authModalOpen, setAuthModalOpen] = useState(false)
 
   const fetchData = useCallback(async () => {
@@ -104,11 +100,10 @@ export default function DispatchPage() {
     if (search) params.set('search', search)
     try {
       const res = await adminFetch(`/api/admin/dispatch?${params}`)
-      const d: DispatchData = await res.json()
-      setData(d)
-      // Track assigned drivers
+      const json: DispatchData = await res.json()
+      setData(json)
       const map: Record<number, number> = {}
-      for (const o of d.orders || []) {
+      for (const o of json.orders || []) {
         if (o.assigned_to) map[o.id] = o.assigned_to
       }
       setAssignedDrivers(map)
@@ -122,9 +117,7 @@ export default function DispatchPage() {
     setLoading(false)
   }, [tab, search, driverCat])
 
-  const handleAuthError = useCallback(() => {
-    setAuthModalOpen(true)
-  }, [])
+  const handleAuthError = useCallback(() => { setAuthModalOpen(true) }, [])
 
   useEffect(() => { fetchData() }, [fetchData])
   usePolling(fetchData, { intervalMs: 10_000, onAuthError: handleAuthError })
@@ -136,19 +129,19 @@ export default function DispatchPage() {
   }
 
   const selectedOrder = useMemo(() => data?.orders.find(o => o.id === selectedId) || null, [data, selectedId])
-  const selectedDriver = useMemo(() => data?.drivers.find(d => d.id === modalDriverId) || null, [data, modalDriverId])
+  const selectedDriver = useMemo(() => data?.drivers.find(drv => drv.id === modalDriverId) || null, [data, modalDriverId])
 
   const suggestedDrivers = useMemo(() =>
-    data?.drivers.filter(d => {
-      if (d.status !== 'available') return false
-      if (selectedOrder?.priority === 'urgent' && d.experience_level !== 'Senior') return false
+    data?.drivers.filter(drv => {
+      if (drv.status !== 'available') return false
+      if (selectedOrder?.priority === 'urgent' && drv.experience_level !== 'Senior') return false
       return true
     }) || [],
     [data, selectedOrder]
   )
 
   const otherDrivers = useMemo(() =>
-    data?.drivers.filter(d => d.status === 'available' && !suggestedDrivers.find(s => s.id === d.id)) || [],
+    data?.drivers.filter(drv => drv.status === 'available' && !suggestedDrivers.find(s => s.id === drv.id)) || [],
     [data, suggestedDrivers]
   )
 
@@ -159,7 +152,7 @@ export default function DispatchPage() {
       body: JSON.stringify({ action: 'assign', orderId, driverId }),
     })
     if (res.ok) {
-      addNotif('assign', d.notifAssigned, `${d.notifAssignedDesc}${orderId}`)
+      addNotif('success', d.notifAssigned || 'Driver Assigned', `${d.notifAssignedDesc || 'Order'} ${orderId}`)
       setAssignedDrivers(p => ({ ...p, [orderId]: driverId }))
       setModalOpen(false)
       fetchData()
@@ -172,7 +165,7 @@ export default function DispatchPage() {
       body: JSON.stringify({ action: 'unassign', orderId }),
     })
     if (res.ok) {
-      addNotif('unassign', d.notifUnassigned, `${d.notifUnassignedDesc} ${orderId}`)
+      addNotif('warning', d.notifUnassigned || 'Unassigned', `${d.notifUnassignedDesc || 'Order'} ${orderId}`)
       const newMap = { ...assignedDrivers }
       delete newMap[orderId]
       setAssignedDrivers(newMap)
@@ -186,7 +179,7 @@ export default function DispatchPage() {
       body: JSON.stringify({ action: 'status', orderId, status }),
     })
     if (res.ok) {
-      addNotif('status', `${d.notifStatus}${status}`, `${d.notifStatusDesc}${orderId}`)
+      addNotif('info', `${d.notifStatus || 'Status: '}${status}`, `${d.notifStatusDesc || 'Order'} ${orderId}`)
       fetchData()
     }
   }
@@ -196,7 +189,6 @@ export default function DispatchPage() {
   const counts = data?.counts || { pending: 0, assigned: 0, enroute: 0, pickedup: 0 }
 
   const getStatusStep = (status: string | null) => dispatchStatuses.indexOf((status || 'pending') as typeof dispatchStatuses[number])
-
   const isVip = (o: Order) => o.priority === 'high' || o.priority === 'urgent'
 
   const filteredOrders = useMemo(() => {
@@ -222,216 +214,85 @@ export default function DispatchPage() {
     return list
   }, [orders, tab, query])
 
-  if (loading) {
-    return <div className="flex items-center justify-center h-full text-[#646880]">{d.selectRequest}...</div>
+  const getCountryFlag = (country: string | null) => {
+    if (!country) return ''
+    return COUNTRY_FLAGS[country] || ''
   }
 
+  const getDispatchStatusClass = (status: string | null) => {
+    const s = status || 'pending'
+    if (s === 'assigned') return 'assigned'
+    if (s === 'enroute') return 'enroute'
+    if (s === 'pickedup') return 'pickedup'
+    if (s === 'completed') return 'completed'
+    return 'pending'
+  }
+
+  if (loading) {
+    return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: T.fgMuted }}>{d.selectRequest || 'Loading'}...</div>
+  }
 
   return (
     <RealtimeProvider>
     <>
-      <style>{`
-        .dispatch-layout {
-          display: grid;
-          grid-template-columns: 380px 1fr 400px;
-          gap: 0;
-          height: calc(100vh - 60px);
-          overflow: hidden;
-        }
-        .dispatch-panel { overflow-y: auto; height: 100%; }
-        .dispatch-panel::-webkit-scrollbar { width: 4px; }
-        .dispatch-panel::-webkit-scrollbar-thumb { background: ${theme.border}; border-radius: 2px; }
-        .dispatch-left { border-right: 1px solid ${theme.border}; background: ${theme.bg}; }
-        .dispatch-center { background: ${theme.surface}; }
-        .dispatch-right { border-left: 1px solid ${theme.border}; background: ${theme.bg}; }
-        
-        .dp-header {
-          padding: 16px 16px 12px; border-bottom: 1px solid ${theme.borderLight};
-          display: flex; align-items: center; justify-content: space-between;
-        }
-        .dp-header-title { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
-        .dp-header-count { font-size: 11px; color: ${theme.fgMuted}; background: ${theme.surface}; padding: 2px 8px; border-radius: 10px; font-weight: 500; }
-        
-        .dp-search-bar { margin: 12px 16px; position: relative; }
-        .dp-search-bar input {
-          width: 100%; padding: 8px 12px 8px 34px; background: ${theme.bg};
-          border: 1px solid ${theme.border}; border-radius: ${theme.radiusSm};
-          color: ${theme.fg}; font-size: 13px; outline: none;
-        }
-        .dp-search-bar input:focus { border-color: ${theme.accent}; box-shadow: 0 0 0 3px ${theme.accentSoft}; }
-        .dp-search-bar svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: ${theme.fgMuted}; }
-        
-        .dp-filter-tabs { display: flex; gap: 4px; margin: 0 16px 12px; overflow-x: auto; }
-        .dp-filter-tab {
-          padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;
-          background: transparent; color: ${theme.fgMuted}; border: 1px solid ${theme.border};
-          cursor: pointer; white-space: nowrap; transition: all 200ms;
-        }
-        .dp-filter-tab:hover { border-color: ${theme.fgMuted}; color: ${theme.fgSecondary}; }
-        .dp-filter-tab.active { background: ${theme.accentSoft}; color: ${theme.accent}; border-color: ${theme.accent}; }
-        
-        .dp-request-list { padding: 0 8px 16px; }
-        .dp-request-card {
-          display: grid; grid-template-columns: 4px 1fr auto; gap: 12px;
-          padding: 12px 12px 12px 0; border-radius: ${theme.radiusSm};
-          cursor: pointer; transition: all 200ms;
-        }
-        .dp-request-card:hover { background: ${theme.surfaceHover}; }
-        .dp-request-card.selected { background: ${theme.accentSoft}; }
-        .dp-request-priority { width: 4px; border-radius: 2px; align-self: stretch; }
-        .dp-request-priority.high { background: ${theme.danger}; }
-        .dp-request-priority.medium { background: ${theme.warning}; }
-        .dp-request-priority.low { background: ${theme.accent}; }
-        .dp-request-name { font-size: 13px; font-weight: 600; color: ${theme.fg}; display: flex; align-items: center; gap: 6px; }
-        .dp-request-meta { font-size: 11px; color: ${theme.fgMuted}; margin-top: 2px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
-        .dp-request-flight { font-family: ${theme.fontMono}; background: ${theme.surface}; padding: 0 5px; border-radius: 3px; font-size: 10px; }
-        .dp-request-right { text-align: right; }
-        .dp-request-time { font-size: 12px; font-weight: 600; color: ${theme.fg}; font-family: ${theme.fontMono}; }
-        .dp-request-status { font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 8px; }
-        .dp-vip-badge {
-          display: inline-flex; align-items: center; gap: 3px;
-          background: ${theme.goldSoft}; color: ${theme.gold};
-          font-size: 9px; font-weight: 600; padding: 1px 6px; border-radius: 6px;
-          text-transform: uppercase; letter-spacing: 0.3px;
-        }
-        .dp-payment-badge { font-size: 10px; font-weight: 500; }
-        .dp-payment-badge.paid { color: ${theme.accent}; }
-        .dp-payment-badge.pending { color: ${theme.warning}; }
-        
-        /* Center Panel */
-        .dp-empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 16px; color: ${theme.fgMuted}; }
-        .dp-detail-header { padding: 20px 24px; border-bottom: 1px solid ${theme.borderLight}; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
-        .dp-detail-guest { display: flex; align-items: center; gap: 14px; }
-        .dp-detail-avatar {
-          width: 44px; height: 44px; border-radius: 50%;
-          background: linear-gradient(135deg, ${theme.accent}, #059669);
-          display: flex; align-items: center; justify-content: center;
-          color: white; font-weight: 600; font-size: 16px; flex-shrink: 0;
-        }
-        .dp-detail-guest-info h2 { font-size: 18px; font-weight: 600; }
-        .dp-detail-guest-info .guest-sub { font-size: 12px; color: ${theme.fgMuted}; display: flex; align-items: center; gap: 6px; margin-top: 2px; }
-        .dp-detail-actions { display: flex; gap: 8px; }
-        
-        .dp-timeline-bar { display: flex; align-items: center; gap: 0; padding: 16px 24px; border-bottom: 1px solid ${theme.borderLight}; overflow-x: auto; }
-        .dp-timeline-step { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-        .dp-timeline-dot { width: 10px; height: 10px; border-radius: 50%; background: ${theme.border}; flex-shrink: 0; }
-        .dp-timeline-dot.completed { background: ${theme.accent}; box-shadow: 0 0 6px ${theme.accentGlow}; }
-        .dp-timeline-dot.active { background: ${theme.info}; box-shadow: 0 0 8px rgba(59,130,246,0.4); animation: pulseDot 2s ease-in-out infinite; }
-        @keyframes pulseDot { 0%,100% { transform: scale(1); } 50% { transform: scale(1.3); } }
-        .dp-timeline-label { font-size: 10px; color: ${theme.fgMuted}; white-space: nowrap; font-weight: 500; }
-        .dp-timeline-label.completed { color: ${theme.accent}; }
-        .dp-timeline-label.active { color: ${theme.info}; }
-        .dp-timeline-connector { width: 24px; height: 2px; background: ${theme.border}; margin: 0 4px; flex-shrink: 0; }
-        .dp-timeline-connector.completed { background: ${theme.accent}; }
-        
-        .dp-detail-sections { padding: 20px 24px 24px; display: flex; flex-direction: column; gap: 20px; }
-        .dp-section-card { background: ${theme.surface}; border: 1px solid ${theme.border}; border-radius: ${theme.radiusMd}; overflow: hidden; }
-        .dp-section-header { padding: 12px 16px; border-bottom: 1px solid ${theme.borderLight}; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
-        .dp-section-body { padding: 16px; }
-        .dp-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .dp-info-item { display: flex; flex-direction: column; gap: 2px; }
-        .dp-info-label { font-size: 10px; color: ${theme.fgMuted}; text-transform: uppercase; letter-spacing: 0.3px; font-weight: 500; }
-        .dp-info-value { font-size: 13px; font-weight: 500; color: ${theme.fg}; }
-        .dp-info-value.mono { font-family: ${theme.fontMono}; font-size: 12px; }
-        .dp-note-text { font-size: 13px; color: ${theme.fgSecondary}; line-height: 1.6; padding: 10px 12px; background: ${theme.bg}; border-radius: ${theme.radiusSm}; border-left: 3px solid ${theme.accent}; }
-        
-        .dp-suggested-label { font-size: 11px; font-weight: 600; color: ${theme.accent}; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
-        .dp-driver-suggestion {
-          display: flex; align-items: center; gap: 12px; padding: 12px;
-          background: ${theme.accentSoft}; border: 1px solid ${theme.accent};
-          border-radius: ${theme.radiusSm}; margin-bottom: 8px; cursor: pointer;
-        }
-        .dp-driver-suggestion .d-photo { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, ${theme.accent}, #059669); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 14px; flex-shrink: 0; }
-        .dp-driver-suggestion .d-info { flex: 1; min-width: 0; }
-        .dp-driver-suggestion .d-name { font-size: 13px; font-weight: 600; }
-        .dp-driver-suggestion .d-detail { font-size: 11px; color: ${theme.fgMuted}; display: flex; align-items: center; gap: 6px; margin-top: 1px; }
-        .dp-driver-suggestion .d-badge { font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 8px; }
-        .dp-driver-suggestion .d-badge.match { background: ${theme.accentSoft}; color: ${theme.accent}; }
-        
-        .dp-other-label { font-size: 11px; color: ${theme.fgMuted}; font-weight: 500; margin-bottom: 8px; }
-        .dp-other-driver { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: ${theme.bg}; border: 1px solid ${theme.borderLight}; border-radius: ${theme.radiusSm}; margin-bottom: 6px; cursor: pointer; }
-        .dp-other-driver:hover { background: ${theme.surfaceHover}; border-color: ${theme.border}; }
-        .dp-other-driver .d-photo { width: 34px; height: 34px; border-radius: 50%; background: ${theme.surfaceHover}; display: flex; align-items: center; justify-content: center; color: ${theme.fgSecondary}; font-weight: 600; font-size: 12px; flex-shrink: 0; }
-        
-        .dp-assign-btn { margin-top: 12px; width: 100%; padding: 10px; background: ${theme.accent}; color: white; border: none; border-radius: ${theme.radiusSm}; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; }
-        .dp-assign-btn:hover { background: #059669; box-shadow: 0 0 20px ${theme.accentGlow}; }
-        .dp-assign-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-        
-        /* Right panel */
-        .dp-cat-tabs { display: flex; gap: 4px; margin: 12px 16px; flex-wrap: wrap; }
-        .dp-cat-tab { padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: 500; background: transparent; color: ${theme.fgMuted}; border: 1px solid ${theme.border}; cursor: pointer; white-space: nowrap; }
-        .dp-cat-tab:hover { border-color: ${theme.fgMuted}; }
-        .dp-cat-tab.active { background: ${theme.accentSoft}; color: ${theme.accent}; border-color: ${theme.accent}; }
-        
-        .dp-driver-list { padding: 0 12px 16px; }
-        .dp-driver-card {
-          display: grid; grid-template-columns: 44px 1fr auto; gap: 12px; padding: 12px;
-          background: ${theme.surface}; border: 1px solid ${theme.border}; border-radius: ${theme.radiusMd};
-          margin-bottom: 8px; cursor: grab;
-        }
-        .dp-driver-card:hover { border-color: ${theme.accent}; box-shadow: 0 0 0 1px ${theme.accentSoft}; }
-        .dp-driver-card.suggested { border-color: ${theme.accent}; background: ${theme.accentSoft}; }
-        .dp-driver-card.unavailable { opacity: 0.5; cursor: not-allowed; }
-        .dp-driver-card.assigned { border-color: ${theme.info}; background: ${theme.infoSoft}; opacity: 0.65; }
-        
-        .dp-driver-photo { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, ${theme.accent}, #059669); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 15px; flex-shrink: 0; position: relative; }
-        .dp-driver-photo .status-ring { position: absolute; bottom: -2px; right: -2px; width: 14px; height: 14px; border-radius: 50%; border: 2px solid ${theme.surface}; }
-        .dp-driver-photo .status-ring.online { background: ${theme.accent}; }
-        .dp-driver-photo .status-ring.offline { background: ${theme.fgMuted}; }
-        .dp-driver-photo .status-ring.busy { background: ${theme.warning}; }
-        
-        .dp-driver-info { min-width: 0; }
-        .dp-driver-name { font-size: 13px; font-weight: 600; color: ${theme.fg}; display: flex; align-items: center; gap: 6px; }
-        .dp-driver-detail { font-size: 11px; color: ${theme.fgMuted}; margin-top: 2px; }
-        .dp-driver-right { text-align: right; }
-        .dp-driver-stat { font-size: 12px; font-weight: 600; font-family: ${theme.fontMono}; color: ${theme.fg}; }
-        
-        .notif-stack { position: fixed; bottom: 24px; right: 24px; display: flex; flex-direction: column; gap: 8px; z-index: 2000; }
-        .notif-card { background: ${theme.surface}; border: 1px solid ${theme.border}; border-radius: ${theme.radiusMd}; padding: 12px 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.4); min-width: 260px; animation: slideUp 300ms ease; }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-        .notif-title { font-size: 12px; font-weight: 600; }
-        .notif-desc { font-size: 11px; color: ${theme.fgSecondary}; margin-top: 2px; }
-        
-        .dp-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-        .dp-modal { background: ${theme.surface}; border: 1px solid ${theme.border}; border-radius: ${theme.radiusMd}; width: 100%; max-width: 440px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
-        .dp-modal-header { padding: 20px 24px 0; display: flex; align-items: center; justify-content: space-between; }
-        .dp-modal-body { padding: 20px 24px; display: flex; flex-direction: column; gap: 12px; }
-        .dp-modal-footer { padding: 0 24px 20px; display: flex; gap: 8px; justify-content: flex-end; }
-        
-        .gp { font-family: ${theme.fontMono}; background: ${theme.surface}; padding: 0 5px; border-radius: 3px; font-size: 10px; }
-      `}</style>
+
+      {/* ── Smart Alerts Bar ── */}
+      {counts.pending > 3 && (
+        <div className="dp-alerts-bar">
+          <div className="dp-alert-chip warning">
+            <span className="dot" style={{ background: T.warning }} />
+            {counts.pending} pending requests need assignment
+          </div>
+        </div>
+      )}
 
       <div className="dispatch-layout">
         {/* ── Left Panel: Requests ── */}
         <div className="dispatch-panel dispatch-left">
-            <div className="dp-header">
+          <div className="dp-header">
             <div className="dp-header-title">
-              {d.requests}
-              <span className="dp-header-count">{orders.length}</span>
+              {d.requests || 'Requests'}
+              <span className="dp-header-count">{filteredOrders.length}</span>
             </div>
-            <button onClick={fetchData} style={{ background: 'none', border: 'none', color: theme.fgSecondary, cursor: 'pointer', fontSize: '18px', padding: '4px' }} title={d.refresh}>↻</button>
+            <button onClick={fetchData} style={{ background: 'none', border: 'none', color: T.fgSecondary, cursor: 'pointer', fontSize: 14, padding: '4px', display: 'flex', alignItems: 'center', gap: 6 }} title={d.refresh || 'Refresh'}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              {d.refresh || 'Refresh'}
+            </button>
           </div>
 
           <div className="dp-search-bar">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-            <input placeholder={d.searchPlaceholder} value={query} onChange={e => setQuery(e.target.value)} />
+            <input placeholder={d.searchPlaceholder || 'Search by name, flight, hotel...'} value={query} onChange={e => setQuery(e.target.value)} />
+          </div>
+
+          <div className="dp-left-stats">
+            <div className="dp-left-stat">
+              <div className="val" style={{ color: T.warning }}>{counts.pending}</div>
+              <div className="lbl">Pending</div>
+            </div>
+            <div className="dp-left-stat">
+              <div className="val" style={{ color: T.accent }}>{counts.assigned}</div>
+              <div className="lbl">Assigned</div>
+            </div>
+            <div className="dp-left-stat">
+              <div className="val" style={{ color: T.info }}>{counts.enroute}</div>
+              <div className="lbl">En Route</div>
+            </div>
           </div>
 
           <div className="dp-filter-tabs">
-            {(['today', 'all', 'pending', 'assigned', 'enroute', 'pickedup', 'completed', 'vip'] as const).map(t => (
-              <button key={t} className={`dp-filter-tab ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
-                {t === 'today' ? 'Today' : t === 'all' ? d.all : t === 'pending' ? d.pending : t === 'assigned' ? d.assigned : t === 'enroute' ? d.enroute : t === 'pickedup' ? d.pickedup : t === 'completed' ? d.completed : d.vIP}
+            {(['all', 'pending', 'assigned', 'enroute', 'vip'] as const).map(f => (
+              <button key={f} className={`dp-filter-tab ${tab === f ? 'active' : ''}`} onClick={() => setTab(f)}>
+                {f === 'all' ? (d.all || 'All') : f === 'pending' ? (d.pending || 'Pending') : f === 'assigned' ? (d.assigned || 'Assigned') : f === 'enroute' ? (d.enroute || 'En Route') : (d.vIP || 'VIP')}
               </button>
             ))}
           </div>
 
           <div className="dp-request-list">
             {filteredOrders.length === 0 ? (
-              <div className="dp-empty-state" style={{ padding: '48px 24px', textAlign: 'center' }}>
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.3">
-                  <circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/>
-                </svg>
-                <p style={{ fontSize: 13 }}>{d.noRequests}</p>
+              <div className="dp-empty-state" style={{ padding: '48px 24px' }}>
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.3"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/></svg>
+                <p>{d.noRequests || 'No requests found'}</p>
               </div>
             ) : filteredOrders.map(order => (
               <div
@@ -442,26 +303,24 @@ export default function DispatchPage() {
                 <div className={`dp-request-priority ${order.priority === 'urgent' ? 'high' : order.priority === 'high' ? 'medium' : 'low'}`} />
                 <div className="dp-request-body">
                   <div className="dp-request-name">
-                    {order.customer_name || d.customer}
-                    {isVip(order) && <span className="dp-vip-badge">{d.vIP}</span>}
-                    {order.assigned_to && <span className="dp-flight" style={{ fontFamily: theme.fontMono, background: theme.surface, padding: '0 5px', borderRadius: 3, fontSize: 10, color: theme.info }}>#{order.id}</span>}
+                    {order.customer_name || d.customer || 'Customer'}
+                    {isVip(order) && <span className="dp-vip-badge">VIP</span>}
+                    {getCountryFlag(order.customer_country) && <span style={{ fontSize: 10 }}>{getCountryFlag(order.customer_country)}</span>}
                   </div>
                   <div className="dp-request-meta">
                     {order.flight_number && <span className="dp-request-flight">{order.flight_number}</span>}
                     <span>{order.airline || ''}</span>
-                    <span>·</span>
-                    <span>{order.package_name || ''}</span>
+                    {order.package_name && <><span>·</span><span>{order.package_name}</span></>}
                     {order.destination_address && <><span>·</span><span>{order.destination_address}</span></>}
                   </div>
                 </div>
                 <div className="dp-request-right">
                   <div className="dp-request-time">{order.arrival_time?.substring(0, 5) || '--:--'}</div>
-                  <span className={`dp-request-status ${order.dispatch_status || 'pending'}`}
-                    style={{
-                      background: order.dispatch_status === 'assigned' ? theme.accentSoft : order.dispatch_status === 'enroute' ? theme.infoSoft : order.dispatch_status === 'pickedup' ? 'rgba(139,92,246,0.12)' : order.dispatch_status === 'completed' ? theme.accentSoft : theme.warningSoft,
-                      color: order.dispatch_status === 'assigned' ? theme.accent : order.dispatch_status === 'enroute' ? theme.info : order.dispatch_status === 'pickedup' ? '#8b5cf6' : order.dispatch_status === 'completed' ? theme.accent : theme.warning,
-                    }}>
-                    {(order.dispatch_status || 'pending').charAt(0).toUpperCase() + (order.dispatch_status || 'pending').slice(1)}
+                  <span className={`dp-request-status ${getDispatchStatusClass(order.dispatch_status)}`}>
+                    {STATUS_LABELS[order.dispatch_status || 'pending'] || 'Pending'}
+                  </span>
+                  <span className={`dp-payment-badge ${order.payment_status === 'completed' ? 'paid' : 'pending-payment'}`}>
+                    {order.payment_status === 'completed' ? 'Paid' : 'Pending'}
                   </span>
                 </div>
               </div>
@@ -472,35 +331,34 @@ export default function DispatchPage() {
         {/* ── Center Panel: Detail View ── */}
         <div className="dispatch-panel dispatch-center">
           {!selectedOrder ? (
-            <div className="dp-empty-state" style={{ padding: 24, textAlign: 'center', color: theme.fgMuted }}>
-              <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.3">
-                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-              </svg>
-              <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.fgSecondary }}>{d.selectRequest}</h3>
-              <p style={{ fontSize: 13, maxWidth: 260, textAlign: 'center', lineHeight: 1.5 }}>{d.selectRequestDesc}</p>
+            <div className="dp-empty-state">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+              <h3>{d.selectRequest || 'Select a booking'}</h3>
+              <p>{d.selectRequestDesc || 'Choose a customer request from the left panel to view details and assign a driver.'}</p>
             </div>
           ) : (
-            <>
+            <div className="dp-detail-view active">
+              {/* Guest Header */}
               <div className="dp-detail-header">
                 <div className="dp-detail-guest">
                   <div className="dp-detail-avatar">
-                    {(selectedOrder.customer_name || 'G')[0]}
+                    {(selectedOrder.customer_name || 'G').split(' ').map(w => w[0]).join('').substring(0, 2)}
                   </div>
                   <div className="dp-detail-guest-info">
-                    <h2>{selectedOrder.customer_name || d.customer}</h2>
+                    <h2>{selectedOrder.customer_name || d.customer || 'Customer'}</h2>
                     <div className="guest-sub">
-                      <span>{selectedOrder.customer_country || ''}</span>
+                      <span>{getCountryFlag(selectedOrder.customer_country)} {selectedOrder.customer_country || ''}</span>
+                      {selectedOrder.flight_number && <><span>·</span><span>{selectedOrder.flight_number}</span></>}
                       {selectedOrder.customer_phone && <><span>·</span><span>{selectedOrder.customer_phone}</span></>}
                     </div>
                   </div>
                 </div>
                 <div className="dp-detail-actions">
-                  {selectedOrder.assigned_to ? (
-                    <button className="dp-assign-btn" style={{ width: 'auto', padding: '8px 14px', fontSize: 12, background: theme.bg, color: theme.danger, border: `1px solid ${theme.danger}` }}
-                      onClick={() => doUnassign(selectedOrder.id)}>
-                      {d.unassign}
+                  {selectedOrder.assigned_to && (
+                    <button onClick={() => doUnassign(selectedOrder.id)} style={{ padding: '8px 14px', borderRadius: T.radiusSm, border: `1px solid ${T.danger}`, background: 'transparent', color: T.danger, fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>
+                      {d.unassign || 'Unassign'}
                     </button>
-                  ) : null}
+                  )}
                 </div>
               </div>
 
@@ -508,70 +366,65 @@ export default function DispatchPage() {
               <div className="dp-timeline-bar">
                 {dispatchStatuses.map((s, i) => {
                   const currentStep = getStatusStep(selectedOrder.dispatch_status)
-                  const completed = i <= currentStep
+                  const completed = i < currentStep || (i === currentStep && s === 'completed')
                   const active = i === currentStep
                   return (
                     <div key={s} className="dp-timeline-step">
-                      <div>
-                        <div className={`dp-timeline-dot ${completed && (s === 'completed' || currentStep === dispatchStatuses.length - 1) ? 'completed' : active ? 'active' : ''}`} />
-                        <div className={`dp-timeline-label ${completed && (s === 'completed' || currentStep === dispatchStatuses.length - 1) ? 'completed' : active ? 'active' : ''}`}>
-                          {s === 'pickedup' ? d.pickedup : s === 'assigned' ? d.assigned : s === 'completed' ? d.completed : s === 'enroute' ? d.enroute : d.pending}
-                        </div>
-                      </div>
+                      <div className={`dp-timeline-dot ${completed ? 'completed' : active ? 'active' : ''}`} />
+                      <span className={`dp-timeline-label ${completed ? 'completed' : active ? 'active' : ''}`}>
+                        {STATUS_LABELS[s] || s}
+                      </span>
                       {i < dispatchStatuses.length - 1 && <div className={`dp-timeline-connector ${completed ? 'completed' : ''}`} />}
                     </div>
                   )
                 })}
               </div>
 
+              {/* Sections */}
               <div className="dp-detail-sections">
-                {/* Flight & Service */}
+                {/* Tourist Information */}
                 <div className="dp-section-card">
                   <div className="dp-section-header">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5"/><path d="M18 12v5"/><path d="M10 14l2 1 2-1"/>
-                    </svg>
-                    {d.flightService}
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    Tourist Information
                   </div>
                   <div className="dp-section-body">
                     <div className="dp-info-grid">
-                      <div className="dp-info-item"><span className="dp-info-label">{d.flight}</span><span className="dp-info-value mono">{selectedOrder.flight_number || '—'}</span></div>
-                      <div className="dp-info-item"><span className="dp-info-label">{d.airline}</span><span className="dp-info-value">{selectedOrder.airline || '—'}</span></div>
-                      <div className="dp-info-item"><span className="dp-info-label">{d.arrival}</span><span className="dp-info-value mono">{selectedOrder.arrival_date} {selectedOrder.arrival_time || ''}</span></div>
+                      <div className="dp-info-item"><span className="dp-info-label">Full Name</span><span className="dp-info-value">{selectedOrder.customer_name || '—'}</span></div>
+                      <div className="dp-info-item"><span className="dp-info-label">Country</span><span className="dp-info-value">{getCountryFlag(selectedOrder.customer_country)} {selectedOrder.customer_country || '—'}</span></div>
+                      <div className="dp-info-item"><span className="dp-info-label">Phone</span><span className="dp-info-value mono">{selectedOrder.customer_phone || '—'}</span></div>
+                      <div className="dp-info-item"><span className="dp-info-label">Email</span><span className="dp-info-value mono">{selectedOrder.customer_email || '—'}</span></div>
+                      <div className="dp-info-item"><span className="dp-info-label">VIP Level</span><span className="dp-info-value">{isVip(selectedOrder) ? 'VIP — Premium' : 'Standard'}</span></div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Service Details */}
+                <div className="dp-section-card">
+                  <div className="dp-section-header">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 17h14M5 17a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2"/><circle cx="7" cy="14" r="2"/><circle cx="17" cy="14" r="2"/></svg>
+                    Service Details
+                  </div>
+                  <div className="dp-section-body">
+                    <div className="dp-info-grid">
+                      <div className="dp-info-item"><span className="dp-info-label">Package</span><span className="dp-info-value">{selectedOrder.package_name || '—'}</span></div>
+                      <div className="dp-info-item"><span className="dp-info-label">Service Type</span><span className="dp-info-value">{selectedOrder.status || '—'}</span></div>
+                      <div className="dp-info-item"><span className="dp-info-label">Arrival</span><span className="dp-info-value mono">{selectedOrder.arrival_date} {selectedOrder.arrival_time || ''}</span></div>
+                      <div className="dp-info-item"><span className="dp-info-label">Flight</span><span className="dp-info-value mono">{selectedOrder.flight_number || '—'}</span></div>
                       {selectedOrder.return_date && (
-                        <div className="dp-info-item"><span className="dp-info-label">{d.returnLabel || 'Return'}</span><span className="dp-info-value mono">{selectedOrder.return_date} {selectedOrder.return_time || ''}</span></div>
+                        <div className="dp-info-item"><span className="dp-info-label">Return</span><span className="dp-info-value mono">{selectedOrder.return_date} {selectedOrder.return_time || ''}</span></div>
                       )}
-                      <div className="dp-info-item"><span className="dp-info-label">{d.service}</span><span className="dp-info-value">{selectedOrder.package_name || '—'}</span></div>
-                      <div className="dp-info-item"><span className="dp-info-label">{d.destination}</span><span className="dp-info-value">{selectedOrder.destination_address || '—'}</span></div>
-                      <div className="dp-info-item"><span className="dp-info-label">{d.priority}</span><span className="dp-info-value" style={{ color: selectedOrder.priority === 'urgent' ? theme.danger : selectedOrder.priority === 'high' ? theme.warning : theme.fg }}>{selectedOrder.priority === 'urgent' ? d.urgent : selectedOrder.priority === 'high' ? d.high : d.normal}</span></div>
+                      <div className="dp-info-item" style={{ gridColumn: 'span 2' }}><span className="dp-info-label">Destination</span><span className="dp-info-value">{selectedOrder.destination_address || '—'}</span></div>
                     </div>
                   </div>
                 </div>
 
-                {/* Payment */}
-                <div className="dp-section-card">
-                  <div className="dp-section-header">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
-                    </svg>
-                    {d.payment}
-                  </div>
-                  <div className="dp-section-body">
-                    <div className="dp-info-grid">
-                      <div className="dp-info-item"><span className="dp-info-label">{d.status}</span><span className={`dp-payment-badge ${selectedOrder.payment_status || 'pending'}`}>{(selectedOrder.payment_status || 'pending').toUpperCase()}</span></div>
-                      <div className="dp-info-item"><span className="dp-info-label">{d.customer}</span><span className="dp-info-value">{selectedOrder.customer_email || '—'}</span></div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Notes */}
+                {/* Operational Notes */}
                 {selectedOrder.customer_notes && (
                   <div className="dp-section-card">
                     <div className="dp-section-header">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
-                      </svg>
-                      {d.notes}
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      Operational Notes
                     </div>
                     <div className="dp-section-body">
                       <div className="dp-note-text">{selectedOrder.customer_notes}</div>
@@ -583,25 +436,23 @@ export default function DispatchPage() {
                 {!selectedOrder.assigned_to && (
                   <div className="dp-section-card">
                     <div className="dp-section-header">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M19 17h2l-2-6H5l-2 6h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M5 11l1.5-4h11L19 11"/>
-                      </svg>
-                      {d.assignDriver}
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                      {d.assignDriver || 'Assign Driver'}
                     </div>
                     <div className="dp-section-body">
-                      <div className="dp-assign-area">
+                      <div>
                         {suggestedDrivers.length > 0 && (
                           <>
                             <div className="dp-suggested-label">
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-                              {d.suggested}
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                              {d.suggested || 'Smart Suggestions'}
                             </div>
                             {suggestedDrivers.slice(0, 3).map(drv => (
-                              <div key={drv.id} className="dp-driver-suggestion" onClick={() => { setModalOpen(true); setModalDriverId(drv.id) }}>
+                              <div key={drv.id} className="dp-driver-suggestion" onClick={() => { setModalDriverId(drv.id); setModalOpen(true) }}>
                                 <div className="d-photo">{drv.name[0]}</div>
                                 <div className="d-info">
                                   <div className="d-name">{drv.name}</div>
-                                  <div className="d-detail">{drv.vehicle} · {drv.languages}</div>
+                                  <div className="d-detail">{drv.vehicle} · {drv.languages} <span style={{ color: T.gold }}>★ {drv.rating}</span></div>
                                 </div>
                                 <span className="d-badge match">{drv.experience_level}</span>
                               </div>
@@ -611,47 +462,45 @@ export default function DispatchPage() {
                         {otherDrivers.length > 0 && (
                           <>
                             <div className="dp-other-label" style={{ marginTop: suggestedDrivers.length > 0 ? 12 : 0 }}>
-                              {suggestedDrivers.length > 0 ? d.otherAvailable : d.availableDrivers}
+                              {suggestedDrivers.length > 0 ? (d.otherAvailable || 'Other Available') : (d.availableDrivers || 'Available Drivers')}
                             </div>
-                            {otherDrivers.slice(0, 3).map(drv => (
-                              <div key={drv.id} className="dp-other-driver" onClick={() => { setModalOpen(true); setModalDriverId(drv.id) }}>
+                            {otherDrivers.slice(0, 4).map(drv => (
+                              <div key={drv.id} className="dp-other-driver" onClick={() => { setModalDriverId(drv.id); setModalOpen(true) }}>
                                 <div className="d-photo">{drv.name[0]}</div>
                                 <div style={{ flex: 1, minWidth: 0 }}>
-                                  <div style={{ fontSize: 13, fontWeight: 600 }}>{drv.name}</div>
-                                  <div style={{ fontSize: 11, color: theme.fgMuted, marginTop: 1 }}>{drv.vehicle} · {drv.languages}</div>
+                                  <div style={{ fontSize: 13, fontWeight: 500, color: T.fg }}>{drv.name}</div>
+                                  <div style={{ fontSize: 11, color: T.fgMuted, marginTop: 1 }}>{drv.vehicle} · ★ {drv.rating}</div>
                                 </div>
                               </div>
                             ))}
                           </>
                         )}
                         <button className="dp-assign-btn" onClick={() => setModalOpen(true)} disabled={drivers.filter(drv => drv.status === 'available').length === 0}>
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
-                          {drivers.filter(drv => drv.status === 'available').length > 0 ? d.assignButton : d.noDriversAvailable}
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                          {drivers.filter(drv => drv.status === 'available').length > 0 ? (d.assignButton || 'Assign Driver') : (d.noDriversAvailable || 'No drivers available')}
                         </button>
                       </div>
                     </div>
                   </div>
                 )}
 
-                {/* Driver Info (if assigned) */}
+                {/* Assigned Driver Info */}
                 {selectedOrder.assigned_to && selectedOrder.driver_name && (
                   <div className="dp-section-card">
                     <div className="dp-section-header">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M5 17h14M5 17a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2"/><circle cx="7" cy="14" r="2"/><circle cx="17" cy="14" r="2"/>
-                      </svg>
-                      {d.driver}
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 17h14M5 17a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2"/><circle cx="7" cy="14" r="2"/><circle cx="17" cy="14" r="2"/></svg>
+                      {d.driver || 'Driver'}
                     </div>
                     <div className="dp-section-body">
                       <div className="dp-info-grid">
-                        <div className="dp-info-item"><span className="dp-info-label">{d.name}</span><span className="dp-info-value" style={{ color: theme.accent }}>{selectedOrder.driver_name}</span></div>
-                        <div className="dp-info-item"><span className="dp-info-label">{d.vehicle}</span><span className="dp-info-value">{selectedOrder.driver_vehicle || '—'}</span></div>
+                        <div className="dp-info-item"><span className="dp-info-label">{d.name || 'Name'}</span><span className="dp-info-value" style={{ color: T.accent }}>{selectedOrder.driver_name}</span></div>
+                        <div className="dp-info-item"><span className="dp-info-label">{d.vehicle || 'Vehicle'}</span><span className="dp-info-value">{selectedOrder.driver_vehicle || '—'}</span></div>
                       </div>
                       <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                         {['enroute', 'pickedup', 'completed'].map(s => (
-                          <button key={s} className="dp-assign-btn" style={{ width: 'auto', padding: '6px 12px', fontSize: 11, background: theme.surface, color: theme.fg, border: `1px solid ${theme.border}` }}
+                          <button key={s} style={{ width: 'auto', padding: '6px 12px', fontSize: 11, background: T.surface, color: T.fg, border: `1px solid ${T.border}`, borderRadius: T.radiusSm, cursor: 'pointer', fontWeight: 500 }}
                             onClick={() => doStatus(selectedOrder!.id, s)}>
-                            {s === 'enroute' ? d.markEnroute : s === 'pickedup' ? d.markPickup : d.markCompleted}
+                            {s === 'enroute' ? (d.markEnroute || 'En Route') : s === 'pickedup' ? (d.markPickup || 'Picked Up') : (d.markCompleted || 'Completed')}
                           </button>
                         ))}
                       </div>
@@ -659,7 +508,7 @@ export default function DispatchPage() {
                   </div>
                 )}
               </div>
-            </>
+            </div>
           )}
         </div>
 
@@ -667,49 +516,57 @@ export default function DispatchPage() {
         <div className="dispatch-panel dispatch-right">
           <div className="dp-header">
             <div className="dp-header-title">
-              {d.drivers}
+              {d.drivers || 'Drivers'}
               <span className="dp-header-count">{drivers.length}</span>
             </div>
-            <button onClick={fetchData} style={{ background: 'none', border: 'none', color: theme.fgSecondary, cursor: 'pointer', fontSize: '18px', padding: '4px' }}>↻</button>
+            <button onClick={fetchData} style={{ background: 'none', border: 'none', color: T.fgSecondary, cursor: 'pointer', padding: '4px', display: 'flex' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+            </button>
           </div>
 
           <div className="dp-cat-tabs">
-            {['all', 'standard', 'suv', 'vip', 'luxury', 'van'].map(cat => (
+            {(['all', 'standard', 'suv', 'vip', 'luxury', 'van'] as const).map(cat => (
               <button key={cat} className={`dp-cat-tab ${driverCat === cat ? 'active' : ''}`} onClick={() => setDriverCat(cat)}>
-                {cat === 'all' ? d.allCategories : cat === 'standard' ? d.standard : cat === 'suv' ? d.suv : cat === 'vip' ? d.vIPSuv : cat === 'luxury' ? d.luxury : cat === 'van' ? d.van : cat.charAt(0).toUpperCase() + cat.slice(1)}
+                {cat === 'all' ? (d.allCategories || 'All') : cat === 'standard' ? (d.standard || 'Standard') : cat === 'suv' ? (d.suv || 'SUV') : cat === 'vip' ? (d.vIPSuv || 'VIP SUV') : cat === 'luxury' ? (d.luxury || 'Luxury') : (d.van || 'Van')}
               </button>
             ))}
           </div>
 
           <div className="dp-driver-list">
             {drivers.length === 0 ? (
-              <div style={{ padding: '48px 24px', textAlign: 'center', color: theme.fgMuted, fontSize: 13 }}>
-                {d.noDrivers}
-              </div>
+              <div style={{ padding: '48px 24px', textAlign: 'center', color: T.fgMuted, fontSize: 13 }}>{d.noDrivers || 'No drivers available'}</div>
             ) : drivers.map(drv => {
               const isSuggested = selectedOrder && suggestedDrivers.find(s => s.id === drv.id)
-              const isAssigned = assignedDrivers && Object.values(assignedDrivers).includes(drv.id)
+              const isAssigned = Object.values(assignedDrivers).includes(drv.id)
               const isUnavailable = drv.status !== 'available'
+              const statusText = drv.status === 'available' ? 'Available' : drv.status === 'busy' ? 'On Trip' : 'Offline'
               return (
                 <div
                   key={drv.id}
-                  className={`dp-driver-card ${isSuggested && selectedOrder ? 'suggested' : ''} ${isAssigned ? 'assigned' : ''} ${isUnavailable ? 'unavailable' : ''}`}
+                  className={`dp-driver-card ${isSuggested ? 'suggested' : ''} ${isAssigned ? 'assigned' : ''} ${isUnavailable ? 'unavailable' : ''}`}
                   onClick={() => { if (selectedOrder && !isUnavailable) { setModalDriverId(drv.id); setModalOpen(true) } }}
                 >
                   <div className="dp-driver-photo">
                     {drv.name[0]}
-                    <span className={`status-ring ${drv.status}`} />
+                    <span className={`status-ring ${drv.status === 'available' ? 'online' : drv.status === 'busy' ? 'busy' : 'offline'}`} />
                   </div>
                   <div className="dp-driver-info">
                     <div className="dp-driver-name">
                       {drv.name}
-                      {drv.vip_compatible ? <span style={{ fontSize: 9, color: theme.gold }}>{d.vIPSuv}</span> : null}
+                      {drv.vip_compatible ? <span style={{ fontSize: 9, color: T.gold }}>VIP</span> : null}
                     </div>
-                    <div className="dp-driver-detail">{drv.vehicle} · {drv.plate} · {drv.languages}</div>
+                    <div className="dp-driver-meta">
+                      <span>{drv.vehicle}</span>
+                      <span className="rating">★ {drv.rating}</span>
+                      <span className="dp-driver-vehicle-tag">{drv.category}</span>
+                    </div>
+                    <div style={{ fontSize: 10, color: T.fgMuted, marginTop: 1, fontFamily: T.fontMono }}>
+                      {drv.plate} · {drv.total_trips} trips
+                    </div>
                   </div>
                   <div className="dp-driver-right">
-                    <div className="dp-driver-stat">★ {drv.rating}</div>
-                    <div style={{ fontSize: 10, color: theme.fgMuted }}>{drv.total_trips} {d.trips}</div>
+                    <span className={`dp-driver-status-text ${drv.status === 'available' ? 'available' : drv.status === 'busy' ? 'busy' : 'offline'}`}>{statusText}</span>
+                    {isSuggested && <span style={{ fontSize: 9, color: T.accent, fontWeight: 600 }}>★ Best match</span>}
                   </div>
                 </div>
               )
@@ -718,59 +575,84 @@ export default function DispatchPage() {
         </div>
       </div>
 
-      {/* ── Assign Modal ── */}
+      {/* ── Assign Confirmation Modal ── */}
       {modalOpen && (
         <div className="dp-modal-overlay" onClick={() => setModalOpen(false)}>
           <div className="dp-modal" onClick={e => e.stopPropagation()}>
-            <div className="dp-modal-header">
-              <span style={{ fontSize: 16, fontWeight: 600, color: theme.fg }}>{d.assignConfirm}</span>
-              <button onClick={() => setModalOpen(false)} style={{ background: 'none', border: 'none', color: theme.fgSecondary, cursor: 'pointer', fontSize: 18 }}>✕</button>
-              <button onClick={() => setModalOpen(false)} style={{ background: 'none', border: 'none', color: theme.fgSecondary, cursor: 'pointer', fontSize: 18 }}>✕</button>
-            </div>
-            <div className="dp-modal-body">
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: `1px solid ${theme.borderLight}`, fontSize: 13 }}>
-                <span style={{ color: theme.fgMuted }}>{d.customer}</span>
-                <span style={{ fontWeight: 600, color: theme.fg }}>{selectedOrder?.customer_name || d.customer}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: `1px solid ${theme.borderLight}`, fontSize: 13 }}>
-                <span style={{ color: theme.fgMuted }}>{d.driver}</span>
-                <span style={{ fontWeight: 600, color: theme.fg }}>{selectedDriver?.name || '—'}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: `1px solid ${theme.borderLight}`, fontSize: 13 }}>
-                <span style={{ color: theme.fgMuted }}>{d.vehicle}</span>
-                <span style={{ fontWeight: 600, color: theme.fg }}>{selectedDriver?.vehicle || '—'} · {selectedDriver?.plate || '—'}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: 13 }}>
-                <span style={{ color: theme.fgMuted }}>{d.pickup}</span>
-                <span style={{ fontWeight: 600, color: theme.fg }}>{selectedOrder?.arrival_time?.substring(0, 5) || '--:--'}</span>
-              </div>
-            </div>
-            <div className="dp-modal-footer">
-              <button onClick={() => setModalOpen(false)}
-                style={{ padding: '8px 16px', borderRadius: theme.radiusSm, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.fg, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
-                {d.cancel}
-              </button>
-              <button onClick={() => selectedOrder && selectedDriver && doAssign(selectedOrder.id, selectedDriver.id)}
-                style={{ padding: '8px 16px', borderRadius: theme.radiusSm, border: 'none', background: theme.accent, color: 'white', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}
-                disabled={!selectedDriver}>
-                {d.confirm}
-              </button>
-            </div>
+            {selectedDriver ? (
+              <>
+                <div className="assign-confirm-body">
+                  <div className="icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+                  </div>
+                  <h3>{d.assignConfirm || 'Assign Driver?'}</h3>
+                  <p>Confirm to dispatch this driver to the customer. A notification will be sent immediately.</p>
+                  <div className="assign-confirm-details">
+                    <div className="assign-confirm-row"><span className="label">{d.customer || 'Customer'}</span><span className="value">{selectedOrder?.customer_name || '—'}</span></div>
+                    <div className="assign-confirm-row"><span className="label">{d.driver || 'Driver'}</span><span className="value">{selectedDriver.name}</span></div>
+                    <div className="assign-confirm-row"><span className="label">{d.vehicle || 'Vehicle'}</span><span className="value">{selectedDriver.vehicle} ({selectedDriver.plate})</span></div>
+                    <div className="assign-confirm-row"><span className="label">{d.pickup || 'Pickup'}</span><span className="value">{selectedOrder?.arrival_time?.substring(0, 5) || '--:--'}</span></div>
+                  </div>
+                </div>
+                <div className="dp-modal-footer" style={{ justifyContent: 'center' }}>
+                  <button onClick={() => setModalOpen(false)} style={{ padding: '8px 16px', borderRadius: T.radiusSm, border: `1px solid ${T.border}`, background: 'transparent', color: T.fg, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>{d.cancel || 'Cancel'}</button>
+                  <button onClick={() => selectedOrder && selectedDriver && doAssign(selectedOrder.id, selectedDriver.id)} style={{ padding: '8px 16px', borderRadius: T.radiusSm, border: 'none', background: T.accent, color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{d.confirm || 'Confirm Assignment'}</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="dp-modal-header">
+                  <span style={{ fontSize: 16, fontWeight: 600, color: T.fg }}>{d.assignDriver || 'Assign Driver'}</span>
+                  <button onClick={() => setModalOpen(false)} style={{ background: 'none', border: 'none', color: T.fgSecondary, cursor: 'pointer', fontSize: 18 }}>✕</button>
+                </div>
+                <div className="dp-modal-body">
+                  <div style={{ fontSize: 13, color: T.fgSecondary }}>Select a driver from the right panel or suggestions above.</div>
+                  {suggestedDrivers.length > 0 && suggestedDrivers.slice(0, 5).map(drv => (
+                    <div key={drv.id} className="dp-driver-suggestion" onClick={() => setModalDriverId(drv.id)}>
+                      <div className="d-photo">{drv.name[0]}</div>
+                      <div className="d-info">
+                        <div className="d-name">{drv.name}</div>
+                        <div className="d-detail">{drv.vehicle} · ★ {drv.rating}</div>
+                      </div>
+                      <span className="d-badge match">{drv.experience_level}</span>
+                    </div>
+                  ))}
+                  {otherDrivers.length > 0 && otherDrivers.slice(0, 3).map(drv => (
+                    <div key={drv.id} className="dp-other-driver" onClick={() => setModalDriverId(drv.id)}>
+                      <div className="d-photo">{drv.name[0]}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 500, color: T.fg }}>{drv.name}</div>
+                        <div style={{ fontSize: 11, color: T.fgMuted }}>{drv.vehicle} · ★ {drv.rating}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="dp-modal-footer">
+                  <button onClick={() => setModalOpen(false)} style={{ padding: '8px 16px', borderRadius: T.radiusSm, border: `1px solid ${T.border}`, background: 'transparent', color: T.fg, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>{d.cancel || 'Cancel'}</button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}
 
-      {/* ── Notifications ── */}
+      {/* ── Notifications Stack ── */}
       <div className="notif-stack">
-        {notifications.map(n => {
-          const typeColors: Record<string, string> = { assign: theme.accent, unassign: theme.warning, status: theme.info }
-          return (
-            <div key={n.id} className="notif-card">
-              <div className="notif-title" style={{ color: typeColors[n.type] || theme.accent }}>{n.title}</div>
-              <div className="notif-desc">{n.desc}</div>
+        {notifications.map(n => (
+          <div key={n.id} className="dp-notif">
+            <div className={`dp-notif-icon ${n.type === 'success' || n.type === 'assign' ? 'success' : n.type === 'warning' || n.type === 'unassign' ? 'warning' : 'info'}`}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                {n.type === 'success' || n.type === 'assign' ? <polyline points="20 6 9 17 4 12" /> :
+                 n.type === 'warning' || n.type === 'unassign' ? <><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></> :
+                 <><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></>}
+              </svg>
             </div>
-          )
-        })}
+            <div className="dp-notif-body">
+              <div className="title">{n.title}</div>
+              <div className="desc">{n.desc}</div>
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* ── Auth Modal ── */}

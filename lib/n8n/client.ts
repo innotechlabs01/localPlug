@@ -1,4 +1,4 @@
-const N8N_BASE_URL = process.env.N8N_BASE_URL || 'https://agent-ia.innotechlabssas.lat'
+const N8N_BASE_URL = process.env.N8N_BASE_URL
 const N8N_API_KEY = process.env.N8N_API_KEY || ''
 
 interface N8nWebhookPayload {
@@ -20,14 +20,22 @@ export async function sendN8nWebhook(
   event: string,
   data: Record<string, unknown>,
 ): Promise<N8nResponse> {
+  if (!N8N_BASE_URL) {
+    console.error('[n8n] N8N_BASE_URL is not configured')
+    return { success: false, error: 'N8N_BASE_URL is not configured' }
+  }
+
   const payload: N8nWebhookPayload = {
     event,
     data,
     timestamp: new Date().toISOString(),
   }
 
+  const webhookUrl = `${N8N_BASE_URL}/webhook/${event}`
+  console.log(`[n8n] Sending webhook: ${event}`, { url: webhookUrl, hasApiKey: !!N8N_API_KEY })
+
   try {
-    const response = await fetch(`${N8N_BASE_URL}/webhook/${event}`, {
+    const response = await fetch(webhookUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -37,11 +45,13 @@ export async function sendN8nWebhook(
     })
 
     if (!response.ok) {
-      console.error(`[n8n] Webhook failed: ${response.status} ${response.statusText}`)
-      return { success: false, error: `HTTP ${response.status}` }
+      const errorText = await response.text()
+      console.error(`[n8n] Webhook failed: ${response.status} ${response.statusText}`, { error: errorText })
+      return { success: false, error: `HTTP ${response.status}: ${response.statusText}` }
     }
 
     const result = await response.json()
+    console.log(`[n8n] Webhook success: ${event}`, { workflowId: result.workflowId })
     return { success: true, workflowId: result.workflowId }
   } catch (error) {
     console.error('[n8n] Webhook error:', error)
@@ -68,13 +78,15 @@ export async function triggerPaymentConfirmation(bookingData: {
   arrivalDate: string
   arrivalTime: string
 }): Promise<N8nResponse> {
+  console.log('[n8n] triggerPaymentConfirmation called', { bookingReference: bookingData.bookingReference })
+
   return sendN8nWebhook('payment-confirmed', {
     type: 'payment_confirmation',
     booking: bookingData,
     // Evolution API config for n8n
     evolutionApi: {
-      instanceName: process.env.EVOLUTION_INSTANCE_NAME || 'localplug-main',
-      serverUrl: process.env.EVOLUTION_API_URL || 'https://api-message.innotechlabssas.lat',
+      instanceName: process.env.EVOLUTION_INSTANCE_NAME,
+      serverUrl: process.env.EVOLUTION_API_URL,
     },
   })
 }
@@ -103,7 +115,7 @@ export async function triggerDriverAssigned(data: {
       eta: data.eta,
     },
     evolutionApi: {
-      instanceName: process.env.EVOLUTION_INSTANCE_NAME || 'localplug-main',
+      instanceName: process.env.EVOLUTION_INSTANCE_NAME,
     },
   })
 }
@@ -124,7 +136,7 @@ export async function triggerDeliveryCompleted(data: {
       customerPhone: data.customerPhone,
     },
     evolutionApi: {
-      instanceName: process.env.EVOLUTION_INSTANCE_NAME || 'localplug-main',
+      instanceName: process.env.EVOLUTION_INSTANCE_NAME,
     },
   })
 }
@@ -184,7 +196,7 @@ export async function sendWhatsAppDirect(data: {
 }): Promise<N8nResponse> {
   const evoUrl = process.env.EVOLUTION_API_URL
   const evoKey = process.env.EVOLUTION_API_KEY
-  const instance = data.instanceName || process.env.EVOLUTION_INSTANCE_NAME || 'localplug-main'
+  const instance = data.instanceName || process.env.EVOLUTION_INSTANCE_NAME
 
   if (!evoUrl || !evoKey) {
     return { success: false, error: 'Evolution API not configured' }
@@ -228,7 +240,7 @@ export async function sendWhatsAppButtons(data: {
 }): Promise<N8nResponse> {
   const evoUrl = process.env.EVOLUTION_API_URL
   const evoKey = process.env.EVOLUTION_API_KEY
-  const instance = data.instanceName || process.env.EVOLUTION_INSTANCE_NAME || 'localplug-main'
+  const instance = data.instanceName || process.env.EVOLUTION_INSTANCE_NAME
 
   if (!evoUrl || !evoKey) {
     return { success: false, error: 'Evolution API not configured' }

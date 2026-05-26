@@ -64,7 +64,7 @@ export async function GET(req: Request) {
   // ── Counts ──
   const countsResult = await db.execute(`
     SELECT
-      (SELECT COUNT(*) FROM orders WHERE dispatch_status = 'pending') as pending,
+      (SELECT COUNT(*) FROM orders WHERE dispatch_status = 'pending' OR dispatch_status IS NULL) as pending,
       (SELECT COUNT(*) FROM orders WHERE dispatch_status = 'assigned') as assigned,
       (SELECT COUNT(*) FROM orders WHERE dispatch_status = 'enroute') as enroute,
       (SELECT COUNT(*) FROM orders WHERE dispatch_status = 'pickedup') as pickedup

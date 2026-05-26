@@ -39,6 +39,10 @@ interface PayoutItem {
   driver_name: string
   driver_vehicle: string
   driver_plate: string
+  driver_total_trips: number
+  driver_payment_cop: number
+  driver_payment_usd: number
+  gross_revenue: number
   created_at: string
 }
 
@@ -65,15 +69,20 @@ interface PaymentData {
     pendingPayout: number
     lastPayout: number
   }
+  trm: {
+    rate: number
+    fetchedAt: string
+    source: string
+  }
 }
 
 const SERVICE_COLORS: Record<string, string> = {
-  'The VIP Arrival': '#10b981',
-  'smooth-landing': '#10b981',
-  'The 24h Insider': '#f59e0b',
-  'first-24': '#f59e0b',
-  'The Peace of Mind': '#3b82f6',
-  'full-insider': '#3b82f6',
+  'The VIP Arrival': 'var(--accent)',
+  'smooth-landing': 'var(--accent)',
+  'The 24h Insider': 'var(--warning)',
+  'first-24': 'var(--warning)',
+  'The Peace of Mind': 'var(--info)',
+  'full-insider': 'var(--info)',
 }
 
 function PaymentsInner() {
@@ -139,9 +148,28 @@ function PaymentsInner() {
   const openDetail = (tx: PaymentTransaction) => setSelectedTx(tx)
   const closeDetail = () => setSelectedTx(null)
 
-  const handleRefund = (ref: string) => {
+  const handleRefund = async (ref: string) => {
     if (!confirm(d.refundConfirm || 'Are you sure you want to refund this transaction?')) return
-    showToast((d.refundInitiated || 'Refund initiated for {id}').replace('{id}', ref))
+    try {
+      const res = await adminFetch('/api/admin/payments/refund', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ booking_reference: ref, reason: 'Admin initiated refund' }),
+      })
+      const result = await res.json()
+      if (result.success) {
+        showToast((d.refundInitiated || 'Refund processed for {id}').replace('{id}', ref))
+        // Reload data
+        const freshRes = await adminFetch('/api/admin/payments')
+        const freshData = await freshRes.json()
+        setData(freshData)
+      } else {
+        showToast(`Refund failed: ${result.error}`)
+      }
+    } catch (err) {
+      showToast('Refund failed. Please try again.')
+      console.error('Refund error:', err)
+    }
     closeDetail()
   }
 
@@ -149,7 +177,7 @@ function PaymentsInner() {
     for (const [key, color] of Object.entries(SERVICE_COLORS)) {
       if (name.toLowerCase().includes(key.toLowerCase())) return color
     }
-    return '#8b5cf6'
+    return 'var(--accent-soft)'
   }
 
   const formatDate = (dateStr: string) => getTimeAgo(dateStr)
@@ -174,6 +202,15 @@ function PaymentsInner() {
         <div>
           <h1 className="text-[18px] font-semibold text-[#f0f2f5]">{d.title || 'Payments'}</h1>
           <p className="text-[13px] text-[#646880] mt-1">{d.subtitle || ''}</p>
+        </div>
+        <div className="flex items-center gap-3">
+          {data.trm && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-[#0b0d14] border border-[#282b38] rounded-[6px]">
+              <span className="text-[11px] text-[#646880]">TRM</span>
+              <span className="text-[13px] font-semibold text-[#10b981]">${data.trm.rate.toLocaleString('es-CO', { minimumFractionDigits: 2 })}</span>
+              <span className="text-[10px] text-[#646880]">COP/USD</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -312,7 +349,7 @@ function PaymentsInner() {
                   <div className="text-[22px] font-bold font-mono leading-[1.1]" style={{ color }}>
                     ${item.amount.toLocaleString()}
                   </div>
-                  <div className="text-[18px] font-semibold mt-1" style={{ color: '#10b981' }}>
+                  <div className="text-[18px] font-semibold mt-1" style={{ color: 'var(--accent)' }}>
                     {item.percentage}%
                   </div>
                   <div className="text-[12px] text-[#646880] mt-1.5 font-medium">{item.package_name}</div>
@@ -561,9 +598,8 @@ function PaymentsInner() {
                   <tr className="bg-[#111318] border-b border-[#282b38]">
                     <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880] px-5 py-3">{d.driver || 'Driver'}</th>
                     <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880] px-5 py-3">{d.trips || 'Trips'}</th>
-                    <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880] px-5 py-3">{d.commissionRate || 'Commission Rate'}</th>
-                    <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880] px-5 py-3">{d.grossRevenue || 'Gross Revenue'}</th>
-                    <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880] px-5 py-3">{d.payoutAmount || 'Payout Amount'}</th>
+                    <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880] px-5 py-3">{d.payoutAmount || 'Payment (COP)'}</th>
+                    <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880] px-5 py-3">{d.payoutAmount || 'Payment (USD)'}</th>
                     <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880] px-5 py-3">{d.payoutStatus || 'Status'}</th>
                     <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880] px-5 py-3">{d.payoutDate || 'Date'}</th>
                   </tr>
@@ -571,26 +607,19 @@ function PaymentsInner() {
                 <tbody>
                   {data.payouts.map((p, idx) => {
                     const isCompleted = p.payment_status === 'paid' || p.payment_status === 'completed'
-                    const trips = Math.floor(Math.random() * 30) + 5
-                    const commissionRate = '25%'
-                    const grossRevenue = Math.round(p.package_price * 1.3)
-                    const payoutAmount = Math.round(p.package_price * 0.3)
                     return (
                       <tr key={idx} className="border-b border-[#282b38] hover:bg-[#202330] transition-colors">
                         <td className="px-5 py-3.5">
                           <span className="text-[13px] font-medium text-[#f0f2f5]">{p.driver_name || p.customer_name}</span>
                         </td>
                         <td className="px-5 py-3.5">
-                          <span className="text-[13px] font-mono text-[#f0f2f5]">{p.driver_name ? trips : '-'}</span>
+                          <span className="text-[13px] font-mono text-[#f0f2f5]">{p.driver_name ? p.driver_total_trips : '-'}</span>
                         </td>
                         <td className="px-5 py-3.5">
-                          <span className="text-[13px] text-[#9ca0b0]">{p.driver_name ? commissionRate : '-'}</span>
+                          <span className="text-[13px] font-semibold font-mono text-[#f0f2f5]">$ {p.driver_payment_cop.toLocaleString()} COP</span>
                         </td>
                         <td className="px-5 py-3.5">
-                          <span className="text-[13px] font-semibold font-mono text-[#f0f2f5]">${grossRevenue.toLocaleString()}</span>
-                        </td>
-                        <td className="px-5 py-3.5">
-                          <span className="text-[13px] font-semibold font-mono text-[#10b981]">${payoutAmount.toLocaleString()}</span>
+                          <span className="text-[13px] font-semibold font-mono text-[#10b981]">${p.driver_payment_usd.toLocaleString()} USD</span>
                         </td>
                         <td className="px-5 py-3.5">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium ${isCompleted ? payoutStatusColors.paid : payoutStatusColors.pending}`}>
@@ -696,23 +725,23 @@ function PaymentsInner() {
                 </div>
                 <div className="space-y-2">
                   {(selectedTx.status === 'completed' ? [
-                    { dot: '#10b981', title: d.paymentInitiated || 'Payment Initiated', desc: (d.transactionCreated || 'Transaction created and sent to processor'), time: formatDate(selectedTx.created_at) },
-                    { dot: '#10b981', title: d.authorized || 'Authorized', desc: d.authorizedDesc || 'Payment authorized by bank', time: formatDate(selectedTx.created_at) },
-                    { dot: '#10b981', title: d.captured || 'Captured', desc: d.capturedDesc || 'Funds captured successfully', time: formatDate(selectedTx.created_at) },
-                    { dot: '#10b981', title: d.settled || 'Settled', desc: d.settledDesc || 'Funds settled to Stripe balance', time: formatDate(selectedTx.created_at) },
+                    { dot: 'var(--accent)', title: d.paymentInitiated || 'Payment Initiated', desc: (d.transactionCreated || 'Transaction created and sent to processor'), time: formatDate(selectedTx.created_at) },
+                    { dot: 'var(--accent)', title: d.authorized || 'Authorized', desc: d.authorizedDesc || 'Payment authorized by bank', time: formatDate(selectedTx.created_at) },
+                    { dot: 'var(--accent)', title: d.captured || 'Captured', desc: d.capturedDesc || 'Funds captured successfully', time: formatDate(selectedTx.created_at) },
+                    { dot: 'var(--accent)', title: d.settled || 'Settled', desc: d.settledDesc || 'Funds settled to Stripe balance', time: formatDate(selectedTx.created_at) },
                   ] : selectedTx.status === 'pending' ? [
-                    { dot: '#10b981', title: d.paymentInitiated || 'Payment Initiated', desc: d.transactionCreated || 'Transaction created', time: formatDate(selectedTx.created_at) },
-                    { dot: '#3b82f6', title: d.awaitingConfirmation || 'Awaiting Confirmation', desc: d.awaitingConfirmationDesc || 'Waiting for payment confirmation', time: formatDate(selectedTx.created_at), glow: true },
-                    { dot: '#282b38', title: d.captured || 'Captured', desc: '' },
-                    { dot: '#282b38', title: d.settled || 'Settled', desc: '' },
+                    { dot: 'var(--accent)', title: d.paymentInitiated || 'Payment Initiated', desc: d.transactionCreated || 'Transaction created', time: formatDate(selectedTx.created_at) },
+                    { dot: 'var(--info)', title: d.awaitingConfirmation || 'Awaiting Confirmation', desc: d.awaitingConfirmationDesc || 'Waiting for payment confirmation', time: formatDate(selectedTx.created_at), glow: true },
+                    { dot: 'var(--border)', title: d.captured || 'Captured', desc: '' },
+                    { dot: 'var(--border)', title: d.settled || 'Settled', desc: '' },
                   ] : selectedTx.status === 'refunded' ? [
-                    { dot: '#10b981', title: d.paymentInitiated || 'Payment Initiated', desc: d.transactionCreated || 'Transaction created', time: formatDate(selectedTx.created_at) },
-                    { dot: '#10b981', title: d.captured || 'Captured', desc: d.capturedDesc || 'Funds captured', time: formatDate(selectedTx.created_at) },
-                    { dot: '#10b981', title: d.settled || 'Settled', desc: d.settledDesc || 'Funds settled', time: formatDate(selectedTx.created_at) },
-                    { dot: '#ef4450', title: d.refunded || 'Refunded', desc: d.refundedDesc || 'Full refund processed', time: formatDate(selectedTx.created_at), glow: true },
+                    { dot: 'var(--accent)', title: d.paymentInitiated || 'Payment Initiated', desc: d.transactionCreated || 'Transaction created', time: formatDate(selectedTx.created_at) },
+                    { dot: 'var(--accent)', title: d.captured || 'Captured', desc: d.capturedDesc || 'Funds captured', time: formatDate(selectedTx.created_at) },
+                    { dot: 'var(--accent)', title: d.settled || 'Settled', desc: d.settledDesc || 'Funds settled', time: formatDate(selectedTx.created_at) },
+                    { dot: 'var(--danger)', title: d.refunded || 'Refunded', desc: d.refundedDesc || 'Full refund processed', time: formatDate(selectedTx.created_at), glow: true },
                   ] : [
-                    { dot: '#10b981', title: d.paymentInitiated || 'Payment Initiated', desc: d.transactionCreated || 'Transaction created', time: formatDate(selectedTx.created_at) },
-                    { dot: '#ef4450', title: d.failed || 'Failed', desc: d.failedDesc || 'Payment was declined by bank', time: formatDate(selectedTx.created_at), glow: true },
+                    { dot: 'var(--accent)', title: d.paymentInitiated || 'Payment Initiated', desc: d.transactionCreated || 'Transaction created', time: formatDate(selectedTx.created_at) },
+                    { dot: 'var(--danger)', title: d.failed || 'Failed', desc: d.failedDesc || 'Payment was declined by bank', time: formatDate(selectedTx.created_at), glow: true },
                   ]).map((step, i) => (
                     <div key={i} className="flex items-start gap-2.5">
                       <div

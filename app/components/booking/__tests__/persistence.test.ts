@@ -168,13 +168,6 @@ describe('PersistenceAPI', () => {
       fetchSpy.mockRestore()
     })
 
-    it('throws when __mock_fail is set in localStorage', async () => {
-      localStorage.setItem('__mock_fail', 'true')
-      const booking = makeMockBooking()
-
-      await expect(persistence.submit(booking)).rejects.toThrow('Simulated failure')
-    })
-
     it('throws on network error', async () => {
       const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('NetworkError'))
 
@@ -188,14 +181,12 @@ describe('PersistenceAPI', () => {
   describe('clear', () => {
     it('clears all booking localStorage keys', async () => {
       await persistence.saveDraft(makeMockBooking())
-      localStorage.setItem('__mock_fail', 'true')
 
       await persistence.clear()
 
       expect(localStorage.getItem('booking_draft')).toBeNull()
       expect(localStorage.getItem('booking_queue')).toBeNull()
       expect(localStorage.getItem('booking_last_submitted')).toBeNull()
-      expect(localStorage.getItem('__mock_fail')).toBeNull()
     })
   })
 })

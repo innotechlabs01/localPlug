@@ -53,7 +53,7 @@ No setup tasks required.
 
 The inline style refactor (T007) can run in parallel across all files. Page-specific alignment (T008-T016) depends on T007 completing for that file.
 
-- [ ] T007 [P] [US1] Replace hardcoded hex colors with CSS var(--*) across ALL admin pages — app/admin/*/page.tsx and component files
+- [X] T007 [P] [US1] Replace hardcoded hex colors with CSS var(--*) across ALL admin pages — app/admin/*/page.tsx and component files
 - [ ] T008 [US1] Align Reservations page — KPI grid (6-col with colored top bars), filter pills, table+timeline layout, detail modal tabs in app/admin/reservations/components/*
 - [ ] T009 [P] [US1] Align Analytics page — KPI cards with top accent bars, chart area layout, top drivers table in app/admin/analytics/page.tsx
 - [ ] T010 [P] [US1] Align Customers page — slide-in panel styling matching HTML reference in app/admin/customers/page.tsx

@@ -15,13 +15,13 @@ interface Role {
 }
 
 const theme = {
-  bg: '#0b0d14', surface: '#181b25', surfaceHover: '#202330', border: '#282b38', borderLight: '#1e2130',
-  fg: '#f0f2f5', fgSecondary: '#9ca0b0', fgMuted: '#646880',
-  accent: '#10b981', accentSoft: 'rgba(16,185,129,0.12)',
-  warning: '#f59e0b', warningSoft: 'rgba(245,158,11,0.12)',
-  danger: '#ef4450', dangerSoft: 'rgba(239,68,80,0.12)',
-  info: '#3b82f6', infoSoft: 'rgba(59,130,246,0.12)',
-  gold: '#d4a84b',
+  bg: 'var(--bg)', surface: 'var(--surface)', surfaceHover: 'var(--surface-hover)', border: 'var(--border)', borderLight: 'var(--surface-active)',
+  fg: 'var(--fg)', fgSecondary: 'var(--fg-muted)', fgMuted: 'var(--fg-secondary)',
+  accent: 'var(--accent)', accentSoft: 'rgba(16,185,129,0.12)',
+  warning: 'var(--warning)', warningSoft: 'rgba(245,158,11,0.12)',
+  danger: 'var(--danger)', dangerSoft: 'rgba(239,68,80,0.12)',
+  info: 'var(--info)', infoSoft: 'rgba(59,130,246,0.12)',
+  gold: 'var(--gold)',
   radiusSm: '6px', radiusMd: '10px',
 }
 
@@ -106,8 +106,8 @@ export default function TeamPage() {
 
   const getAvatarColor = (name: string) => {
     const hash = name.charCodeAt(0) || 0
-    const cs = ['#10b981', '#3b82f6', '#d4a84b', '#6366f1', '#059669', '#0f172a']
-    return `linear-gradient(135deg, ${cs[hash % cs.length]}, #0f172a)`
+    const cs = ['var(--accent)', 'var(--info)', 'var(--gold)', 'var(--info)', 'var(--accent-hover)', 'var(--bg)']
+    return `linear-gradient(135deg, ${cs[hash % cs.length]}, var(--bg))`
   }
 
   const roleColors: Record<string, string> = {

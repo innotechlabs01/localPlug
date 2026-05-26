@@ -11,8 +11,8 @@ const packageIds = ['smooth-landing', 'first-24', 'full-insider'] as const
 
 const packagePrices: Record<string, number> = {
   'smooth-landing': 89,
-  'first-24': 149,
-  'full-insider': 249,
+  'first-24': 159,
+  'full-insider': 269,
 }
 
 const popularFlags: Record<string, boolean> = {

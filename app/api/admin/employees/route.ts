@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
-import { getDb } from '@/lib/db'
+import { getDb, buildSafeUpdate } from '@/lib/db'
 import { auth } from '@clerk/nextjs/server'
+
+const ALLOWED_EMPLOYEE_COLUMNS = ['name', 'email', 'phone', 'role_id', 'avatar_url', 'vehicle_info', 'license_number', 'vehicle_plate', 'employee_status', 'verification_status', 'status', 'notes']
 
 export async function GET() {
   try {
@@ -104,16 +106,7 @@ export async function PUT(req: Request) {
     }
 
     const db = getDb()
-
-    const setClauses: string[] = []
-    const args: (string | number | null)[] = []
-
-    for (const [key, value] of Object.entries(updates)) {
-      if (value !== undefined) {
-        setClauses.push(`${key} = ?`)
-        args.push(value as string | number | null)
-      }
-    }
+    const { setClauses, args } = buildSafeUpdate(updates as Record<string, unknown>, ALLOWED_EMPLOYEE_COLUMNS)
 
     if (setClauses.length === 0) {
       return NextResponse.json({ error: 'No fields to update' }, { status: 400 })

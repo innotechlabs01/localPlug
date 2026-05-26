@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { bookingStore } from '@/app/components/booking/lib/booking-store'
+import { getDb } from '@/lib/db'
+import { rateLimitMiddleware } from '@/lib/rate-limit'
 
 export async function GET(request: NextRequest) {
+  const rateLimitResponse = rateLimitMiddleware(request)
+  if (rateLimitResponse) return rateLimitResponse
+
   const { searchParams } = new URL(request.url)
   const flightNumber = searchParams.get('flightNumber')
   const airline = searchParams.get('airline')
@@ -13,7 +17,20 @@ export async function GET(request: NextRequest) {
     )
   }
 
-  const results = bookingStore.search(airline, flightNumber)
+  try {
+    const db = getDb()
+    const result = await db.execute({
+      sql: `SELECT * FROM orders WHERE LOWER(airline) = ? AND LOWER(flight_number) = ?`,
+      args: [airline.trim().toLowerCase(), flightNumber.trim().toLowerCase()],
+    })
 
-  return NextResponse.json({ results, count: results.length })
+    const orders = result.rows as Record<string, unknown>[]
+    return NextResponse.json({ results: orders, count: orders.length })
+  } catch (err) {
+    console.error('[Bookings Search] Error:', err)
+    return NextResponse.json(
+      { error: 'SEARCH_ERROR', message: 'Search service unavailable' },
+      { status: 500 },
+    )
+  }
 }

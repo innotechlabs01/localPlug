@@ -6,25 +6,29 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const period = searchParams.get('period') || 'ytd'
 
-  // Build date filter based on period
-  let dateFilter = ''
-  let prevYearFilter = ''
+  // Build date filter SQL fragments based on period (hardcoded enum values, not user input)
+  let ordersFilter = ''
+  let paymentsFilter = ''
+  let prevYearPaymentsFilter = ''
   if (period === 'ytd') {
-    dateFilter = "AND created_at >= date('now', 'start of year')"
-    prevYearFilter = "AND created_at >= date('now', 'start of year', '-1 year') AND created_at < date('now', 'start of year')"
+    ordersFilter = "AND o.created_at >= date('now', 'start of year')"
+    paymentsFilter = "AND p.created_at >= date('now', 'start of year')"
+    prevYearPaymentsFilter = "AND p.created_at >= date('now', 'start of year', '-1 year') AND p.created_at < date('now', 'start of year')"
   } else if (period === 'last') {
-    dateFilter = "AND created_at >= date('now', 'start of year', '-1 year') AND created_at < date('now', 'start of year')"
-    prevYearFilter = "AND created_at >= date('now', 'start of year', '-2 years') AND created_at < date('now', 'start of year', '-1 year')"
+    ordersFilter = "AND o.created_at >= date('now', 'start of year', '-1 year') AND o.created_at < date('now', 'start of year')"
+    paymentsFilter = "AND p.created_at >= date('now', 'start of year', '-1 year') AND p.created_at < date('now', 'start of year')"
+    prevYearPaymentsFilter = "AND p.created_at >= date('now', 'start of year', '-2 years') AND p.created_at < date('now', 'start of year', '-1 year')"
   }
 
-  const [ordersAgg, paymentsAgg, driverAgg, monthlyRev, driverRanking, countries, monthlyBookings] = await Promise.all([
-    db.execute(`SELECT COUNT(*) as total, COUNT(DISTINCT customer_email) as unique_customers FROM orders WHERE 1=1 ${dateFilter.replace('AND created_at', 'AND created_at').replace(/^AND /, '') || '1=1'}`),
-    db.execute(`SELECT COUNT(*) as total, COALESCE(SUM(amount), 0) as total_revenue, COALESCE(AVG(amount), 0) as avg_value FROM payments WHERE status = 'completed' ${dateFilter.replace(/created_at/g, 'created_at')}`),
+  const [ordersAgg, paymentsAgg, driverAgg, monthlyRev, driverRanking, countries, monthlyBookings, servicePopularity] = await Promise.all([
+    db.execute(`SELECT COUNT(*) as total, COUNT(DISTINCT o.customer_email) as unique_customers FROM orders o`),
+    db.execute(`SELECT COUNT(*) as total, COALESCE(SUM(p.amount), 0) as total_revenue, COALESCE(AVG(p.amount), 0) as avg_value FROM payments p WHERE p.status = 'completed' ${paymentsFilter}`),
     db.execute(`SELECT COUNT(*) as total_drivers FROM drivers`),
-    db.execute(`SELECT strftime('%Y-%m', created_at) as month, COALESCE(SUM(amount), 0) as revenue FROM payments WHERE status = 'completed' ${dateFilter.replace(/created_at/g, 'created_at')} GROUP BY month ORDER BY month`),
-    db.execute(`SELECT d.id, d.name, d.rating, d.total_trips, d.vip_compatible, COUNT(o.id) as active_trips FROM drivers d LEFT JOIN orders o ON d.id = o.assigned_to AND o.status NOT IN ('cancelled') ${dateFilter.replace(/created_at/g, 'o.created_at')} GROUP BY d.id ORDER BY d.total_trips DESC LIMIT 10`),
-    db.execute(`SELECT customer_country, COUNT(*) as count FROM orders WHERE customer_country IS NOT NULL AND customer_country != '' ${dateFilter.replace(/created_at/g, 'created_at')} GROUP BY customer_country ORDER BY count DESC`),
-    db.execute(`SELECT strftime('%Y-%m', created_at) as month, COUNT(*) as bookings FROM orders WHERE 1=1 ${dateFilter.replace(/created_at/g, 'created_at')} GROUP BY month ORDER BY month`),
+    db.execute(`SELECT strftime('%Y-%m', p.created_at) as month, COALESCE(SUM(p.amount), 0) as revenue FROM payments p WHERE p.status = 'completed' ${paymentsFilter} GROUP BY month ORDER BY month`),
+    db.execute(`SELECT d.id, d.name, d.rating, d.total_trips, d.vip_compatible, COUNT(o.id) as active_trips FROM drivers d LEFT JOIN orders o ON d.id = o.assigned_to AND o.status NOT IN ('cancelled') ${ordersFilter} GROUP BY d.id ORDER BY d.total_trips DESC LIMIT 10`),
+    db.execute(`SELECT o.customer_country, COUNT(*) as count FROM orders o WHERE o.customer_country IS NOT NULL AND o.customer_country != '' GROUP BY o.customer_country ORDER BY count DESC`),
+    db.execute(`SELECT strftime('%Y-%m', o.created_at) as month, COUNT(*) as bookings FROM orders o GROUP BY month ORDER BY month`),
+    db.execute(`SELECT o.package_name, COUNT(*) as count, COALESCE(SUM(o.package_price), 0) as revenue FROM orders o WHERE o.status != 'cancelled' GROUP BY o.package_name ORDER BY count DESC LIMIT 10`),
   ])
 
   const totalOrders = Number(ordersAgg.rows[0]?.total || 0)
@@ -47,7 +51,7 @@ export async function GET(req: Request) {
     bookings: Number(r.bookings),
   }))
 
-  const prevYearRes = await db.execute(`SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE status = 'completed' ${prevYearFilter}`)
+  const prevYearRes = await db.execute(`SELECT COALESCE(SUM(p.amount), 0) as total FROM payments p WHERE p.status = 'completed' ${prevYearPaymentsFilter}`)
   const prevYearRevenue = Number(prevYearRes.rows[0]?.total || 0) / 100
   const revenueGrowth = prevYearRevenue > 0 ? (((totalRevenue - prevYearRevenue) / prevYearRevenue) * 100).toFixed(1) : '0'
 
@@ -64,6 +68,14 @@ export async function GET(req: Request) {
     country: r.customer_country as string,
     count: Number(r.count),
     share: totalOrders > 0 ? ((Number(r.count) / totalOrders) * 100).toFixed(1) : '0',
+  }))
+
+  const totalServiceCount = servicePopularity.rows.reduce((sum, r) => sum + Number(r.count), 0)
+  const serviceData = servicePopularity.rows.map(r => ({
+    name: r.package_name as string,
+    count: Number(r.count),
+    revenue: Number(r.revenue) / 100,
+    percentage: totalServiceCount > 0 ? ((Number(r.count) / totalServiceCount) * 100).toFixed(1) : '0',
   }))
 
   const pendingOrdersRes = await db.execute("SELECT COUNT(*) as count FROM orders WHERE status NOT IN ('completed', 'cancelled')")
@@ -93,6 +105,7 @@ export async function GET(req: Request) {
     revenueGrowth,
     drivers,
     countries: countriesData,
+    servicePopularity: serviceData,
     prevYearRevenue,
   })
 }

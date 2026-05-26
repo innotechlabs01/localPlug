@@ -64,7 +64,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       const params = new URLSearchParams()
       if (lastTimestampRef.current) params.set('since', lastTimestampRef.current)
 
-      const res = await fetch(`/api/admin/realtime?${params}`)
+      const res = await fetch(`/api/admin/realtime?${params}`, { credentials: 'include' })
       if (!res.ok) {
         if (res.status === 401) {
           failedRef.current = true

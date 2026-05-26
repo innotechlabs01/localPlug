@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
-import { getDb } from '@/lib/db'
+import { getDb, buildSafeUpdate } from '@/lib/db'
 import { auth } from '@clerk/nextjs/server'
+
+const ALLOWED_DRIVER_COLUMNS = ['name', 'phone', 'email', 'vehicle', 'plate', 'category', 'status', 'rating', 'languages', 'experience_level', 'notes', 'license_expiry', 'soat_expiry', 'tech_inspection_expiry', 'insurance_expiry', 'year', 'capacity', 'emergency_contact', 'emergency_phone', 'city']
 
 export async function GET() {
   try {
@@ -104,15 +106,7 @@ export async function PUT(req: Request) {
     if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
 
     const db = getDb()
-    const setClauses: string[] = []
-    const args: (string | number | null)[] = []
-
-    for (const [key, value] of Object.entries(updates)) {
-      if (value !== undefined && key !== 'id') {
-        setClauses.push(`${key} = ?`)
-        args.push(value as string | number | null)
-      }
-    }
+    const { setClauses, args } = buildSafeUpdate(updates as Record<string, unknown>, ALLOWED_DRIVER_COLUMNS)
 
     if (setClauses.length === 0) return NextResponse.json({ error: 'No fields' }, { status: 400 })
 

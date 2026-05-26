@@ -3,6 +3,7 @@ import { verifyWebhookSignature, buildPaymentRecordFromWebhook } from '@/app/com
 import { getPayment, setPayment } from '@/app/components/booking/lib/payment-store'
 import { triggerPaymentConfirmation } from '@/lib/n8n/client'
 import { getDb } from '@/lib/db'
+import { getPackageName, getPackageTotal } from '@/lib/pricing'
 import type { PaymentRecord } from '@/app/components/booking/lib/types'
 
 export async function POST(req: Request) {
@@ -53,24 +54,79 @@ export async function POST(req: Request) {
     const customerName = intent.metadata?.customerName || ''
     const customerPhone = intent.metadata?.customerPhone || ''
     const packageName = intent.metadata?.packageName || ''
+    const packageId = intent.metadata?.packageId || ''
     const flightNumber = intent.metadata?.flightNumber || ''
     const airline = intent.metadata?.airline || ''
     const arrivalDate = intent.metadata?.arrivalDate || ''
     const arrivalTime = intent.metadata?.arrivalTime || ''
 
-    // Also update order payment_status
+    const db = getDb()
+
+    // Check if order exists
+    let orderExists = false
+    try {
+      const checkResult = await db.execute({
+        sql: 'SELECT id FROM orders WHERE booking_reference = ? LIMIT 1',
+        args: [bookingRef],
+      })
+      orderExists = (checkResult.rows?.length ?? 0) > 0
+    } catch (err) {
+      console.error('[Payment Webhook] Check order existence failed:', err)
+    }
+
+    // If order doesn't exist, create it from payment metadata
+    if (!orderExists) {
       try {
-        const db2 = getDb()
-        await db2.execute({
+        const orderNumber = `ORD-${Date.now().toString(36).toUpperCase()}`
+        const needReturn = intent.metadata?.needReturn === 'true'
+        const finalPrice = getPackageTotal(packageId, needReturn)
+
+        await db.execute({
+          sql: `INSERT INTO orders (
+            order_number, booking_reference, customer_name, customer_email, customer_phone,
+            package_id, package_name, package_price, currency,
+            flight_number, airline, arrival_date, arrival_time,
+            status, dispatch_status, payment_status, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          args: [
+            orderNumber,
+            bookingRef,
+            customerName || null,
+            customerEmail || null,
+            customerPhone || null,
+            packageId,
+            getPackageName(packageId),
+            finalPrice,
+            'usd',
+            flightNumber || null,
+            airline || null,
+            arrivalDate || null,
+            arrivalTime || null,
+            'confirmed', // Order status = confirmed (visible in reservations)
+            'pending',   // Dispatch status = pending (visible in dispatch queue)
+            'paid',
+            now,
+            now,
+          ],
+        })
+        console.log('[Payment Webhook] Order created from payment:', orderNumber)
+      } catch (dbErr) {
+        console.error('[Payment Webhook] Create order from payment failed:', dbErr)
+      }
+    } else {
+      // Order exists, update its payment_status
+      try {
+        await db.execute({
           sql: "UPDATE orders SET payment_status = 'paid', updated_at = datetime('now') WHERE booking_reference = ?",
           args: [bookingRef],
         })
       } catch (dbErr2) {
         console.error('[Payment Webhook] Update order payment_status failed:', dbErr2)
       }
+    }
 
-      // Trigger n8n payment confirmation
-      triggerPaymentConfirmation({
+    // Trigger n8n payment confirmation
+    triggerPaymentConfirmation({
       bookingReference: bookingRef,
       customerName,
       customerEmail,
@@ -85,8 +141,8 @@ export async function POST(req: Request) {
 
     // Create chat conversation for the paying customer
     try {
-      const db = getDb()
-      await db.execute({
+      const db2 = getDb()
+      await db2.execute({
         sql: `INSERT OR IGNORE INTO conversations (user_identifier, user_name, user_email, status, booking_reference, channel)
               VALUES (?, ?, ?, 'ai_active', ?, 'web')`,
         args: [customerEmail, customerName, customerEmail, bookingRef],

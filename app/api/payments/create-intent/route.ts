@@ -1,17 +1,14 @@
 import { NextResponse } from 'next/server'
 import { createPaymentIntent } from '@/app/components/booking/lib/stripe-server'
 import { getPayment, hasPayment, setPayment } from '@/app/components/booking/lib/payment-store'
+import { rateLimitMiddleware } from '@/lib/rate-limit'
+import { getPackageName, getPackagePriceCents, getPackageTotalCents } from '@/lib/pricing'
 import type { PaymentRecord } from '@/app/components/booking/lib/types'
 
-const PACKAGE_PRICES: Record<string, number> = {
-  'smooth-landing': 8900,
-  'first-24': 14900,
-  'full-insider': 24900,
-}
-
-const RETURN_TRIP_CHARGE_CENTS = 4800
-
 export async function POST(req: Request) {
+  const rateLimitResponse = rateLimitMiddleware(req)
+  if (rateLimitResponse) return rateLimitResponse
+
   try {
     const body = await req.json()
     const { bookingReference, packageId, customerEmail, customerName, customerPhone, flightNumber, airline, arrivalDate, arrivalTime, needReturn } = body as {
@@ -27,6 +24,8 @@ export async function POST(req: Request) {
       needReturn?: boolean
     }
 
+    console.log('[Create Payment Intent] Received needReturn:', needReturn)
+
     if (!bookingReference || !packageId || !customerEmail || !customerName) {
       return NextResponse.json(
         { error: 'invalid_request', message: 'Missing required fields' },
@@ -34,15 +33,15 @@ export async function POST(req: Request) {
       )
     }
 
-    const baseAmount = PACKAGE_PRICES[packageId]
-    if (baseAmount === undefined) {
+    const baseAmount = getPackagePriceCents(packageId)
+    if (baseAmount === 0) {
       return NextResponse.json(
         { error: 'invalid_request', message: 'Invalid package ID' },
         { status: 400 },
       )
     }
 
-    const amount = baseAmount + (needReturn ? RETURN_TRIP_CHARGE_CENTS : 0)
+    const amount = getPackageTotalCents(packageId, !!needReturn)
 
     if (await hasPayment(bookingReference)) {
       const existing = await getPayment(bookingReference)
@@ -66,6 +65,7 @@ export async function POST(req: Request) {
       airline,
       arrivalDate,
       arrivalTime,
+      needReturn,
     })
 
     const now = new Date().toISOString()
@@ -94,11 +94,4 @@ export async function POST(req: Request) {
   }
 }
 
-function getPackageName(id: string): string {
-  const names: Record<string, string> = {
-    'smooth-landing': 'The VIP Arrival',
-    'first-24': 'The 24h Insider',
-    'full-insider': 'The Peace of Mind',
-  }
-  return names[id] || id
-}
+

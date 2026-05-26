@@ -1,12 +1,58 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createFlightValidation } from '../lib/flight-validation'
 
+function parseUrlParams(url: RequestInfo | URL): Record<string, string> {
+  const urlStr = typeof url === 'string' ? url : url instanceof URL ? url.href : url.url
+  const qIdx = urlStr.indexOf('?')
+  if (qIdx === -1) return {}
+  const params: Record<string, string> = {}
+  for (const part of urlStr.slice(qIdx + 1).split('&')) {
+    const [k, v] = part.split('=')
+    params[decodeURIComponent(k)] = decodeURIComponent(v || '')
+  }
+  return params
+}
+
 beforeEach(() => {
-  localStorage.removeItem('__mock_fail')
+  vi.spyOn(global, 'fetch').mockImplementation(async (url: RequestInfo | URL) => {
+    const p = parseUrlParams(url)
+    const airline = p.airline
+    const flightNumber = p.flightNumber
+
+    if (airline === 'american airlines' && flightNumber === 'AA1123') {
+      return new Response(JSON.stringify({ valid: true, airlineName: 'American Airlines', flightNumber: 'AA1123' }), { status: 200 })
+    }
+    if (airline === 'aa' && flightNumber === 'AA1123') {
+      return new Response(JSON.stringify({ valid: true, airlineName: 'American Airlines', flightNumber: 'AA1123' }), { status: 200 })
+    }
+    if (airline === 'american airlines' && flightNumber === 'AA9999') {
+      return new Response(JSON.stringify({ valid: false }), { status: 200 })
+    }
+    if (airline === 'avianca' && flightNumber === 'AV123') {
+      return new Response(JSON.stringify({ valid: true, airlineName: 'Avianca', flightNumber: 'AV123' }), { status: 200 })
+    }
+    if (airline === 'av' && flightNumber === 'AV123') {
+      return new Response(JSON.stringify({ valid: true, airlineName: 'Avianca', flightNumber: 'AV123' }), { status: 200 })
+    }
+    if (airline === 'american airlines' && flightNumber === 'AV123') {
+      return new Response(JSON.stringify({ valid: false }), { status: 200 })
+    }
+    if (airline === 'unknown airline' && flightNumber === 'XX9999') {
+      return new Response(JSON.stringify({ valid: false }), { status: 200 })
+    }
+    if (airline === 'american airlines' && flightNumber === '1123') {
+      return new Response(JSON.stringify({ valid: true, airlineName: 'American Airlines', flightNumber: 'AA1123' }), { status: 200 })
+    }
+    if (airline === '__server_error__' && flightNumber === '__SERVER_ERROR__') {
+      return new Response(null, { status: 500 })
+    }
+
+    return new Response(JSON.stringify({ valid: false }), { status: 200 })
+  })
 })
 
 afterEach(() => {
-  localStorage.removeItem('__mock_fail')
+  vi.restoreAllMocks()
 })
 
 describe('createFlightValidation', () => {
@@ -51,12 +97,11 @@ describe('createFlightValidation', () => {
     expect(result.error).toBeUndefined()
   })
 
-  it('handles service failure when __mock_fail is set', async () => {
-    localStorage.setItem('__mock_fail', 'true')
+  it('handles service failure when fetch returns server error', async () => {
     const service = createFlightValidation({ latency: 0 })
     const result = await service.validateFlight({
-      airline: 'American Airlines',
-      flightNumber: 'AA1123',
+      airline: '__server_error__',
+      flightNumber: '__server_error__',
     })
     expect(result.valid).toBe(false)
     expect(result.error).toBe('Validation service unavailable')
