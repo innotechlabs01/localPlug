@@ -3,9 +3,10 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { useAuth } from '@clerk/nextjs'
+import { useAuth, useClerk } from '@clerk/nextjs'
 import { useI18n } from '@/lib/i18n'
 import { RealtimeProvider, useRealtime } from '@/lib/admin/realtime-context'
+import { InactivityGuard } from '@/app/components/admin/InactivityGuard'
 
 interface NavItem {
   labelKey: string
@@ -217,6 +218,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
 function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const { isLoaded, isSignedIn } = useAuth()
+  const { signOut } = useClerk()
   const pathname = usePathname()
   const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -306,13 +308,13 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="sidebar-footer">
-          <Link href="/sign-in" className="nav-item">
+          <button onClick={() => signOut({ redirectUrl: '/sign-in' })} className="nav-item" style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', textAlign: 'left' }}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
               <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
             </svg>
             {t.admin.nav.signOut as string}
-          </Link>
+          </button>
         </div>
       </aside>
 
@@ -412,9 +414,9 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                   <Link href="/reset-password" className="block px-4 py-2 text-[13px] hover:bg-[var(--surface-hover)]" style={{ color: 'var(--fg-secondary)' }}>
                     {t.admin.layout?.resetPassword || 'Reset Password'}
                   </Link>
-                  <Link href="/sign-in" className="block px-4 py-2 text-[13px] hover:bg-[var(--surface-hover)]" style={{ color: 'var(--danger)' }}>
+                  <button onClick={() => signOut({ redirectUrl: '/sign-in' })} className="block w-full px-4 py-2 text-[13px] text-left hover:bg-[var(--surface-hover)]" style={{ color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 }}>
                     {t.admin.nav.signOut as string}
-                  </Link>
+                  </button>
                 </div>
               )}
             </div>
@@ -428,6 +430,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
           {children}
         </div>
       </div>
+      <InactivityGuard />
     </div>
   )
 }

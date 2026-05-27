@@ -15,7 +15,7 @@ interface AuthModalProps {
 function AuthModal({ open, onClose }: AuthModalProps) {
   if (!open) return null
   return (
-    <div className="dp-modal-overlay" onClick={onClose}>
+    <div className="dp-modal-overlay open" onClick={onClose}>
       <div className="dp-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 380 }}>
         <div className="dp-modal-header">
           <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--fg)' }}>Sesión Expirada</span>
@@ -319,7 +319,7 @@ export default function DispatchPage() {
                   <span className={`dp-request-status ${getDispatchStatusClass(order.dispatch_status)}`}>
                     {STATUS_LABELS[order.dispatch_status || 'pending'] || 'Pending'}
                   </span>
-                  <span className={`dp-payment-badge ${order.payment_status === 'completed' ? 'paid' : 'pending-payment'}`}>
+                  <span className={`dp-payment-badge ${order.payment_status === 'completed' ? 'paid' : 'pending'}`}>
                     {order.payment_status === 'completed' ? 'Paid' : 'Pending'}
                   </span>
                 </div>
@@ -427,7 +427,7 @@ export default function DispatchPage() {
                       Operational Notes
                     </div>
                     <div className="dp-section-body">
-                      <div className="dp-note-text">{selectedOrder.customer_notes}</div>
+                      <div className="note-text">{selectedOrder.customer_notes}</div>
                     </div>
                   </div>
                 )}
@@ -440,10 +440,10 @@ export default function DispatchPage() {
                       {d.assignDriver || 'Assign Driver'}
                     </div>
                     <div className="dp-section-body">
-                      <div>
+                      <div className="dp-assign-area">
                         {suggestedDrivers.length > 0 && (
                           <>
-                            <div className="dp-suggested-label">
+                            <div className="suggested-label">
                               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                               {d.suggested || 'Smart Suggestions'}
                             </div>
@@ -460,8 +460,8 @@ export default function DispatchPage() {
                           </>
                         )}
                         {otherDrivers.length > 0 && (
-                          <>
-                            <div className="dp-other-label" style={{ marginTop: suggestedDrivers.length > 0 ? 12 : 0 }}>
+                          <div className="dp-other-drivers">
+                            <div className="other-label">
                               {suggestedDrivers.length > 0 ? (d.otherAvailable || 'Other Available') : (d.availableDrivers || 'Available Drivers')}
                             </div>
                             {otherDrivers.slice(0, 4).map(drv => (
@@ -473,7 +473,7 @@ export default function DispatchPage() {
                                 </div>
                               </div>
                             ))}
-                          </>
+                          </div>
                         )}
                         <button className="dp-assign-btn" onClick={() => setModalOpen(true)} disabled={drivers.filter(drv => drv.status === 'available').length === 0}>
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
@@ -524,7 +524,7 @@ export default function DispatchPage() {
             </button>
           </div>
 
-          <div className="dp-cat-tabs">
+          <div className="dp-driver-category-tabs">
             {(['all', 'standard', 'suv', 'vip', 'luxury', 'van'] as const).map(cat => (
               <button key={cat} className={`dp-cat-tab ${driverCat === cat ? 'active' : ''}`} onClick={() => setDriverCat(cat)}>
                 {cat === 'all' ? (d.allCategories || 'All') : cat === 'standard' ? (d.standard || 'Standard') : cat === 'suv' ? (d.suv || 'SUV') : cat === 'vip' ? (d.vIPSuv || 'VIP SUV') : cat === 'luxury' ? (d.luxury || 'Luxury') : (d.van || 'Van')}
@@ -577,7 +577,7 @@ export default function DispatchPage() {
 
       {/* ── Assign Confirmation Modal ── */}
       {modalOpen && (
-        <div className="dp-modal-overlay" onClick={() => setModalOpen(false)}>
+        <div className="dp-modal-overlay open" onClick={() => setModalOpen(false)}>
           <div className="dp-modal" onClick={e => e.stopPropagation()}>
             {selectedDriver ? (
               <>
