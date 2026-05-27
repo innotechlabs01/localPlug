@@ -165,7 +165,7 @@ function BookingFormInner() {
 
   const handlePaymentSuccess = async () => {
     const booking = {
-      id: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      id: bookingReference,
       flight: flightData,
       profile,
       destination,
@@ -207,7 +207,7 @@ function BookingFormInner() {
     setIsSubmitting(true)
 
     const booking = {
-      id: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      id: bookingReference,
       flight: flightData,
       profile,
       destination,

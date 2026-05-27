@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     const packagePrice = getPackageTotal(pkg, needReturn)
 
     await db.execute({
-      sql: `INSERT INTO orders (
+      sql: `INSERT OR IGNORE INTO orders (
         order_number, booking_reference, customer_name, customer_email, customer_phone,
         customer_country, customer_notes, return_date, return_time,
         package_id, package_name, package_price, currency,
