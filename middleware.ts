@@ -6,13 +6,18 @@ const isPublicRoute = createRouteMatcher([
   '/api/booking',
   '/api/payments/(.*)',
   '/api/webhooks/(.*)',
+  '/api/admin/lookup',
   '/sign-in(.*)',
   '/sign-up(.*)',
 ])
 
 const isAdminApiRoute = createRouteMatcher(['/api/admin/(.*)'])
+const isLookupRoute = createRouteMatcher(['/api/admin/lookup'])
 
 export default clerkMiddleware(async (auth, req) => {
+  if (isLookupRoute(req)) {
+    return
+  }
   if (isAdminApiRoute(req)) {
     const { userId } = await auth()
     if (!userId) {
