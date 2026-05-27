@@ -1353,10 +1353,6 @@ tbody tr:hover {
 .dp-request-status.pickedup { background: rgba(139,92,246,0.12); color: #8b5cf6; }
 .dp-request-status.completed { background: var(--accent-soft); color: var(--accent); opacity: 0.6; }
 .dp-vip-badge { display: inline-flex; align-items: center; gap: 3px; background: var(--gold-soft); color: var(--gold); font-size: 9px; font-weight: 600; padding: 1px 6px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.3px; }
-.dp-payment-badge { font-size: 10px; font-weight: 500; }
-.dp-payment-badge.paid { color: var(--accent); }
-.dp-payment-badge.pending { color: var(--warning); }
-
 /* Dispatch Center Panel */
 .dp-empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 16px; color: var(--fg-muted); }
 .dp-empty-state svg { width: 56px; height: 56px; opacity: 0.3; }
@@ -1402,8 +1398,6 @@ tbody tr:hover {
 
 /* Dispatch Driver Assignment */
 .dp-assign-area { margin-top: 8px; }
-.dp-assign-area .suggested-label { font-size: 11px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
-.dp-assign-area .suggested-label svg { width: 14px; height: 14px; }
 .dp-driver-suggestion { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--accent-soft); border: 1px solid var(--accent); border-radius: var(--radius-sm); margin-bottom: 8px; cursor: pointer; transition: all var(--transition); }
 .dp-driver-suggestion:hover { background: rgba(16, 185, 129, 0.18); }
 .dp-driver-suggestion .d-photo { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), #059669); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 14px; flex-shrink: 0; }
@@ -1413,7 +1407,6 @@ tbody tr:hover {
 .dp-driver-suggestion .d-badge { font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 8px; }
 .dp-driver-suggestion .d-badge.match { background: var(--accent-soft); color: var(--accent); }
 .dp-other-drivers { margin-top: 12px; }
-.dp-other-drivers .other-label { font-size: 11px; color: var(--fg-muted); font-weight: 500; margin-bottom: 8px; }
 .dp-other-driver { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--bg); border: 1px solid var(--border-light); border-radius: var(--radius-sm); margin-bottom: 6px; cursor: pointer; transition: all var(--transition); }
 .dp-other-driver:hover { background: var(--surface-hover); border-color: var(--border); }
 .dp-other-driver .d-photo { width: 34px; height: 34px; border-radius: 50%; background: var(--surface-hover); display: flex; align-items: center; justify-content: center; color: var(--fg-secondary); font-weight: 600; font-size: 12px; flex-shrink: 0; }
@@ -1443,29 +1436,66 @@ tbody tr:hover {
 .dp-driver-meta { font-size: 11px; color: var(--fg-muted); margin-top: 2px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .dp-driver-meta .rating { display: inline-flex; align-items: center; gap: 2px; color: var(--gold); }
 .dp-driver-vehicle-tag { font-size: 10px; background: var(--surface-hover); padding: 1px 6px; border-radius: 4px; }
-.dp-driver-status-text { font-size: 11px; font-weight: 500; }
-.dp-driver-status-text.online { color: var(--accent); }
-.dp-driver-status-text.busy { color: var(--warning); }
-.dp-driver-status-text.offline { color: var(--fg-muted); }
-.dp-driver-distance { font-size: 11px; font-family: var(--font-mono); color: var(--fg-muted); }
+.dp-driver-status-text { font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 8px; }
+.dp-driver-status-text.available { background: var(--accent-soft); color: var(--accent); }
+.dp-driver-status-text.busy { background: var(--warning-soft); color: var(--warning); }
+.dp-driver-status-text.offline { background: transparent; color: var(--fg-muted); }
+.dp-driver-distance { font-size: 10px; font-family: var(--font-mono); color: var(--fg-muted); }
 
-/* Dispatch Stats Row */
-.dp-stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; padding: 0 16px 12px; }
-.dp-stat-mini { padding: 10px 12px; background: var(--surface); border: 1px solid var(--border-light); border-radius: var(--radius-sm); text-align: center; }
-.dp-stat-mini .stat-num { font-size: 18px; font-weight: 700; }
-.dp-stat-mini .stat-num.warning { color: var(--warning); }
-.dp-stat-mini .stat-num.accent { color: var(--accent); }
-.dp-stat-mini .stat-num.info { color: var(--info); }
-.dp-stat-mini .stat-lbl { font-size: 10px; color: var(--fg-muted); margin-top: 2px; }
+.dp-driver-right { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: 4px; }
+
+/* Dispatch Stats */
+.dp-left-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; margin: 0 16px 12px; }
+.dp-left-stat { text-align: center; padding: 8px 4px; background: var(--surface); border-radius: var(--radius-sm); }
+.dp-left-stat .val { font-size: 16px; font-weight: 700; }
+.dp-left-stat .lbl { font-size: 9px; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.3px; margin-top: 1px; }
+
+/* Dispatch Alerts Bar */
+.dp-alerts-bar { display: flex; gap: 8px; padding: 8px 16px; border-bottom: 1px solid var(--border-light); overflow-x: auto; background: var(--bg-secondary); }
+.dp-alert-chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: 500; white-space: nowrap; flex-shrink: 0; }
+.dp-alert-chip.warning { background: var(--warning-soft); color: var(--warning); }
+.dp-alert-chip.danger { background: var(--danger-soft); color: var(--danger); }
+.dp-alert-chip.info { background: var(--info-soft); color: var(--info); }
+.dp-alert-chip .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.dp-alert-chip .dot.warning { background: var(--warning); }
+.dp-alert-chip .dot.danger { background: var(--danger); }
+.dp-alert-chip .dot.info { background: var(--info); }
+
+/* Dispatch Labels — used inside dp-assign-area / dp-other-drivers */
+.dp-assign-area .suggested-label { font-size: 11px; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+.dp-assign-area .suggested-label svg { width: 14px; height: 14px; }
+.dp-other-drivers .other-label { font-size: 11px; color: var(--fg-muted); font-weight: 500; margin-bottom: 8px; }
+.dp-section-body .note-text { font-size: 13px; color: var(--fg-secondary); line-height: 1.6; padding: 10px 12px; background: var(--bg); border-radius: var(--radius-sm); border-left: 3px solid var(--accent); }
+.dp-section-body .note-text.emergency { border-left-color: var(--danger); background: var(--danger-soft); }
+
+/* Dispatch Modal — matches admin-shared modal pattern */
+.dp-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity var(--transition); }
+.dp-modal-overlay.open { opacity: 1; pointer-events: all; }
+.dp-modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-modal); width: 100%; max-width: 480px; max-height: 85vh; overflow-y: auto; transform: translateY(20px) scale(0.97); transition: transform var(--transition); }
+.dp-modal-overlay.open .dp-modal { transform: translateY(0) scale(1); }
+.dp-modal-header { padding: 20px 24px 0; display: flex; align-items: center; justify-content: space-between; }
+.dp-modal-body { padding: 20px 24px; display: flex; flex-direction: column; gap: 8px; }
+.dp-modal-footer { padding: 0 24px 20px; display: flex; gap: 8px; justify-content: flex-end; }
 
 /* Dispatch Notifications */
-.dp-notif-stack { position: fixed; top: 80px; right: 24px; z-index: 999; display: flex; flex-direction: column; gap: 8px; }
-.dp-notif { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px 16px; box-shadow: var(--shadow-elevated); display: flex; align-items: center; gap: 10px; animation: slideInNotif 300ms ease-out; min-width: 280px; }
-@keyframes slideInNotif { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
-.dp-notif .notif-icon { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.dp-notif .notif-icon.success { background: var(--accent-soft); color: var(--accent); }
-.dp-notif .notif-icon.warning { background: var(--warning-soft); color: var(--warning); }
-.dp-notif .notif-text { font-size: 13px; font-weight: 500; }
+.dp-notif-stack { position: fixed; top: calc(var(--topbar-height) + 12px); right: 16px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+.dp-notif { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 14px 18px; box-shadow: var(--shadow-elevated); display: flex; align-items: center; gap: 10px; animation: notifIn 350ms cubic-bezier(0.16, 1, 0.3, 1); pointer-events: all; min-width: 300px; }
+.dp-notif.out { animation: notifOut 300ms ease-in forwards; }
+@keyframes notifIn { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes notifOut { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(40px); } }
+.dp-notif-icon { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.dp-notif-icon.success { background: var(--accent-soft); color: var(--accent); }
+.dp-notif-icon.warning { background: var(--warning-soft); color: var(--warning); }
+.dp-notif-icon.info { background: var(--info-soft); color: var(--info); }
+.dp-notif-icon svg { width: 16px; height: 16px; }
+.dp-notif-body { flex: 1; }
+.dp-notif-body .title { font-size: 13px; font-weight: 600; }
+.dp-notif-body .desc { font-size: 11px; color: var(--fg-muted); margin-top: 1px; }
+
+.dp-payment-badge { font-size: 10px; font-weight: 500; }
+.dp-payment-badge.paid { color: var(--accent); }
+.dp-payment-badge.pending { color: var(--warning); }
+.dp-payment-badge.overdue { color: var(--danger); }
 
 /* ── Drivers Page ── */
 .drivers-page { padding: 0; }
@@ -2181,4 +2211,88 @@ tbody tr:hover {
   .exec-kpi-row { grid-template-columns: 1fr; }
   .fleet-grid-4 { grid-template-columns: 1fr; }
   .customer-metrics { grid-template-columns: 1fr; }
+}
+
+/* ── Inactivity Timeout Modal ── */
+.inactivity-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeIn 300ms ease-out;
+}
+
+.inactivity-modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-modal);
+  padding: 32px 40px;
+  text-align: center;
+  max-width: 400px;
+  width: 100%;
+  animation: scaleIn 300ms ease-out;
+}
+
+.inactivity-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--warning-soft);
+  color: var(--warning);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px;
+}
+
+.inactivity-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.inactivity-modal h3 {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  color: var(--fg);
+}
+
+.inactivity-modal p {
+  font-size: 13px;
+  color: var(--fg-muted);
+  margin: 0 0 24px;
+  line-height: 1.5;
+}
+
+.inactivity-stay-btn {
+  padding: 10px 24px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.inactivity-stay-btn:hover {
+  background: #059669;
+  box-shadow: 0 0 20px var(--accent-glow);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
 }

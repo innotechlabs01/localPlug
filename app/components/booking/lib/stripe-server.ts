@@ -34,6 +34,7 @@ export async function createPaymentIntent(params: {
     metadata: {
       bookingReference: params.bookingReference,
       packageId: params.packageId,
+      packageName: getPackageName(params.packageId),
       customerEmail: params.customerEmail,
       customerName: params.customerName,
       flightNumber: params.flightNumber || '',
