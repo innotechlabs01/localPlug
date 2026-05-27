@@ -91,7 +91,10 @@ export default function StepTravelerProfile({
 
   useEffect(() => {
     fetch('/api/admin/lookup')
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error(`Lookup failed: ${res.status}`)
+        return res.json()
+      })
       .then((data: LookupData) => {
         if (data.countries) setCountries(data.countries)
         if (data.languages) setLanguages(data.languages)
