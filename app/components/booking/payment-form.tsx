@@ -101,11 +101,15 @@ export default function PaymentForm({ onError, onPaymentSuccess, bookingReferenc
     }
 
     if (paymentIntent?.status === 'succeeded') {
-      await fetch('/api/payments/confirm', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingReference, paymentIntentId: paymentIntent.id }),
-      }).catch(() => {})
+      try {
+        await fetch('/api/payments/confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bookingReference, paymentIntentId: paymentIntent.id }),
+        })
+      } catch (err) {
+        console.error('[Payment] Confirm endpoint failed:', err)
+      }
       onPaymentSuccess()
       return
     }
