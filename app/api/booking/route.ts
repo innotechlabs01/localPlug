@@ -35,7 +35,7 @@ export async function POST(request: Request) {
         flight_number, airline, arrival_date, arrival_time,
         destination_address, destination_has_place, additional_trips,
         traveler_profile, status, dispatch_status, payment_status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         orderNumber,
         bookingRef,
