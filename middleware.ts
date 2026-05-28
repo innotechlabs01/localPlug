@@ -1,3 +1,4 @@
+import { NextResponse } from 'next/server'
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 
 const isPublicRoute = createRouteMatcher([
@@ -16,7 +17,7 @@ const isLookupRoute = createRouteMatcher(['/api/admin/lookup'])
 
 export default clerkMiddleware(async (auth, req) => {
   if (isLookupRoute(req)) {
-    return
+    return NextResponse.next()
   }
   if (isAdminApiRoute(req)) {
     const { userId } = await auth()
