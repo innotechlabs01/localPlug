@@ -88,6 +88,13 @@ export async function POST(request: Request) {
         args: [convId],
       })
 
+      // Track first agent response time for rating stats
+      await db.execute({
+        sql: `UPDATE conversations SET first_agent_response_at = datetime('now')
+              WHERE id = ? AND first_agent_response_at IS NULL`,
+        args: [convId],
+      })
+
       return NextResponse.json({
         success: true,
         conversationId: convId,
@@ -187,6 +194,13 @@ export async function POST(request: Request) {
       sql: `INSERT INTO messages (conversation_id, sender_type, content, message_type)
             VALUES (?, 'ai', ?, 'text')`,
       args: [convId, fallbackContent],
+    })
+
+    // Track first AI response time for rating stats
+    await db.execute({
+      sql: `UPDATE conversations SET first_agent_response_at = datetime('now')
+            WHERE id = ? AND first_agent_response_at IS NULL`,
+      args: [convId],
     })
 
     return NextResponse.json({
