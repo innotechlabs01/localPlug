@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useI18n } from '@/lib/i18n'
+import RatingForm from '@/app/components/ratings/RatingForm'
 
 interface Message {
   id?: number
@@ -30,6 +31,8 @@ export default function ChatWidget() {
   const [conversationId, setConversationId] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isClosed, setIsClosed] = useState(false)
+  const [showRating, setShowRating] = useState(false)
+  const [hasRated, setHasRated] = useState(false)
   const [initialLoading, setInitialLoading] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -57,6 +60,20 @@ export default function ChatWidget() {
       localStorage.setItem('chat_conversation_id', String(conversationId))
     }
   }, [conversationId])
+
+  // Detect closed status and check if rating was already submitted
+  useEffect(() => {
+    if (isClosed && conversationId && typeof window !== 'undefined') {
+      const rated = localStorage.getItem(`rated_${conversationId}`)
+      if (rated) {
+        setHasRated(true)
+      } else {
+        setShowRating(true)
+      }
+    } else {
+      setShowRating(false)
+    }
+  }, [isClosed, conversationId])
 
   // Fetch existing messages when opening known conversation
   useEffect(() => {
@@ -364,11 +381,20 @@ export default function ChatWidget() {
                   </button>
                 </div>
               </div>
+            ) : showRating && !hasRated ? (
+              <div className="border-t border-cool-slate-200 shrink-0">
+                <RatingForm
+                  conversationId={conversationId!}
+                  onSubmitted={() => { setHasRated(true); setShowRating(false) }}
+                />
+              </div>
             ) : (
               <div className="border-t border-cool-slate-200 p-4 text-center shrink-0">
-                <p className="text-body-md text-cool-slate-500 mb-2">{t.chatWidget.conversationClosed}</p>
+                <p className="text-body-md text-cool-slate-500 mb-2">
+                  {hasRated ? t.ratings.form.thanks : t.chatWidget.conversationClosed}
+                </p>
                 <button
-                  onClick={() => { setIsClosed(false); setConversationId(null); setMessages([]) }}
+                  onClick={() => { setIsClosed(false); setConversationId(null); setMessages([]); setShowRating(false); setHasRated(false) }}
                   className="text-label-md text-[var(--accent-gold)] hover:underline"
                 >
                   {t.chatWidget.reopen}
