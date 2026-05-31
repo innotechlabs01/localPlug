@@ -12,7 +12,7 @@ const PROFANITY_LIST_ES = [
 ]
 
 const URL_REGEX = /https?:\/\/[^\s]+|www\.[^\s]+/i
-const SPAM_REPEAT_REGEX = /(.)\1{5,}/
+const SPAM_REPEAT_REGEX = /(.)\1{4,}/
 const SPAM_CAPS_BLOCK_REGEX = /[A-Z\s]{20,}/
 
 export interface ModerationResult {
