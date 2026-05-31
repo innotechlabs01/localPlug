@@ -1342,6 +1342,22 @@ export default {
     escalated: 'Conversation escalated: {reason}',
     closed: 'Conversation closed: {reason}',
   },
+  ratings: {
+    title: 'What our customers say',
+    form: {
+      name: 'Your name',
+      country: 'Your country',
+      comment: 'Comment (optional)',
+      submit: 'Submit rating',
+      thanks: 'Thank you for your feedback!',
+    },
+    stats: {
+      avg: 'Average rating',
+      total: 'Total reviews',
+      resolved: 'Cases resolved',
+      response: 'Avg response time',
+    },
+  },
   resetPassword: {
     title: 'Reset Password',
     subtitle: 'Enter your current password and choose a new one.',

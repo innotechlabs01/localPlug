@@ -1341,6 +1341,22 @@ export default {
     escalated: 'Conversación escalada: {reason}',
     closed: 'Conversación cerrada: {reason}',
   },
+  ratings: {
+    title: 'Lo que opinan nuestros clientes',
+    form: {
+      name: 'Tu nombre',
+      country: 'Tu país',
+      comment: 'Comentario (opcional)',
+      submit: 'Enviar calificación',
+      thanks: '¡Gracias por tu opinión!',
+    },
+    stats: {
+      avg: 'Calificación promedio',
+      total: 'Total de valoraciones',
+      resolved: 'Casos resueltos',
+      response: 'Tiempo promedio de respuesta',
+    },
+  },
   resetPassword: {
     title: 'Restablecer Contraseña',
     subtitle: 'Ingresa tu contraseña actual y elige una nueva.',
