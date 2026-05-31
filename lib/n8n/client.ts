@@ -80,10 +80,28 @@ export async function triggerPaymentConfirmation(bookingData: {
 }): Promise<N8nResponse> {
   console.log('[n8n] triggerPaymentConfirmation called', { bookingReference: bookingData.bookingReference })
 
+  // Send WhatsApp directly via Evolution API
+  const phone = bookingData.customerPhone
+  if (phone) {
+    const isSpanish = /[áéíóúñ¿¡]/.test(bookingData.customerName) ||
+      bookingData.customerName.toLowerCase().includes('maría') ||
+      bookingData.customerName.toLowerCase().includes('josé')
+
+    const message = isSpanish
+      ? `🎉 ¡Hola ${bookingData.customerName}!\n\nTu reserva *#${bookingData.bookingReference.slice(0, 8).toUpperCase()}* está registrada.\nTe avisaremos cuando asignemos un conductor.`
+      : `🎉 Hello ${bookingData.customerName}!\n\nYour booking *#${bookingData.bookingReference.slice(0, 8).toUpperCase()}* is registered.\nWe'll notify you when a driver is assigned.`
+
+    sendWhatsAppDirect({
+      number: phone,
+      message,
+    }).then(r => {
+      if (!r.success) console.error('[n8n] Direct WhatsApp send failed:', r.error)
+    })
+  }
+
   return sendN8nWebhook('payment-confirmed', {
     type: 'payment_confirmation',
     booking: bookingData,
-    // Evolution API config for n8n
     evolutionApi: {
       instanceName: process.env.EVOLUTION_INSTANCE_NAME,
       serverUrl: process.env.EVOLUTION_API_URL,
@@ -100,8 +118,30 @@ export async function triggerDriverAssigned(data: {
   customerPhone?: string
   driverName: string
   vehicle: string
-  eta: string
+  licensePlate: string
+  eta?: string
 }): Promise<N8nResponse> {
+  console.log('[n8n] triggerDriverAssigned called', { bookingReference: data.bookingReference })
+
+  // Send WhatsApp directly via Evolution API
+  const phone = data.customerPhone
+  if (phone) {
+    const isSpanish = /[áéíóúñ¿¡]/.test(data.customerName) ||
+      data.customerName.toLowerCase().includes('maría') ||
+      data.customerName.toLowerCase().includes('josé')
+
+    const message = isSpanish
+      ? `🚗 Conductor asignado para tu reserva *#${data.bookingReference.slice(0, 8).toUpperCase()}*!\n\nConductor: ${data.driverName}\nVehículo: ${data.vehicle}\nPlaca: ${data.licensePlate}`
+      : `🚗 Driver assigned for booking *#${data.bookingReference.slice(0, 8).toUpperCase()}*!\n\nDriver: ${data.driverName}\nVehicle: ${data.vehicle}\nPlate: ${data.licensePlate}`
+
+    sendWhatsAppDirect({
+      number: phone,
+      message,
+    }).then(r => {
+      if (!r.success) console.error('[n8n] Direct WhatsApp send failed:', r.error)
+    })
+  }
+
   return sendN8nWebhook('driver-assigned', {
     type: 'driver_assignment',
     booking: {
@@ -112,6 +152,7 @@ export async function triggerDriverAssigned(data: {
     driver: {
       name: data.driverName,
       vehicle: data.vehicle,
+      licensePlate: data.licensePlate,
       eta: data.eta,
     },
     evolutionApi: {
@@ -202,6 +243,9 @@ export async function sendWhatsAppDirect(data: {
     return { success: false, error: 'Evolution API not configured' }
   }
 
+  // Strip non-digit characters for Evolution API (it expects international format without +)
+  const cleanNumber = data.number.replace(/\D/g, '')
+
   try {
     const response = await fetch(`${evoUrl}/message/sendText/${instance}`, {
       method: 'POST',
@@ -210,7 +254,7 @@ export async function sendWhatsAppDirect(data: {
         apikey: evoKey,
       },
       body: JSON.stringify({
-        number: data.number,
+        number: cleanNumber,
         text: data.message,
       }),
     })
@@ -246,6 +290,9 @@ export async function sendWhatsAppButtons(data: {
     return { success: false, error: 'Evolution API not configured' }
   }
 
+  // Strip non-digit characters for Evolution API (it expects international format without +)
+  const cleanNumber = data.number.replace(/\D/g, '')
+
   try {
     const response = await fetch(`${evoUrl}/message/sendButtons/${instance}`, {
       method: 'POST',
@@ -254,7 +301,7 @@ export async function sendWhatsAppButtons(data: {
         apikey: evoKey,
       },
       body: JSON.stringify({
-        number: data.number,
+        number: cleanNumber,
         title: data.title,
         description: data.description,
         buttons: data.buttons,

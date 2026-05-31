@@ -6,12 +6,12 @@ import Image from 'next/image'
 import { useScrollReveal } from '@/app/hooks/use-scroll-reveal'
 
 const experienceImages = [
-  '/images/experiences-1.svg',
-  '/images/experiences-2.svg',
-  '/images/experiences-3.svg',
-  '/images/experiences-4.svg',
-  '/images/experiences-5.svg',
-  '/images/experiences-6.svg',
+  '/images/experiences-1.jpg',
+  '/images/experiences-2.jpg',
+  '/images/experiences-3.jpg',
+  '/images/experiences-4.jpg',
+  '/images/experiences-5.jpg',
+  '/images/experiences-6.jpg',
 ]
 
 export default function ExperiencesSection() {

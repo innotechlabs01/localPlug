@@ -98,7 +98,7 @@ function HeroInner() {
       <div className="absolute right-[5%] top-1/2 -translate-y-1/2 z-5 max-w-[480px] hidden lg:block animate-fade-in-up" style={{ animationDelay: '0.5s', animationFillMode: 'both' }}>
         <div className="rounded-[var(--radius-xl)] overflow-hidden shadow-[0_24px_64px_rgba(0,0,0,0.5)] relative">
           <Image
-            src="/images/hero-card.svg"
+            src="/images/hero-card.jpg"
             alt={t.hero.altCard}
             width={480}
             height={380}

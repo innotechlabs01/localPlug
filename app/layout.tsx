@@ -26,6 +26,10 @@ export const metadata: Metadata = {
   description:
     'Premium airport transfers, personalized concierge, and unforgettable experiences across the most vibrant city in Colombia.',
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
+  icons: {
+    icon: '/icon/icon.png',
+    apple: '/icon/icon.png',
+  },
   openGraph: {
     type: 'website',
     locale: 'en_US',

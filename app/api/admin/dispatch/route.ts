@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { auth } from '@clerk/nextjs/server'
+import { triggerDriverAssigned } from '@/lib/n8n/client'
 
 // ── GET /api/admin/dispatch ──
 // Query params: status, priority, search, tab (all|pending|assigned|enroute|vip)
@@ -122,6 +123,32 @@ export async function PUT(req: Request) {
       sql: `UPDATE drivers SET status = 'busy', updated_at = datetime('now') WHERE id = ?`,
       args: [driverId],
     })
+
+    // Trigger n8n WhatsApp notification for driver assignment
+    try {
+      const orderData = await db.execute({
+        sql: 'SELECT booking_reference, customer_name, customer_phone FROM orders WHERE id = ?',
+        args: [orderId],
+      })
+      const driverData = await db.execute({
+        sql: 'SELECT name, vehicle, plate FROM drivers WHERE id = ?',
+        args: [driverId],
+      })
+      if (orderData.rows.length > 0 && driverData.rows.length > 0) {
+        const o = orderData.rows[0]
+        const d = driverData.rows[0]
+        triggerDriverAssigned({
+          bookingReference: o.booking_reference as string,
+          customerName: o.customer_name as string,
+          customerPhone: (o.customer_phone as string) || undefined,
+          driverName: d.name as string,
+          vehicle: d.vehicle as string,
+          licensePlate: d.plate as string,
+        }).catch(err => console.error('[Dispatch] n8n trigger failed:', err))
+      }
+    } catch (n8nErr) {
+      console.error('[Dispatch] Failed to prepare n8n trigger:', n8nErr)
+    }
 
     return NextResponse.json({ success: true, action: 'assigned' })
   }
