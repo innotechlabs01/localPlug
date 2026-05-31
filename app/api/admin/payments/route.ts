@@ -123,6 +123,7 @@ export async function GET() {
   const refundsTotal = transactions
     .filter(t => t.status === 'refunded')
     .reduce((acc, t) => acc + t.amount, 0)
+  const lastPayout = payouts.length > 0 ? payouts[0].driver_payment_usd : 0
 
   const summary = {
     avgTransaction: Math.round(avgTransaction * 100) / 100,
@@ -132,7 +133,7 @@ export async function GET() {
     pendingPayout: payouts
       .filter(p => p.payment_status === 'pending')
       .reduce((acc, p) => acc + p.driver_payment_usd, 0),
-    lastPayout: 6340,
+    lastPayout,
   }
 
   return NextResponse.json({

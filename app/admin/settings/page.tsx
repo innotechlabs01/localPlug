@@ -18,6 +18,8 @@ export default function SettingsPage() {
   const d = (t.admin as any).settings ?? {}
   const [toast, setToast] = useState<string | null>(null)
   const [activeSection, setActiveSection] = useState('section-company')
+  const [settings, setSettings] = useState<Record<string, string>>({})
+  const [loading, setLoading] = useState(true)
 
   const showToast = (m: string) => { setToast(m); setTimeout(() => setToast(null), 3000) }
 
@@ -29,29 +31,47 @@ export default function SettingsPage() {
     }
   }
 
+  // Fetch settings from API on mount
   useEffect(() => {
-    const sections = document.querySelectorAll('.settings-section')
-    const navEls = document.querySelectorAll('.settings-nav .nav-item')
-    let timer: ReturnType<typeof setTimeout>
-    const onScroll = () => {
-      clearTimeout(timer)
-      timer = setTimeout(() => {
-        let current = ''
-        sections.forEach(s => {
-          const top = s.getBoundingClientRect().top
-          if (top < 200) current = s.getAttribute('id') || ''
-        })
-        setActiveSection(current)
-      }, 50)
+    const fetchSettings = async () => {
+      try {
+        const res = await fetch('/api/admin/settings')
+        if (!res.ok) throw new Error('Failed to fetch settings')
+        const data = await res.json()
+        setSettings(data)
+      } catch (error) {
+        console.error('Error fetching settings:', error)
+        showToast('Failed to load settings')
+      } finally {
+        setLoading(false)
+      }
     }
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
+
+    fetchSettings()
   }, [])
+
+  // Save settings to API
+  const saveSettings = async () => {
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings),
+      })
+      if (!res.ok) throw new Error('Failed to save settings')
+      showToast('Settings saved successfully')
+    } catch (error) {
+      console.error('Error saving settings:', error)
+      showToast('Failed to save settings')
+    }
+  }
 
   const toggleSwitch = (e: React.MouseEvent<HTMLDivElement>) => {
     const el = e.currentTarget
-    el.classList.toggle('on')
-    showToast(el.classList.contains('on') ? 'Enabled' : 'Disabled')
+    const isOn = el.classList.toggle('on')
+    // Update settings based on toggle - we need to identify which setting this is
+    // For now, we'll show a toast and rely on manual save
+    showToast(isOn ? 'Enabled' : 'Disabled')
   }
 
   const toggleCheck = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -85,33 +105,54 @@ export default function SettingsPage() {
           </div>
           <div className="settings-section-body">
             <div className="form-grid">
-              <div className="input-group">
-                <label className="input-label">{d.companyName || 'Company Name'}</label>
-                <input className="input" type="text" defaultValue="LocalPlug" />
-              </div>
-              <div className="input-group">
-                <label className="input-label">{d.legalName || 'Legal Name'}</label>
-                <input className="input" type="text" defaultValue="LocalPlug S.A.S." />
-              </div>
+            <div className="input-group">
+                 <label className="input-label">{d.companyName || 'Company Name'}</label>
+                 <input className="input" type="text" 
+                   value={settings.companyName ?? ''} 
+                   onChange={(e) => setSettings(prev => ({...prev, companyName: e.target.value}))} 
+                 />
+               </div>
+            <div className="input-group">
+                 <label className="input-label">{d.legalName || 'Legal Name'}</label>
+                 <input className="input" type="text" 
+                   value={settings.legalName ?? ''} 
+                   onChange={(e) => setSettings(prev => ({...prev, legalName: e.target.value}))} 
+                 />
+               </div>
               <div className="input-group">
                 <label className="input-label">{d.taxId || 'NIT (Tax ID)'}</label>
-                <input className="input" type="text" defaultValue="901.123.456-7" />
+                <input className="input" type="text" 
+                  value={settings.taxId ?? ''} 
+                  onChange={(e) => setSettings(prev => ({...prev, taxId: e.target.value}))} 
+                />
               </div>
               <div className="input-group">
                 <label className="input-label">{d.address || 'Address'}</label>
-                <input className="input" type="text" defaultValue="Carrera 43A # 1-50" />
+                <input className="input" type="text" 
+                  value={settings.address ?? ''} 
+                  onChange={(e) => setSettings(prev => ({...prev, address: e.target.value}))} 
+                />
               </div>
               <div className="input-group">
                 <label className="input-label">{d.phone || 'Phone'}</label>
-                <input className="input" type="text" defaultValue="+57 300 123 4567" />
+                <input className="input" type="text" 
+                  value={settings.phone ?? ''} 
+                  onChange={(e) => setSettings(prev => ({...prev, phone: e.target.value}))} 
+                />
               </div>
               <div className="input-group">
                 <label className="input-label">{d.email || 'Email'}</label>
-                <input className="input" type="email" defaultValue="info@localplug.com" />
+                <input className="input" type="email" 
+                  value={settings.email ?? ''} 
+                  onChange={(e) => setSettings(prev => ({...prev, email: e.target.value}))} 
+                />
               </div>
               <div className="input-group">
                 <label className="input-label">{d.website || 'Website'}</label>
-                <input className="input" type="url" defaultValue="https://localplug.com" />
+                <input className="input" type="url" 
+                  value={settings.website ?? ''} 
+                  onChange={(e) => setSettings(prev => ({...prev, website: e.target.value}))} 
+                />
               </div>
               <div className="input-group">
                 <label className="input-label">{d.companyLogo || 'Company Logo'}</label>
@@ -368,7 +409,7 @@ export default function SettingsPage() {
         {/* Save Bar */}
         <div className="save-bar">
           <button className="btn btn-secondary" onClick={() => showToast(d.reset || 'Settings reset')}>{d.cancel || 'Cancel'}</button>
-          <button className="btn btn-primary" onClick={() => showToast(d.saved || 'Settings saved successfully')}>{d.saveSettings || 'Save Settings'}</button>
+          <button className="btn btn-primary" onClick={saveSettings}>{d.saveSettings || 'Save Settings'}</button>
         </div>
 
       </div>

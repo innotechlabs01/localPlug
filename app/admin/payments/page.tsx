@@ -1,32 +1,60 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useI18n } from '@/lib/i18n'
 
 interface Payment {
-  id: number; guest: string; service: string; amount: number; fee: number; net: number
+  id: string; guest: string; service: string; amount: number; fee: number; net: number
   date: string; status: 'completed' | 'pending' | 'refunded' | 'failed'; method: string
+  email?: string
+  phone?: string
+  errorMessage?: string | null
 }
 
-const payments: Payment[] = [
-  { id: 1001, guest: 'Sofía Martínez', service: 'Airport Transfer', amount: 85, fee: 3.40, net: 81.60, date: '2026-05-23', status: 'completed', method: 'Stripe' },
-  { id: 1002, guest: 'James Rodriguez', service: 'VIP Tour', amount: 350, fee: 10.50, net: 339.50, date: '2026-05-23', status: 'completed', method: 'Stripe' },
-  { id: 1003, guest: 'Ana López', service: 'Airport Transfer', amount: 85, fee: 3.40, net: 81.60, date: '2026-05-22', status: 'pending', method: 'Cash' },
-  { id: 1004, guest: 'Carlos Gómez', service: 'Hotel Shuttle', amount: 45, fee: 0, net: 45, date: '2026-05-22', status: 'completed', method: 'Cash' },
-  { id: 1005, guest: 'Emma Wilson', service: 'City Tour', amount: 120, fee: 4.80, net: 115.20, date: '2026-05-21', status: 'completed', method: 'Stripe' },
-  { id: 1006, guest: 'Pierre Dubois', service: 'VIP Tour', amount: 350, fee: 10.50, net: 339.50, date: '2026-05-21', status: 'refunded', method: 'Stripe' },
-  { id: 1007, guest: 'Lucía Silva', service: 'Airport Transfer', amount: 85, fee: 3.40, net: 81.60, date: '2026-05-20', status: 'completed', method: 'Stripe' },
-  { id: 1008, guest: 'Hiroshi Tanaka', service: 'Hotel Shuttle', amount: 45, fee: 0, net: 45, date: '2026-05-20', status: 'failed', method: 'Cash' },
-  { id: 1009, guest: 'Maria Becker', service: 'VIP Tour', amount: 350, fee: 10.50, net: 339.50, date: '2026-05-19', status: 'completed', method: 'Stripe' },
-  { id: 1010, guest: 'Rafael Oliveira', service: 'City Tour', amount: 120, fee: 4.80, net: 115.20, date: '2026-05-19', status: 'pending', method: 'Cash' },
-]
+interface ApiTransaction {
+  booking_reference: string
+  package_name: string
+  amount: number
+  currency: string
+  status: Payment['status']
+  customer_name: string
+  customer_email: string
+  customer_phone: string
+  created_at: string
+  error_message: string | null
+}
 
-const payouts = [
-  { driver: 'Carlos M.', amount: 1280, date: 'May 23', init: 'CM' },
-  { driver: 'María G.', amount: 940, date: 'May 22', init: 'MG' },
-  { driver: 'Felipe L.', amount: 2100, date: 'May 22', init: 'FL' },
-  { driver: 'Diego P.', amount: 760, date: 'May 21', init: 'DP' },
-]
+interface ApiPayout {
+  id: number
+  order_number: string
+  booking_reference: string
+  customer_name: string
+  package_name: string
+  payment_status: string
+  driver_name: string | null
+  driver_payment_usd: number
+  created_at: string
+}
+
+interface PaymentsApiResponse {
+  kpis: {
+    totalRevenue: number
+    successfulCount: number
+    failedCount: number
+    pendingCount: number
+    driverPayouts: number
+    stripeBalance: number
+  }
+  revenueByService: Array<{ package_name: string; amount: number; percentage: string; count: number }>
+  transactions: ApiTransaction[]
+  payouts: ApiPayout[]
+  summary: {
+    totalCardPayments: number
+    refundsTotal: number
+    pendingPayout: number
+    lastPayout: number
+  }
+}
 
 const formatCurrency = (val: number) => '$' + val.toLocaleString('en-US', { minimumFractionDigits: 2 })
 
@@ -43,8 +71,36 @@ export default function PaymentsPage() {
   const { t } = useI18n()
   const d = (t.admin as any).payments ?? {}
   const [filter, setFilter] = useState<string>('all')
-  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  const [data, setData] = useState<PaymentsApiResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let mounted = true
+
+    async function loadPayments() {
+      try {
+        setLoading(true)
+        setError(null)
+        const response = await fetch('/api/admin/payments', { cache: 'no-store' })
+        if (!response.ok) throw new Error('Failed to load payments')
+        const payload = await response.json()
+        if (mounted) setData(payload)
+      } catch (err) {
+        if (mounted) setError(err instanceof Error ? err.message : 'Failed to load payments')
+      } finally {
+        if (mounted) setLoading(false)
+      }
+    }
+
+    loadPayments()
+
+    return () => {
+      mounted = false
+    }
+  }, [])
 
   const showToast = (msg: string) => {
     setToast(msg)
@@ -52,26 +108,78 @@ export default function PaymentsPage() {
   }
 
   const filtered = useMemo(() => {
+    const payments = (data?.transactions || []).map((payment): Payment => ({
+      id: payment.booking_reference,
+      guest: payment.customer_name || payment.customer_email || 'Unknown customer',
+      service: payment.package_name || 'Unassigned package',
+      amount: payment.amount,
+      fee: 0,
+      net: payment.amount,
+      date: payment.created_at ? new Date(payment.created_at).toLocaleDateString('en-US') : '',
+      status: payment.status,
+      method: 'Stripe',
+      email: payment.customer_email,
+      phone: payment.customer_phone,
+      errorMessage: payment.error_message,
+    }))
     if (filter === 'all') return payments
     return payments.filter(p => p.status === filter)
-  }, [filter])
+  }, [data?.transactions, filter])
+
+  const payments = useMemo(() => {
+    return (data?.transactions || []).map((payment): Payment => ({
+      id: payment.booking_reference,
+      guest: payment.customer_name || payment.customer_email || 'Unknown customer',
+      service: payment.package_name || 'Unassigned package',
+      amount: payment.amount,
+      fee: 0,
+      net: payment.amount,
+      date: payment.created_at ? new Date(payment.created_at).toLocaleDateString('en-US') : '',
+      status: payment.status,
+      method: 'Stripe',
+      email: payment.customer_email,
+      phone: payment.customer_phone,
+      errorMessage: payment.error_message,
+    }))
+  }, [data?.transactions])
 
   const kpi = useMemo(() => {
-    const totalRev = payments.reduce((s, p) => s + p.amount, 0)
+    const apiKpis = data?.kpis
+    const summary = data?.summary
+    const totalRev = apiKpis?.totalRevenue ?? payments.reduce((s, p) => s + p.amount, 0)
     const totalFees = payments.reduce((s, p) => s + p.fee, 0)
-    const totalNet = payments.reduce((s, p) => s + p.net, 0)
+    const totalNet = summary?.totalCardPayments ?? payments.reduce((s, p) => s + p.net, 0)
     const completed = payments.filter(p => p.status === 'completed').reduce((s, p) => s + p.amount, 0)
     const pending = payments.filter(p => p.status === 'pending').reduce((s, p) => s + p.amount, 0)
-    const refunds = payments.filter(p => p.status === 'refunded').reduce((s, p) => s + p.amount, 0)
-    const successfulCount = payments.filter(p => p.status === 'completed').length
-    const failedCount = payments.filter(p => p.status === 'failed').length
-    const pendingCount = payments.filter(p => p.status === 'pending').length
-    const driverPayouts = payouts.reduce((s, p) => s + p.amount, 0)
-    const stripeBalance = totalNet - refunds
+    const refunds = summary?.refundsTotal ?? payments.filter(p => p.status === 'refunded').reduce((s, p) => s + p.amount, 0)
+    const successfulCount = apiKpis?.successfulCount ?? payments.filter(p => p.status === 'completed').length
+    const failedCount = apiKpis?.failedCount ?? payments.filter(p => p.status === 'failed').length
+    const pendingCount = apiKpis?.pendingCount ?? payments.filter(p => p.status === 'pending').length
+    const driverPayouts = apiKpis?.driverPayouts ?? 0
+    const stripeBalance = apiKpis?.stripeBalance ?? totalNet - refunds
     return { totalRev, totalFees, totalNet, completed, pending, refunds, successfulCount, failedCount, pendingCount, driverPayouts, stripeBalance }
-  }, [])
+  }, [data?.kpis, data?.summary, payments])
 
-  const selected = useMemo(() => payments.find(p => p.id === selectedId), [selectedId])
+  const payouts = useMemo(() => {
+    return (data?.payouts || []).map((payout) => {
+      const driver = payout.driver_name || 'Unassigned driver'
+      const init = driver
+        .split(' ')
+        .filter(Boolean)
+        .slice(0, 2)
+        .map(part => part[0]?.toUpperCase())
+        .join('') || 'NA'
+
+      return {
+        driver,
+        amount: payout.driver_payment_usd,
+        date: payout.created_at ? new Date(payout.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
+        init,
+      }
+    })
+  }, [data?.payouts])
+
+  const selected = useMemo(() => payments.find(p => p.id === selectedId), [payments, selectedId])
 
   return (
     <div className="pay-page">
@@ -106,23 +214,20 @@ export default function PaymentsPage() {
             </div>
           ))}
         </div>
+        {error && <div className="mt-3 text-[13px] text-red-500">{error}</div>}
       </div>
 
       {/* ── REVENUE BY SERVICE ── */}
       <div>
         <div className="section-title">Revenue by Service</div>
         <div className="pay-revenue-grid">
-          {[
-            { label: 'Airport Transfers', amount: 4250, pct: 68, accent: true },
-            { label: 'VIP Tours', amount: 3150, pct: 52, accent: false },
-            { label: 'City Tours', amount: 1280, pct: 34, accent: true },
-            { label: 'Hotel Shuttles', amount: 960, pct: 28, accent: false },
-            { label: 'Long Distance', amount: 640, pct: 18, accent: true },
-          ].map((svc, idx) => (
+          {(data?.revenueByService || []).length === 0 && !loading ? (
+            <div className="text-[13px] text-fg-muted">No revenue records found in the database.</div>
+          ) : (data?.revenueByService || []).map((svc, idx) => (
             <div key={idx} className="rev-card">
               <div className="rev-amount">{formatCurrency(svc.amount)}</div>
-              <div className="rev-label">{svc.label}</div>
-              <div className={`rev-pct ${svc.accent ? 'accent' : ''}`}>{svc.pct}%</div>
+              <div className="rev-label">{svc.package_name}</div>
+              <div className={`rev-pct ${idx % 2 === 0 ? 'accent' : ''}`}>{svc.percentage}%</div>
             </div>
           ))}
         </div>
@@ -154,11 +259,13 @@ export default function PaymentsPage() {
                 <tr><th>Transaction ID</th><th>Customer</th><th>Package</th><th>Amount</th><th>Method</th><th>Status</th><th>Date</th></tr>
               </thead>
               <tbody>
-                {filtered.length === 0 ? (
-                  <tr><td colSpan={7} className="text-center py-12 text-fg-muted">{d.noResults || 'No payments found'}</td></tr>
+                {loading ? (
+                  <tr><td colSpan={7} className="text-center py-12 text-fg-muted">Loading payments from database...</td></tr>
+                ) : filtered.length === 0 ? (
+                  <tr><td colSpan={7} className="text-center py-12 text-fg-muted">{d.noResults || 'No payments found in the database'}</td></tr>
                 ) : filtered.map(p => (
                   <tr key={p.id} className="hover:bg-surface-hover transition-colors cursor-pointer" onClick={() => setSelectedId(p.id)}>
-                    <td className="font-mono text-fg-muted">#{p.id}</td>
+                    <td className="font-mono text-fg-muted">{p.id}</td>
                     <td><span style={{ fontWeight: 500 }}>{p.guest}</span></td>
                     <td>{p.service}</td>
                     <td className="font-mono font-semibold">{formatCurrency(p.amount)}</td>
@@ -181,7 +288,7 @@ export default function PaymentsPage() {
             <div className="stripe-sub">Connected · Live mode</div>
             <div className="stripe-detail"><span className="label">Total processed</span><span className="value">{formatCurrency(kpi.totalRev)}</span></div>
             <div className="stripe-detail"><span className="label">Pending settlement</span><span className="value">{formatCurrency(kpi.pending)}</span></div>
-            <div className="stripe-detail"><span className="label">Next payout</span><span className="value">May 25, 2026</span></div>
+            <div className="stripe-detail"><span className="label">Last payout</span><span className="value">{formatCurrency(data?.summary?.lastPayout || 0)}</span></div>
             <div className="stripe-detail"><span className="label">Processing fee rate</span><span className="value">2.9% + $0.30</span></div>
           </div>
 
@@ -218,7 +325,9 @@ export default function PaymentsPage() {
               <span className="card-title">Recent Payouts</span>
             </div>
             <div className="card-body" style={{ padding: '12px 16px' }}>
-              {payouts.map((po, idx) => (
+              {payouts.length === 0 && !loading ? (
+                <div className="text-[13px] text-fg-muted py-4">No driver payouts found in the database.</div>
+              ) : payouts.map((po, idx) => (
                 <div key={idx} className="payout-item">
                   <div className="payout-avatar" style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}>{po.init}</div>
                   <div className="payout-info">

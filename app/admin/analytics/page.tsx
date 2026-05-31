@@ -1,56 +1,47 @@
 'use client'
 
+import { useEffect, useMemo, useState } from 'react'
 import { useI18n } from '@/lib/i18n'
 
-const data = {
-  revenue: 48250, bookings: 384, avgRating: 4.8, ltv: 320, cac: 28,
-  conversionRate: 34.2, revenueChange: '+22.5%', bookingsChange: '+18.3%',
-  avgChange: '+0.3', ltvChange: '+12.4%', cacChange: '-5.2%', convChange: '+2.1pp',
+interface AnalyticsResponse {
+  kpis: {
+    totalRevenue: number
+    totalBookings: number
+    avgBookingValue: number
+    cac: number
+    ltv: number
+    conversionRate: string
+    revenueGrowth: string
+    bookingGrowth: string
+    avgGrowth: string
+    cacChange: string
+    ltvGrowth: string
+    conversionGrowth: string
+    uniqueCustomers: number
+    totalPayments: number
+    completedOrders: number
+    pendingOrders: number
+  }
+  monthlyRevenue: Array<{ month: string; revenue: number }>
+  monthlyBookings: Array<{ month: string; bookings: number }>
+  drivers: Array<{
+    id: number
+    name: string
+    rating: number
+    total_trips: number
+    active_trips: number
+    vip_compatible: number
+    revenue?: number
+  }>
+  countries: Array<{ country: string; count: number; share: string }>
+  servicePopularity: Array<{ name: string; count: number; revenue: number; percentage: string }>
+  prevYearRevenue: number
 }
 
-const monthlyData = [
-  { month: '2025-01', revenue: 3200, bookings: 28 },
-  { month: '2025-02', revenue: 2800, bookings: 24 },
-  { month: '2025-03', revenue: 3500, bookings: 30 },
-  { month: '2025-04', revenue: 3800, bookings: 32 },
-  { month: '2025-05', revenue: 4100, bookings: 35 },
-  { month: '2025-06', revenue: 4300, bookings: 36 },
-  { month: '2025-07', revenue: 4500, bookings: 38 },
-  { month: '2025-08', revenue: 4800, bookings: 40 },
-  { month: '2025-09', revenue: 4200, bookings: 34 },
-  { month: '2025-10', revenue: 4000, bookings: 33 },
-  { month: '2025-11', revenue: 3700, bookings: 30 },
-  { month: '2025-12', revenue: 3450, bookings: 29 },
-]
-
-const topDrivers = [
-  { name: 'Carlos M.', trips: 142, rating: 4.9, revenue: '$8,240' },
-  { name: 'María G.', trips: 128, rating: 4.8, revenue: '$6,920' },
-  { name: 'Felipe L.', trips: 115, rating: 4.7, revenue: '$7,450' },
-  { name: 'Diego P.', trips: 98, rating: 4.9, revenue: '$5,830' },
-  { name: 'Ana R.', trips: 87, rating: 4.6, revenue: '$4,210' },
-]
-
-const services = [
-  { name: 'Airport Transfer', bookings: 184, revenue: 18400, pct: 38 },
-  { name: 'VIP Tour', bookings: 48, revenue: 16800, pct: 35 },
-  { name: 'City Tour', bookings: 72, revenue: 10800, pct: 22 },
-  { name: 'Hotel Shuttle', bookings: 56, revenue: 3360, pct: 7 },
-  { name: 'Return Transfer', bookings: 24, revenue: 960, pct: 2 },
-]
-
-const countries = [
-  { name: 'United States', flag: '🇺🇸', pct: 32, bookings: 123 },
-  { name: 'Colombia', flag: '🇨🇴', pct: 18, bookings: 69 },
-  { name: 'Mexico', flag: '🇲🇽', pct: 14, bookings: 54 },
-  { name: 'Brazil', flag: '🇧🇷', pct: 10, bookings: 38 },
-  { name: 'Spain', flag: '🇪🇸', pct: 8, bookings: 31 },
-]
-
-function computeChartPaths() {
+function computeChartPaths(monthlyData: Array<{ month: string; revenue: number }>) {
   const svgWidth = 500, svgHeight = 180, pl = 5, pr = 5, pt = 10, pb = 20
   const chartW = svgWidth - pl - pr, chartH = svgHeight - pt - pb
-  const values = monthlyData.map(m => m.revenue)
+  const values = monthlyData.length > 0 ? monthlyData.map(m => m.revenue) : [0]
   const max = Math.max(...values), min = Math.min(...values), range = max - min || 1
   const stepX = values.length > 1 ? chartW / (values.length - 1) : chartW / 2
 
@@ -78,23 +69,81 @@ const formatMonth = (m: string) => {
   return d.toLocaleDateString('en-US', { month: 'short' })
 }
 
+const formatCurrency = (value: number) => '$' + value.toLocaleString('en-US', { maximumFractionDigits: 0 })
+
+const countryFlag = (country: string) => {
+  const flags: Record<string, string> = {
+    'United States': '🇺🇸',
+    Colombia: '🇨🇴',
+    Mexico: '🇲🇽',
+    Brazil: '🇧🇷',
+    Spain: '🇪🇸',
+    Canada: '🇨🇦',
+    France: '🇫🇷',
+    Germany: '🇩🇪',
+  }
+  return flags[country] || '🌐'
+}
+
 export default function AnalyticsPage() {
   const { t } = useI18n()
   const d = (t.admin as any).analytics ?? {}
+  const [analytics, setAnalytics] = useState<AnalyticsResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const chart = computeChartPaths()
+  useEffect(() => {
+    let mounted = true
 
-  const maxPct = Math.max(...services.map(s => s.pct))
+    async function loadAnalytics() {
+      try {
+        setLoading(true)
+        setError(null)
+        const response = await fetch('/api/admin/analytics', { cache: 'no-store' })
+        if (!response.ok) throw new Error('Failed to load analytics')
+        const payload = await response.json()
+        if (mounted) setAnalytics(payload)
+      } catch (err) {
+        if (mounted) setError(err instanceof Error ? err.message : 'Failed to load analytics')
+      } finally {
+        if (mounted) setLoading(false)
+      }
+    }
 
-  const busiestMonth = monthlyData.reduce((a, b) => a.bookings > b.bookings ? a : b)
-  const lowestMonth = monthlyData.reduce((a, b) => a.bookings < b.bookings ? a : b)
+    loadAnalytics()
+
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  const kpis = analytics?.kpis
+  const monthlyData = useMemo(() => {
+    const bookingMap = new Map((analytics?.monthlyBookings || []).map(item => [item.month, item.bookings]))
+    return (analytics?.monthlyRevenue || []).map(item => ({
+      ...item,
+      bookings: bookingMap.get(item.month) || 0,
+    }))
+  }, [analytics?.monthlyBookings, analytics?.monthlyRevenue])
+  const chart = computeChartPaths(monthlyData)
+  const services = analytics?.servicePopularity || []
+  const countries = analytics?.countries || []
+  const topDrivers = analytics?.drivers || []
+
+  const maxPct = Math.max(...services.map(s => Number(s.percentage)), 1)
+
+  const busiestMonth = monthlyData.length > 0 ? monthlyData.reduce((a, b) => a.bookings > b.bookings ? a : b) : null
+  const lowestMonth = monthlyData.length > 0 ? monthlyData.reduce((a, b) => a.bookings < b.bookings ? a : b) : null
+  const totalBookings = kpis?.totalBookings || 0
+  const completedOrders = kpis?.completedOrders || 0
+  const paidOrders = kpis?.totalPayments || 0
+  const conversionRate = Number(kpis?.conversionRate || 0)
 
   const funnelSteps = [
-    { label: d.websiteVisits || 'Website Visits', count: '1,245', pct: '100%', color: 'var(--accent)', width: '100%' },
-    { label: d.bookingsStarted || 'Bookings Started', count: '680', pct: '54.6%', color: 'var(--info)', width: '54.6%' },
-    { label: d.paymentInitiated || 'Payment Initiated', count: '510', pct: '41.0%', color: 'var(--accent-soft)', width: '41.0%' },
-    { label: d.confirmed || 'Confirmed', count: data.bookings.toLocaleString(), pct: '30.8%', color: 'var(--success)', width: '30.8%' },
-    { label: d.completed || 'Completed', count: Math.round(data.bookings * 0.91).toLocaleString(), pct: '28.1%', color: 'var(--warning)', width: '28.1%' },
+    { label: d.bookingsStarted || 'Bookings Started', count: totalBookings, pct: '100%', color: 'var(--accent)', width: '100%' },
+    { label: d.paymentInitiated || 'Payment Initiated', count: paidOrders, pct: totalBookings > 0 ? `${((paidOrders / totalBookings) * 100).toFixed(1)}%` : '0%', color: 'var(--info)', width: totalBookings > 0 ? `${Math.max((paidOrders / totalBookings) * 100, 4)}%` : '4%' },
+    { label: d.confirmed || 'Confirmed', count: completedOrders, pct: `${conversionRate.toFixed(1)}%`, color: 'var(--success)', width: `${Math.max(conversionRate, 4)}%` },
+    { label: d.completed || 'Completed', count: completedOrders, pct: `${conversionRate.toFixed(1)}%`, color: 'var(--warning)', width: `${Math.max(conversionRate, 4)}%` },
   ]
 
   const barColors = [
@@ -135,9 +184,10 @@ export default function AnalyticsPage() {
             {d.keyPerformanceIndicators || 'Key Performance Indicators'}
           </span>
           <span className="ml-auto text-[10px] text-[var(--fg-secondary)]">
-            {(d.updated || 'Updated {time} ago').replace('{time}', '5 min')}
+            {loading ? 'Loading database data...' : (d.updated || 'Updated {time} ago').replace('{time}', 'now')}
           </span>
         </div>
+        {error && <div className="mb-3 text-[13px] text-red-500">{error}</div>}
         <div className="kpi-row grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
           {/* Total Revenue */}
           <div className="kpi-card bg-[var(--surface)] border border-[var(--border)] rounded-[10px] p-4 relative overflow-hidden hover:border-[var(--accent)] hover:shadow-[0_0_0_1px_rgba(16,185,129,0.3)] transition-all">
@@ -150,12 +200,12 @@ export default function AnalyticsPage() {
               </div>
             </div>
             <div className="kpi-label text-[11px] font-medium text-[var(--fg-secondary)] mb-0.5">{d.totalRevenue || 'Total Revenue'}</div>
-            <div className="kpi-value text-[24px] font-bold text-[var(--fg)] leading-[1.1]">${data.revenue.toLocaleString()}</div>
+            <div className="kpi-value text-[24px] font-bold text-[var(--fg)] leading-[1.1]">{formatCurrency(kpis?.totalRevenue || 0)}</div>
             <div className="kpi-sub up flex items-center gap-1 mt-1.5 text-[12px] font-medium text-[var(--accent)]">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="18 15 12 9 6 15" />
               </svg>
-              {data.revenueChange}
+              {kpis?.revenueGrowth || '0'}%
             </div>
           </div>
 
@@ -170,12 +220,12 @@ export default function AnalyticsPage() {
               </div>
             </div>
             <div className="kpi-label text-[11px] font-medium text-[var(--fg-secondary)] mb-0.5">{d.totalBookings || 'Total Bookings'}</div>
-            <div className="kpi-value text-[24px] font-bold text-[var(--fg)] leading-[1.1]">{data.bookings}</div>
+            <div className="kpi-value text-[24px] font-bold text-[var(--fg)] leading-[1.1]">{totalBookings}</div>
             <div className="kpi-sub up flex items-center gap-1 mt-1.5 text-[12px] font-medium text-[var(--accent)]">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="18 15 12 9 6 15" />
               </svg>
-              {data.bookingsChange}
+              {kpis?.bookingGrowth || '0'}%
             </div>
           </div>
 
@@ -190,12 +240,12 @@ export default function AnalyticsPage() {
               </div>
             </div>
             <div className="kpi-label text-[11px] font-medium text-[var(--fg-secondary)] mb-0.5">{d.avgRating || 'Avg. Rating'}</div>
-            <div className="kpi-value text-[24px] font-bold text-[var(--fg)] leading-[1.1]">{data.avgRating}</div>
+            <div className="kpi-value text-[24px] font-bold text-[var(--fg)] leading-[1.1]">{topDrivers.length > 0 ? (topDrivers.reduce((sum, driver) => sum + driver.rating, 0) / topDrivers.length).toFixed(1) : '0.0'}</div>
             <div className="kpi-sub up flex items-center gap-1 mt-1.5 text-[12px] font-medium text-[var(--accent)]">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="18 15 12 9 6 15" />
               </svg>
-              {data.avgChange}
+              {kpis?.avgGrowth || '0'}%
             </div>
           </div>
 
@@ -210,12 +260,12 @@ export default function AnalyticsPage() {
               </div>
             </div>
             <div className="kpi-label text-[11px] font-medium text-[var(--fg-secondary)] mb-0.5">{d.customerAcqCost || 'Customer Acq. Cost'}</div>
-            <div className="kpi-value text-[24px] font-bold text-[var(--fg)] leading-[1.1]">${data.cac}</div>
+            <div className="kpi-value text-[24px] font-bold text-[var(--fg)] leading-[1.1]">{formatCurrency(kpis?.cac || 0)}</div>
             <div className="kpi-sub down flex items-center gap-1 mt-1.5 text-[12px] font-medium text-[var(--danger)]">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="6 9 12 15 18 9" />
               </svg>
-              {data.cacChange}
+              {kpis?.cacChange || '0'}%
             </div>
           </div>
 
@@ -230,12 +280,12 @@ export default function AnalyticsPage() {
               </div>
             </div>
             <div className="kpi-label text-[11px] font-medium text-[var(--fg-secondary)] mb-0.5">{d.customerLTV || 'Customer LTV'}</div>
-            <div className="kpi-value text-[24px] font-bold text-[var(--fg)] leading-[1.1]">${data.ltv}</div>
+            <div className="kpi-value text-[24px] font-bold text-[var(--fg)] leading-[1.1]">{formatCurrency(kpis?.ltv || 0)}</div>
             <div className="kpi-sub up flex items-center gap-1 mt-1.5 text-[12px] font-medium text-[var(--accent)]">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="18 15 12 9 6 15" />
               </svg>
-              {data.ltvChange}
+              {kpis?.ltvGrowth || '0'}%
             </div>
           </div>
 
@@ -250,12 +300,12 @@ export default function AnalyticsPage() {
               </div>
             </div>
             <div className="kpi-label text-[11px] font-medium text-[var(--fg-secondary)] mb-0.5">{d.conversionRate || 'Conversion Rate'}</div>
-            <div className="kpi-value text-[24px] font-bold text-[var(--fg)] leading-[1.1]">{data.conversionRate}%</div>
+            <div className="kpi-value text-[24px] font-bold text-[var(--fg)] leading-[1.1]">{kpis?.conversionRate || '0'}%</div>
             <div className="kpi-sub up flex items-center gap-1 mt-1.5 text-[12px] font-medium text-[var(--accent)]">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="18 15 12 9 6 15" />
               </svg>
-              {data.convChange}
+              {kpis?.conversionGrowth || '0'}pp
             </div>
           </div>
         </div>
@@ -281,12 +331,12 @@ export default function AnalyticsPage() {
               <div className="chart-header-row flex items-end justify-between mb-3">
                 <div>
                   <div className="chart-total text-[26px] font-bold text-[var(--fg)] leading-none">
-                    ${data.revenue.toLocaleString()}
+                    {formatCurrency(kpis?.totalRevenue || 0)}
                   </div>
                   <div className="chart-period text-[11px] text-[var(--fg-secondary)] mt-0.5">{d.yearToDateLabel || 'Year to date'}</div>
                 </div>
                 <div className="chart-change text-[12px] font-medium text-[var(--accent)]">
-                  {data.revenueChange}
+                  {kpis?.revenueGrowth || '0'}%
                 </div>
               </div>
               <svg className="chart-line-svg w-full h-[180px]" viewBox="0 0 500 180" preserveAspectRatio="none">
@@ -321,11 +371,14 @@ export default function AnalyticsPage() {
             </div>
             <div className="chart-body px-4 py-3">
               <div className="chart-bar-row flex items-end gap-1.5 h-[160px] mt-1">
-                {services.map((svc, i) => {
-                  const barH = Math.max(4, Math.round((svc.pct / maxPct) * 100))
+                {services.length === 0 && !loading ? (
+                  <div className="w-full text-center text-[13px] text-[var(--fg-secondary)] self-center">No service data found in the database.</div>
+                ) : services.map((svc, i) => {
+                  const pct = Number(svc.percentage)
+                  const barH = Math.max(4, Math.round((pct / maxPct) * 100))
                   return (
                     <div key={i} className="chart-bar-col flex-1 flex flex-col items-center gap-1">
-                      <div className="bar-pct text-[10px] font-semibold text-[var(--fg)]">{svc.pct}%</div>
+                      <div className="bar-pct text-[10px] font-semibold text-[var(--fg)]">{svc.percentage}%</div>
                       <div className="bar w-full rounded-[3px_3px_0_0] min-h-[4px]" style={{ height: `${barH}px`, background: barColors[i] }} />
                       <span className="bar-label text-[9px] text-[var(--fg-secondary)] uppercase leading-tight text-center">{svc.name.split(' ')[0]}</span>
                     </div>
@@ -335,7 +388,7 @@ export default function AnalyticsPage() {
               <div className="flex justify-between mt-3 pt-2.5 border-t border-[var(--border)]">
                 <div>
                   <span className="text-[11px] text-[var(--fg-secondary)]">{d.topServiceLabel || 'Top service'}</span>
-                  <div className="text-[13px] font-semibold text-[var(--fg)]">{services[0].name}</div>
+                  <div className="text-[13px] font-semibold text-[var(--fg)]">{services[0]?.name || 'No data'}</div>
                 </div>
                 <div className="text-right">
                   <span className="text-[11px] text-[var(--fg-secondary)]">{d.avgMargin || 'Avg. margin'}</span>
@@ -363,7 +416,7 @@ export default function AnalyticsPage() {
             <div className="card-header flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
               <span className="card-title text-[13px] font-semibold text-[var(--fg)]">{d.touristsByCountry || 'Tourists by Country'}</span>
               <span className="badge badge-accent px-2 py-0.5 rounded-full text-[10px] font-medium bg-[rgba(16,185,129,0.12)] text-[var(--accent)]">
-                {(d.totalTourists || '{count} total').replace('{count}', data.bookings.toLocaleString())}
+                {(d.totalTourists || '{count} total').replace('{count}', totalBookings.toLocaleString())}
               </span>
             </div>
             <div className="chart-body overflow-x-auto" style={{ padding: 0 }}>
@@ -377,14 +430,17 @@ export default function AnalyticsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {countries.map((c, i) => {
-                    const trendVal = c.pct > 20 ? Math.floor(c.pct / 5) : c.pct > 10 ? Math.floor(c.pct / 3) : Math.floor(c.pct / 2)
+                  {countries.length === 0 && !loading ? (
+                    <tr><td colSpan={4} className="px-4 py-8 text-center text-[13px] text-[var(--fg-secondary)]">No country data found in the database.</td></tr>
+                  ) : countries.map((c, i) => {
+                    const pct = Number(c.share)
+                    const trendVal = pct > 20 ? Math.floor(pct / 5) : pct > 10 ? Math.floor(pct / 3) : Math.floor(pct / 2)
                     const trendColor = trendVal >= 0 ? 'var(--accent)' : 'var(--danger)'
                     return (
                       <tr key={i} className="border-b border-[var(--border)] hover:bg-[#202330] transition-colors">
-                        <td className="px-4 py-2.5 text-[13px] text-[var(--fg)]"><span className="flag-icon text-[15px] leading-none">{c.flag}</span> {c.name}</td>
-                        <td className="px-4 py-2.5 text-[13px] text-right text-[var(--fg)]">{c.bookings}</td>
-                        <td className="px-4 py-2.5 text-[13px] text-right text-[var(--fg-secondary)]">{c.pct}%</td>
+                        <td className="px-4 py-2.5 text-[13px] text-[var(--fg)]"><span className="flag-icon text-[15px] leading-none">{countryFlag(c.country)}</span> {c.country}</td>
+                        <td className="px-4 py-2.5 text-[13px] text-right text-[var(--fg)]">{c.count}</td>
+                        <td className="px-4 py-2.5 text-[13px] text-right text-[var(--fg-secondary)]">{c.share}%</td>
                         <td className="px-4 py-2.5 text-[13px] text-right" style={{ color: trendColor }}>{trendVal >= 0 ? '+' : ''}{trendVal}%</td>
                       </tr>
                     )
@@ -405,22 +461,22 @@ export default function AnalyticsPage() {
               <div className="trend-item flex items-center justify-between py-2.5 border-b border-[var(--border-light)]">
                 <span className="trend-label text-[12px] text-[var(--fg-muted)]">{d.busiestMonth || 'Busiest month'}</span>
                 <span className="trend-value text-[14px] font-semibold text-[var(--fg)]">
-                  {formatMonth(busiestMonth.month)} <span className="text-[12px] text-[var(--fg-secondary)] font-normal">({busiestMonth.bookings} bookings)</span>
+                  {busiestMonth ? formatMonth(busiestMonth.month) : 'No data'} {busiestMonth && <span className="text-[12px] text-[var(--fg-secondary)] font-normal">({busiestMonth.bookings} bookings)</span>}
                 </span>
               </div>
               <div className="trend-item flex items-center justify-between py-2.5 border-b border-[var(--border-light)]">
                 <span className="trend-label text-[12px] text-[var(--fg-muted)]">{d.lowestMonth || 'Lowest month'}</span>
                 <span className="trend-value text-[14px] font-semibold text-[var(--fg)]">
-                  {formatMonth(lowestMonth.month)} <span className="text-[12px] text-[var(--fg-secondary)] font-normal">({lowestMonth.bookings} bookings)</span>
+                  {lowestMonth ? formatMonth(lowestMonth.month) : 'No data'} {lowestMonth && <span className="text-[12px] text-[var(--fg-secondary)] font-normal">({lowestMonth.bookings} bookings)</span>}
                 </span>
               </div>
               <div className="trend-item flex items-center justify-between py-2.5 border-b border-[var(--border-light)]">
                 <span className="trend-label text-[12px] text-[var(--fg-muted)]">{d.peakSeason || 'Peak season'}</span>
-                <span className="trend-value text-[14px] font-semibold" style={{ color: 'var(--gold)' }}>Dec–Jan, Jul–Aug</span>
+                <span className="trend-value text-[14px] font-semibold" style={{ color: 'var(--gold)' }}>{busiestMonth ? formatMonth(busiestMonth.month) : 'No data'}</span>
               </div>
               <div className="trend-item flex items-center justify-between py-2.5">
                 <span className="trend-label text-[12px] text-[var(--fg-muted)]">{d.growthRate || 'Growth rate'}</span>
-                <span className="trend-value text-[14px] font-semibold" style={{ color: 'var(--accent)' }}>{data.revenueChange}</span>
+                <span className="trend-value text-[14px] font-semibold" style={{ color: 'var(--accent)' }}>{kpis?.revenueGrowth || '0'}%</span>
               </div>
             </div>
 
@@ -439,10 +495,10 @@ export default function AnalyticsPage() {
                           className="funnel-bar h-full rounded-r-[4px] flex items-center pl-3 text-[11px] font-semibold text-white min-w-[60px]"
                           style={{ width: step.width, background: `linear-gradient(90deg, ${step.color}, ${step.color}88)` }}
                         >
-                          {step.count}
+                          {step.count.toLocaleString()}
                         </div>
                       </div>
-                      <span className="funnel-count text-[13px] font-semibold font-mono text-[var(--fg)] min-w-[56px] text-right">{step.count}</span>
+                      <span className="funnel-count text-[13px] font-semibold font-mono text-[var(--fg)] min-w-[56px] text-right">{step.count.toLocaleString()}</span>
                       <span className="funnel-pct text-[10px] text-[var(--fg-secondary)] min-w-[32px] text-right">{step.pct}</span>
                     </div>
                   ))}
@@ -481,13 +537,15 @@ export default function AnalyticsPage() {
                 </tr>
               </thead>
               <tbody>
-                {topDrivers.map((drv, i) => {
+                {topDrivers.length === 0 && !loading ? (
+                  <tr><td colSpan={6} className="px-4 py-8 text-center text-[13px] text-[var(--fg-secondary)]">No driver performance data found in the database.</td></tr>
+                ) : topDrivers.map((drv, i) => {
                   const initials = drv.name.split(' ').map(w => w[0]).join('').toUpperCase()
                   const color = DRIVER_COLORS[i % DRIVER_COLORS.length]
                   const stars = Math.floor(drv.rating)
                   const half = drv.rating - stars >= 0.3
                   const starStr = '★'.repeat(stars) + (half ? '½' : '')
-                  const vipServices = Math.round(drv.trips * 0.25)
+                  const vipServices = drv.vip_compatible ? drv.active_trips : 0
                   const satisfaction = Math.round(drv.rating * 20)
                   const satisfactionColor = drv.rating >= 4.5 ? 'var(--accent)' : drv.rating >= 4.0 ? 'var(--warning)' : 'var(--danger)'
                   return (
@@ -503,12 +561,12 @@ export default function AnalyticsPage() {
                           <span className="text-[13px] text-[var(--fg)]">{drv.name}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-right text-[13px] text-[var(--fg)]">{drv.trips}</td>
+                      <td className="px-4 py-3 text-right text-[13px] text-[var(--fg)]">{drv.total_trips}</td>
                       <td className="px-4 py-3 text-center">
                         <span className="rating-stars" style={{ color: 'var(--gold)', fontSize: 12, letterSpacing: '1px' }}>{starStr}</span>
                         <span className="text-[12px] text-[var(--fg-secondary)] ml-1">{drv.rating.toFixed(1)}</span>
                       </td>
-                      <td className="px-4 py-3 text-right text-[13px] font-mono text-[var(--fg)]">{drv.revenue}</td>
+                      <td className="px-4 py-3 text-right text-[13px] font-mono text-[var(--fg)]">{formatCurrency(drv.revenue || 0)}</td>
                       <td className="px-4 py-3 text-right text-[13px] text-[var(--fg)]">{vipServices}</td>
                       <td className="px-4 py-3 text-right">
                         <span className="text-[13px]" style={{ color: satisfactionColor }}>{satisfaction}%</span>
