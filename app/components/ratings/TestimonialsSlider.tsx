@@ -32,7 +32,9 @@ export default function TestimonialsSlider() {
     if (!emblaApi) return
     onSelect()
     emblaApi.on('select', onSelect)
-    return () => emblaApi.off('select', onSelect)
+    return () => {
+      emblaApi.off('select', onSelect)
+    }
   }, [emblaApi, onSelect])
 
   // Auto-advance every 5 seconds
