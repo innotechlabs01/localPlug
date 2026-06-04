@@ -141,11 +141,11 @@ export default function AdminDashboard() {
   }, [toast])
 
   const today = getToday()
-  const todayBookings = useMemo(() => bookings.filter(b => getLocalDatePart(b.arrivalDate || '') === today), [bookings, today])
-  const pending = useMemo(() => bookings.filter(b => !b.driver), [bookings])
-  const assigned = useMemo(() => bookings.filter(b => b.driver), [bookings])
-  const totalRevenue = useMemo(() => bookings.reduce((s, b) => s + (b.total || 0), 0), [bookings])
-  const returnCount = useMemo(() => bookings.filter(b => b.returnTransport).length, [bookings])
+  const todayBookings = useMemo(() => bookings.filter(b => getLocalDatePart(b.created_at) === today), [bookings, today])
+  const pending = useMemo(() => todayBookings.filter(b => !b.driver), [todayBookings])
+  const assigned = useMemo(() => todayBookings.filter(b => b.driver), [todayBookings])
+  const totalRevenue = useMemo(() => todayBookings.reduce((s, b) => s + (b.total || 0), 0), [todayBookings])
+  const returnCount = useMemo(() => todayBookings.filter(b => b.returnTransport).length, [todayBookings])
   const onlineDrivers = useMemo(() => drivers.filter(d => d.status === 'online'), [drivers])
 
   const filteredBookings = useMemo(() => {
@@ -170,13 +170,13 @@ export default function AdminDashboard() {
   const activityItems = useMemo(() => sortedBookings.slice(0, 6), [sortedBookings])
 
   const hotelCount = useMemo(() =>
-    bookings.filter(b => b.selectedHotel && (b.numNights || 0) > 0).length,
-    [bookings],
+    todayBookings.filter(b => b.selectedHotel && (b.numNights || 0) > 0).length,
+    [todayBookings],
   )
 
   const avgOrderValue = useMemo(() =>
-    bookings.length ? Math.round(totalRevenue / bookings.length) : 0,
-    [bookings, totalRevenue],
+    todayBookings.length ? Math.round(totalRevenue / todayBookings.length) : 0,
+    [todayBookings, totalRevenue],
   )
 
   const handleOpenModal = useCallback((ref: string) => {
@@ -233,15 +233,15 @@ export default function AdminDashboard() {
   }, [assignedBookingRef, bookings])
 
   const serviceChartData = useMemo(() => {
-    const total = bookings.length || 1
+    const total = todayBookings.length || 1
     return [
-      { label: 'Airport', count: bookings.length, color: 'accent' },
+      { label: 'Airport', count: todayBookings.length, color: 'accent' },
       { label: 'Return', count: returnCount, color: 'gold' },
       { label: 'Hotel', count: hotelCount, color: 'info' },
-      { label: 'VIP', count: bookings.filter(b => b.travelPurpose === 'business' || b.interests?.includes('VIP')).length, color: 'purple' },
-      { label: 'Transfer', count: bookings.filter(b => !b.returnTransport).length, color: 'teal' },
+      { label: 'VIP', count: todayBookings.filter(b => b.travelPurpose === 'business' || b.interests?.includes('VIP')).length, color: 'purple' },
+      { label: 'Transfer', count: todayBookings.filter(b => !b.returnTransport).length, color: 'teal' },
     ]
-  }, [bookings, returnCount, hotelCount])
+  }, [todayBookings, returnCount, hotelCount])
 
   const maxServiceCount = useMemo(() =>
     Math.max(...serviceChartData.map(s => s.count), 1),
@@ -302,9 +302,9 @@ export default function AdminDashboard() {
               </div>
             </div>
             <div className="kpi-label">{d.totalOrders as string}</div>
-            <div className="kpi-value">{bookings.length}</div>
-            <div className={`kpi-sub ${bookings.length ? 'up' : 'neutral'}`}>
-              {bookings.length ? `${bookings.length} order${bookings.length > 1 ? 's' : ''} total` : d.noOrders as string}
+            <div className="kpi-value">{todayBookings.length}</div>
+            <div className={`kpi-sub ${todayBookings.length ? 'up' : 'neutral'}`}>
+              {todayBookings.length ? `${todayBookings.length} order${todayBookings.length > 1 ? 's' : ''} today` : d.noOrders as string}
             </div>
           </div>
 
@@ -536,7 +536,7 @@ export default function AdminDashboard() {
           <div className="card" style={{ margin: 0 }}>
             <div className="card-header">
               <span className="card-title">{d.revenueBreakdown as string}</span>
-              <span className="badge badge-accent" style={{ fontSize: 10 }}>All time</span>
+              <span className="badge badge-accent" style={{ fontSize: 10 }}>Today</span>
             </div>
             <div className="card-body" style={{ padding: '12px 16px' }}>
               <div className="rev-breakdown-list">
@@ -544,21 +544,21 @@ export default function AdminDashboard() {
                   <div className="rev-dot" style={{ background: 'var(--accent)' }} />
                   <span className="rev-label">{d.baseServices as string}</span>
                   <span className="rev-amount">
-                    ${(totalRevenue - (bookings.filter(b => b.returnTransport).reduce((s, b) => s + (b.returnFee || 48), 0)) - (bookings.reduce((s, b) => s + (b.hotelSubtotal || (b.numNights || 0) * 85), 0))).toLocaleString()}
+                    ${(totalRevenue - (todayBookings.filter(b => b.returnTransport).reduce((s, b) => s + (b.returnFee || 48), 0)) - (todayBookings.reduce((s, b) => s + (b.hotelSubtotal || (b.numNights || 0) * 85), 0))).toLocaleString()}
                   </span>
                 </div>
                 <div className="rev-item">
                   <div className="rev-dot" style={{ background: 'var(--info)' }} />
                   <span className="rev-label">{d.returnTransportRev as string}</span>
                   <span className="rev-amount">
-                    ${bookings.filter(b => b.returnTransport).reduce((s, b) => s + (b.returnFee || 48), 0).toLocaleString()}
+                    ${todayBookings.filter(b => b.returnTransport).reduce((s, b) => s + (b.returnFee || 48), 0).toLocaleString()}
                   </span>
                 </div>
                 <div className="rev-item">
                   <div className="rev-dot" style={{ background: 'var(--gold)' }} />
                   <span className="rev-label">{d.hotelAccommodation as string}</span>
                   <span className="rev-amount">
-                    ${bookings.reduce((s, b) => s + (b.hotelSubtotal || (b.numNights || 0) * 85), 0).toLocaleString()}
+                    ${todayBookings.reduce((s, b) => s + (b.hotelSubtotal || (b.numNights || 0) * 85), 0).toLocaleString()}
                   </span>
                 </div>
                 <div className="rev-item" style={{ borderTop: '1px solid var(--border)', paddingTop: 10, marginTop: 4 }}>
@@ -600,22 +600,22 @@ export default function AdminDashboard() {
             </div>
             <div className="card-body" style={{ padding: '12px 16px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <div className="flex-between">
-                  <span style={{ fontSize: 12 }}>{d.totalTransactions as string}</span>
-                  <span style={{ fontSize: 14, fontWeight: 600 }}>{bookings.length}</span>
-                </div>
-                <div className="flex-between">
-                  <span style={{ fontSize: 12 }}>{d.withReturnTransport as string}</span>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--accent)' }}>{returnCount}</span>
-                </div>
-                <div className="flex-between">
-                  <span style={{ fontSize: 12 }}>{d.withHotel as string}</span>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--info)' }}>{hotelCount}</span>
-                </div>
-                <div className="flex-between">
-                  <span style={{ fontSize: 12 }}>{d.assignedToDriver as string}</span>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--warning)' }}>{assigned.length}</span>
-                </div>
+                  <div className="flex-between">
+                    <span style={{ fontSize: 12 }}>{d.totalTransactions as string}</span>
+                    <span style={{ fontSize: 14, fontWeight: 600 }}>{todayBookings.length}</span>
+                  </div>
+                  <div className="flex-between">
+                    <span style={{ fontSize: 12 }}>{d.withReturnTransport as string}</span>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--accent)' }}>{returnCount}</span>
+                  </div>
+                  <div className="flex-between">
+                    <span style={{ fontSize: 12 }}>{d.withHotel as string}</span>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--info)' }}>{hotelCount}</span>
+                  </div>
+                  <div className="flex-between">
+                    <span style={{ fontSize: 12 }}>{d.assignedToDriver as string}</span>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--warning)' }}>{assigned.length}</span>
+                  </div>
                 <div className="flex-between" style={{ borderTop: '1px solid var(--border-light)', paddingTop: 10 }}>
                   <span style={{ fontSize: 12 }}>{d.avgOrderValue as string}</span>
                   <span style={{ fontSize: 14, fontWeight: 600, fontFamily: 'var(--font-mono)' }}>${avgOrderValue.toLocaleString()}</span>
@@ -633,7 +633,7 @@ export default function AdminDashboard() {
             <path d="M8 2v4M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/>
           </svg>
           {d.allReservations as string}
-          <span className="badge badge-accent">{bookings.length}</span>
+          <span className="badge badge-accent">{todayBookings.length}</span>
         </div>
         <div className="card" style={{ margin: 0 }}>
           <div className="card-body" style={{ padding: 0 }}>

@@ -152,5 +152,6 @@ export function getCountryByCode(code: string): Country | undefined {
 }
 
 export function getCountryByDialCode(dialCode: string): Country | undefined {
-  return countries.find(c => c.dialCode === dialCode)
+  const normalized = dialCode.replace(/-/g, '')
+  return countries.find(c => c.dialCode.replace(/-/g, '') === normalized)
 }

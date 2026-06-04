@@ -31,8 +31,10 @@ export async function GET(request: Request) {
       )
     }
 
-    const conversation = convResult.rows[0] as { channel: string; status: string }
-    const isWebChannel = conversation.channel === 'web'
+    const conversationRow = convResult.rows[0]
+    const channel = conversationRow.channel as string
+    const status = conversationRow.status as string
+    const isWebChannel = channel === 'web'
 
     // Only require Clerk auth for non-web channels
     if (!isWebChannel) {
@@ -56,7 +58,8 @@ export async function GET(request: Request) {
         )
       }
 
-      const roleId = (userResult.rows[0] as { role_id: number | null }).role_id
+      const userRow = userResult.rows[0] as unknown as { role_id: number | null }
+    const roleId = userRow.role_id
       if (roleId === null) {
         return NextResponse.json(
           { error: 'Forbidden: insufficient permissions' },
@@ -87,12 +90,12 @@ export async function GET(request: Request) {
     const result = await db.execute({ sql, args })
     const messages = result.rows.reverse()
 
-    return NextResponse.json({
-      success: true,
-      messages,
-      hasMore: messages.length === limit,
-      status: conversation.status,
-    })
+     return NextResponse.json({
+       success: true,
+       messages,
+       hasMore: messages.length === limit,
+       status: status,
+     })
   } catch (error) {
     console.error('[Chat API] Get messages error:', error)
     return NextResponse.json(

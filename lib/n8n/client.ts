@@ -11,6 +11,8 @@ interface N8nResponse {
   success: boolean
   workflowId?: string
   error?: string
+  message?: string
+  confidence?: number
 }
 
 /**
@@ -50,9 +52,34 @@ export async function sendN8nWebhook(
       return { success: false, error: `HTTP ${response.status}: ${response.statusText}` }
     }
 
-    const result = await response.json()
-    console.log(`[n8n] Webhook success: ${event}`, { workflowId: result.workflowId })
-    return { success: true, workflowId: result.workflowId }
+    let result: Record<string, unknown>
+    try {
+      result = await response.json()
+    } catch {
+      const text = await response.text()
+      console.log(`[n8n] Webhook success (text response): ${event}`, { text: text.slice(0, 200) })
+      return { success: true, message: text }
+    }
+    console.log(`[n8n] Webhook success: ${event}`, {
+      workflowId: result.workflowId,
+      hasMessage: !!result.message,
+      fullResponse: JSON.stringify(result).slice(0, 1000),
+    })
+    const msg = (typeof result.message === 'string' ? result.message
+      : typeof result.response === 'string' ? result.response
+      : typeof result.content === 'string' ? result.content
+      : typeof result.reply === 'string' ? result.reply
+      : typeof result.text === 'string' ? result.text
+      : typeof result.output === 'string' ? result.output
+      : JSON.stringify(result))
+    const wfId = typeof result.workflowId === 'string' ? result.workflowId : undefined
+    const conf = typeof result.confidence === 'number' ? result.confidence : undefined
+    return {
+      success: true,
+      workflowId: wfId,
+      message: msg,
+      confidence: conf,
+    }
   } catch (error) {
     console.error('[n8n] Webhook error:', error)
     return {
@@ -190,10 +217,20 @@ export async function triggerAiChatMessage(conversationData: {
   message: string
   userIdentifier: string
   userName?: string
+  userEmail?: string
+  userPhone?: string
+  userCountry?: string
+  bookingInfo?: Record<string, unknown> | null
+  conversationHistory?: Array<{ role: string; content: string }>
 }): Promise<N8nResponse> {
+  const { conversationHistory, ...rest } = conversationData
   return sendN8nWebhook('ai-chat-message', {
     type: 'chat_message',
-    conversation: conversationData,
+    conversation: rest,
+    context: {
+      history: conversationHistory || [],
+      booking: conversationData.bookingInfo || null,
+    },
   })
 }
 

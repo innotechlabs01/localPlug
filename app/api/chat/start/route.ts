@@ -40,12 +40,14 @@ export async function POST(request: Request) {
       args: [conversationId],
     })
 
-    // Trigger n8n AI for ongoing conversation
     await triggerAiChatMessage({
       conversationId,
       message: `New conversation started by ${name} (${email})`,
       userIdentifier: email,
       userName: name,
+      userEmail: email,
+      userPhone: phone,
+      userCountry: country,
     })
 
     return NextResponse.json({

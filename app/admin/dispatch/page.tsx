@@ -194,7 +194,7 @@ export default function DispatchPage() {
   const filteredOrders = useMemo(() => {
     let list = orders
     const today = getToday()
-    if (tab === 'today') list = list.filter(o => getLocalDatePart(o.arrival_date || o.created_at) === today)
+    if (tab === 'today') list = list.filter(o => getLocalDatePart(o.created_at) === today)
     else if (tab === 'pending') list = list.filter(o => (o.dispatch_status || 'pending') === 'pending')
     else if (tab === 'assigned') list = list.filter(o => o.dispatch_status === 'assigned')
     else if (tab === 'enroute') list = list.filter(o => o.dispatch_status === 'enroute')

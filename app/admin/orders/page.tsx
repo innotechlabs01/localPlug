@@ -66,7 +66,7 @@ function OrdersInner() {
 
   const today = getToday()
   const filteredOrders = showTodayOnly
-    ? orders.filter(o => getLocalDatePart(o.arrival_date || o.created_at) === today)
+    ? orders.filter(o => getLocalDatePart(o.created_at) === today)
     : orders
 
   const openOrderDetail = async (order: Order) => {

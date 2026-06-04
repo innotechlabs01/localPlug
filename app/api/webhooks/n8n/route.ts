@@ -39,7 +39,15 @@ export async function POST(request: Request) {
           messageLength: message?.length,
           confidence,
           timestamp,
+          dataKeys: Object.keys(data),
+          fullData: JSON.stringify(data).slice(0, 500),
         })
+
+        if (!conversationId) {
+          console.error('[n8n Webhook] MISSING conversationId in ai-chat-response callback! n8n workflow must include conversationId in the callback data payload.')
+          console.error('[n8n Webhook] Configure n8n to either: (A) add Respond to Webhook node returning { message, confidence }, or (B) include conversationId in the callback: { conversationId, message, confidence }')
+          break
+        }
 
         if (conversationId && message) {
           await db.execute({
