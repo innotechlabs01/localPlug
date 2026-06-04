@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { usePathname } from 'next/navigation'
 import { useI18n } from '@/lib/i18n'
+import RatingForm from '@/app/components/ratings/RatingForm'
 
 interface Message {
   id?: number
@@ -11,6 +13,26 @@ interface Message {
   created_at?: string
 }
 
+interface ChatWidgetState {
+  form: 'form' | 'chat' | 'survey' | 'closed'
+  isOpen: boolean
+  messages: Message[]
+  inputValue: string
+  isLoading: boolean
+  conversationId: number | null
+  error: string | null
+  isClosed: boolean
+  showRating: boolean
+  hasRated: boolean
+  initialLoading: boolean
+  lastMessageAt: string | null
+  inactivityWarningShown: boolean
+  userPhone: string | null
+  userCountry: string | null
+  countryCode: string | null
+}
+
+// Helper function to generate user ID
 function generateUserId(): string {
   if (typeof window === 'undefined') return 'anon-' + Date.now()
   let id = localStorage.getItem('chat_user_id')
@@ -21,109 +43,472 @@ function generateUserId(): string {
   return id
 }
 
+// Status color function
+const statusColor = (type: string) => {
+  switch (type) {
+    case 'ai': return 'bg-[var(--accent-gold)]'
+    case 'agent': return 'bg-[var(--accent-orange)]'
+    case 'system': return 'bg-[var(--text-muted)]'
+    default: return 'bg-[var(--bg-dark)]'
+  }
+}
+
+// FormScreen component
+function FormScreen({
+  t,
+  formData,
+  handleFormChange,
+  handleFormSubmit,
+  isLoading,
+  error
+}: {
+  t: any
+  formData: { name: string; email: string; phone: string; country: string; countryCode: string }
+  handleFormChange: (field: keyof typeof formData, value: string) => void
+  handleFormSubmit: () => void
+  isLoading: boolean
+  error: string | null
+}) {
+  return (
+    <div className="p-6 space-y-4">
+      <h2 className="text-xl font-bold">{t.chatWidget.title}</h2>
+      <p className="text-[var(--text-muted)]">{t.chatWidget.subtitle}</p>
+      
+      {error && (
+        <div className="bg-red-50 text-red-600 rounded-lg px-4 py-2 flex items-center gap-2">
+          <span>{error}</span>
+          <button onClick={handleFormSubmit} className="underline font-semibold">
+            {t.chatWidget.retry}
+          </button>
+        </div>
+      )}
+      
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-[var(--text-muted)] mb-1">{t.chatWidget.formName}</label>
+          <input
+            type="text"
+            value={formData.name}
+            onChange={(e) => handleFormChange('name', e.target.value)}
+            placeholder={t.chatWidget.formNamePlaceholder}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold text-gray-900"
+            disabled={isLoading}
+          />
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-[var(--text-muted)] mb-1">{t.chatWidget.formEmail}</label>
+          <input
+            type="email"
+            value={formData.email}
+            onChange={(e) => handleFormChange('email', e.target.value)}
+            placeholder={t.chatWidget.formEmailPlaceholder}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold text-gray-900"
+            disabled={isLoading}
+          />
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-[var(--text-muted)] mb-1">{t.chatWidget.formPhone}</label>
+          <input
+            type="tel"
+            value={formData.phone}
+            onChange={(e) => handleFormChange('phone', e.target.value)}
+            placeholder={t.chatWidget.formPhonePlaceholder}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold text-gray-900"
+            disabled={isLoading}
+          />
+        </div>
+        
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-[var(--text-muted)] mb-1">{t.chatWidget.formCountry}</label>
+              <select
+                value={formData.country}
+                onChange={(e) => handleFormChange('country', e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold text-gray-900"
+                disabled={isLoading}
+              >
+                <option value="" className="text-gray-900">{t.chatWidget.formCountryPlaceholder}</option>
+              {/* In a real app, we would populate this from a country list */}
+              <option value="Colombia">Colombia</option>
+              <option value="United States">United States</option>
+              <option value="Mexico">Mexico</option>
+              <option value="Spain">Spain</option>
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-[var(--text-muted)] mb-1">{t.chatWidget.formCountryCode}</label>
+              <select
+                value={formData.countryCode}
+                onChange={(e) => handleFormChange('countryCode', e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-accent-gold text-gray-900"
+                disabled={isLoading}
+              >
+                <option value="" className="text-gray-900">{t.chatWidget.formCountryCodePlaceholder}</option>
+              <option value="+57">+57 (Colombia)</option>
+              <option value="+1">+1 (USA)</option>
+              <option value="+52">+52 (Mexico)</option>
+              <option value="+34">+34 (Spain)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      
+      <div className="flex justify-end">
+        <button
+          onClick={handleFormSubmit}
+          disabled={isLoading || !formData.name || !formData.email || !formData.phone || !formData.country || !formData.countryCode}
+          className="px-6 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold-dark transition-colors disabled:opacity-50"
+        >
+          {isLoading ? t.common.loading : t.chatWidget.formSubmit}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+const formatTime = (dateStr?: string) => {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  const now = new Date()
+  const isToday = d.toDateString() === now.toDateString()
+  const hours = d.getHours().toString().padStart(2, '0')
+  const mins = d.getMinutes().toString().padStart(2, '0')
+  if (isToday) return `${hours}:${mins}`
+  const day = d.getDate().toString().padStart(2, '0')
+  const month = (d.getMonth() + 1).toString().padStart(2, '0')
+  return `${day}/${month} ${hours}:${mins}`
+}
+
+// ChatScreen component
+function ChatScreen({
+  t,
+  lang,
+  messages,
+  isLoading,
+  inputValue,
+  isClosed,
+  showRating,
+  hasRated,
+  inactivityWarningShown,
+  sendMessage,
+  handleEscalate,
+  handleClose,
+  handleKeyDown,
+  inputRef,
+  messagesEndRef,
+  scrollToBottom,
+  userPhone,
+  userCountry,
+  countryCode,
+  error
+}: {
+  t: any
+  lang: string
+  messages: Message[]
+  isLoading: boolean
+  inputValue: string
+  isClosed: boolean
+  showRating: boolean
+  hasRated: boolean
+  inactivityWarningShown: boolean
+  sendMessage: (content: string) => void
+  handleEscalate: () => void
+  handleClose: () => void
+  handleKeyDown: (e: React.KeyboardEvent) => void
+  inputRef: React.RefObject<HTMLInputElement>
+  messagesEndRef: React.RefObject<HTMLDivElement>
+  scrollToBottom: () => void
+  userPhone: string | null
+  userCountry: string | null
+  countryCode: string | null
+  error: string | null
+}) {
+  return (
+    <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2 min-h-[300px] max-h-[400px] bg-[#efeae2]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23d4cfc4\' fill-opacity=\'0.3\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }}>
+      {messages.map((msg, i) => {
+        const showTime = msg.created_at || (i > 0 && messages[i-1].sender_type !== msg.sender_type)
+        return (
+          <div key={msg.id || i} className={`flex items-end gap-1.5 animate-in fade-in slide-in-from-bottom-2 duration-200 ${msg.sender_type === 'user' ? 'justify-end' : 'justify-start'}`}
+            style={{ animationFillMode: 'both' }}>
+            {msg.sender_type === 'system' ? (
+              <div className="flex justify-center w-full my-1">
+                <div className="bg-white/80 backdrop-blur-sm text-cool-slate-500 text-label-xs px-3 py-1 rounded-full italic shadow-sm">
+                  {msg.content}
+                </div>
+              </div>
+            ) : (
+              <>
+                {msg.sender_type !== 'user' && (
+                  <div className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center shrink-0 mb-0.5 border border-cool-slate-200">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-gold)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+                    </svg>
+                  </div>
+                )}
+                <div className={`max-w-[75%] ${msg.sender_type === 'user' ? 'order-1' : ''}`}>
+                  <div className={`relative px-3.5 py-2 text-body-md leading-relaxed whitespace-pre-wrap break-words ${
+                    msg.sender_type === 'user'
+                      ? 'bg-[#d9fdd3] text-gray-900 rounded-2xl rounded-br-sm'
+                      : msg.sender_type === 'agent'
+                      ? 'bg-white text-gray-800 rounded-2xl rounded-bl-sm shadow-sm border border-cool-slate-100'
+                      : 'bg-white text-gray-800 rounded-2xl rounded-bl-sm shadow-sm border border-cool-slate-100'
+                  }`}>
+                    {msg.content}
+                    {showTime && (
+                      <div className={`text-[10px] mt-1 -mb-0.5 ${msg.sender_type === 'user' ? 'text-gray-500 text-right' : 'text-gray-400'}`}>
+                        {formatTime(msg.created_at)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )
+      })}
+      {isLoading && (
+        <div className="flex justify-start items-end gap-1.5 animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <div className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center shrink-0 mb-0.5 border border-cool-slate-200">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-gold)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+            </svg>
+          </div>
+          <div className="bg-white rounded-2xl rounded-bl-sm shadow-sm border border-cool-slate-100 px-4 py-3">
+            <div className="flex gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-cool-slate-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+              <div className="w-2 h-2 rounded-full bg-cool-slate-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+              <div className="w-2 h-2 rounded-full bg-cool-slate-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+            </div>
+          </div>
+        </div>
+      )}
+      {error && (
+        <div className="flex justify-center my-2">
+          <div className="bg-red-50 text-red-600 rounded-lg px-3 py-1.5 text-label-xs flex items-center gap-2 shadow-sm">
+            <span>{error}</span>
+            <button onClick={() => sendMessage(inputValue)} className="underline font-semibold">{t.chatWidget.retry}</button>
+          </div>
+        </div>
+      )}
+      <div ref={messagesEndRef} />
+    </div>
+  )
+}
+
+// SurveyScreen component
+function SurveyScreen({
+  t,
+  conversationId,
+  onRatingSubmit,
+  onSurveyComplete
+}: {
+  t: any
+  conversationId: number | null
+  onRatingSubmit: () => void
+  onSurveyComplete: () => void
+}) {
+  return (
+    <div className="p-6 text-center space-y-6">
+      <h2 className="text-xl font-bold">{t.chatWidget.surveyTitle}</h2>
+      <p className="text-[var(--text-muted)]">{t.chatWidget.surveyDescription}</p>
+      
+      <div className="mx-auto max-w-sm">
+        <RatingForm
+          conversationId={conversationId!}
+          onSubmitted={onRatingSubmit}
+        />
+      </div>
+      
+      <p className="text-sm text-[var(--text-muted)]">{t.chatWidget.surveySkip}</p>
+      <button
+        onClick={onSurveyComplete}
+        className="px-4 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold-dark transition-colors"
+      >
+        {t.chatWidget.surveySkipButton}
+      </button>
+    </div>
+  )
+}
+
+// ClosedScreen component
+function ClosedScreen({
+  t,
+  onReopen
+}: {
+  t: any
+  onReopen: () => void
+}) {
+  return (
+    <div className="p-6 text-center space-y-4">
+      <h2 className="text-xl font-bold">{t.chatWidget.thanksTitle}</h2>
+      <p className="text-[var(--text-muted)]">{t.chatWidget.thanksMessage}</p>
+      <button
+        onClick={onReopen}
+        className="px-6 py-2 bg-accent-gold text-white rounded-lg hover:bg-accent-gold-dark transition-colors"
+      >
+        {t.chatWidget.startNewChat}
+      </button>
+    </div>
+  )
+}
+
 export default function ChatWidget() {
   const { t, lang } = useI18n()
-  const [isOpen, setIsOpen] = useState(false)
-  const [messages, setMessages] = useState<Message[]>([])
-  const [inputValue, setInputValue] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
-  const [conversationId, setConversationId] = useState<number | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [isClosed, setIsClosed] = useState(false)
-  const [initialLoading, setInitialLoading] = useState(false)
+  const pathname = usePathname()
+  if (pathname?.startsWith('/admin')) return null
+
+  const [state, setState] = useState<ChatWidgetState>({
+    form: 'form',
+    isOpen: false,
+    messages: [],
+    inputValue: '',
+    isLoading: false,
+    conversationId: null,
+    error: null,
+    isClosed: false,
+    showRating: false,
+    hasRated: false,
+    initialLoading: false,
+    lastMessageAt: null,
+    inactivityWarningShown: false,
+    userPhone: null,
+    userCountry: null,
+    countryCode: null
+  })
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const userId = useRef(generateUserId())
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const inactivityTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const inactivityWarningRef = useRef<NodeJS.Timeout | null>(null)
 
+  // Form screen state
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    country: '',
+    countryCode: ''
+  })
+
+  // Handle form input changes
+  const handleFormChange = useCallback((field: keyof typeof formData, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }))
+  }, [])
+
+  // Handle form submission
+  const handleFormSubmit = useCallback(async () => {
+    // Validate form
+    if (!formData.name || !formData.email || !formData.phone || !formData.country || !formData.countryCode) {
+      setState(prev => ({ ...prev, error: t.common.tryAgain }))
+      return
+    }
+
+    try {
+      setState(prev => ({ ...prev, isLoading: true, error: null }))
+      
+      const res = await fetch('/api/chat/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          country: formData.country,
+          countryCode: formData.countryCode,
+          locale: lang
+        })
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) throw new Error(data.error || 'Failed to start conversation')
+
+      if (data.success && data.conversationId) {
+        setFormData({ name: '', email: '', phone: '', country: '', countryCode: '' })
+        setState(prev => ({ 
+          ...prev, 
+          form: 'chat', 
+          conversationId: data.conversationId,
+          isLoading: false,
+          lastMessageAt: new Date().toISOString(),
+          inactivityWarningShown: false,
+          userPhone: formData.phone,
+          userCountry: formData.country,
+          countryCode: formData.countryCode,
+        }))
+
+        // Fetch welcome message from DB to avoid duplication
+        const msgRes = await fetch(`/api/chat/messages?conversationId=${data.conversationId}`)
+        const msgData = await msgRes.json()
+        if (msgData.success && msgData.messages.length > 0) {
+          setState(prev => ({ ...prev, messages: msgData.messages }))
+        }
+      }
+    } catch (err) {
+      console.error('[ChatWidget] Form submit error:', err)
+      setState(prev => ({ ...prev, isLoading: false, error: t.chatWidget.connectionLost }))
+    }
+  }, [formData, lang, t])
+
+  // Scroll to bottom of messages
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [])
 
-  // Restore conversationId from localStorage
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('chat_conversation_id')
-      if (stored) {
-        setConversationId(parseInt(stored, 10))
-      }
+  // Inactivity monitoring functions
+  const resetInactivityTimer = useCallback(() => {
+    // Clear existing timers
+    if (inactivityTimeoutRef.current) {
+      clearTimeout(inactivityTimeoutRef.current)
+      inactivityTimeoutRef.current = null
     }
-  }, [])
+    if (inactivityWarningRef.current) {
+      clearTimeout(inactivityWarningRef.current)
+      inactivityWarningRef.current = null
+    }
+    
+    // Reset warning flag
+    setState(prev => ({ ...prev, inactivityWarningShown: false }))
+    
+    // Set new timers (60s warning, 90s close)
+    inactivityWarningRef.current = setTimeout(() => {
+      setState(prev => ({ ...prev, inactivityWarningShown: true }))
+      
+      // Add inactivity warning message
+      setState(prev => ({
+        ...prev,
+        messages: [...prev.messages, {
+          sender_type: 'system',
+          content: t.chatWidget.inactivityWarning,
+          message_type: 'system',
+        }]
+      }))
+    }, 60000) // 60 seconds
+    
+    inactivityTimeoutRef.current = setTimeout(() => {
+      // Close conversation due to inactivity
+      handleClose()
+      
+      // Add inactivity close message
+      setState(prev => ({
+        ...prev,
+        messages: [...prev.messages, {
+          sender_type: 'system',
+          content: t.chatWidget.inactivityClosed,
+          message_type: 'system',
+        }]
+      }))
+    }, 90000) // 90 seconds
+  }, [t, inactivityTimeoutRef, inactivityWarningRef])
 
-  // Persist conversationId to localStorage
-  useEffect(() => {
-    if (conversationId && typeof window !== 'undefined') {
-      localStorage.setItem('chat_conversation_id', String(conversationId))
-    }
-  }, [conversationId])
-
-  // Fetch existing messages when opening known conversation
-  useEffect(() => {
-    if (isOpen && conversationId && messages.length === 0) {
-      setInitialLoading(true)
-      fetch(`/api/chat/messages?conversationId=${conversationId}`)
-        .then(r => r.json())
-        .then(data => {
-          if (data.success && data.messages.length > 0) {
-            setMessages(data.messages)
-          } else {
-            setMessages([{
-              sender_type: 'ai',
-              content: t.chatWidget.startMessage,
-              message_type: 'text',
-            }])
-          }
-        })
-        .catch(() => {
-          setMessages([{
-            sender_type: 'ai',
-            content: t.chatWidget.startMessage,
-            message_type: 'text',
-          }])
-        })
-        .finally(() => setInitialLoading(false))
-    } else if (isOpen && !conversationId && messages.length === 0) {
-      setMessages([{
-        sender_type: 'ai',
-        content: t.chatWidget.startMessage,
-        message_type: 'text',
-      }])
-    }
-  }, [isOpen, conversationId, messages.length, t])
-
-  // Poll for new messages every 5 seconds while open
-  useEffect(() => {
-    if (isOpen && conversationId && !isClosed) {
-      pollingRef.current = setInterval(async () => {
-        try {
-          const res = await fetch(`/api/chat/messages?conversationId=${conversationId}`)
-          const data = await res.json()
-          if (data.success) {
-            setMessages(data.messages)
-          }
-        } catch {
-          // silent poll failure
-        }
-      }, 5000)
-    }
-    return () => {
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current)
-        pollingRef.current = null
-      }
-    }
-  }, [isOpen, conversationId, isClosed])
-
-  useEffect(() => {
-    if (isOpen) {
-      scrollToBottom()
-      setTimeout(() => inputRef.current?.focus(), 300)
-    }
-  }, [isOpen, messages, scrollToBottom])
-
+  // Handle sending messages
   const sendMessage = useCallback(async (content: string) => {
-    if (!content.trim() || isLoading) return
+    if (!content.trim() || state.isLoading) return
 
     const userMessage: Message = {
       sender_type: 'user',
@@ -131,17 +516,15 @@ export default function ChatWidget() {
       message_type: 'text',
     }
 
-    setMessages(prev => [...prev, userMessage])
-    setInputValue('')
-    setIsLoading(true)
-    setError(null)
+    setState(prev => ({ ...prev, messages: [...prev.messages, userMessage], inputValue: '' }))
+    setState(prev => ({ ...prev, isLoading: true, error: null }))
 
     try {
       const res = await fetch('/api/chat/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          conversationId,
+          conversationId: state.conversationId,
           message: content.trim(),
           userIdentifier: userId.current,
           locale: lang,
@@ -152,240 +535,345 @@ export default function ChatWidget() {
 
       if (!res.ok) throw new Error(data.error || 'Failed to send')
 
-      if (data.conversationId && !conversationId) {
-        setConversationId(data.conversationId)
-        setIsClosed(false)
+      if (data.conversationId && !state.conversationId) {
+        setState(prev => ({ ...prev, conversationId: data.conversationId, isClosed: false }))
       }
 
       if (data.response) {
-        setMessages(prev => [...prev, {
-          sender_type: data.response.sender,
-          content: data.response.content,
-          message_type: data.response.type,
-        }])
+        setState(prev => ({
+          ...prev,
+          messages: [...prev.messages, {
+            sender_type: data.response.sender,
+            content: data.response.content,
+            message_type: data.response.type,
+          }],
+          lastMessageAt: new Date().toISOString()
+        }))
+        
+        // Reset inactivity timer on agent/AI response
+        resetInactivityTimer()
+      } else if (data.pending) {
+        // n8n is processing — polling will pick up the response when ready
+        resetInactivityTimer()
       }
     } catch (err) {
-      setError(t.chatWidget.connectionLost)
       console.error('[ChatWidget] Send error:', err)
+      setState(prev => ({ ...prev, error: t.chatWidget.connectionLost }))
     } finally {
-      setIsLoading(false)
+      setState(prev => ({ ...prev, isLoading: false }))
+      
+      // Reset inactivity timer on user message
+      resetInactivityTimer()
     }
-  }, [conversationId, isLoading, t])
+  }, [state, t, lang, resetInactivityTimer])
 
+  // Handle closing conversation
+  const handleClose = useCallback(async () => {
+    if (!state.conversationId) return
+    
+    try {
+      await fetch('/api/chat/close', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversationId: state.conversationId,
+          closedBy: 'user',
+          locale: lang,
+        }),
+      })
+      
+      setState(prev => ({ ...prev, isClosed: true }))
+    } catch (err) {
+      console.error('[ChatWidget] Close error:', err)
+    }
+  }, [state.conversationId, lang, t])
+
+  // Handle escalating to human agent
   const handleEscalate = useCallback(async () => {
-    if (!conversationId) return
-    setIsLoading(true)
+    if (!state.conversationId) return
+    
+    setState(prev => ({ ...prev, isLoading: true }))
+    
     try {
       const res = await fetch('/api/chat/escalate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          conversationId,
+          conversationId: state.conversationId,
           reason: 'User requested human agent via widget',
           locale: lang,
         }),
       })
 
       if (res.ok) {
-        setMessages(prev => [...prev, {
-          sender_type: 'system',
-          content: t.chatWidget.escalateConfirm,
-          message_type: 'escalation',
-        }])
+        setState(prev => ({
+          ...prev,
+          messages: [...prev.messages, {
+            sender_type: 'system',
+            content: t.chatWidget.escalateConfirm,
+            message_type: 'escalation',
+          }],
+          isLoading: false
+        }))
       }
     } catch (err) {
       console.error('[ChatWidget] Escalate error:', err)
     } finally {
-      setIsLoading(false)
+      setState(prev => ({ ...prev, isLoading: false }))
     }
-  }, [conversationId, t])
+  }, [state.conversationId, lang, t])
 
-  const handleClose = useCallback(async () => {
-    if (!conversationId) return
-    try {
-      await fetch('/api/chat/close', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          conversationId,
-          closedBy: 'user',
-          locale: lang,
-        }),
-      })
-      setIsClosed(true)
-    } catch (err) {
-      console.error('[ChatWidget] Close error:', err)
-    }
-  }, [conversationId])
+  // Handle input change for chat message
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setState(prev => ({ ...prev, inputValue: e.target.value }))
+  }, [])
 
+  // Handle key down for enter key
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      sendMessage(inputValue)
+      sendMessage(state.inputValue)
     }
-  }, [inputValue, sendMessage])
+  }, [state.inputValue, sendMessage])
 
-  const statusColor = (type: string) => {
-    switch (type) {
-      case 'ai': return 'bg-[var(--accent-gold)]'
-      case 'agent': return 'bg-[var(--accent-orange)]'
-      case 'system': return 'bg-[var(--text-muted)]'
-      default: return 'bg-[var(--bg-dark)]'
+  // Poll for new messages every 5 seconds while open
+  useEffect(() => {
+    if (state.isOpen && state.conversationId && !state.isClosed) {
+      pollingRef.current = setInterval(async () => {
+        try {
+          const res = await fetch(`/api/chat/messages?conversationId=${state.conversationId}`)
+          const data = await res.json()
+          if (data.success) {
+            setState(prev => {
+              const existingIds = new Set(prev.messages.map(m => m.id).filter(Boolean))
+              const existingContent = new Set(prev.messages.map(m => `${m.content}|${m.sender_type}`))
+              const newMsgs = (data.messages as any[] || []).filter(m => {
+                if (m.id && existingIds.has(m.id)) return false
+                if (existingContent.has(`${m.content}|${m.sender_type}`)) return false
+                return true
+              })
+              if (newMsgs.length === 0) return prev
+              const last = newMsgs[newMsgs.length - 1]
+              return { ...prev, messages: [...prev.messages, ...newMsgs], lastMessageAt: last?.created_at || prev.lastMessageAt }
+            })
+            
+            // Reset inactivity timer when we get new messages from server
+            resetInactivityTimer()
+          }
+        } catch {
+          // silent poll failure
+        }
+      }, 5000)
     }
-  }
+    
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current)
+        pollingRef.current = null
+      }
+      
+      // Clear inactivity timers when component unmounts or chat closes
+      if (inactivityTimeoutRef.current) {
+        clearTimeout(inactivityTimeoutRef.current)
+        inactivityTimeoutRef.current = null
+      }
+      if (inactivityWarningRef.current) {
+        clearTimeout(inactivityWarningRef.current)
+        inactivityWarningRef.current = null
+      }
+    }
+  }, [state.isOpen, state.conversationId, state.isClosed, state.lastMessageAt, resetInactivityTimer])
+
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    if (state.isOpen) {
+      scrollToBottom()
+      setTimeout(() => inputRef.current?.focus(), 300)
+    }
+  }, [state.isOpen, state.messages, scrollToBottom])
+
+  // Restore conversationId from localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('chat_conversation_id')
+      if (stored) {
+        setState(prev => ({ ...prev, conversationId: parseInt(stored, 10) }))
+      }
+    }
+  }, [])
+
+  // Persist conversationId to localStorage
+  useEffect(() => {
+    if (state.conversationId && typeof window !== 'undefined') {
+      localStorage.setItem('chat_conversation_id', String(state.conversationId))
+    }
+  }, [state.conversationId])
+
+  // Detect closed status and check if rating was already submitted
+  useEffect(() => {
+    if (state.isClosed && state.conversationId && typeof window !== 'undefined') {
+      const rated = localStorage.getItem(`rated_${state.conversationId}`)
+      if (rated) {
+        setState(prev => ({ ...prev, hasRated: true }))
+      } else {
+        setState(prev => ({ ...prev, showRating: true }))
+      }
+    } else {
+      setState(prev => ({ ...prev, showRating: false }))
+    }
+  }, [state.isClosed, state.conversationId])
 
   return (
     <>
-      {isOpen && (
-        <div className="fixed inset-0 bg-black/30 z-40 sm:bg-transparent sm:pointer-events-none" onClick={() => setIsOpen(false)} />
+      {state.isOpen && (
+        <div className="fixed inset-0 bg-black/30 z-40 sm:bg-transparent sm:pointer-events-none" onClick={() => setState(prev => ({ ...prev, isOpen: false }))} />
       )}
 
-      <div className={`fixed bottom-4 right-4 z-50 flex flex-col transition-all duration-300 ${isOpen ? 'sm:bottom-20 sm:right-6' : ''}`}>
-        {isOpen && (
-          <div className="bg-white rounded-2xl shadow-level-3 border border-cool-slate-200 w-[calc(100vw-2rem)] sm:w-96 mb-3 flex flex-col overflow-hidden animate-slide-up max-h-[70vh] sm:max-h-[600px]">
-            <div className="bg-[var(--bg-dark)] text-white px-4 py-3 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-mountain-emerald flex items-center justify-center">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+      <div className={`fixed bottom-4 right-4 z-50 flex flex-col transition-all duration-300 ${state.isOpen ? 'sm:bottom-20 sm:right-6' : ''}`}>
+        {state.isOpen && (
+          <div className="bg-white rounded-2xl shadow-2xl border border-cool-slate-200 w-[calc(100vw-2rem)] sm:w-96 mb-3 flex flex-col overflow-hidden animate-slide-up max-h-[70vh] sm:max-h-[600px]">
+            <div className="bg-[#075e54] text-white px-4 py-2.5 flex items-center justify-between shrink-0 shadow-sm">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setState(prev => ({ ...prev, isOpen: false }))}
+                  className="text-white/80 hover:text-white p-0.5 -ml-1"
+                  aria-label={t.chatWidget.close}
+                >
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
                   </svg>
-                </div>
+                </button>
                 <div>
-                  <p className="text-label-md font-semibold">{t.chatWidget.title}</p>
-                  <p className="text-label-sm text-cool-slate-400">{t.chatWidget.subtitle}</p>
+                  <p className="text-sm font-medium">{t.chatWidget.title}</p>
+                  <p className="text-[11px] text-white/70">{t.chatWidget.subtitle}</p>
                 </div>
               </div>
-              <button
-                onClick={() => setIsOpen(false)}
-                className="text-cool-slate-400 hover:text-white p-1"
-                aria-label={t.chatWidget.close}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[300px] max-h-[400px]">
-              {initialLoading ? (
-                <div className="text-center text-cool-slate-400 py-8">{t.common.loading}</div>
-              ) : messages.map((msg, i) => (
-                <div key={msg.id || i} className={`flex ${msg.sender_type === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  {msg.sender_type !== 'user' && (
-                    <div className={`w-7 h-7 rounded-full ${statusColor(msg.sender_type)} flex items-center justify-center text-white shrink-0 mt-1 mr-2`}>
-                      {msg.sender_type === 'ai' || msg.sender_type === 'agent' ? (
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-                        </svg>
-                      ) : (
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                        </svg>
-                      )}
-                    </div>
-                  )}
-                  <div className={`max-w-[80%] ${msg.sender_type === 'user' ? 'order-1' : ''}`}>
-                    <div className={`rounded-2xl px-4 py-2 text-body-md ${
-                      msg.sender_type === 'user'
-                        ? 'bg-[var(--bg-dark)] text-white rounded-br-md'
-                        : msg.sender_type === 'system'
-                        ? 'bg-cool-slate-100 text-cool-slate-600 italic rounded-bl-md'
-                        : msg.sender_type === 'agent'
-                        ? 'bg-[var(--accent-gold)]/10 text-[var(--text-primary)] border border-[var(--accent-gold)]/30 rounded-bl-md'
-                        : 'bg-cool-slate-100 text-[var(--text-primary)] rounded-bl-md'
-                    }`}>
-                      {msg.content}
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {isLoading && (
-                <div className="flex justify-start">
-                  <div className="w-7 h-7 rounded-full bg-[var(--accent-gold)] flex items-center justify-center text-white shrink-0 mt-1 mr-2">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-                    </svg>
-                  </div>
-                  <div className="bg-cool-slate-100 rounded-2xl rounded-bl-md px-4 py-3">
-                    <div className="flex gap-1">
-                      <div className="w-2 h-2 rounded-full bg-cool-slate-400 animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <div className="w-2 h-2 rounded-full bg-cool-slate-400 animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <div className="w-2 h-2 rounded-full bg-cool-slate-400 animate-bounce" style={{ animationDelay: '300ms' }} />
-                    </div>
-                  </div>
-                </div>
-              )}
-              {error && (
-                <div className="flex justify-center">
-                  <div className="bg-red-50 text-red-600 rounded-lg px-4 py-2 text-label-sm flex items-center gap-2">
-                    <span>{error}</span>
-                    <button onClick={() => sendMessage(inputValue)} className="underline font-semibold">
-                      {t.chatWidget.retry}
-                    </button>
-                  </div>
-                </div>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-
-            {!isClosed ? (
-              <div className="border-t border-cool-slate-200 p-3 shrink-0">
-                <div className="flex items-center gap-2">
+            {/* Render appropriate screen based on state */}
+            {state.form === 'form' && (
+              <FormScreen
+                t={t}
+                formData={formData}
+                handleFormChange={handleFormChange}
+                handleFormSubmit={handleFormSubmit}
+                isLoading={state.isLoading}
+                error={state.error}
+              />
+            )}
+            
+            {state.form === 'chat' && (
+              <>
+                <ChatScreen
+                  t={t}
+                  lang={lang}
+                  messages={state.messages}
+                  isLoading={state.isLoading}
+                  inputValue={state.inputValue}
+                  isClosed={state.isClosed}
+                  showRating={state.showRating}
+                  hasRated={state.hasRated}
+                  inactivityWarningShown={state.inactivityWarningShown}
+                  sendMessage={sendMessage}
+                  handleEscalate={handleEscalate}
+                  handleClose={handleClose}
+                  handleKeyDown={handleKeyDown}
+                  inputRef={inputRef}
+                  messagesEndRef={messagesEndRef}
+                  scrollToBottom={scrollToBottom}
+                  userPhone={state.userPhone}
+                  userCountry={state.userCountry}
+                  countryCode={state.countryCode}
+                  error={state.error}
+                />
+                <div className="bg-[#f0f0f0] px-3 py-2.5 flex items-center gap-2 shrink-0">
                   <input
                     ref={inputRef}
                     type="text"
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
+                    value={state.inputValue}
+                    onChange={handleInputChange}
                     onKeyDown={handleKeyDown}
                     placeholder={t.chatWidget.inputPlaceholder}
-                    disabled={isLoading}
-                    className="flex-1 px-4 py-2.5 border border-cool-slate-300 rounded-xl text-body-md text-[var(--text-primary)] bg-white placeholder:text-cool-slate-400 focus:outline-none focus:border-[var(--accent-gold)] focus:ring-2 focus:ring-[var(--accent-gold)]/20 disabled:opacity-50"
+                    className="flex-1 px-4 py-2.5 bg-white rounded-full border-none focus:outline-none focus:ring-2 focus:ring-[var(--accent-gold)] text-gray-900 placeholder-gray-400 text-sm shadow-sm"
+                    disabled={state.isLoading || state.isClosed}
                   />
                   <button
-                    onClick={() => sendMessage(inputValue)}
-                    disabled={!inputValue.trim() || isLoading}
-                    className="w-10 h-10 rounded-xl bg-[var(--accent-gold)] text-[var(--bg-dark)] flex items-center justify-center hover:bg-[var(--accent-gold-dark)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors shrink-0"
-                    aria-label={t.chatWidget.send}
+                    onClick={() => sendMessage(state.inputValue)}
+                    disabled={state.isLoading || state.isClosed || !state.inputValue.trim()}
+                    className="w-10 h-10 rounded-full bg-[var(--accent-gold)] text-white flex items-center justify-center shrink-0 hover:bg-[var(--accent-gold-dark)] transition-colors disabled:opacity-40 shadow-sm"
                   >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <line x1="22" y1="2" x2="11" y2="13" />
                       <polygon points="22 2 15 22 11 13 2 9 22 2" />
                     </svg>
                   </button>
                 </div>
-                <div className="flex justify-end mt-2 gap-2">
-                  <button
-                    onClick={handleEscalate}
-                    disabled={isLoading || !conversationId}
-                    className="text-label-sm text-cool-slate-500 hover:text-[var(--accent-gold)] disabled:opacity-50 transition-colors"
-                  >
-                    {t.chatWidget.escalateToHuman}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="border-t border-cool-slate-200 p-4 text-center shrink-0">
-                <p className="text-body-md text-cool-slate-500 mb-2">{t.chatWidget.conversationClosed}</p>
-                <button
-                  onClick={() => { setIsClosed(false); setConversationId(null); setMessages([]) }}
-                  className="text-label-md text-[var(--accent-gold)] hover:underline"
-                >
-                  {t.chatWidget.reopen}
-                </button>
-              </div>
+              </>
+            )}
+            
+            {state.form === 'survey' && (
+              <SurveyScreen
+                t={t}
+                conversationId={state.conversationId!}
+                onRatingSubmit={() => {
+                  setState(prev => ({ 
+                    ...prev, 
+                    hasRated: true, 
+                    showRating: false,
+                    form: 'closed'
+                  }))
+                  // Save rating to localStorage to prevent showing again
+                  if (state.conversationId) {
+                    localStorage.setItem(`rated_${state.conversationId}`, 'true')
+                  }
+                }}
+                onSurveyComplete={() => {
+                  setState(prev => ({ 
+                    ...prev, 
+                    form: 'closed' 
+                  }))
+                }}
+              />
+            )}
+            
+            {state.form === 'closed' && (
+              <ClosedScreen
+                t={t}
+                onReopen={() => {
+                  setState(prev => ({ 
+                    ...prev, 
+                    form: 'form',
+                    isClosed: false,
+                    conversationId: null,
+                    messages: [],
+                    inputValue: '',
+                    isLoading: false,
+                    error: null,
+                    showRating: false,
+                    hasRated: false,
+                    initialLoading: false,
+                    lastMessageAt: null,
+                    inactivityWarningShown: false,
+                    userPhone: null,
+                    userCountry: null,
+                    countryCode: null
+                  }))
+                  // Clear form data
+                  setFormData({ name: '', email: '', phone: '', country: '', countryCode: '' })
+                }}
+              />
             )}
           </div>
         )}
 
         <button
-          onClick={() => setIsOpen(!isOpen)}
-          className={`w-14 h-14 rounded-full shadow-level-3 flex items-center justify-center transition-all duration-300 ${
-            isOpen ? 'bg-red-500 rotate-90' : 'bg-[var(--accent-gold)]'
+          onClick={() => setState(prev => ({ ...prev, isOpen: !state.isOpen }))}
+          className={`w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 ${
+            state.isOpen ? 'bg-red-500 rotate-90' : 'bg-[#075e54]'
           } text-white hover:scale-105 active:scale-95`}
-          aria-label={isOpen ? t.chatWidget.close : t.chatWidget.open}
+          aria-label={state.isOpen ? t.chatWidget.close : t.chatWidget.open}
         >
-          {isOpen ? (
+          {state.isOpen ? (
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
