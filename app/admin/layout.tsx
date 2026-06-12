@@ -7,6 +7,7 @@ import { useAuth, useClerk } from '@clerk/nextjs'
 import { useI18n } from '@/lib/i18n'
 import { RealtimeProvider, useRealtime } from '@/lib/admin/realtime-context'
 import { InactivityGuard } from '@/app/components/admin/InactivityGuard'
+import { ToastProvider, useToast } from '@/lib/admin/toast-context'
 
 interface NavItem {
   labelKey: string
@@ -46,7 +47,7 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
     items: [
       {
         labelKey: 'reservations',
-        href: '/admin/orders',
+        href: '/admin/reservations',
         icon: (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M8 2v4M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="2"/>
@@ -211,8 +212,29 @@ function DateNav() {
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <RealtimeProvider>
-      <AdminLayoutInner>{children}</AdminLayoutInner>
+      <ToastProvider>
+        <AdminLayoutInner>{children}</AdminLayoutInner>
+      </ToastProvider>
     </RealtimeProvider>
+  )
+}
+
+function ToastContainer() {
+  const { toasts, removeToast } = useToast()
+  if (toasts.length === 0) return null
+  return (
+    <div className="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2">
+      {toasts.map(t => (
+        <div
+          key={t.id}
+          className="bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)] px-4 py-3 shadow-[var(--shadow-elevated)] text-sm cursor-pointer animate-in fade-in slide-in-from-bottom-2"
+          style={{ color: 'var(--fg)', minWidth: 240 }}
+          onClick={() => removeToast(t.id)}
+        >
+          {t.message}
+        </div>
+      ))}
+    </div>
   )
 }
 
@@ -247,15 +269,13 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
     const titleMap: Record<string, string> = {
       '/admin': t.admin.dashboard.title as string,
       '/admin/dispatch': t.admin.nav.dispatch as string,
-      '/admin/orders': t.admin.nav.reservations as string,
       '/admin/drivers': t.admin.nav.drivers as string,
-      '/admin/logistics': t.admin.nav.fleet as string,
+      '/admin/fleet': t.admin.nav.fleet as string,
       '/admin/customers': t.admin.nav.customers as string,
       '/admin/ia-chat': t.admin.nav.support as string,
-      '/admin/team': t.admin.nav.employees as string,
       '/admin/employees': t.admin.nav.employees as string,
-      '/admin/intelligence': t.admin.nav.analytics as string,
-      '/admin/grid': t.admin.nav.payments as string,
+      '/admin/analytics': t.admin.nav.analytics as string,
+      '/admin/payments': t.admin.nav.payments as string,
       '/admin/agenda': 'Agenda',
       '/admin/cases': 'Cases',
       '/admin/reservations': t.admin.nav.reservations as string,
@@ -431,6 +451,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         </div>
       </div>
       <InactivityGuard />
+      <ToastContainer />
     </div>
   )
 }

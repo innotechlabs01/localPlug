@@ -128,10 +128,8 @@ function AgendaInner() {
 
 export default function AgendaPage() {
   return (
-    <RealtimeProvider>
       <I18nProvider>
         <AgendaInner />
       </I18nProvider>
-    </RealtimeProvider>
   )
 }

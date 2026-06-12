@@ -50,11 +50,12 @@ async function fetchReservations(): Promise<Booking[]> {
   }))
 }
 
-async function fetchDrivers(): Promise<{ name: string; vehicle: string; plate: string; status: string }[]> {
+async function fetchDrivers(): Promise<{ id: number; name: string; vehicle: string; plate: string; status: string }[]> {
   const res = await adminFetch('/api/admin/dispatch?tab=all', { cache: 'no-store' })
   if (!res.ok) return getMockDrivers()
   const data = await res.json()
   return (data.drivers || []).map((d: any) => ({
+    id: d.id,
     name: d.name,
     vehicle: d.vehicle,
     plate: d.plate,
@@ -64,9 +65,16 @@ async function fetchDrivers(): Promise<{ name: string; vehicle: string; plate: s
 
 function getMockDrivers() {
   return [
-    { name: 'Carlos Mendoza', vehicle: 'Mercedes V-Class', plate: 'MDE-782', status: 'offline' },
-    { name: 'María González', vehicle: 'BMW X5', plate: 'MDE-511', status: 'offline' },
-    { name: 'Felipe López', vehicle: 'Mercedes S-Class', plate: 'VIP-001', status: 'offline' },
+    { id: 1, name: 'Carlos Mendoza', vehicle: 'Mercedes V-Class', plate: 'MDE-782', status: 'offline' },
+    { id: 2, name: 'María González', vehicle: 'BMW X5', plate: 'MDE-511', status: 'offline' },
+    { id: 3, name: 'Felipe López', vehicle: 'Mercedes S-Class', plate: 'VIP-001', status: 'offline' },
+    { id: 4, name: 'Andrea Patiño', vehicle: 'Toyota Hiace', plate: 'MDE-903', status: 'offline' },
+    { id: 5, name: 'Juan Ramírez', vehicle: 'Chevrolet Captiva', plate: 'MDE-217', status: 'offline' },
+    { id: 6, name: 'Laura Jaramillo', vehicle: 'Nissan Urvan', plate: 'MDE-645', status: 'offline' },
+    { id: 7, name: 'Pedro Restrepo', vehicle: 'Mercedes Sprinter', plate: 'VIP-002', status: 'offline' },
+    { id: 8, name: 'Sofía Acevedo', vehicle: 'Kia Carnival', plate: 'MDE-388', status: 'offline' },
+    { id: 9, name: 'Ricardo Toro', vehicle: 'Hyundai Staria', plate: 'MDE-779', status: 'offline' },
+    { id: 10, name: 'Camila Duque', vehicle: 'Ford Transit', plate: 'MDE-124', status: 'offline' },
   ]
 }
 
@@ -103,7 +111,7 @@ export default function AdminDashboard() {
   const [assignedBookingRef, setAssignedBookingRef] = useState<string | null>(null)
   const [selectedDriver, setSelectedDriver] = useState('')
   const [toast, setToast] = useState<{ message: string } | null>(null)
-  const [drivers, setDrivers] = useState<{ name: string; vehicle: string; plate: string; status: string }[]>([])
+  const [drivers, setDrivers] = useState<{ id: number; name: string; vehicle: string; plate: string; status: string }[]>([])
   const [loading, setLoading] = useState(true)
 
   const loadData = useCallback(async () => {
@@ -206,7 +214,7 @@ export default function AdminDashboard() {
         body: JSON.stringify({ 
           action: 'assign', 
           orderId: parseInt(assignedBookingRef.replace('ORD-', '') || assignedBookingRef),
-          driverId: driverObj?.name
+          driverId: driverObj?.id
         })
       })
       if (res.ok) {

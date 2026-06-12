@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { triggerAiChatMessage, triggerFraudDetection } from '@/lib/n8n/client'
+import { generateOllamaResponse } from '@/lib/services/ollama-service'
 import { t } from '@/lib/i18n/server'
 
 interface SendMessageRequest {
@@ -245,7 +246,7 @@ export async function POST(request: Request) {
           await db.execute({
             sql: `UPDATE conversations SET status = 'escalated', updated_at = datetime('now')
                   WHERE id = ? AND status = 'ai_active'`,
-            args: [n8nResult.confidence, convId],
+            args: [convId],
           })
         }
 
@@ -271,9 +272,61 @@ export async function POST(request: Request) {
       })
     }
 
-    console.warn('[Chat Send] n8n webhook failed, using localized fallback', {
+    console.warn('[Chat Send] n8n webhook failed, trying Ollama fallback', {
       conversationId: convId,
       error: n8nResult.error,
+    })
+
+    const ollamaResult = await generateOllamaResponse({
+      message,
+      conversationHistory: history,
+      bookingInfo,
+      userCountry: conv?.user_country,
+    })
+
+    if (ollamaResult.message) {
+      console.log('[Chat Send] Ollama fallback response generated', { conversationId: convId, message: ollamaResult.message.slice(0, 200) })
+
+      await db.execute({
+        sql: `INSERT INTO messages (conversation_id, sender_type, content, message_type, metadata)
+              VALUES (?, 'ai', ?, 'text', ?)`,
+        args: [convId, ollamaResult.message, JSON.stringify({ confidence: ollamaResult.confidence, source: 'ollama' })],
+      })
+
+      await db.execute({
+        sql: `UPDATE conversations SET ai_confidence = ?, last_message_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`,
+        args: [ollamaResult.confidence, convId],
+      })
+
+      if (ollamaResult.confidence < 0.5) {
+        await db.execute({
+          sql: `UPDATE conversations SET status = 'escalated', updated_at = datetime('now')
+                WHERE id = ? AND status = 'ai_active'`,
+          args: [convId],
+        })
+      }
+
+      await db.execute({
+        sql: `UPDATE conversations SET first_agent_response_at = datetime('now')
+              WHERE id = ? AND first_agent_response_at IS NULL`,
+        args: [convId],
+      })
+
+      return NextResponse.json({
+        success: true,
+        conversationId: convId,
+        response: {
+          sender: 'ai',
+          content: ollamaResult.message,
+          type: 'text',
+        },
+        n8nTriggered: false,
+        source: 'ollama',
+      })
+    }
+
+    console.warn('[Chat Send] Ollama fallback also failed, using localized fallback', {
+      conversationId: convId,
     })
 
     const fallbackContent = t(locale || 'en', 'chat.fallback')
@@ -284,7 +337,6 @@ export async function POST(request: Request) {
       args: [convId, fallbackContent],
     })
 
-    // Track first AI response time for rating stats
     await db.execute({
       sql: `UPDATE conversations SET first_agent_response_at = datetime('now')
             WHERE id = ? AND first_agent_response_at IS NULL`,
@@ -300,6 +352,7 @@ export async function POST(request: Request) {
         type: 'text',
       },
       n8nTriggered: false,
+      source: 'fallback',
     })
   } catch (error) {
     console.error('[Chat API] Send message error:', error)

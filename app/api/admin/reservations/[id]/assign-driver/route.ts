@@ -2,13 +2,15 @@ import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { auth } from '@clerk/nextjs/server'
 
-export async function POST(req: Request) {
+export async function POST(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const { userId } = await auth()
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { searchParams } = new URL(req.url)
-    const reservationId = searchParams.get('id')
+    const { id: reservationId } = await params
     
     if (!reservationId) {
       return NextResponse.json({ error: 'Reservation ID required' }, { status: 400 })

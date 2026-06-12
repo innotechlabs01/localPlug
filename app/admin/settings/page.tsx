@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useI18n } from '@/lib/i18n'
+import { useToast } from '@/lib/admin/toast-context'
 
 const navItems = [
   { id: 'section-company', label: 'Company Information' },
@@ -16,12 +17,11 @@ const navItems = [
 export default function SettingsPage() {
   const { t } = useI18n()
   const d = (t.admin as any).settings ?? {}
-  const [toast, setToast] = useState<string | null>(null)
   const [activeSection, setActiveSection] = useState('section-company')
   const [settings, setSettings] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
 
-  const showToast = (m: string) => { setToast(m); setTimeout(() => setToast(null), 3000) }
+  const { showToast } = useToast()
 
   const scrollToSection = (id: string) => {
     const el = document.getElementById(id)
@@ -415,9 +415,6 @@ export default function SettingsPage() {
       </div>
 
       {/* Toast */}
-      <div className="toast-stack">
-        {toast && <div className="toast visible">{toast}</div>}
-      </div>
     </div>
   )
 }

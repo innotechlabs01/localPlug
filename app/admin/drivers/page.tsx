@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { adminFetch } from '@/lib/admin/admin-fetch'
+import { useToast } from '@/lib/admin/toast-context'
 
 interface Driver {
   id: number; name: string | null; phone: string | null; photo: string | null
@@ -53,13 +54,7 @@ export default function DriversPage() {
   const [createStep, setCreateStep] = useState(1)
   const [formData, setFormData] = useState<Record<string, string>>({})
   const [editDriver, setEditDriver] = useState<Driver | null>(null)
-  const [notif, setNotif] = useState<{ id: number; msg: string }[]>([])
-
-  const showToast = (msg: string) => {
-    const id = Date.now()
-    setNotif(p => [...p, { id, msg }])
-    setTimeout(() => setNotif(p => p.filter(n => n.id !== id)), 3000)
-  }
+  const { showToast } = useToast()
 
   const fetchDrivers = useCallback(async () => {
     try {
@@ -877,17 +872,6 @@ export default function DriversPage() {
         </div>
       )}
 
-      {/* ── TOAST ── */}
-      <div style={{ position: 'fixed', bottom: 24, right: 24, display: 'grid', gap: 8, zIndex: 800 }}>
-        {notif.map(n => (
-          <div key={n.id} style={{
-            background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--fg)',
-            padding: '12px 16px', borderRadius: 12, fontSize: 13, zIndex: 800,
-          }}>
-            {n.msg}
-          </div>
-        ))}
-      </div>
     </div>
   )
 }

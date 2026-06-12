@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { I18nProvider, useI18n } from '@/lib/i18n'
 import { adminFetch } from '@/lib/admin/admin-fetch'
+import { useToast } from '@/lib/admin/toast-context'
 import { RealtimeProvider } from '@/lib/admin/realtime-context'
 
 interface AnalyticsData {
@@ -50,13 +51,7 @@ function AnalyticsInner() {
   const [loading, setLoading] = useState(true)
   const [chartMode, setChartMode] = useState<'revenue' | 'bookings'>('revenue')
   const [period, setPeriod] = useState('ytd')
-  const [notif, setNotif] = useState<{ id: number; msg: string }[]>([])
-
-  const showToast = (msg: string) => {
-    const id = Date.now()
-    setNotif(p => [...p, { id, msg }])
-    setTimeout(() => setNotif(p => p.filter(n => n.id !== id)), 3000)
-  }
+  const { showToast } = useToast()
 
   useEffect(() => {
     setLoading(true)
@@ -582,34 +577,14 @@ function AnalyticsInner() {
         {d.footerLabel || 'Medellín Admin v2.0 · Analytics & Business Intelligence'} · © 2025
       </div>
 
-      {/* Toast */}
-      <div className="fixed bottom-6 right-6 space-y-2 z-[800]">
-        {notif.map(n => (
-          <div key={n.id} className="bg-[var(--surface)] border border-[var(--border)] text-[var(--fg)] px-4 py-3 rounded-xl shadow-lg flex items-center gap-2.5" style={{ animation: 'slideIn 0.3s ease' }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" className="flex-shrink-0">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
-            </svg>
-            <span className="text-[13px]">{n.msg}</span>
-          </div>
-        ))}
-      </div>
-
-      <style jsx>{`
-        @keyframes slideIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
     </div>
   )
 }
 
 export default function IntelligencePage() {
   return (
-    <RealtimeProvider>
       <I18nProvider>
         <AnalyticsInner />
       </I18nProvider>
-    </RealtimeProvider>
   )
 }

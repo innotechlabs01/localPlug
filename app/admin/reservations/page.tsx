@@ -201,7 +201,6 @@ export default function AdminReservations() {
   }
 
   return (
-    <RealtimeProvider>
       <div className="reservations-page">
         <ReservationKPIs reservations={reservations} />
 
@@ -306,7 +305,6 @@ export default function AdminReservations() {
           loading={actionLoading}
         />
       </div>
-    </RealtimeProvider>
   )
 }
 

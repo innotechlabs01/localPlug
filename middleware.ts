@@ -11,6 +11,8 @@ const isPublicRoute = createRouteMatcher([
   '/api/chat/start',
   '/api/chat/send',
   '/api/chat/messages',
+  '/api/chat/rating',
+  '/booking/confirmation',
   '/sign-in(.*)',
   '/sign-up(.*)',
 ])

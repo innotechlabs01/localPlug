@@ -100,7 +100,7 @@ export async function releaseToAIMode(conversationId: number, agentId: number, c
           updated_at = datetime('now')
       WHERE id = ? AND assigned_agent_id = ? AND status = 'human_active'
     `,
-    args: [agentId, conversationId]
+    args: [conversationId, agentId]
   });
 
   if (result.rowsAffected === 0) {

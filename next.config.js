@@ -17,6 +17,11 @@ const nextConfig = {
         destination: '/admin/employees',
         permanent: true,
       },
+      {
+        source: '/admin/support',
+        destination: '/admin/ia-chat',
+        permanent: true,
+      },
     ]
   },
   images: {
