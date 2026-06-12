@@ -401,10 +401,8 @@ function OrdersInner() {
 
 export default function OrdersPage() {
   return (
-    <RealtimeProvider>
       <I18nProvider>
         <OrdersInner />
       </I18nProvider>
-    </RealtimeProvider>
   )
 }

@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { adminFetch } from '@/lib/admin/admin-fetch'
 import { RealtimeProvider } from '@/lib/admin/realtime-context'
+import { useToast } from '@/lib/admin/toast-context'
 
 interface TeamMember {
   id: number; name: string; email: string; roles: string
@@ -37,13 +38,7 @@ export default function TeamPage() {
   const [roles, setRoles] = useState<Role[]>([])
   const [form, setForm] = useState<Record<string, string>>({})
   const [wizardStep, setWizardStep] = useState(1)
-  const [notif, setNotif] = useState<{ id: number; msg: string }[]>([])
-
-  const showToast = (msg: string) => {
-    const id = Date.now()
-    setNotif(p => [...p, { id, msg }])
-    setTimeout(() => setNotif(p => p.filter(n => n.id !== id)), 3000)
-  }
+  const { showToast } = useToast()
 
   useEffect(() => {
     Promise.all([
@@ -131,7 +126,6 @@ export default function TeamPage() {
   }
 
   return (
-    <RealtimeProvider>
       <div className="space-y-6">
       {/* ── Header ── */}
       <div className="flex items-end justify-between gap-4 flex-wrap">
@@ -468,20 +462,6 @@ export default function TeamPage() {
         </div>
       )}
 
-      {/* ── Toasts ── */}
-      <div className="fixed bottom-6 right-6 space-y-2 z-[800]">
-        {notif.map(n => (
-          <div key={n.id} className="bg-[#181b25] border border-[#282b38] text-[#f0f2f5] px-4 py-3 rounded-xl shadow-2xl text-[13px] animate-slide-up">
-            {n.msg}
-          </div>
-        ))}
-      </div>
-
-      <style>{`
-        @keyframes slide-up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-slide-up { animation: slide-up 300ms ease; }
-      `}</style>
     </div>
-    </RealtimeProvider>
   )
 }

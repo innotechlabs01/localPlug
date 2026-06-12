@@ -46,4 +46,7 @@ specs/016-admin-ui-alignment/plan.md
 specs/016-admin-ui-alignment/quickstart.md
 specs/016-admin-ui-alignment/research.md
 
+For context about n8n Docker volume naming and SQLITE_READONLY fixes, refer to:
+specs/015-n8n-docker-volume-naming/plan.md
+
 <!-- SPECKIT END -->

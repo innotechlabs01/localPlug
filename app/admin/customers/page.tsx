@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useI18n } from '@/lib/i18n'
+import { useToast } from '@/lib/admin/toast-context'
 import { formatDateFull } from '@/lib/date-utils'
 import type { Customer } from '@/app/api/admin/customers/route'
 
@@ -98,12 +99,7 @@ export default function CustomersPage() {
   const [showForm, setShowForm] = useState(false)
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
   const [formData, setFormData] = useState<Partial<Customer>>({})
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
-
-  const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
-    setToast({ message, type })
-    setTimeout(() => setToast(null), 3000)
-  }, [])
+  const { showToast } = useToast()
 
   const fetchCustomers = useCallback(async () => {
     try {
@@ -159,7 +155,7 @@ export default function CustomersPage() {
       setShowForm(false)
       fetchCustomers()
     } catch (err) {
-      showToast('Error saving customer', 'error')
+      showToast('Error saving customer')
     }
   }
 
@@ -172,7 +168,7 @@ export default function CustomersPage() {
       if (selectedCustomer?.id === customer.id) setSelectedCustomer(null)
       fetchCustomers()
     } catch (err) {
-      showToast('Error deactivating customer', 'error')
+      showToast('Error deactivating customer')
     }
   }
 
@@ -584,12 +580,6 @@ export default function CustomersPage() {
         </div>
       )}
 
-      {/* Toast */}
-      {toast && (
-        <div className="toast" style={{ background: toast.type === 'success' ? 'var(--accent)' : 'var(--danger)', color: 'white' }}>
-          <span>{toast.message}</span>
-        </div>
-      )}
     </div>
   )
 }

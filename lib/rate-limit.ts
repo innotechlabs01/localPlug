@@ -3,6 +3,26 @@ const requestCounts = new Map<string, { count: number; resetAt: number }>()
 const WINDOW_MS = 60_000
 const MAX_REQUESTS = 20
 
+// Periodically purge expired entries to prevent unbounded Map growth.
+// This is a single-instance limiter — in multi-instance deployments (Vercel),
+// each instance has its own independent Map, making the rate limit
+// per-instance rather than global. For production multi-instance,
+// replace with an external store (Upstash/Redis).
+const CLEANUP_INTERVAL = 60_000
+
+function cleanupExpired(): void {
+  const now = Date.now()
+  for (const [ip, entry] of requestCounts) {
+    if (now > entry.resetAt) {
+      requestCounts.delete(ip)
+    }
+  }
+}
+
+if (typeof setInterval !== 'undefined') {
+  setInterval(cleanupExpired, CLEANUP_INTERVAL)
+}
+
 export function checkRateLimit(ip: string): { allowed: boolean; remaining: number; resetAt: number } {
   const now = Date.now()
   const entry = requestCounts.get(ip)

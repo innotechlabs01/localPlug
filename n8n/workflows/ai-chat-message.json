@@ -1,0 +1,89 @@
+{
+  "id": 1,
+  "name": "AI Chat Message",
+  "active": true,
+  "nodes": [
+    {
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "ai-chat-message",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai-chat-message",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "build-payload",
+      "name": "Build Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300],
+      "parameters": {
+                "jsCode": "const item = $input.first().json;\n\n// The webhook returns { body, headers, params, query, ... }\nconst payload = item.body || item;\n\nconst conv = payload.data?.conversation || {};\nconst ctx = payload.data?.context || {};\n\nconst userMessage = conv.message || '';\nconst history = ctx.history || [];\nconst bookingInfo = ctx.booking || null;\n\nconst systemPrompt = 'Eres el asistente virtual de LocalPlug, un servicio de conserjería premium para viajeros. Tu trabajo es: 1) Ayudar con reservas, paquetes y servicios 2) Responder preguntas sobre la ciudad, aeropuerto, transporte 3) Guiar al usuario en el proceso de reserva. Reglas: Responde en el MISMO idioma del usuario. Sé breve, amable y profesional. Usa emojis con moderación. Si el usuario pide hablar con un humano, confirma que un agente lo contactará.';\n\nconst messages = [{ role: 'system', content: systemPrompt }];\n\nif (bookingInfo) {\n  messages.push({ role: 'system', content: 'Booking info: ' + JSON.stringify(bookingInfo) });\n}\n\nfor (const m of history.slice(-6)) {\n  messages.push({ role: m.role || 'user', content: m.content });\n}\n\nmessages.push({ role: 'user', content: userMessage });\n\nconst escalationKeywords = [\n  'hablar con alguien', 'hablar con una persona', 'hablar con un agente', 'hablar con un humano',\n  'talk to someone', 'talk to a person', 'talk to an agent', 'talk to a human',\n  'queja', 'problema', 'reclamo'\n];\n\nconst isEscalation = escalationKeywords.some(k => userMessage.toLowerCase().includes(k));\n\nconst ollamaPayload = {\n  model: 'llama3.1:8b',\n  messages: messages,\n  stream: false,\n  options: { temperature: 0.7, max_tokens: 500 }\n};\n\nreturn [{\n  json: {\n    requestBody: JSON.stringify(ollamaPayload),\n    _isEscalation: isEscalation\n  }\n}];"
+      }
+    },
+    {
+      "id": "call-ollama",
+      "name": "Call Ollama API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [650, 300],
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "http://ollama:11434/api/chat",
+        "authentication": "none",
+        "jsonParameters": true,
+        "bodyParametersJson": "={{ $json.requestBody }}",
+        "options": {
+          "bodyContentType": "raw",
+          "bodyContentCustomMimeType": "application/json",
+          "timeout": 60000
+        }
+      }
+    },
+    {
+      "id": "format-response",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 300],
+      "parameters": {
+        "jsCode": "// HTTP response with raw body content type returns unparsed response\nconst item = $input.first().json;\n\n// Try to find the response body in the raw HTTP response\nlet ollamaReply = '';\n\n// When using raw body content type, n8n returns the full HTTP response object\n// The body is in the _readableState buffers\nif (item._readableState && item._readableState.buffer && item._readableState.buffer.length > 0) {\n  const buf = item._readableState.buffer;\n  const chunks = [];\n  for (const entry of buf) {\n    if (entry.type === 'Buffer' && Array.isArray(entry.data)) {\n      chunks.push(Buffer.from(entry.data));\n    }\n  }\n  const bodyStr = Buffer.concat(chunks).toString('utf-8');\n  try {\n    const parsed = JSON.parse(bodyStr);\n    ollamaReply = parsed.message?.content || parsed.response || bodyStr;\n  } catch (e) {\n    ollamaReply = bodyStr;\n  }\n} else {\n  ollamaReply = item.message?.content || item.response || JSON.stringify(item);\n}\n\nreturn [{\n  json: {\n    workflowId: 'local-ollama',\n    message: ollamaReply,\n    confidence: 0.85\n  }\n}];"
+      }
+    },
+    {
+      "id": "respond-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1050, 300],
+      "parameters": {
+        "respondWith": "firstIncomingItem"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Build Payload", "type": "main", "index": 0 }]]
+    },
+    "Build Payload": {
+      "main": [[{ "node": "Call Ollama API", "type": "main", "index": 0 }]]
+    },
+    "Call Ollama API": {
+      "main": [[{ "node": "Format Response", "type": "main", "index": 0 }]]
+    },
+    "Format Response": {
+      "main": [[{ "node": "Respond to Webhook", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": []
+}

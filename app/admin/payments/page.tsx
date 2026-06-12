@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import { useI18n } from '@/lib/i18n'
+import { useToast } from '@/lib/admin/toast-context'
 
 interface Payment {
   id: string; guest: string; service: string; amount: number; fee: number; net: number
@@ -72,7 +73,6 @@ export default function PaymentsPage() {
   const d = (t.admin as any).payments ?? {}
   const [filter, setFilter] = useState<string>('all')
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [toast, setToast] = useState<string | null>(null)
   const [data, setData] = useState<PaymentsApiResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -102,10 +102,7 @@ export default function PaymentsPage() {
     }
   }, [])
 
-  const showToast = (msg: string) => {
-    setToast(msg)
-    setTimeout(() => setToast(null), 3000)
-  }
+  const { showToast } = useToast()
 
   const filtered = useMemo(() => {
     const payments = (data?.transactions || []).map((payment): Payment => ({
@@ -375,13 +372,6 @@ export default function PaymentsPage() {
         </div>
       )}
 
-      {/* Toast */}
-      {toast && (
-        <div className="fixed bottom-6 right-6 z-[2000] px-4 py-3 rounded-[8px] text-[13px] font-medium shadow-lg"
-          style={{ background: 'var(--accent)', color: 'white' }}>
-          {toast}
-        </div>
-      )}
     </div>
   )
 }

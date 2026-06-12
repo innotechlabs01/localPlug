@@ -834,7 +834,6 @@ function AgentForm({
   }
 
   return (
-    <RealtimeProvider>
       <form onSubmit={handleSubmit} className="space-y-3">
       <div>
         <label className="text-[11px] font-medium text-[#9ca0b0] block mb-1">{t.admin.chat.agents.name}</label>
@@ -914,6 +913,5 @@ function AgentForm({
         </button>
       </div>
     </form>
-    </RealtimeProvider>
   )
 }

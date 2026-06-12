@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useI18n } from '@/lib/i18n';
+import { useToast } from '@/lib/admin/toast-context';
 
 interface InventoryItem {
   id: number; name: string; category: string; stock: number; usagePerWeek: number
@@ -35,13 +36,8 @@ export default function InventoryPage() {
   const { t } = useI18n();
   const d = (t.admin as any).inventory ?? {};
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
-  const [toast, setToast] = useState<string | null>(null);
   const [restockModal, setRestockModal] = useState(false);
-
-  const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(null), 3000);
-  };
+  const { showToast } = useToast();
 
   const filtered = useMemo(() => {
     if (selectedCategory === 'All Categories') return items;
@@ -267,10 +263,6 @@ export default function InventoryPage() {
         </div>
       )}
 
-      {/* Toast */}
-      <div className="toast-stack">
-        {toast && <div className="toast visible">{toast}</div>}
-      </div>
     </div>
   );
 }

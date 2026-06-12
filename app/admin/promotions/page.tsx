@@ -2,17 +2,13 @@
 
 import { useState } from 'react'
 import { useI18n } from '@/lib/i18n'
+import { useToast } from '@/lib/admin/toast-context'
 
 export default function PromotionsPage() {
   const { t } = useI18n()
   const d = (t.admin as any).promotions ?? {}
   const [showModal, setShowModal] = useState(false)
-  const [toast, setToast] = useState<string | null>(null)
-
-  const showToast = (msg: string) => {
-    setToast(msg)
-    setTimeout(() => setToast(null), 3000)
-  }
+  const { showToast } = useToast()
 
   return (
     <div className="promo-page">
@@ -247,10 +243,6 @@ export default function PromotionsPage() {
         </div>
       )}
 
-      {/* ── Toast ── */}
-      <div className="toast-stack">
-        {toast && <div className="toast visible">{toast}</div>}
-      </div>
     </div>
   )
 }

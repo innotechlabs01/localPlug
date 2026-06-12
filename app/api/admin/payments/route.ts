@@ -35,7 +35,7 @@ export async function GET() {
   const failureRate = (successfulCount + failedCount) > 0
     ? ((failedCount / (successfulCount + failedCount)) * 100).toFixed(1)
     : '0'
-  const driverPayouts = Number(driverPayoutsAgg.total) / 100
+  const driverPayouts = Number(driverPayoutsAgg.total)
   const driverPayoutsPct = totalRevenue > 0 ? ((driverPayouts / totalRevenue) * 100).toFixed(0) : '0'
 
   const kpis = {

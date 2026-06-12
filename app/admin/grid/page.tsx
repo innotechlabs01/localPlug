@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { I18nProvider, useI18n } from '@/lib/i18n'
 import { adminFetch } from '@/lib/admin/admin-fetch'
 import { RealtimeProvider } from '@/lib/admin/realtime-context'
+import { useToast } from '@/lib/admin/toast-context'
 import { getTimeAgo } from '@/lib/date-utils'
 
 interface PaymentTransaction {
@@ -93,13 +94,7 @@ function PaymentsInner() {
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
   const [selectedTx, setSelectedTx] = useState<PaymentTransaction | null>(null)
-  const [notif, setNotif] = useState<{ id: number; msg: string }[]>([])
-
-  const showToast = (msg: string) => {
-    const id = Date.now()
-    setNotif(p => [...p, { id, msg }])
-    setTimeout(() => setNotif(p => p.filter(n => n.id !== id)), 3000)
-  }
+  const { showToast } = useToast()
 
   useEffect(() => {
     adminFetch('/api/admin/payments')
@@ -781,33 +776,12 @@ function PaymentsInner() {
         </div>
       )}
 
-      {/* Toast Notifications */}
-      <div className="fixed bottom-6 right-6 space-y-2 z-[800]">
-        {notif.map(n => (
-          <div
-            key={n.id}
-            className="bg-[#181b25] border border-[#282b38] text-[#f0f2f5] px-4 py-3 rounded-xl shadow-lg flex items-center gap-2.5 animate-in slide-in-from-right"
-            style={{ animation: 'slideIn 0.3s ease' }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" className="flex-shrink-0">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-              <polyline points="22 4 12 14.01 9 11.01" />
-            </svg>
-            <span className="text-[13px]">{n.msg}</span>
-          </div>
-        ))}
-      </div>
-
       <style jsx>{`
         .section-title {
           display: flex;
           align-items: center;
           gap: 8px;
           margin-bottom: 14px;
-        }
-        @keyframes slideIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
         }
       `}</style>
     </div>
@@ -816,10 +790,8 @@ function PaymentsInner() {
 
 export default function GridPage() {
   return (
-    <RealtimeProvider>
       <I18nProvider>
         <PaymentsInner />
       </I18nProvider>
-    </RealtimeProvider>
   )
 }

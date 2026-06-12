@@ -233,7 +233,6 @@ export default function DispatchPage() {
   }
 
   return (
-    <RealtimeProvider>
     <>
 
       {/* ── Smart Alerts Bar ── */}
@@ -658,6 +657,5 @@ export default function DispatchPage() {
       {/* ── Auth Modal ── */}
       <AuthModal open={authModalOpen} onClose={() => setAuthModalOpen(false)} />
     </>
-    </RealtimeProvider>
   )
 }

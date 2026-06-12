@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { adminFetch } from '@/lib/admin/admin-fetch'
+import { useToast } from '@/lib/admin/toast-context'
 
 interface Employee {
   id: number; name: string | null; email: string | null; phone: string | null
@@ -38,13 +39,7 @@ export default function EmployeesPage() {
   const [modalOpen, setModalOpen] = useState(false)
   const [editEmp, setEditEmp] = useState<Employee | null>(null)
   const [form, setForm] = useState<Record<string, string>>({})
-  const [notif, setNotif] = useState<{ id: number; msg: string }[]>([])
-
-  const showToast = (msg: string) => {
-    const id = Date.now()
-    setNotif(p => [...p, { id, msg }])
-    setTimeout(() => setNotif(p => p.filter(n => n.id !== id)), 3000)
-  }
+  const { showToast } = useToast()
 
   const fetchEmployees = useCallback(async () => {
     try {
@@ -373,12 +368,6 @@ export default function EmployeesPage() {
         </div>
       )}
 
-      {/* ── Toasts ── */}
-      <div className="toast-stack">
-        {notif.map(n => (
-          <div key={n.id} className="toast visible">{n.msg}</div>
-        ))}
-      </div>
     </div>
   )
 }
