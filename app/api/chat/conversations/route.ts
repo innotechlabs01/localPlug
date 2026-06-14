@@ -14,6 +14,8 @@ export async function GET(request: Request) {
     const status = searchParams.get('status')
     const flagged = searchParams.get('flagged')
     const agentId = searchParams.get('agentId')
+    const dateFrom = searchParams.get('dateFrom')
+    const dateTo = searchParams.get('dateTo')
     const limit = parseInt(searchParams.get('limit') || '50', 10)
     const offset = parseInt(searchParams.get('offset') || '0', 10)
 
@@ -44,6 +46,16 @@ export async function GET(request: Request) {
       args.push(parseInt(agentId, 10))
     }
 
+    if (dateFrom) {
+      sql += ' AND date(c.created_at) >= date(?)'
+      args.push(dateFrom)
+    }
+
+    if (dateTo) {
+      sql += ' AND date(c.created_at) <= date(?)'
+      args.push(dateTo)
+    }
+
     sql += ' ORDER BY c.last_message_at DESC, c.created_at DESC'
     sql += ' LIMIT ? OFFSET ?'
     args.push(limit, offset)
@@ -61,6 +73,16 @@ export async function GET(request: Request) {
 
     if (flagged === 'true') {
       countSql += ' AND flagged = 1'
+    }
+
+    if (dateFrom) {
+      countSql += ' AND date(created_at) >= date(?)'
+      countArgs.push(dateFrom)
+    }
+
+    if (dateTo) {
+      countSql += ' AND date(created_at) <= date(?)'
+      countArgs.push(dateTo)
     }
 
     const countResult = await db.execute({ sql: countSql, args: countArgs })

@@ -37,13 +37,13 @@ export async function takeOverConversation(conversationId: number, agentId: numb
           assigned_agent_id = ?, 
           assigned_at = datetime('now'),
           updated_at = datetime('now')
-      WHERE id = ? AND status = 'ai_active'
+      WHERE id = ? AND status IN ('ai_active', 'escalated')
     `,
     args: [agentId, conversationId]
   });
 
   if (result.rowsAffected === 0) {
-    log('warn', 'Failed to take over conversation - not found or not in ai_active status', { 
+    log('warn', 'Failed to take over conversation - not found or not in ai_active/escalated status', { 
       conversationId,
       agentId 
     });

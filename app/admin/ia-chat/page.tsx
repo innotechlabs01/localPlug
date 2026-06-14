@@ -94,6 +94,7 @@ export default function IaChatPage() {
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null)
   const [channelFilter, setChannelFilter] = useState<ChannelFilter>('all')
   const [isTakingOver, setIsTakingOver] = useState(false)
+  const [dateFilter, setDateFilter] = useState('')
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -117,6 +118,8 @@ export default function IaChatPage() {
         }
       }
       if (search) params.set('search', search)
+      if (dateFilter) params.set('dateFrom', dateFilter)
+      if (dateFilter) params.set('dateTo', dateFilter)
 
       const res = await fetch(`/api/chat/conversations?${params}`)
       const data = await res.json()
@@ -128,7 +131,7 @@ export default function IaChatPage() {
     } finally {
       setIsLoadingConv(false)
     }
-  }, [filter, search])
+  }, [filter, search, dateFilter])
 
   const fetchMessages = useCallback(async (convId: number) => {
     setIsLoadingMsg(true)
@@ -415,6 +418,12 @@ export default function IaChatPage() {
               </button>
             ))}
           </div>
+          <input
+            type="date"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="w-full px-3 py-2 bg-[#0b0d14] border border-[#282b38] rounded-[6px] text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-all [color-scheme:dark]"
+          />
           <div className="flex gap-1 overflow-x-auto pb-1">
             {(['all', 'ai_active', 'escalated', 'human_active', 'closed', 'flagged'] as FilterMode[]).map((f) => (
               <button
