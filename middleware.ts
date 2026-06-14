@@ -34,7 +34,7 @@ export default clerkMiddleware(async (auth, req) => {
     if (!userId) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    return
+    return NextResponse.next()
   }
   if (!isPublicRoute(req)) {
     await auth.protect()
