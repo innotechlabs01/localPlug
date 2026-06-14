@@ -286,9 +286,10 @@ export default function IaChatPage() {
       }
       setShowCloseModal(false)
       setError(null)
-      fetchConversations()
+      setConversations(prev => prev.map(c => c.id === convId ? { ...c, status: 'closed' } : c))
       setSelectedConv(prev => prev && prev.id === convId ? { ...prev, status: 'closed' } : prev)
       fetchMessages(convId)
+      await fetchConversations()
     } catch (err) {
       console.error('[AdminChat] Close error:', err)
       setError('Network error closing conversation')
