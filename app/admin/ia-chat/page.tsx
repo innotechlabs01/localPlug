@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useI18n } from '@/lib/i18n'
 import { RealtimeProvider } from '@/lib/admin/realtime-context'
 import { getTimeAgoI18n } from '@/lib/date-utils'
@@ -94,7 +95,7 @@ export default function IaChatPage() {
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null)
   const [channelFilter, setChannelFilter] = useState<ChannelFilter>('all')
   const [isTakingOver, setIsTakingOver] = useState(false)
-  const [dateFilter, setDateFilter] = useState('')
+  const searchParams = useSearchParams()
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -118,8 +119,10 @@ export default function IaChatPage() {
         }
       }
       if (search) params.set('search', search)
-      if (dateFilter) params.set('dateFrom', dateFilter)
-      if (dateFilter) params.set('dateTo', dateFilter)
+      const dateFrom = searchParams.get('dateFrom')
+      const dateTo = searchParams.get('dateTo')
+      if (dateFrom) params.set('dateFrom', dateFrom)
+      if (dateTo) params.set('dateTo', dateTo)
 
       const res = await fetch(`/api/chat/conversations?${params}`)
       const data = await res.json()
@@ -131,7 +134,7 @@ export default function IaChatPage() {
     } finally {
       setIsLoadingConv(false)
     }
-  }, [filter, search, dateFilter])
+  }, [filter, search, searchParams])
 
   const fetchMessages = useCallback(async (convId: number) => {
     setIsLoadingMsg(true)

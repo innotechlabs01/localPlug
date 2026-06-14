@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useAuth, useClerk } from '@clerk/nextjs'
 import { useI18n } from '@/lib/i18n'
 import { RealtimeProvider, useRealtime } from '@/lib/admin/realtime-context'
@@ -139,6 +139,40 @@ function DateNav() {
   const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
   const [date, setDate] = useState(now)
   const [view, setView] = useState<'day' | 'week' | 'month' | 'year'>('day')
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const mountedRef = useRef(false)
+
+  const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
+  const syncUrl = useCallback((d: Date, v: string) => {
+    let dateFrom: string, dateTo: string
+    if (v === 'day') {
+      dateFrom = dateTo = fmt(d)
+    } else if (v === 'week') {
+      const s = new Date(d); s.setDate(d.getDate() - d.getDay() + 1)
+      const e = new Date(s); e.setDate(s.getDate() + 6)
+      dateFrom = fmt(s); dateTo = fmt(e)
+    } else if (v === 'month') {
+      dateFrom = fmt(new Date(d.getFullYear(), d.getMonth(), 1))
+      dateTo = fmt(new Date(d.getFullYear(), d.getMonth() + 1, 0))
+    } else {
+      dateFrom = `${d.getFullYear()}-01-01`
+      dateTo = `${d.getFullYear()}-12-31`
+    }
+    const p = new URLSearchParams(searchParams.toString())
+    p.set('dateFrom', dateFrom)
+    p.set('dateTo', dateTo)
+    router.replace(`${pathname}?${p.toString()}`, { scroll: false })
+  }, [searchParams, router, pathname])
+
+  // Sync DateNav to URL on mount
+  useEffect(() => {
+    if (mountedRef.current) return
+    mountedRef.current = true
+    syncUrl(date, view)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const formatLabel = () => {
     if (view === 'day') return `${dayNames[date.getDay()]}, ${months[date.getMonth()]} ${date.getDate()}`
@@ -165,6 +199,7 @@ function DateNav() {
     else if (view === 'month') d.setMonth(d.getMonth() - 1)
     else d.setFullYear(d.getFullYear() - 1)
     setDate(d)
+    syncUrl(d, view)
   }
 
   const goNext = () => {
@@ -174,9 +209,19 @@ function DateNav() {
     else if (view === 'month') d.setMonth(d.getMonth() + 1)
     else d.setFullYear(d.getFullYear() + 1)
     setDate(d)
+    syncUrl(d, view)
   }
 
-  const goToday = () => setDate(new Date())
+  const goToday = () => {
+    const d = new Date()
+    setDate(d)
+    syncUrl(d, view)
+  }
+
+  const setViewAndSync = (v: 'day' | 'week' | 'month' | 'year') => {
+    setView(v)
+    syncUrl(date, v)
+  }
 
   return (
     <div className="date-nav">
@@ -196,7 +241,7 @@ function DateNav() {
       <div className="date-nav-right">
         <div className="date-view-toggle">
           {(['day', 'week', 'month', 'year'] as const).map(v => (
-            <button key={v} className={`date-view-btn ${view === v ? 'active' : ''}`} onClick={() => setView(v)}>
+            <button key={v} className={`date-view-btn ${view === v ? 'active' : ''}`} onClick={() => setViewAndSync(v)}>
               {v.charAt(0).toUpperCase() + v.slice(1)}
             </button>
           ))}
