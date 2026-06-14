@@ -242,6 +242,7 @@ export async function triggerEscalation(conversationData: {
   reason: string
   userIdentifier: string
   assignedAgentId?: number
+  agentAvailable?: boolean
 }): Promise<N8nResponse> {
   return sendN8nWebhook('escalate-to-human', {
     type: 'escalation',

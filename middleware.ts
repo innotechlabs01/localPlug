@@ -13,16 +13,20 @@ const isPublicRoute = createRouteMatcher([
   '/api/chat/messages',
   '/api/chat/rating',
   '/api/chat/request-escalate',
+  '/api/chat/close',
   '/api/ratings(.*)',
   '/booking/confirmation',
   '/sign-in(.*)',
   '/sign-up(.*)',
 ])
 
-const isAdminApiRoute = createRouteMatcher(['/api/admin/(.*)', '/api/chat/conversations', '/api/chat/agents', '/api/chat/escalate', '/api/chat/close'])
+const isAdminApiRoute = createRouteMatcher(['/api/admin/(.*)', '/api/chat/conversations', '/api/chat/agents', '/api/chat/escalate'])
 const isLookupRoute = createRouteMatcher(['/api/admin/lookup'])
 
 export default clerkMiddleware(async (auth, req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 204 })
+  }
   if (isLookupRoute(req)) {
     return NextResponse.next()
   }
@@ -31,7 +35,7 @@ export default clerkMiddleware(async (auth, req) => {
     if (!userId) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    return
+    return NextResponse.next()
   }
   if (!isPublicRoute(req)) {
     await auth.protect()

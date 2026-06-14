@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { RealtimeProvider } from '@/lib/admin/realtime-context'
+import { useDateFilter } from '@/lib/admin/date-filter-context'
 import { getTimeAgoI18n } from '@/lib/date-utils'
 
 interface Conversation {
@@ -51,12 +52,12 @@ interface Agent {
   maxConversations?: number
 }
 
-type FilterMode = 'all' | 'ai_active' | 'escalated' | 'human_active' | 'closed' | 'flagged'
+type FilterMode = 'all' | 'ai_active' | 'human_active' | 'closed' | 'flagged'
 type ChannelFilter = 'all' | 'whatsapp' | 'web'
 
 const STATUS_STYLES: Record<string, string> = {
   ai_active: 'bg-[rgba(59,130,246,0.12)] text-[#3b82f6]',
-  escalated: 'bg-[rgba(245,158,11,0.12)] text-[#f59e0b]',
+
   human_active: 'bg-[rgba(16,185,129,0.12)] text-[#10b981]',
   closed: 'bg-[rgba(100,104,128,0.12)] text-[#646880]',
 }
@@ -94,6 +95,7 @@ export default function IaChatPage() {
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null)
   const [channelFilter, setChannelFilter] = useState<ChannelFilter>('all')
   const [isTakingOver, setIsTakingOver] = useState(false)
+  const { dateFrom, dateTo } = useDateFilter()
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -117,6 +119,8 @@ export default function IaChatPage() {
         }
       }
       if (search) params.set('search', search)
+      if (dateFrom) params.set('dateFrom', dateFrom)
+      if (dateTo) params.set('dateTo', dateTo)
 
       const res = await fetch(`/api/chat/conversations?${params}`)
       const data = await res.json()
@@ -128,7 +132,7 @@ export default function IaChatPage() {
     } finally {
       setIsLoadingConv(false)
     }
-  }, [filter, search])
+  }, [filter, search, dateFrom, dateTo])
 
   const fetchMessages = useCallback(async (convId: number) => {
     setIsLoadingMsg(true)
@@ -260,27 +264,37 @@ export default function IaChatPage() {
     }
   }, [selectedConv, escalateReason, fetchConversations])
 
+  const closingRef = useRef<number | null>(null)
+
   const handleClose = useCallback(async () => {
-    if (!selectedConv) return
+    const convId = closingRef.current
+    if (!convId) return
     try {
       const res = await fetch('/api/chat/close', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          conversationId: selectedConv.id,
+          conversationId: convId,
           closedBy: 'agent',
         }),
       })
       const data = await res.json()
-      if (data.success) {
-        setShowCloseModal(false)
-        fetchConversations()
-        setSelectedConv(prev => prev ? { ...prev, status: 'closed' } : null)
+      if (!res.ok || !data.success) {
+        console.error('[AdminChat] Close failed:', data)
+        setError(data.error || 'Failed to close conversation')
+        return
       }
+      setShowCloseModal(false)
+      setError(null)
+      setConversations(prev => prev.map(c => c.id === convId ? { ...c, status: 'closed' } : c))
+      setSelectedConv(prev => prev && prev.id === convId ? { ...prev, status: 'closed' } : prev)
+      fetchMessages(convId)
+      await fetchConversations()
     } catch (err) {
       console.error('[AdminChat] Close error:', err)
+      setError('Network error closing conversation')
     }
-  }, [selectedConv, fetchConversations])
+  }, [fetchConversations, fetchMessages])
 
   const handleAgentSave = useCallback(async (agentData: Partial<Agent>) => {
     try {
@@ -350,18 +364,11 @@ export default function IaChatPage() {
         body: JSON.stringify({
           conversationId: selectedConv.id,
           closedBy: 'agent',
+          releaseToAi: true,
         }),
       })
       const data = await res.json()
       if (data.success) {
-        await fetch('/api/chat/conversations', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            conversationId: selectedConv.id,
-            status: 'ai_active',
-          }),
-        })
         fetchConversations()
         setSelectedConv(prev => prev ? { ...prev, status: 'ai_active' } : null)
         setMessages(prev => [...prev, {
@@ -422,7 +429,7 @@ export default function IaChatPage() {
             ))}
           </div>
           <div className="flex gap-1 overflow-x-auto pb-1">
-            {(['all', 'ai_active', 'escalated', 'human_active', 'closed', 'flagged'] as FilterMode[]).map((f) => (
+            {(['all', 'ai_active', 'human_active', 'closed', 'flagged'] as FilterMode[]).map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
@@ -562,7 +569,7 @@ export default function IaChatPage() {
                   {t.admin.chat.escalate}
                 </button>
                 <button
-                  onClick={() => setShowCloseModal(true)}
+                  onClick={() => { closingRef.current = selectedConv.id; setShowCloseModal(true) }}
                   disabled={selectedConv.status === 'closed'}
                   className="px-3 py-1.5 text-[11px] font-medium border border-[rgba(239,68,80,0.3)] text-[#ef4450] rounded-[6px] hover:bg-[rgba(239,68,80,0.12)] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
@@ -761,12 +768,13 @@ export default function IaChatPage() {
 
       {/* Close Modal */}
       {showCloseModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center" onClick={() => setShowCloseModal(false)}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center" onClick={() => { closingRef.current = null; setShowCloseModal(false) }}>
           <div className="bg-[#181b25] border border-[#282b38] rounded-[14px] shadow-[0_20px_60px_rgba(0,0,0,0.5)] p-6 w-96 mx-4" onClick={e => e.stopPropagation()}>
             <h3 className="text-[15px] font-semibold text-[#f0f2f5] mb-2">{t.admin.chat.confirmClose}</h3>
+            {error && <p className="text-[#ef4450] text-[12px] mt-2">{error}</p>}
             <div className="flex justify-end gap-3 mt-4">
               <button
-                onClick={() => setShowCloseModal(false)}
+                onClick={() => { closingRef.current = null; setShowCloseModal(false) }}
                 className="px-4 py-2 text-[13px] font-medium text-[#9ca0b0] hover:text-[#f0f2f5] transition-colors"
               >
                 {t.admin.chat.agents?.cancel || 'Cancel'}

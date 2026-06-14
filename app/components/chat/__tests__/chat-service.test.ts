@@ -13,6 +13,19 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
+// Helper: set up agent load lookup + update mocks for incrementAgentLoad
+function mockAgentLoad() {
+  mockExecute
+    .mockResolvedValueOnce({ rows: [{ current_conversations: 0, max_conversations: 5 }] })
+    .mockResolvedValueOnce({ rowsAffected: 1 })
+}
+
+function mockAgentLoadForRelease() {
+  // releaseToAIMode reads assigned_agent_id before updating
+  mockExecute
+    .mockResolvedValueOnce({ rows: [{ assigned_agent_id: 5 }] })
+}
+
 describe('getConversations', () => {
   it('builds correct WHERE clause with status filter', async () => {
     mockExecute.mockResolvedValue({ rows: [] })
@@ -54,9 +67,10 @@ describe('takeOverConversation', () => {
     mockExecute
       .mockResolvedValueOnce({ rowsAffected: 1 })
       .mockResolvedValueOnce({ rows: [{ id: 1, status: 'human_active', assigned_agent_id: 5 }] })
+    mockAgentLoad()
     const result = await takeOverConversation(1, 5, 'Customer needs help')
     expect(result).not.toBeNull()
-    expect(mockExecute).toHaveBeenCalledTimes(2)
+    expect(mockExecute).toHaveBeenCalledTimes(4)
     const firstCall = mockExecute.mock.calls[0][0]
     expect(firstCall.args).toEqual([5, 1])
   })
@@ -70,16 +84,25 @@ describe('takeOverConversation', () => {
 
 describe('releaseToAIMode', () => {
   it('passes args in correct order [conversationId, agentId] (Plan 005 fix)', async () => {
-    mockExecute
-      .mockResolvedValueOnce({ rowsAffected: 1 })
-      .mockResolvedValueOnce({ rows: [{ id: 1, status: 'ai_active' }] })
+    // beforeResult: read assigned_agent_id
+    mockExecute.mockResolvedValueOnce({ rows: [{ assigned_agent_id: 5 }] })
+    // UPDATE
+    mockExecute.mockResolvedValueOnce({ rowsAffected: 1 })
+    // decrementAgentLoad: select
+    mockExecute.mockResolvedValueOnce({ rows: [{ current_conversations: 1, max_conversations: 5 }] })
+    // decrementAgentLoad: update
+    mockExecute.mockResolvedValueOnce({ rowsAffected: 1 })
+    // convResult: select after update
+    mockExecute.mockResolvedValueOnce({ rows: [{ id: 1, status: 'ai_active' }] })
     const result = await releaseToAIMode(1, 5)
     expect(result).not.toBeNull()
-    const firstCall = mockExecute.mock.calls[0][0]
+    const firstCall = mockExecute.mock.calls[1][0]
     expect(firstCall.args).toEqual([1, 5])
   })
 
   it('returns null when rowsAffected === 0', async () => {
+    // beforeResult: read assigned_agent_id (needed before UPDATE fails)
+    mockExecute.mockResolvedValueOnce({ rows: [{ assigned_agent_id: 5 }] })
     mockExecute.mockResolvedValue({ rowsAffected: 0 })
     const result = await releaseToAIMode(1, 5)
     expect(result).toBeNull()

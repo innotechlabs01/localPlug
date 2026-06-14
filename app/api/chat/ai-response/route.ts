@@ -29,7 +29,7 @@ export async function POST(request: Request) {
 
     if (confidence && confidence < 0.5) {
       await db.execute({
-        sql: `UPDATE conversations SET status = 'escalated', updated_at = datetime('now')
+        sql: `UPDATE conversations SET status = 'human_active', updated_at = datetime('now')
               WHERE id = ? AND status = 'ai_active'`,
         args: [conversationId],
       })

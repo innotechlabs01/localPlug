@@ -5,7 +5,7 @@ export interface Conversation {
   user_identifier: string; // Phone number (E.164) or email
   user_name?: string;
   user_email?: string;
-  status: 'ai_active' | 'escalated' | 'human_active' | 'closed';
+  status: 'ai_active' | 'human_active' | 'closed';
   assigned_agent_id?: number;
   assigned_at?: string; // ISO timestamp
   order_id?: number;

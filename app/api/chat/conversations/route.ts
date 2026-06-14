@@ -4,44 +4,18 @@ import { auth } from '@clerk/nextjs/server'
 
 export async function GET(request: Request) {
   try {
-    // Get the authenticated user from Clerk
     const { userId } = await auth()
     if (!userId) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Get the user's internal ID and role from the database using the clerk_id
-    const db = await import('@/lib/db').then(mod => mod.getDb())
-    const userResult = await db.execute({
-      sql: 'SELECT id, role_id FROM users WHERE clerk_id = ?',
-      args: [userId]
-    })
-
-    if (userResult.rows.length === 0) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      )
-    }
-
-    const userIdInternal = userResult.rows[0].id
-    const roleId = userResult.rows[0].role_id
-
-    // Check if the user is an agent/admin (has a role_id assigned)
-    if (roleId === null) {
-      return NextResponse.json(
-        { error: 'Forbidden: insufficient permissions' },
-        { status: 403 }
-      )
-    }
-
+    const db = getDb()
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
     const flagged = searchParams.get('flagged')
     const agentId = searchParams.get('agentId')
+    const dateFrom = searchParams.get('dateFrom')
+    const dateTo = searchParams.get('dateTo')
     const limit = parseInt(searchParams.get('limit') || '50', 10)
     const offset = parseInt(searchParams.get('offset') || '0', 10)
 
@@ -72,6 +46,16 @@ export async function GET(request: Request) {
       args.push(parseInt(agentId, 10))
     }
 
+    if (dateFrom) {
+      sql += ' AND date(c.created_at) >= date(?)'
+      args.push(dateFrom)
+    }
+
+    if (dateTo) {
+      sql += ' AND date(c.created_at) <= date(?)'
+      args.push(dateTo)
+    }
+
     sql += ' ORDER BY c.last_message_at DESC, c.created_at DESC'
     sql += ' LIMIT ? OFFSET ?'
     args.push(limit, offset)
@@ -89,6 +73,16 @@ export async function GET(request: Request) {
 
     if (flagged === 'true') {
       countSql += ' AND flagged = 1'
+    }
+
+    if (dateFrom) {
+      countSql += ' AND date(created_at) >= date(?)'
+      countArgs.push(dateFrom)
+    }
+
+    if (dateTo) {
+      countSql += ' AND date(created_at) <= date(?)'
+      countArgs.push(dateTo)
     }
 
     const countResult = await db.execute({ sql: countSql, args: countArgs })

@@ -1,13 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useAuth, useClerk } from '@clerk/nextjs'
 import { useI18n } from '@/lib/i18n'
 import { RealtimeProvider, useRealtime } from '@/lib/admin/realtime-context'
 import { InactivityGuard } from '@/app/components/admin/InactivityGuard'
 import { ToastProvider, useToast } from '@/lib/admin/toast-context'
+import { DateFilterProvider, useDateFilter } from '@/lib/admin/date-filter-context'
 
 interface NavItem {
   labelKey: string
@@ -139,6 +140,32 @@ function DateNav() {
   const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
   const [date, setDate] = useState(now)
   const [view, setView] = useState<'day' | 'week' | 'month' | 'year'>('day')
+  const { setDateRange } = useDateFilter()
+
+  const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
+  const computeRange = useCallback((d: Date, v: string) => {
+    let from: string, to: string
+    if (v === 'day') {
+      from = to = fmt(d)
+    } else if (v === 'week') {
+      const s = new Date(d); s.setDate(d.getDate() - d.getDay() + 1)
+      const e = new Date(s); e.setDate(s.getDate() + 6)
+      from = fmt(s); to = fmt(e)
+    } else if (v === 'month') {
+      from = fmt(new Date(d.getFullYear(), d.getMonth(), 1))
+      to = fmt(new Date(d.getFullYear(), d.getMonth() + 1, 0))
+    } else {
+      from = `${d.getFullYear()}-01-01`
+      to = `${d.getFullYear()}-12-31`
+    }
+    return { dateFrom: from, dateTo: to }
+  }, [])
+
+  useEffect(() => {
+    const { dateFrom, dateTo } = computeRange(date, view)
+    setDateRange(dateFrom, dateTo)
+  }, [date, view, computeRange, setDateRange])
 
   const formatLabel = () => {
     if (view === 'day') return `${dayNames[date.getDay()]}, ${months[date.getMonth()]} ${date.getDate()}`
@@ -176,7 +203,9 @@ function DateNav() {
     setDate(d)
   }
 
-  const goToday = () => setDate(new Date())
+  const goToday = () => {
+    setDate(new Date())
+  }
 
   return (
     <div className="date-nav">
@@ -213,7 +242,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <RealtimeProvider>
       <ToastProvider>
-        <AdminLayoutInner>{children}</AdminLayoutInner>
+        <DateFilterProvider>
+          <AdminLayoutInner>{children}</AdminLayoutInner>
+        </DateFilterProvider>
       </ToastProvider>
     </RealtimeProvider>
   )

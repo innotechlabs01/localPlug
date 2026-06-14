@@ -1,5 +1,6 @@
 import { getDb } from '@/lib/db';
 import { Conversation } from '../conversation';
+import { incrementAgentLoad, decrementAgentLoad } from './agent-service';
 
 // Simple logging function - in a real application, you would use a proper logging library
 function log(level: 'info' | 'warn' | 'error', message: string, meta?: any): void {
@@ -65,6 +66,8 @@ export async function takeOverConversation(conversationId: number, agentId: numb
 
   const conversation = convResult.rows[0] as unknown as Conversation;
 
+  await incrementAgentLoad(agentId)
+
   log('info', 'Successfully taken over conversation', { 
     conversationId,
     agentId,
@@ -90,8 +93,18 @@ export async function releaseToAIMode(conversationId: number, agentId: number, c
     closedBy 
   });
 
-  // Update the conversation status to ai_active and remove the agent assignment
-  const result = await getDb().execute({
+  const db = getDb()
+
+  const beforeResult = await db.execute({
+    sql: 'SELECT assigned_agent_id FROM conversations WHERE id = ?',
+    args: [conversationId],
+  })
+
+  const prevAgentId = beforeResult.rows.length > 0
+    ? (beforeResult.rows[0].assigned_agent_id as number | null)
+    : null
+
+  const result = await db.execute({
     sql: `
       UPDATE conversations 
       SET status = 'ai_active', 
@@ -112,8 +125,11 @@ export async function releaseToAIMode(conversationId: number, agentId: number, c
     return null;
   }
 
-  // Fetch the updated conversation
-  const convResult = await getDb().execute({
+  if (prevAgentId !== null && prevAgentId !== undefined) {
+    await decrementAgentLoad(Number(prevAgentId))
+  }
+
+  const convResult = await db.execute({
     sql: 'SELECT * FROM conversations WHERE id = ?',
     args: [conversationId]
   });
@@ -135,6 +151,70 @@ export async function releaseToAIMode(conversationId: number, agentId: number, c
   });
 
   return conversation;
+}
+
+/**
+ * Closes a conversation permanently.
+ * Updates the conversation status to 'closed' and inserts a system message.
+ * Works from ANY status (ai_active, escalated, human_active).
+ * 
+ * @param conversationId - The ID of the conversation to close
+ * @param closedBy - Who closed the conversation ('agent' or 'user')
+ * @returns The updated conversation or null if not found
+ */
+export async function closeConversation(conversationId: number, closedBy: string = 'agent'): Promise<Conversation | null> {
+  const db = getDb()
+
+  const beforeResult = await db.execute({
+    sql: 'SELECT assigned_agent_id FROM conversations WHERE id = ?',
+    args: [conversationId],
+  })
+
+  const prevAgentId = beforeResult.rows.length > 0
+    ? (beforeResult.rows[0].assigned_agent_id as number | null)
+    : null
+
+  const result = await db.execute({
+    sql: `
+      UPDATE conversations
+      SET status = 'closed',
+          updated_at = datetime('now')
+      WHERE id = ?
+    `,
+    args: [conversationId],
+  })
+
+  if (result.rowsAffected === 0) {
+    log('warn', 'Failed to close conversation - not found', { conversationId })
+    return null
+  }
+
+  if (prevAgentId !== null && prevAgentId !== undefined) {
+    await decrementAgentLoad(Number(prevAgentId))
+  }
+
+  await db.execute({
+    sql: `INSERT INTO messages (conversation_id, sender_type, content, message_type)
+          VALUES (?, 'system', ?, 'system')`,
+    args: [conversationId, `Conversation closed by ${closedBy}`],
+  })
+
+  const convResult = await db.execute({
+    sql: 'SELECT * FROM conversations WHERE id = ?',
+    args: [conversationId],
+  })
+
+  if (convResult.rows.length === 0) return null
+
+  const conversation = convResult.rows[0] as unknown as Conversation
+
+  log('info', 'Successfully closed conversation', {
+    conversationId,
+    closedBy,
+    newStatus: conversation.status,
+  })
+
+  return conversation
 }
 
 /**
@@ -163,7 +243,7 @@ export async function getConversationById(conversationId: number): Promise<Conve
  * @returns Array of conversations
  */
 export async function getConversations(filters: {
-  status?: 'ai_active' | 'escalated' | 'human_active' | 'closed';
+  status?: 'ai_active' | 'human_active' | 'closed';
   channel?: 'web' | 'whatsapp' | 'n8n';
   search?: string;
   limit?: number;

@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { triggerEscalation } from '@/lib/n8n/client'
+import { findAvailableAgent, incrementAgentLoad } from '@/lib/services/agent-service'
 
 export async function POST(request: Request) {
   try {
-    const { conversationId, locale } = await request.json()
+    const { conversationId, locale, topic } = await request.json()
 
     if (!conversationId) {
       return NextResponse.json(
@@ -36,8 +37,41 @@ export async function POST(request: Request) {
       )
     }
 
+    const availableAgent = await findAvailableAgent(topic)
+
+    if (availableAgent) {
+      await db.execute({
+        sql: "UPDATE conversations SET status = 'human_active', assigned_agent_id = ?, assigned_at = datetime('now'), updated_at = datetime('now') WHERE id = ?",
+        args: [availableAgent.id, conversationId],
+      })
+
+      await incrementAgentLoad(availableAgent.id)
+
+      await db.execute({
+        sql: `INSERT INTO messages (conversation_id, sender_type, content, message_type)
+              VALUES (?, 'system', ?, 'assignment')`,
+        args: [conversationId, `Assigned to ${availableAgent.name}`],
+      })
+
+      triggerEscalation({
+        conversationId,
+        reason: 'User requested human agent via widget',
+        userIdentifier: conv.user_identifier,
+        assignedAgentId: availableAgent.id,
+        agentAvailable: true,
+      }).catch((err) => {
+        console.error('[RequestEscalate] n8n trigger failed:', err)
+      })
+
+      return NextResponse.json({
+        success: true,
+        agentAssigned: true,
+        agentName: availableAgent.name,
+      })
+    }
+
     await db.execute({
-      sql: "UPDATE conversations SET status = 'escalated', updated_at = datetime('now') WHERE id = ?",
+      sql: "UPDATE conversations SET status = 'human_active', updated_at = datetime('now') WHERE id = ?",
       args: [conversationId],
     })
 
@@ -51,11 +85,12 @@ export async function POST(request: Request) {
       conversationId,
       reason: 'User requested human agent via widget',
       userIdentifier: conv.user_identifier,
+      agentAvailable: false,
     }).catch((err) => {
       console.error('[RequestEscalate] n8n trigger failed:', err)
     })
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, agentAssigned: false })
   } catch (error) {
     console.error('[RequestEscalate] Error:', error)
     return NextResponse.json(

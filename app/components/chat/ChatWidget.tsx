@@ -185,45 +185,21 @@ const formatTime = (dateStr?: string) => {
 // ChatScreen component
 function ChatScreen({
   t,
-  lang,
   messages,
   isLoading,
   inputValue,
-  isClosed,
-  showRating,
-  hasRated,
-  inactivityWarningShown,
   sendMessage,
-  handleEscalate,
-  handleClose,
   handleKeyDown,
-  inputRef,
   messagesEndRef,
-  scrollToBottom,
-  userPhone,
-  userCountry,
-  countryCode,
   error
 }: {
   t: any
-  lang: string
   messages: Message[]
   isLoading: boolean
   inputValue: string
-  isClosed: boolean
-  showRating: boolean
-  hasRated: boolean
-  inactivityWarningShown: boolean
   sendMessage: (content: string) => void
-  handleEscalate: () => void
-  handleClose: () => void
   handleKeyDown: (e: React.KeyboardEvent) => void
-  inputRef: React.RefObject<HTMLInputElement>
   messagesEndRef: React.RefObject<HTMLDivElement>
-  scrollToBottom: () => void
-  userPhone: string | null
-  userCountry: string | null
-  countryCode: string | null
   error: string | null
 }) {
   return (
@@ -605,11 +581,15 @@ export default function ChatWidget() {
       })
 
       if (res.ok) {
+        const data = await res.json()
+        const msg = data.agentAssigned && data.agentName
+          ? t.chatWidget.assignedAgent?.replace('{name}', data.agentName) || `You are now chatting with ${data.agentName}`
+          : t.chatWidget.escalateConfirm
         setState(prev => ({
           ...prev,
           messages: [...prev.messages, {
             sender_type: 'system',
-            content: t.chatWidget.escalateConfirm,
+            content: msg,
             message_type: 'escalation',
           }],
           isLoading: false
@@ -765,42 +745,14 @@ export default function ChatWidget() {
               <>
                 <ChatScreen
                   t={t}
-                  lang={lang}
                   messages={state.messages}
                   isLoading={state.isLoading}
                   inputValue={state.inputValue}
-                  isClosed={state.isClosed}
-                  showRating={state.showRating}
-                  hasRated={state.hasRated}
-                  inactivityWarningShown={state.inactivityWarningShown}
                   sendMessage={sendMessage}
-                  handleEscalate={handleEscalate}
-                  handleClose={handleClose}
                   handleKeyDown={handleKeyDown}
-                  inputRef={inputRef}
                   messagesEndRef={messagesEndRef}
-                  scrollToBottom={scrollToBottom}
-                  userPhone={state.userPhone}
-                  userCountry={state.userCountry}
-                  countryCode={state.countryCode}
                   error={state.error}
                 />
-                <div className="bg-[#16213e] px-3 py-1.5 flex items-center gap-2 shrink-0 border-t border-[#0f3460]">
-                  <button
-                    onClick={handleEscalate}
-                    disabled={state.isLoading || state.isClosed}
-                    className="px-3 py-1.5 text-xs font-medium bg-[#16213e] text-[#e94560] border border-[#e94560] rounded-lg hover:bg-[#e94560] hover:text-white transition-colors disabled:opacity-40"
-                  >
-                    {t.chatWidget.escalateToHuman}
-                  </button>
-                  <button
-                    onClick={handleClose}
-                    disabled={state.isLoading || state.isClosed}
-                    className="px-3 py-1.5 text-xs font-medium bg-[#16213e] text-gray-400 border border-[#0f3460] rounded-lg hover:bg-[#16213e]/80 transition-colors disabled:opacity-40"
-                  >
-                    {t.chatWidget.close}
-                  </button>
-                </div>
                 <div className="bg-[#16213e] px-3 py-2.5 flex items-center gap-2 shrink-0 border-t border-[#0f3460]">
                   <input
                     ref={inputRef}
