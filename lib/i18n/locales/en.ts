@@ -801,9 +801,6 @@ export default {
       },
       filters: {
         all: 'All',
-        today: 'Today',
-        thisWeek: 'This Week',
-        thisMonth: 'This Month',
         aiActive: 'AI Active',
         escalated: 'Escalated',
         humanActive: 'Human Active',

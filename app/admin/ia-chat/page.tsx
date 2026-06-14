@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { RealtimeProvider } from '@/lib/admin/realtime-context'
-import { getTimeAgoI18n, getToday, getLocalDatePart } from '@/lib/date-utils'
+import { useDateFilter } from '@/lib/admin/date-filter-context'
+import { getTimeAgoI18n } from '@/lib/date-utils'
 
 interface Conversation {
   id: number
@@ -53,7 +54,6 @@ interface Agent {
 
 type FilterMode = 'all' | 'ai_active' | 'escalated' | 'human_active' | 'closed' | 'flagged'
 type ChannelFilter = 'all' | 'whatsapp' | 'web'
-type DateFilter = 'all' | 'today' | 'this_week' | 'this_month'
 
 const STATUS_STYLES: Record<string, string> = {
   ai_active: 'bg-[rgba(59,130,246,0.12)] text-[#3b82f6]',
@@ -94,8 +94,8 @@ export default function IaChatPage() {
   const [showAgentModal, setShowAgentModal] = useState(false)
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null)
   const [channelFilter, setChannelFilter] = useState<ChannelFilter>('all')
-  const [dateFilter, setDateFilter] = useState<DateFilter>('today')
   const [isTakingOver, setIsTakingOver] = useState(false)
+  const { dateFrom, dateTo } = useDateFilter()
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -119,6 +119,8 @@ export default function IaChatPage() {
         }
       }
       if (search) params.set('search', search)
+      if (dateFrom) params.set('dateFrom', dateFrom)
+      if (dateTo) params.set('dateTo', dateTo)
 
       const res = await fetch(`/api/chat/conversations?${params}`)
       const data = await res.json()
@@ -130,7 +132,7 @@ export default function IaChatPage() {
     } finally {
       setIsLoadingConv(false)
     }
-  }, [filter, search])
+  }, [filter, search, dateFrom, dateTo])
 
   const fetchMessages = useCallback(async (convId: number) => {
     setIsLoadingMsg(true)
@@ -376,40 +378,19 @@ export default function IaChatPage() {
     }
   }, [selectedConv, fetchConversations])
 
-  const filteredConversations = useMemo(() => {
-    return conversations.filter(c => {
-      if (channelFilter !== 'all' && c.channel !== channelFilter) return false
-      if (dateFilter !== 'all') {
-        const convDate = getLocalDatePart(c.created_at)
-        const today = getToday()
-        if (dateFilter === 'today' && convDate !== today) return false
-        if (dateFilter === 'this_week') {
-          const d = new Date(c.created_at)
-          const now = new Date()
-          const weekStart = new Date(now)
-          weekStart.setDate(now.getDate() - now.getDay())
-          const weekEnd = new Date(weekStart)
-          weekEnd.setDate(weekStart.getDate() + 6)
-          if (d < weekStart || d > weekEnd) return false
-        }
-        if (dateFilter === 'this_month') {
-          const d = new Date(c.created_at)
-          const now = new Date()
-          if (d.getMonth() !== now.getMonth() || d.getFullYear() !== now.getFullYear()) return false
-        }
-      }
-      if (search) {
-        const q = search.toLowerCase()
-        return (
-          c.user_identifier?.toLowerCase().includes(q) ||
-          c.user_name?.toLowerCase().includes(q) ||
-          c.user_email?.toLowerCase().includes(q) ||
-          c.last_message?.toLowerCase().includes(q)
-        )
-      }
-      return true
-    })
-  }, [conversations, channelFilter, dateFilter, search])
+  const filteredConversations = conversations.filter(c => {
+    if (channelFilter !== 'all' && c.channel !== channelFilter) return false
+    if (search) {
+      const q = search.toLowerCase()
+      return (
+        c.user_identifier?.toLowerCase().includes(q) ||
+        c.user_name?.toLowerCase().includes(q) ||
+        c.user_email?.toLowerCase().includes(q) ||
+        c.last_message?.toLowerCase().includes(q)
+      )
+    }
+    return true
+  })
 
   return (
     <div className="h-[calc(100vh-8rem)] flex gap-4">
@@ -435,21 +416,6 @@ export default function IaChatPage() {
                 }`}
               >
                 {ch === 'whatsapp' ? t.admin.chat.channelFilter.whatsapp : ch === 'web' ? t.admin.chat.channelFilter.web : t.admin.chat.channelFilter.all}
-              </button>
-            ))}
-          </div>
-          <div className="flex gap-1 overflow-x-auto pb-1">
-            {(['all', 'today', 'this_week', 'this_month'] as DateFilter[]).map((d) => (
-              <button
-                key={d}
-                onClick={() => setDateFilter(d)}
-                className={`px-2.5 py-1 rounded-full text-[11px] font-medium whitespace-nowrap transition-all ${
-                  dateFilter === d
-                    ? 'bg-[#d4a84b] text-white'
-                    : 'bg-[#111318] text-[#9ca0b0] hover:bg-[#202330]'
-                }`}
-              >
-                {d === 'today' ? t.admin.chat.filters.today : d === 'this_week' ? t.admin.chat.filters.thisWeek : d === 'this_month' ? t.admin.chat.filters.thisMonth : t.admin.chat.filters.all}
               </button>
             ))}
           </div>

@@ -800,9 +800,6 @@ export default {
       },
       filters: {
         all: 'Todas',
-        today: 'Hoy',
-        thisWeek: 'Esta Semana',
-        thisMonth: 'Este Mes',
         aiActive: 'IA Activa',
         escalated: 'Escaladas',
         humanActive: 'Humano Activo',
