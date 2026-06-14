@@ -595,12 +595,11 @@ export default function ChatWidget() {
     setState(prev => ({ ...prev, isLoading: true }))
     
     try {
-      const res = await fetch('/api/chat/escalate', {
+      const res = await fetch('/api/chat/request-escalate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           conversationId: state.conversationId,
-          reason: 'User requested human agent via widget',
           locale: lang,
         }),
       })
@@ -786,6 +785,22 @@ export default function ChatWidget() {
                   countryCode={state.countryCode}
                   error={state.error}
                 />
+                <div className="bg-[#16213e] px-3 py-1.5 flex items-center gap-2 shrink-0 border-t border-[#0f3460]">
+                  <button
+                    onClick={handleEscalate}
+                    disabled={state.isLoading || state.isClosed}
+                    className="px-3 py-1.5 text-xs font-medium bg-[#16213e] text-[#e94560] border border-[#e94560] rounded-lg hover:bg-[#e94560] hover:text-white transition-colors disabled:opacity-40"
+                  >
+                    {t.chatWidget.escalateToHuman}
+                  </button>
+                  <button
+                    onClick={handleClose}
+                    disabled={state.isLoading || state.isClosed}
+                    className="px-3 py-1.5 text-xs font-medium bg-[#16213e] text-gray-400 border border-[#0f3460] rounded-lg hover:bg-[#16213e]/80 transition-colors disabled:opacity-40"
+                  >
+                    {t.chatWidget.close}
+                  </button>
+                </div>
                 <div className="bg-[#16213e] px-3 py-2.5 flex items-center gap-2 shrink-0 border-t border-[#0f3460]">
                   <input
                     ref={inputRef}
