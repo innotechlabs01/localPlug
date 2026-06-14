@@ -276,11 +276,12 @@ export default function IaChatPage() {
         setShowCloseModal(false)
         fetchConversations()
         setSelectedConv(prev => prev ? { ...prev, status: 'closed' } : null)
+        if (selectedConv) fetchMessages(selectedConv.id)
       }
     } catch (err) {
       console.error('[AdminChat] Close error:', err)
     }
-  }, [selectedConv, fetchConversations])
+  }, [selectedConv, fetchConversations, fetchMessages])
 
   const handleAgentSave = useCallback(async (agentData: Partial<Agent>) => {
     try {
@@ -350,18 +351,11 @@ export default function IaChatPage() {
         body: JSON.stringify({
           conversationId: selectedConv.id,
           closedBy: 'agent',
+          releaseToAi: true,
         }),
       })
       const data = await res.json()
       if (data.success) {
-        await fetch('/api/chat/conversations', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            conversationId: selectedConv.id,
-            status: 'ai_active',
-          }),
-        })
         fetchConversations()
         setSelectedConv(prev => prev ? { ...prev, status: 'ai_active' } : null)
         setMessages(prev => [...prev, {

@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server'
-import { releaseToAIMode } from '@/lib/services/chat-service'
+import { closeConversation, releaseToAIMode } from '@/lib/services/chat-service'
 import { auth } from '@clerk/nextjs/server'
 
 /**
  * POST /api/chat/close
- * Admin releases conversation back to AI control (AI Mode)
+ * Closes a conversation permanently. Works from any status.
+ * Also supports releasing back to AI mode (admin "AI Mode" button).
  */
 export async function POST(request: Request) {
   try {
-    const { conversationId, closedBy } = await request.json()
+    const { conversationId, closedBy, releaseToAi } = await request.json()
 
     if (!conversationId) {
       return NextResponse.json(
@@ -17,7 +18,6 @@ export async function POST(request: Request) {
       )
     }
 
-    // Get the authenticated user from Clerk
     const { userId } = await auth()
     if (!userId) {
       return NextResponse.json(
@@ -26,7 +26,6 @@ export async function POST(request: Request) {
       )
     }
 
-    // Get the user's internal ID and role from the database using the clerk_id
     const db = await import('@/lib/db').then(mod => mod.getDb())
     const userResult = await db.execute({
       sql: 'SELECT id, role_id FROM users WHERE clerk_id = ?',
@@ -40,10 +39,9 @@ export async function POST(request: Request) {
       )
     }
 
-    const agentId = userResult.rows[0].id
+    const agentId = Number(userResult.rows[0].id)
     const roleId = userResult.rows[0].role_id
 
-    // Check if the user is an agent/admin (has a role_id assigned)
     if (roleId === null) {
       return NextResponse.json(
         { error: 'Forbidden: insufficient permissions' },
@@ -51,11 +49,17 @@ export async function POST(request: Request) {
       )
     }
 
-    const conversation = await releaseToAIMode(Number(conversationId), Number(agentId), closedBy)
+    let conversation
+
+    if (releaseToAi) {
+      conversation = await releaseToAIMode(conversationId, agentId, closedBy)
+    } else {
+      conversation = await closeConversation(conversationId, closedBy || 'agent')
+    }
 
     if (!conversation) {
       return NextResponse.json(
-        { error: 'Conversation not found or cannot be released to AI mode' },
+        { error: 'Conversation not found or cannot be updated' },
         { status: 404 }
       )
     }

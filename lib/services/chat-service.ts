@@ -138,6 +138,57 @@ export async function releaseToAIMode(conversationId: number, agentId: number, c
 }
 
 /**
+ * Closes a conversation permanently.
+ * Updates the conversation status to 'closed' and inserts a system message.
+ * Works from ANY status (ai_active, escalated, human_active).
+ * 
+ * @param conversationId - The ID of the conversation to close
+ * @param closedBy - Who closed the conversation ('agent' or 'user')
+ * @returns The updated conversation or null if not found
+ */
+export async function closeConversation(conversationId: number, closedBy: string = 'agent'): Promise<Conversation | null> {
+  const db = getDb()
+
+  const result = await db.execute({
+    sql: `
+      UPDATE conversations
+      SET status = 'closed',
+          updated_at = datetime('now')
+      WHERE id = ?
+    `,
+    args: [conversationId],
+  })
+
+  if (result.rowsAffected === 0) {
+    log('warn', 'Failed to close conversation - not found', { conversationId })
+    return null
+  }
+
+  await db.execute({
+    sql: `INSERT INTO messages (conversation_id, sender_type, content, message_type)
+          VALUES (?, 'system', ?, 'system')`,
+    args: [conversationId, `Conversation closed by ${closedBy}`],
+  })
+
+  const convResult = await db.execute({
+    sql: 'SELECT * FROM conversations WHERE id = ?',
+    args: [conversationId],
+  })
+
+  if (convResult.rows.length === 0) return null
+
+  const conversation = convResult.rows[0] as unknown as Conversation
+
+  log('info', 'Successfully closed conversation', {
+    conversationId,
+    closedBy,
+    newStatus: conversation.status,
+  })
+
+  return conversation
+}
+
+/**
  * Gets a conversation by its ID.
  * 
  * @param conversationId - The ID of the conversation to retrieve
