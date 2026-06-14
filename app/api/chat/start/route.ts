@@ -20,7 +20,7 @@ export async function POST(request: Request) {
 
     const result = await db.execute({
       sql: `INSERT INTO conversations (user_identifier, user_name, user_email, user_phone, user_country, country_code, status, channel)
-            VALUES (?, ?, ?, ?, ?, ?, 'active', 'web')`,
+            VALUES (?, ?, ?, ?, ?, ?, 'ai_active', 'web')`,
       args: [email, name, email, phone, country, countryCode],
     })
 
