@@ -52,12 +52,12 @@ interface Agent {
   maxConversations?: number
 }
 
-type FilterMode = 'all' | 'ai_active' | 'escalated' | 'human_active' | 'closed' | 'flagged'
+type FilterMode = 'all' | 'ai_active' | 'human_active' | 'closed' | 'flagged'
 type ChannelFilter = 'all' | 'whatsapp' | 'web'
 
 const STATUS_STYLES: Record<string, string> = {
   ai_active: 'bg-[rgba(59,130,246,0.12)] text-[#3b82f6]',
-  escalated: 'bg-[rgba(245,158,11,0.12)] text-[#f59e0b]',
+
   human_active: 'bg-[rgba(16,185,129,0.12)] text-[#10b981]',
   closed: 'bg-[rgba(100,104,128,0.12)] text-[#646880]',
 }
@@ -429,7 +429,7 @@ export default function IaChatPage() {
             ))}
           </div>
           <div className="flex gap-1 overflow-x-auto pb-1">
-            {(['all', 'ai_active', 'escalated', 'human_active', 'closed', 'flagged'] as FilterMode[]).map((f) => (
+            {(['all', 'ai_active', 'human_active', 'closed', 'flagged'] as FilterMode[]).map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}

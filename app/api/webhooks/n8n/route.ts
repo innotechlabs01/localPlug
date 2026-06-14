@@ -63,7 +63,7 @@ export async function POST(request: Request) {
 
           if (confidence && confidence < 0.5) {
             await db.execute({
-              sql: `UPDATE conversations SET status = 'escalated', updated_at = datetime('now') WHERE id = ? AND status = 'ai_active'`,
+              sql: `UPDATE conversations SET status = 'human_active', updated_at = datetime('now') WHERE id = ? AND status = 'ai_active'`,
               args: [conversationId],
             })
           }
@@ -200,7 +200,7 @@ export async function POST(request: Request) {
 
         if (escConvId) {
           await db.execute({
-            sql: `UPDATE conversations SET status = 'escalated', updated_at = datetime('now') WHERE id = ?`,
+            sql: `UPDATE conversations SET status = 'human_active', updated_at = datetime('now') WHERE id = ?`,
             args: [escConvId],
           })
 
@@ -236,7 +236,7 @@ export async function POST(request: Request) {
            // If confidence is low, escalate the conversation
            if (aiConf && aiConf < 0.5) {
              await db.execute({
-               sql: `UPDATE conversations SET status = 'escalated', updated_at = datetime('now') WHERE id = ? AND status = 'ai_active'`,
+            sql: `UPDATE conversations SET status = 'human_active', updated_at = datetime('now') WHERE id = ? AND status = 'ai_active'`,
                args: [aiConvId],
              })
            }

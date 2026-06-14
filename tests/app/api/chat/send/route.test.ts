@@ -117,7 +117,7 @@ describe('POST /api/chat/send', () => {
     const res = await POST(req)
     expect(res.status).toBe(200)
 
-    const escalationCall = mockExecute.mock.calls.find((c: any) => c[0].sql.includes("status = 'escalated'"))
+    const escalationCall = mockExecute.mock.calls.find((c: any) => c[0].sql.includes("status = 'human_active'"))
     expect(escalationCall).toBeDefined()
     expect(escalationCall![0].args).toHaveLength(1)
   })

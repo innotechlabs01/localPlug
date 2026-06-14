@@ -96,17 +96,17 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
         })
       }
 
-      // Detect escalated conversations
+      // Detect new human_active conversations
       if (lastTimestampRef.current && data.conversations?.length > 0) {
         const newConvos = data.conversations.filter(
-          (c: RealtimeConversation) => c.status === 'escalated' &&
+          (c: RealtimeConversation) => c.status === 'human_active' &&
             (!lastTimestampRef.current || new Date(c.last_message_at || c.created_at) > new Date(lastTimestampRef.current))
         )
         newConvos.forEach((convo: RealtimeConversation) => {
           const notif: RealtimeNotification = {
             id: `convo-${convo.id}-${Date.now()}`,
             type: 'conversation',
-            title: 'Conversación escalada',
+            title: 'Nueva conversación humana',
             message: `${convo.user_name || 'Usuario'} - ${convo.last_message?.slice(0, 50) || '...'}`,
             timestamp: convo.last_message_at || convo.created_at,
             read: false,

@@ -38,13 +38,13 @@ export async function takeOverConversation(conversationId: number, agentId: numb
           assigned_agent_id = ?, 
           assigned_at = datetime('now'),
           updated_at = datetime('now')
-      WHERE id = ? AND status IN ('ai_active', 'escalated')
+      WHERE id = ? AND status = 'ai_active'
     `,
     args: [agentId, conversationId]
   });
 
   if (result.rowsAffected === 0) {
-    log('warn', 'Failed to take over conversation - not found or not in ai_active/escalated status', { 
+    log('warn', 'Failed to take over conversation - not found or not in ai_active status', { 
       conversationId,
       agentId 
     });
@@ -243,7 +243,7 @@ export async function getConversationById(conversationId: number): Promise<Conve
  * @returns Array of conversations
  */
 export async function getConversations(filters: {
-  status?: 'ai_active' | 'escalated' | 'human_active' | 'closed';
+  status?: 'ai_active' | 'human_active' | 'closed';
   channel?: 'web' | 'whatsapp' | 'n8n';
   search?: string;
   limit?: number;

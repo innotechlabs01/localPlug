@@ -244,7 +244,7 @@ export async function POST(request: Request) {
 
         if (n8nResult.confidence && n8nResult.confidence < 0.5) {
           await db.execute({
-            sql: `UPDATE conversations SET status = 'escalated', updated_at = datetime('now')
+            sql: `UPDATE conversations SET status = 'human_active', updated_at = datetime('now')
                   WHERE id = ? AND status = 'ai_active'`,
             args: [convId],
           })
@@ -300,7 +300,7 @@ export async function POST(request: Request) {
 
       if (ollamaResult.confidence < 0.5) {
         await db.execute({
-          sql: `UPDATE conversations SET status = 'escalated', updated_at = datetime('now')
+          sql: `UPDATE conversations SET status = 'human_active', updated_at = datetime('now')
                 WHERE id = ? AND status = 'ai_active'`,
           args: [convId],
         })

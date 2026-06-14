@@ -71,7 +71,7 @@ export async function POST(request: Request) {
     }
 
     await db.execute({
-      sql: "UPDATE conversations SET status = 'escalated', updated_at = datetime('now') WHERE id = ?",
+      sql: "UPDATE conversations SET status = 'human_active', updated_at = datetime('now') WHERE id = ?",
       args: [conversationId],
     })
 
