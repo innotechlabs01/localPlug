@@ -23,6 +23,9 @@ const isAdminApiRoute = createRouteMatcher(['/api/admin/(.*)', '/api/chat/conver
 const isLookupRoute = createRouteMatcher(['/api/admin/lookup'])
 
 export default clerkMiddleware(async (auth, req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 204 })
+  }
   if (isLookupRoute(req)) {
     return NextResponse.next()
   }
