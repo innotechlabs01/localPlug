@@ -2,11 +2,6 @@ import { NextResponse } from 'next/server'
 import { closeConversation, releaseToAIMode } from '@/lib/services/chat-service'
 import { auth } from '@clerk/nextjs/server'
 
-/**
- * POST /api/chat/close
- * Closes a conversation permanently. Works from any status.
- * Also supports releasing back to AI mode (admin "AI Mode" button).
- */
 export async function POST(request: Request) {
   try {
     const { conversationId, closedBy, releaseToAi } = await request.json()
@@ -26,32 +21,21 @@ export async function POST(request: Request) {
       )
     }
 
-    const db = await import('@/lib/db').then(mod => mod.getDb())
-    const userResult = await db.execute({
-      sql: 'SELECT id, role_id FROM users WHERE clerk_id = ?',
-      args: [userId]
-    })
-
-    if (userResult.rows.length === 0) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      )
-    }
-
-    const agentId = Number(userResult.rows[0].id)
-    const roleId = userResult.rows[0].role_id
-
-    if (roleId === null) {
-      return NextResponse.json(
-        { error: 'Forbidden: insufficient permissions' },
-        { status: 403 }
-      )
-    }
-
     let conversation
 
     if (releaseToAi) {
+      const db = await import('@/lib/db').then(mod => mod.getDb())
+      const userResult = await db.execute({
+        sql: 'SELECT id FROM users WHERE clerk_id = ?',
+        args: [userId]
+      })
+      if (userResult.rows.length === 0) {
+        return NextResponse.json(
+          { error: 'User not found' },
+          { status: 404 }
+        )
+      }
+      const agentId = Number(userResult.rows[0].id)
       conversation = await releaseToAIMode(conversationId, agentId, closedBy)
     } else {
       conversation = await closeConversation(conversationId, closedBy || 'agent')

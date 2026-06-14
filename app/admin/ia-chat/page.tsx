@@ -264,28 +264,36 @@ export default function IaChatPage() {
     }
   }, [selectedConv, escalateReason, fetchConversations])
 
+  const closingRef = useRef<number | null>(null)
+
   const handleClose = useCallback(async () => {
-    if (!selectedConv) return
+    const convId = closingRef.current
+    if (!convId) return
     try {
       const res = await fetch('/api/chat/close', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          conversationId: selectedConv.id,
+          conversationId: convId,
           closedBy: 'agent',
         }),
       })
       const data = await res.json()
-      if (data.success) {
-        setShowCloseModal(false)
-        fetchConversations()
-        setSelectedConv(prev => prev ? { ...prev, status: 'closed' } : null)
-        if (selectedConv) fetchMessages(selectedConv.id)
+      if (!res.ok || !data.success) {
+        console.error('[AdminChat] Close failed:', data)
+        setError(data.error || 'Failed to close conversation')
+        return
       }
+      setShowCloseModal(false)
+      setError(null)
+      fetchConversations()
+      setSelectedConv(prev => prev && prev.id === convId ? { ...prev, status: 'closed' } : prev)
+      fetchMessages(convId)
     } catch (err) {
       console.error('[AdminChat] Close error:', err)
+      setError('Network error closing conversation')
     }
-  }, [selectedConv, fetchConversations, fetchMessages])
+  }, [fetchConversations, fetchMessages])
 
   const handleAgentSave = useCallback(async (agentData: Partial<Agent>) => {
     try {
@@ -560,7 +568,7 @@ export default function IaChatPage() {
                   {t.admin.chat.escalate}
                 </button>
                 <button
-                  onClick={() => setShowCloseModal(true)}
+                  onClick={() => { closingRef.current = selectedConv.id; setShowCloseModal(true) }}
                   disabled={selectedConv.status === 'closed'}
                   className="px-3 py-1.5 text-[11px] font-medium border border-[rgba(239,68,80,0.3)] text-[#ef4450] rounded-[6px] hover:bg-[rgba(239,68,80,0.12)] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
@@ -759,12 +767,13 @@ export default function IaChatPage() {
 
       {/* Close Modal */}
       {showCloseModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center" onClick={() => setShowCloseModal(false)}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center" onClick={() => { closingRef.current = null; setShowCloseModal(false) }}>
           <div className="bg-[#181b25] border border-[#282b38] rounded-[14px] shadow-[0_20px_60px_rgba(0,0,0,0.5)] p-6 w-96 mx-4" onClick={e => e.stopPropagation()}>
             <h3 className="text-[15px] font-semibold text-[#f0f2f5] mb-2">{t.admin.chat.confirmClose}</h3>
+            {error && <p className="text-[#ef4450] text-[12px] mt-2">{error}</p>}
             <div className="flex justify-end gap-3 mt-4">
               <button
-                onClick={() => setShowCloseModal(false)}
+                onClick={() => { closingRef.current = null; setShowCloseModal(false) }}
                 className="px-4 py-2 text-[13px] font-medium text-[#9ca0b0] hover:text-[#f0f2f5] transition-colors"
               >
                 {t.admin.chat.agents?.cancel || 'Cancel'}
