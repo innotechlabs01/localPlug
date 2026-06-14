@@ -581,11 +581,15 @@ export default function ChatWidget() {
       })
 
       if (res.ok) {
+        const data = await res.json()
+        const msg = data.agentAssigned && data.agentName
+          ? t.chatWidget.assignedAgent?.replace('{name}', data.agentName) || `You are now chatting with ${data.agentName}`
+          : t.chatWidget.escalateConfirm
         setState(prev => ({
           ...prev,
           messages: [...prev.messages, {
             sender_type: 'system',
-            content: t.chatWidget.escalateConfirm,
+            content: msg,
             message_type: 'escalation',
           }],
           isLoading: false
