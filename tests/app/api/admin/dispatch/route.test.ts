@@ -2,16 +2,16 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { GET, PUT } from '@/app/api/admin/dispatch/route'
 import { NextRequest } from 'next/server'
 import { getDb } from '@/lib/db'
-import { auth } from '@clerk/nextjs/server'
+import { requirePermission } from '@/lib/admin/permissions'
+
+vi.mock('@/lib/admin/permissions', () => ({
+  requirePermission: vi.fn(() => Promise.resolve(undefined)),
+}))
 
 vi.mock('@/lib/db', () => ({
   getDb: vi.fn(() => ({
     execute: vi.fn().mockResolvedValue({ rows: [] }),
   })),
-}))
-
-vi.mock('@clerk/nextjs/server', () => ({
-  auth: vi.fn(() => Promise.resolve({ userId: 'test-user' })),
 }))
 
 vi.mock('@/lib/n8n/client', () => ({
@@ -82,7 +82,7 @@ describe('admin dispatch API', () => {
     })
 
     it('returns 401 when unauthenticated', async () => {
-      vi.mocked(auth).mockResolvedValueOnce({ userId: null } as any)
+      vi.mocked(requirePermission).mockResolvedValueOnce(new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 }))
       const mockExecute = vi.fn()
       vi.mocked(getDb).mockReturnValue({ execute: mockExecute } as any)
 
@@ -138,7 +138,7 @@ describe('admin dispatch API', () => {
     })
 
     it('auth fails -> 401', async () => {
-      vi.mocked(auth).mockResolvedValueOnce({ userId: null } as any)
+      vi.mocked(requirePermission).mockResolvedValueOnce(new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 }))
 
       const res = await PUT(mockRequest({ action: 'assign', orderId: 1, driverId: 1 }))
       expect(res.status).toBe(401)

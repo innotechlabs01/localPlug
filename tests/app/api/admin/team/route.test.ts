@@ -2,7 +2,11 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { GET, POST } from '@/app/api/admin/team/route'
 import { NextRequest } from 'next/server'
 import { getDb } from '@/lib/db'
-import { auth } from '@clerk/nextjs/server'
+import { requirePermission } from '@/lib/admin/permissions'
+
+vi.mock('@/lib/admin/permissions', () => ({
+  requirePermission: vi.fn(() => Promise.resolve(undefined)),
+}))
 
 vi.mock('@/lib/db', () => ({
   getDb: vi.fn(() => ({
@@ -37,7 +41,7 @@ describe('admin team API', () => {
     })
 
     it('returns 401 when unauthenticated', async () => {
-      vi.mocked(auth).mockResolvedValueOnce({ userId: null } as any)
+      vi.mocked(requirePermission).mockResolvedValueOnce(new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 }))
 
       const res = await GET()
       expect(res.status).toBe(401)
@@ -87,7 +91,7 @@ describe('admin team API', () => {
     })
 
     it('returns 401 when unauthenticated', async () => {
-      vi.mocked(auth).mockResolvedValueOnce({ userId: null } as any)
+      vi.mocked(requirePermission).mockResolvedValueOnce(new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 }))
 
       const res = await POST(new NextRequest('http://localhost:3000/api/admin/team', {
         method: 'POST',
