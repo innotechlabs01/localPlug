@@ -402,6 +402,7 @@ export default {
       employees: 'Empleados',
       analytics: 'Analíticas',
       payments: 'Pagos',
+      roles: 'Roles',
       signOut: 'Cerrar Sesión',
       sectionExecutive: 'Ejecutivo',
       sectionOperations: 'Operaciones',

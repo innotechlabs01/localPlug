@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server'
 import { getDb, buildSafeUpdate } from '@/lib/db'
-import { auth } from '@clerk/nextjs/server'
+import { requirePermission } from '@/lib/admin/permissions'
 
 const ALLOWED_DRIVER_COLUMNS = ['name', 'phone', 'email', 'vehicle', 'plate', 'category', 'status', 'rating', 'languages', 'experience_level', 'notes', 'license_expiry', 'soat_expiry', 'tech_inspection_expiry', 'insurance_expiry', 'year', 'capacity', 'emergency_contact', 'emergency_phone', 'city']
 
 export async function GET() {
   try {
-    const { userId } = await auth()
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const authError = await requirePermission('drivers', 'view')
+    if (authError) return authError
 
     const db = getDb()
     const result = await db.execute(`
@@ -49,8 +49,8 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const { userId } = await auth()
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const authError = await requirePermission('drivers', 'create')
+    if (authError) return authError
 
     const body = await req.json()
     const {
@@ -97,8 +97,8 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
   try {
-    const { userId } = await auth()
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const authError = await requirePermission('drivers', 'update')
+    if (authError) return authError
 
     const body = await req.json()
     const { id, ...updates } = body
@@ -127,8 +127,8 @@ export async function PUT(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const { userId } = await auth()
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const authError = await requirePermission('drivers', 'delete')
+    if (authError) return authError
 
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')

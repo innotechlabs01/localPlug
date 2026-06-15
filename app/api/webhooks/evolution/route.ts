@@ -40,8 +40,19 @@ function normalizePhone(jid: string): string {
 
 export async function POST(req: Request) {
   try {
+    const signature = req.headers.get('x-evolution-signature')
+    if (!signature || signature !== process.env.EVOLUTION_WEBHOOK_SECRET) {
+      console.error('[Evolution Webhook] Invalid or missing signature')
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
+    }
+
     const body: EvolutionEvent = await req.json()
     const { event, instance, data } = body
+
+    if (!instance || !/^[a-zA-Z0-9_-]{1,50}$/.test(instance)) {
+      console.error('[Evolution Webhook] Invalid instance name')
+      return NextResponse.json({ error: 'Invalid instance' }, { status: 400 })
+    }
 
     console.log(`[Evolution Webhook] Received: ${event}`, { instance })
 
@@ -222,10 +233,4 @@ export async function POST(req: Request) {
   }
 }
 
-export async function GET() {
-  return NextResponse.json({
-    status: 'ok',
-    endpoint: 'evolution-webhook',
-    timestamp: new Date().toISOString(),
-  })
-}
+

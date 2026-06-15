@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { getToday } from '@/lib/date-utils'
-import { auth } from '@clerk/nextjs/server'
+import { requirePermission } from '@/lib/admin/permissions'
 
 export async function GET(req: Request) {
-  const { userId } = await auth()
-  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const authError = await requirePermission('agenda', 'view')
+  if (authError) return authError
   const db = getDb()
   const { searchParams } = new URL(req.url)
   const date = searchParams.get('date') || getToday()

@@ -75,7 +75,6 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
             <circle cx="7" cy="14" r="2"/><circle cx="17" cy="14" r="2"/>
           </svg>
         ),
-        badge: '26',
       },
       {
         labelKey: 'customers',
@@ -277,8 +276,62 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
+  const [visibleModules, setVisibleModules] = useState<Record<string, boolean>>({})
   const { t, lang, setLang } = useI18n()
   const { notifications, unreadCount, markAsRead, markAllAsRead, stats } = useRealtime()
+
+  useEffect(() => {
+    fetch('/api/admin/permissions/mine')
+      .then(r => r.json())
+      .then(data => {
+        const perms = data.permissions || {}
+        const visible: Record<string, boolean> = {}
+        for (const [slug, p] of Object.entries(perms) as [string, any][]) {
+          if (p.can_view) visible[slug] = true
+        }
+        setVisibleModules(visible)
+      })
+      .catch(() => {})
+  }, [])
+
+  const navSectionMap: Record<string, { slug: string; items: NavItem[] }> = {
+    dashboard: { slug: 'dashboard', items: [] },
+    dispatch: { slug: 'dispatch', items: [] },
+    reservations: { slug: 'reservations', items: [] },
+    drivers: { slug: 'drivers', items: [] },
+    fleet: { slug: 'fleet', items: [] },
+    customers: { slug: 'customers', items: [] },
+    support: { slug: 'support', items: [] },
+    employees: { slug: 'employees', items: [] },
+    analytics: { slug: 'analytics', items: [] },
+    payments: { slug: 'payments', items: [] },
+  }
+
+  const navItemSlug: Record<string, string> = {
+    '/admin': 'dashboard',
+    '/admin/dispatch': 'dispatch',
+    '/admin/reservations': 'reservations',
+    '/admin/drivers': 'drivers',
+    '/admin/fleet': 'fleet',
+    '/admin/customers': 'customers',
+    '/admin/ia-chat': 'support',
+    '/admin/employees': 'employees',
+    '/admin/analytics': 'analytics',
+    '/admin/payments': 'payments',
+    '/admin/roles': 'roles',
+  }
+
+  const filteredNavSections = navSections
+    .map(section => ({
+      ...section,
+      items: section.items.filter(item => {
+        const slug = navItemSlug[item.href]
+        return !slug || visibleModules[slug]
+      }),
+    }))
+    .filter(section => section.items.length > 0)
+
+  const hasRolesAccess = visibleModules['roles']
 
   if (isLoaded && !isSignedIn) {
     router.push('/sign-in')
@@ -309,6 +362,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
       '/admin/payments': t.admin.nav.payments as string,
       '/admin/agenda': 'Agenda',
       '/admin/cases': 'Cases',
+      '/admin/roles': t.admin.nav.roles as string,
       '/admin/reservations': t.admin.nav.reservations as string,
     }
     return titleMap[pathname] || t.admin.dashboard.title as string
@@ -332,7 +386,22 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="sidebar-nav">
-          {navSections.map((section) => (
+          {(() => {
+            const sections = filteredNavSections.map(s => ({ ...s, items: [...s.items] }))
+            const mgmt = sections.find(s => s.labelKey === 'sectionManagement')
+            if (mgmt && hasRolesAccess) {
+              mgmt.items.push({
+                labelKey: 'roles',
+                href: '/admin/roles',
+                icon: (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                  </svg>
+                ),
+              })
+            }
+            return sections
+          })().map((section) => (
             <div key={section.labelKey}>
               <div className="nav-section-label">
                 {t.admin.nav[section.labelKey as keyof typeof t.admin.nav] as string}
@@ -349,7 +418,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                     {item.icon}
                     <span>{t.admin.nav[item.labelKey as keyof typeof t.admin.nav] as string}</span>
                     {item.badge !== undefined && (
-                      <span className="nav-badge">{item.href === '/admin/dispatch' ? stats.pending_dispatch : item.href === '/admin/ia-chat' ? stats.escalated_conversations + stats.active_conversations : item.badge}</span>
+                      <span className="nav-badge">{item.href === '/admin/dispatch' ? stats.pending_dispatch : item.href === '/admin/ia-chat' ? stats.pending_user_reply : item.badge}</span>
                     )}
                   </Link>
                 )

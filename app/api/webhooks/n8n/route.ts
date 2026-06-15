@@ -13,6 +13,12 @@ interface N8nWebhookEvent {
  */
 export async function POST(request: Request) {
   try {
+    const signature = request.headers.get('x-n8n-signature')
+    if (!signature || signature !== process.env.N8N_WEBHOOK_SECRET) {
+      console.error('[n8n Webhook] Invalid or missing signature')
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
+    }
+
     const body: N8nWebhookEvent = await request.json()
     const { event, data, timestamp } = body
 
@@ -283,11 +289,4 @@ export async function POST(request: Request) {
   }
 }
 
-// Verify n8n webhook signature (optional security)
-export async function GET() {
-  return NextResponse.json({
-    status: 'ok',
-    endpoint: 'n8n-webhook',
-    timestamp: new Date().toISOString(),
-  })
-}
+

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getDb, buildSafeUpdate } from '@/lib/db'
-import { auth } from '@clerk/nextjs/server'
+import { requirePermission } from '@/lib/admin/permissions'
 
 const ALLOWED_CASE_COLUMNS = [
   'title', 'description', 'type', 'status', 'priority',
@@ -9,8 +9,8 @@ const ALLOWED_CASE_COLUMNS = [
 
 export async function GET(req: Request) {
   try {
-    const { userId } = await auth()
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const authError = await requirePermission('cases', 'view')
+    if (authError) return authError
 
     const db = getDb()
     const { searchParams } = new URL(req.url)
@@ -69,8 +69,8 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const { userId } = await auth()
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const authError = await requirePermission('cases', 'create')
+    if (authError) return authError
 
     const body = await req.json()
     const { client_name, case_type, case_category, court_name, description } = body
@@ -98,8 +98,8 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
   try {
-    const { userId } = await auth()
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const authError = await requirePermission('cases', 'update')
+    if (authError) return authError
 
     const body = await req.json()
     const { id, ...updates } = body

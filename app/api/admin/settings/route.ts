@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
-import { auth } from '@clerk/nextjs/server'
+import { requirePermission } from '@/lib/admin/permissions'
 
 export async function GET(req: Request) {
-  const { userId } = await auth()
-  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const authError = await requirePermission('settings', 'view')
+  if (authError) return authError
 
   try {
     const db = getDb()
@@ -24,8 +24,8 @@ export async function GET(req: Request) {
 }
 
 export async function PUT(req: Request) {
-  const { userId } = await auth()
-  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const authError = await requirePermission('settings', 'update')
+  if (authError) return authError
 
   try {
     const settingsData = await req.json()
