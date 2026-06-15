@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { GET, PUT } from '@/app/api/admin/dispatch/route'
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { requirePermission } from '@/lib/admin/permissions'
 
@@ -82,7 +82,7 @@ describe('admin dispatch API', () => {
     })
 
     it('returns 401 when unauthenticated', async () => {
-      vi.mocked(requirePermission).mockResolvedValueOnce(new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 }))
+      vi.mocked(requirePermission).mockResolvedValueOnce(NextResponse.json({ error: "Unauthorized" }, { status: 401 }))
       const mockExecute = vi.fn()
       vi.mocked(getDb).mockReturnValue({ execute: mockExecute } as any)
 
@@ -138,7 +138,7 @@ describe('admin dispatch API', () => {
     })
 
     it('auth fails -> 401', async () => {
-      vi.mocked(requirePermission).mockResolvedValueOnce(new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 }))
+      vi.mocked(requirePermission).mockResolvedValueOnce(NextResponse.json({ error: "Unauthorized" }, { status: 401 }))
 
       const res = await PUT(mockRequest({ action: 'assign', orderId: 1, driverId: 1 }))
       expect(res.status).toBe(401)
