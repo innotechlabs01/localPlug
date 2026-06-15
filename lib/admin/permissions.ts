@@ -1,4 +1,4 @@
-import { auth } from '@clerk/nextjs/server'
+import { auth, clerkClient } from '@clerk/nextjs/server'
 import { getDb } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { ensureSchema } from '@/lib/db/migrate-auto'
@@ -17,14 +17,56 @@ export async function getUserPermissions(clerkId: string): Promise<ModulePermiss
 
   const db = getDb()
 
-  const user = await db.execute({
+  let user = await db.execute({
     sql: `SELECT u.id, u.role_id, r.name as role_name
           FROM users u LEFT JOIN roles r ON u.role_id = r.id
           WHERE u.clerk_id = ? AND u.status = 'active'`,
     args: [clerkId],
   })
 
-  if (!user.rows.length) return null
+  if (!user.rows.length) {
+    const roles = await db.execute("SELECT id FROM roles WHERE name = 'viewer'")
+    if (!roles.rows.length) return null
+
+    const viewerRoleId = roles.rows[0].id as number
+
+    let name = 'User'
+    let email = ''
+    try {
+      const client = await clerkClient()
+      const clerkUser = await client.users.getUser(clerkId)
+      name = `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || clerkUser.primaryEmailAddress?.emailAddress || 'User'
+      email = clerkUser.primaryEmailAddress?.emailAddress || ''
+    } catch { /* clerk fetch may fail */ }
+
+    await db.execute({
+      sql: `INSERT OR IGNORE INTO users (clerk_id, name, email, role_id, status, created_at, updated_at)
+            VALUES (?, ?, ?, ?, 'active', datetime('now'), datetime('now'))`,
+      args: [clerkId, name, email, viewerRoleId],
+    })
+
+    const newUser = await db.execute({
+      sql: 'SELECT id FROM users WHERE clerk_id = ?',
+      args: [clerkId],
+    })
+    if (newUser.rows.length > 0) {
+      await db.execute({
+        sql: 'INSERT OR IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)',
+        args: [newUser.rows[0].id as number, viewerRoleId],
+      })
+    }
+
+    console.log(`[Permissions] Auto-registered user ${clerkId} (${name}) as viewer`)
+
+    user = await db.execute({
+      sql: `SELECT u.id, u.role_id, r.name as role_name
+            FROM users u LEFT JOIN roles r ON u.role_id = r.id
+            WHERE u.clerk_id = ? AND u.status = 'active'`,
+      args: [clerkId],
+    })
+
+    if (!user.rows.length) return null
+  }
 
   const roleName = user.rows[0].role_name as string
 

@@ -26,11 +26,28 @@ const DEFAULT_PERMISSIONS: Record<string, { view: boolean; create: boolean; upda
   viewer:    { view: true,  create: false, update: false, delete: false },
 }
 
-const RESTRICTED_MODULES: Record<string, Record<string, 'admin' | 'manager' | 'concierge' | 'viewer' | null>> = {
-  employees: { manager: 'admin', concierge: null, viewer: null },
-  payments:  { concierge: null, viewer: null },
-  settings:  { viewer: null },
-  roles:     { manager: null, concierge: null, viewer: null },
+const RESTRICTED_MODULES: Record<string, Record<string, { view: boolean; create: boolean; update: boolean; delete: boolean }>> = {
+  employees: {
+    manager:   { view: true, create: false, update: false, delete: false },
+    concierge: { view: false, create: false, update: false, delete: false },
+    viewer:    { view: false, create: false, update: false, delete: false },
+  },
+  payments: {
+    concierge: { view: false, create: false, update: false, delete: false },
+    viewer:    { view: false, create: false, update: false, delete: false },
+  },
+  settings: {
+    concierge: { view: false, create: false, update: false, delete: false },
+    viewer:    { view: false, create: false, update: false, delete: false },
+  },
+  roles: {
+    manager:   { view: false, create: false, update: false, delete: false },
+    concierge: { view: false, create: false, update: false, delete: false },
+    viewer:    { view: false, create: false, update: false, delete: false },
+  },
+  analytics: {
+    concierge: { view: true, create: false, update: false, delete: false },
+  },
 }
 
 export async function ensureSchema(): Promise<void> {
@@ -129,11 +146,8 @@ export async function ensureSchema(): Promise<void> {
       const restricted = RESTRICTED_MODULES[slug]?.[roleName]
       let effectivePerms = perms
 
-      if (restricted === null) {
-        effectivePerms = { view: false, create: false, update: false, delete: false }
-      } else if (restricted && restricted !== roleName) {
-        const overridePerms = DEFAULT_PERMISSIONS[restricted] || perms
-        effectivePerms = overridePerms
+      if (restricted) {
+        effectivePerms = restricted
       }
 
       await db.execute({
