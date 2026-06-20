@@ -17,6 +17,7 @@ const MODULES = [
   { name: 'Roles & Permissions', slug: 'roles', icon: 'Shield', sort: 12 },
   { name: 'Agenda', slug: 'agenda', icon: 'Calendar', sort: 13 },
   { name: 'Cases', slug: 'cases', icon: 'FolderOpen', sort: 14 },
+  { name: 'Hotels', slug: 'hotels', icon: 'Building', sort: 15 },
 ]
 
 const DEFAULT_PERMISSIONS: Record<string, { view: boolean; create: boolean; update: boolean; delete: boolean }> = {
@@ -111,6 +112,10 @@ export async function ensureSchema(): Promise<void> {
   if (!roleMap.viewer) {
     await db.execute("INSERT INTO roles (name, description) VALUES ('viewer', 'Read-only access')")
     roleMap.viewer = 4
+  }
+  if (!roleMap.hotel_manager) {
+    await db.execute("INSERT INTO roles (name, description) VALUES ('hotel_manager', 'Hotel manager with access to their hotel dashboard')")
+    roleMap.hotel_manager = 5
   }
 
   const reFetch = await db.execute('SELECT id, name FROM roles')

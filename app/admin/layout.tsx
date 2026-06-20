@@ -131,6 +131,31 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
       },
     ],
   },
+  {
+    labelKey: 'sectionPartners',
+    items: [
+      {
+        labelKey: 'hotels',
+        href: '/admin/hotels',
+        icon: (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M3 21h18"/>
+            <path d="M3 7v14"/>
+            <path d="M21 7v14"/>
+            <path d="M7 3v4"/>
+            <path d="M12 3v4"/>
+            <path d="M17 3v4"/>
+            <rect x="5" y="7" width="4" height="4"/>
+            <rect x="10" y="7" width="4" height="4"/>
+            <rect x="15" y="7" width="4" height="4"/>
+            <rect x="5" y="13" width="4" height="4"/>
+            <rect x="10" y="13" width="4" height="4"/>
+            <rect x="15" y="13" width="4" height="4"/>
+          </svg>
+        ),
+      },
+    ],
+  },
 ]
 
 function DateNav() {
@@ -277,21 +302,38 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const [profileOpen, setProfileOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const [visibleModules, setVisibleModules] = useState<Record<string, boolean>>({})
+  const [accessDenied, setAccessDenied] = useState(false)
+  const [permsLoading, setPermsLoading] = useState(true)
   const { t, lang, setLang } = useI18n()
   const { notifications, unreadCount, markAsRead, markAllAsRead, stats } = useRealtime()
 
   useEffect(() => {
     fetch('/api/admin/permissions/mine')
-      .then(r => r.json())
+      .then(r => {
+        if (r.status === 401 || r.status === 403) {
+          setAccessDenied(true)
+          setPermsLoading(false)
+          return null
+        }
+        return r.json()
+      })
       .then(data => {
+        if (!data) return
         const perms = data.permissions || {}
         const visible: Record<string, boolean> = {}
         for (const [slug, p] of Object.entries(perms) as [string, any][]) {
           if (p.can_view) visible[slug] = true
         }
-        setVisibleModules(visible)
+        if (Object.keys(visible).length === 0) {
+          setAccessDenied(true)
+        } else {
+          setVisibleModules(visible)
+        }
       })
-      .catch(() => {})
+      .catch(() => {
+        setAccessDenied(true)
+      })
+      .finally(() => setPermsLoading(false))
   }, [])
 
   const navSectionMap: Record<string, { slug: string; items: NavItem[] }> = {
@@ -305,6 +347,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
     employees: { slug: 'employees', items: [] },
     analytics: { slug: 'analytics', items: [] },
     payments: { slug: 'payments', items: [] },
+    hotels: { slug: 'hotels', items: [] },
   }
 
   const navItemSlug: Record<string, string> = {
@@ -318,6 +361,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
     '/admin/employees': 'employees',
     '/admin/analytics': 'analytics',
     '/admin/payments': 'payments',
+    '/admin/hotels': 'hotels',
     '/admin/roles': 'roles',
   }
 
@@ -338,12 +382,40 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
     return null
   }
 
-  if (!isLoaded) {
+  if (!isLoaded || permsLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen" style={{ background: 'var(--bg-dark)' }}>
         <div className="text-center" style={{ color: 'var(--fg-muted)' }}>
           <div className="animate-spin w-8 h-8 border-2 border-t-transparent rounded-full mx-auto mb-4" style={{ borderColor: 'var(--border)', borderTopColor: 'var(--accent)' }} />
           Loading...
+        </div>
+      </div>
+    )
+  }
+
+  if (accessDenied) {
+    return (
+      <div className="flex items-center justify-center min-h-screen" style={{ background: '#0b0d14' }}>
+        <div className="text-center max-w-md px-6">
+          <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6" style={{ background: 'rgba(239,68,68,0.1)' }}>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+          </div>
+          <h1 className="text-[20px] font-bold text-white mb-2">Access Restricted</h1>
+          <p className="text-[14px] text-[#9ca0b0] leading-relaxed mb-6">
+            Your account does not have the necessary permissions to access the admin panel. 
+            Please contact the platform administrator to request access.
+          </p>
+          <button
+            onClick={() => signOut({ redirectUrl: '/sign-in' })}
+            className="px-6 py-2.5 rounded-lg text-[13px] font-medium transition-all"
+            style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}
+          >
+            Sign Out
+          </button>
         </div>
       </div>
     )
