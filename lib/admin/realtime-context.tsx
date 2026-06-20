@@ -18,6 +18,7 @@ interface RealtimeStats {
   new_orders: number; in_progress_orders: number
   pending_dispatch: number; assigned_dispatch: number
   escalated_conversations: number; active_conversations: number
+  pending_user_reply: number
   available_drivers: number; busy_drivers: number
 }
 
@@ -49,7 +50,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
   const [stats, setStats] = useState<RealtimeStats>({
     new_orders: 0, in_progress_orders: 0,
     pending_dispatch: 0, assigned_dispatch: 0,
-    escalated_conversations: 0, active_conversations: 0,
+    escalated_conversations: 0, active_conversations: 0, pending_user_reply: 0,
     available_drivers: 0, busy_drivers: 0,
   })
   const [notifications, setNotifications] = useState<RealtimeNotification[]>([])
@@ -201,7 +202,7 @@ export function useRealtime() {
   return ctx ?? {
     orders: [],
     conversations: [],
-    stats: { new_orders: 0, in_progress_orders: 0, pending_dispatch: 0, assigned_dispatch: 0, escalated_conversations: 0, active_conversations: 0, available_drivers: 0, busy_drivers: 0 },
+    stats: { new_orders: 0, in_progress_orders: 0, pending_dispatch: 0, assigned_dispatch: 0, escalated_conversations: 0, active_conversations: 0, pending_user_reply: 0, available_drivers: 0, busy_drivers: 0 },
     notifications: [],
     unreadCount: 0,
     lastUpdate: null,

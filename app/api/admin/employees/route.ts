@@ -1,15 +1,13 @@
 import { NextResponse } from 'next/server'
 import { getDb, buildSafeUpdate } from '@/lib/db'
-import { auth } from '@clerk/nextjs/server'
+import { requirePermission } from '@/lib/admin/permissions'
 
 const ALLOWED_EMPLOYEE_COLUMNS = ['name', 'email', 'phone', 'role_id', 'avatar_url', 'vehicle_info', 'license_number', 'vehicle_plate', 'employee_status', 'verification_status', 'status', 'notes']
 
 export async function GET() {
   try {
-    const { userId } = await auth()
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const authError = await requirePermission('employees', 'view')
+    if (authError) return authError
 
     const db = getDb()
 
@@ -35,14 +33,11 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
-    const { userId } = await auth()
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const roleCheck = await requirePermission('employees', 'create')
+    if (roleCheck) return roleCheck
 
     const body = await req.json()
-    const {
-      name, email, phone, role_id,
+    const { name, email, phone, role_id,
       vehicle_info, license_number, vehicle_plate,
       employee_status, verification_status, notes
     } = body
@@ -93,10 +88,8 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
   try {
-    const { userId } = await auth()
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const authError = await requirePermission('employees', 'update')
+    if (authError) return authError
 
     const body = await req.json()
     const { id, ...updates } = body
@@ -129,10 +122,8 @@ export async function PUT(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const { userId } = await auth()
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const authError = await requirePermission('employees', 'delete')
+    if (authError) return authError
 
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')

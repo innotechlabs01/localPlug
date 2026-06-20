@@ -5,12 +5,11 @@ const isPublicRoute = createRouteMatcher([
   '/',
   '/booking',
   '/api/booking',
-  '/api/payments/(.*)',
+  '/api/payments/status',
   '/api/webhooks/(.*)',
   '/api/admin/lookup',
   '/api/chat/start',
   '/api/chat/send',
-  '/api/chat/messages',
   '/api/chat/rating',
   '/api/chat/request-escalate',
   '/api/chat/close',
@@ -20,7 +19,7 @@ const isPublicRoute = createRouteMatcher([
   '/sign-up(.*)',
 ])
 
-const isAdminApiRoute = createRouteMatcher(['/api/admin/(.*)', '/api/chat/conversations', '/api/chat/agents', '/api/chat/escalate'])
+const isAdminApiRoute = createRouteMatcher(['/api/admin/(.*)', '/api/chat/messages', '/api/chat/conversations', '/api/chat/agents', '/api/chat/escalate'])
 const isLookupRoute = createRouteMatcher(['/api/admin/lookup'])
 
 export default clerkMiddleware(async (auth, req) => {

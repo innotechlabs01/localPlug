@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getDb, buildSafeUpdate } from '@/lib/db'
-import { auth } from '@clerk/nextjs/server'
+import { requirePermission } from '@/lib/admin/permissions'
 
 const ALLOWED_CUSTOMER_COLUMNS = ['name', 'email', 'phone', 'country', 'languages', 'status', 'vip_level', 'notes', 'tags', 'preferences']
 
@@ -59,8 +59,8 @@ async function syncCustomersFromOrders(db: any) {
 
 export async function GET(req: Request) {
   try {
-    const { userId } = await auth()
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const authError = await requirePermission('customers', 'view')
+    if (authError) return authError
 
     const db = getDb()
     await syncCustomersFromOrders(db)
@@ -114,8 +114,8 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const { userId } = await auth()
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const authError = await requirePermission('customers', 'create')
+    if (authError) return authError
 
     const body = await req.json()
     const { name, email, phone, country, languages, status, vip_level, notes, tags } = body
@@ -143,8 +143,8 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
   try {
-    const { userId } = await auth()
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const authError = await requirePermission('customers', 'update')
+    if (authError) return authError
 
     const body = await req.json()
     const { id, ...updates } = body
@@ -173,8 +173,8 @@ export async function PUT(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const { userId } = await auth()
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const authError = await requirePermission('customers', 'delete')
+    if (authError) return authError
 
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')

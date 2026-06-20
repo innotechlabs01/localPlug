@@ -403,6 +403,7 @@ export default {
       employees: 'Employees',
       analytics: 'Analytics',
       payments: 'Payments',
+      roles: 'Roles',
       signOut: 'Sign Out',
       sectionExecutive: 'Executive',
       sectionOperations: 'Operations',

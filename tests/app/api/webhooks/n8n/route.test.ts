@@ -10,15 +10,22 @@ vi.mock('@/lib/db', () => ({
 }));
 
 describe('n8n webhook handler', () => {
+  const WEBHOOK_SECRET = 'test-n8n-secret'
   const mockRequest = (body: any) => {
     return new NextRequest('http://localhost:3000/api/webhooks/n8n', {
       method: 'POST',
+      headers: { 'x-n8n-signature': WEBHOOK_SECRET },
       body: JSON.stringify(body),
     });
   };
 
+  beforeEach(() => {
+    process.env.N8N_WEBHOOK_SECRET = WEBHOOK_SECRET
+  })
+
   afterEach(() => {
     vi.resetAllMocks();
+    delete process.env.N8N_WEBHOOK_SECRET
   });
 
   it('should handle whatsapp-ai-response event', async () => {
