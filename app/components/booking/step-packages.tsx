@@ -5,15 +5,19 @@ import { useI18n } from '@/lib/i18n'
 interface StepPackagesProps {
   value: string
   onChange: (value: string) => void
+  config?: BookingConfig | null
+}
+
+interface BookingConfig {
+  packages: Record<string, { name: string; price: number }>
+  returnTripCharge: number
+  serviceFee: number
+  taxRate: number
+  currency: string
+  advanceBookingDays: number
 }
 
 const packageIds = ['smooth-landing', 'first-24', 'full-insider'] as const
-
-const packagePrices: Record<string, number> = {
-  'smooth-landing': 89,
-  'first-24': 159,
-  'full-insider': 269,
-}
 
 const popularFlags: Record<string, boolean> = {
   'smooth-landing': false,
@@ -24,6 +28,7 @@ const popularFlags: Record<string, boolean> = {
 export default function StepPackages({
   value,
   onChange,
+  config,
 }: StepPackagesProps) {
   const { t } = useI18n()
   const pkgT = t.booking.steps.packages
@@ -35,66 +40,64 @@ export default function StepPackages({
         {pkgT.subtitle}
       </p>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
         {packageIds.map((pkgId) => {
           const selected = value === pkgId
           const pkgData = pkgT.packages[pkgId as keyof typeof pkgT.packages]
-          const price = packagePrices[pkgId]
+          const price = config?.packages?.[pkgId]?.price ?? 0
           const isPopular = popularFlags[pkgId]
+          const isElite = pkgId === 'full-insider'
 
           return (
             <button
               key={pkgId}
               type="button"
               onClick={() => onChange(pkgId)}
-              className={`relative text-left p-7 rounded-[var(--radius-xl)] border-2 transition-all duration-200 ${
+              className={`relative flex flex-col gap-3.5 p-5 rounded-[var(--radius-lg)] border-[1.5px] cursor-pointer transition-all duration-250 ${
                 selected
-                  ? 'border-[var(--accent-gold)] bg-gradient-to-b from-[rgba(212,165,116,0.08)] to-[var(--bg-card)] shadow-[0_0_60px_rgba(212,165,116,0.15)]'
-                  : 'border-[var(--border)] bg-[var(--bg-card)] hover:border-[var(--border-light)] hover:shadow-[0_4px_20px_rgba(0,0,0,0.3)]'
+                  ? 'border-[var(--accent-gold)] bg-[rgba(212,165,116,0.08)] shadow-[0_0_0_1px_rgba(212,165,116,0.25)]'
+                  : 'border-[var(--border)] bg-[var(--bg-card)] hover:border-[var(--border-light)] hover:bg-[var(--bg-elevated)]'
               }`}
             >
               {isPopular && (
-                <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gold-gradient text-[var(--bg-dark)] text-label-sm font-bold px-4 py-1.5 rounded-full shadow-[0_2px_8px_rgba(212,165,116,0.3)] whitespace-nowrap z-10">
+                <span className="absolute -top-[10px] right-3 bg-gradient-to-r from-[var(--accent-gold)] to-[var(--accent-gold-light)] text-[var(--bg-dark)] text-[9px] font-bold uppercase tracking-[0.5px] px-2.5 py-1 rounded-[10px] z-10">
                   {pkgT.moreSold}
                 </span>
               )}
+              {isElite && !isPopular && (
+                <span className="absolute -top-[10px] right-3 bg-gradient-to-r from-[var(--accent-gold)] to-[#f5d98a] text-[var(--bg-dark)] text-[9px] font-bold uppercase tracking-[0.5px] px-2.5 py-1 rounded-[10px] z-10">
+                  Elite VIP
+                </span>
+              )}
 
-              <div className={`${isPopular ? 'mt-2' : ''}`}>
-                <h3 className="text-display-md text-white font-bold mb-1.5">
-                  {pkgData.name}
-                </h3>
-                <p className="text-label-sm text-[var(--text-muted)] uppercase tracking-wider font-medium mb-5">
-                  {pkgData.subtitle}
-                </p>
-
-                <div className="flex items-baseline gap-0.5 mb-6">
-                  <span className="text-4xl font-bold text-white">
-                    ${price}
-                  </span>
-                  <span className="text-body-md text-[var(--text-muted)] ml-1">
-                    USD
-                  </span>
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="text-[28px] font-bold tracking-[-0.03em] text-white leading-none mb-0.5">
+                    ${price} <span className="text-[14px] font-normal text-[var(--text-muted)]">USD</span>
+                  </div>
+                  <div className="text-[15px] font-semibold text-white mt-1">{pkgData.name}</div>
                 </div>
-
-                <div className="border-t border-[var(--border)] pt-5">
-                  <ul className="space-y-3.5">
-                    {pkgData.features.map((f: string) => (
-                      <li key={f} className="flex items-start gap-3 text-body-md text-[var(--text-secondary)]">
-                        <span className={`shrink-0 mt-0.5 w-5 h-5 rounded-full flex items-center justify-center ${
-                          selected
-                            ? 'bg-[rgba(212,165,116,0.15)] text-[var(--accent-gold)]'
-                            : 'bg-[var(--surface)] text-[var(--text-muted)]'
-                        }`}>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="20 6 9 17 4 12" />
-                          </svg>
-                        </span>
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all duration-200 ${
+                  selected
+                    ? 'border-[var(--accent-gold)] bg-[var(--accent-gold)]'
+                    : 'border-[var(--border)]'
+                }`}>
+                  {selected && (
+                    <div className="w-2 h-2 rounded-full bg-[var(--bg-dark)]" />
+                  )}
                 </div>
               </div>
+
+              <ul className="flex flex-col gap-2">
+                {pkgData.features.map((f: string) => (
+                  <li key={f} className="flex items-center gap-2 text-[12.5px] text-[var(--text-secondary)] leading-[1.4]">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-gold)" strokeWidth="2" className="shrink-0">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                    {f}
+                  </li>
+                ))}
+              </ul>
             </button>
           )
         })}

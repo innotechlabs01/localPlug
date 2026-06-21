@@ -18,6 +18,16 @@ interface FlightData {
 interface StepFlightLogisticsProps {
   data: FlightData
   onChange: (data: FlightData) => void
+  config?: BookingConfig | null
+}
+
+interface BookingConfig {
+  packages: Record<string, { name: string; price: number }>
+  returnTripCharge: number
+  serviceFee: number
+  taxRate: number
+  currency: string
+  advanceBookingDays: number
 }
 
 function getMinDate(): string {
@@ -34,7 +44,7 @@ function getMinDate(): string {
 
 const flightValidation = createFlightValidation({ latency: 300 })
 
-export default function StepFlightLogistics({ data, onChange }: StepFlightLogisticsProps) {
+export default function StepFlightLogistics({ data, onChange, config }: StepFlightLogisticsProps) {
   const { t } = useI18n()
   const flightT = t.booking.steps.flight
   const [validationStatus, setValidationStatus] = useState<'idle' | 'valid' | 'invalid'>('idle')
@@ -175,17 +185,42 @@ export default function StepFlightLogistics({ data, onChange }: StepFlightLogist
           </div>
         </div>
 
-        <label className="flex items-center gap-3 p-4 rounded-[var(--radius-md)] border border-[var(--border)] cursor-pointer hover:border-[var(--accent-gold)] transition-all duration-200 bg-[var(--bg-elevated)]">
-          <input
-            type="checkbox"
-            checked={data.needReturn}
-            onChange={toggleReturn}
-            className="w-5 h-5 rounded border-[var(--border)] text-[var(--accent-gold)] focus:ring-[var(--accent-gold)]/20 focus:ring-2 shrink-0"
-          />
-          <span className="text-body-md text-[var(--text-primary)]">
-            {flightT.needReturn || 'I also need return transportation to the airport'}
-          </span>
-        </label>
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={toggleReturn}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleReturn() }}}
+          className={`p-4 rounded-[var(--radius-md)] border cursor-pointer transition-all duration-250 ${
+            data.needReturn
+              ? 'border-[var(--accent-gold)] bg-[rgba(212,165,116,0.08)]'
+              : 'border-[var(--border)] bg-[var(--bg-elevated)] hover:border-[var(--border-light)]'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <div className={`w-[22px] h-[22px] rounded-md border-2 flex items-center justify-center shrink-0 transition-all duration-200 ${
+              data.needReturn
+                ? 'bg-[var(--accent-gold)] border-[var(--accent-gold)]'
+                : 'border-[var(--border)]'
+            }`}>
+              {data.needReturn && (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--bg-dark)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className="text-[14px] font-semibold text-white">
+                {flightT.needReturn || 'I also need return transportation to the airport'}
+              </h4>
+              <p className="text-[12px] text-[var(--text-muted)] mt-0.5">
+                Pre-scheduled driver will pick you up for your departure
+              </p>
+            </div>
+            <span className="text-[14px] font-semibold text-[var(--accent-gold)] whitespace-nowrap shrink-0">
+              +${config?.returnTripCharge ?? 48} <span className="text-[12px] font-normal text-[var(--text-muted)]">USD</span>
+            </span>
+          </div>
+        </div>
 
         {data.needReturn && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pl-2 border-l-2 border-[var(--accent-gold)]">
