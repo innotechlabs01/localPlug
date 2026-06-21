@@ -124,8 +124,17 @@ getAllPublicConfig(): PublicConfig  // for /api/config
 ```
 
 **Cache:** `Map<string, string>`, TTL 60 seconds. On miss, reloads from DB.
-**Defaults:** Defined inline as a static object `SETTING_DEFAULTS`.
-**Graceful:** If DB is unreachable, returns defaults. Never throws.
+
+**Defaults:** Used ONLY when the DB query succeeds but a specific key has no row (fresh install / first run). Stored as a static object `SETTING_DEFAULTS`.
+
+**CRITICAL: No silent fallback on DB failure.** If the database is unreachable, `loadConfig()` throws a `ConfigLoadError`. This error propagates to:
+- `GET /api/config` → returns 500 → frontend shows error, booking flow blocked
+- `POST /api/payments/create-intent` → returns 500 → payment not processed
+- Admin dashboard → shows error state, not stale/wrong numbers
+
+Rationale: Using fallback prices when DB is down could process bookings at wrong prices — a fraud vector. The system must stop, not silently degrade, when the configuration source is unavailable.
+
+**On DB success but key missing:** Returns the default value. This covers fresh installs where the admin hasn't configured anything yet — the system works identically to today's hardcoded values.
 
 ### 3.2 `lib/pricing.ts` (MODIFIED)
 
@@ -267,9 +276,10 @@ Admin saves settings → settings table (DB)
 5. Payment intent uses server-side `lib/config.ts` (cannot trust client)
 
 ### Fallback behavior:
-- If `/api/config` fails → show hardcoded defaults (exactly what exists today)
-- If DB has no settings → defaults apply
-- Admin can reset any value to default by clearing the field
+- DB unreachable → `ConfigLoadError` thrown. Booking flow blocked with error UI. Payments rejected with 500.
+- DB reachable but key missing → default value used (fresh install scenario).
+- `/api/config` fails → frontend shows "Service temporarily unavailable" message, user cannot proceed.
+- Admin can reset any value to its default by clearing the field (saves default to DB on next save).
 
 ---
 
