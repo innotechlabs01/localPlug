@@ -11,6 +11,7 @@ const {
   mockGetPackageName,
   mockGetPackagePriceCents,
   mockGetPackageTotalCents,
+  mockGetDefaultCurrency,
 } = vi.hoisted(() => ({
   mockCreatePaymentIntent: vi.fn(),
   mockGetPayment: vi.fn(),
@@ -20,6 +21,7 @@ const {
   mockGetPackageName: vi.fn(),
   mockGetPackagePriceCents: vi.fn(),
   mockGetPackageTotalCents: vi.fn(),
+  mockGetDefaultCurrency: vi.fn(),
 }))
 
 vi.mock('@/app/components/booking/lib/stripe-server', () => ({
@@ -36,10 +38,14 @@ vi.mock('@/lib/rate-limit', () => ({
   rateLimitMiddleware: mockRateLimitMiddleware,
 }))
 
+vi.mock('@/lib/config', () => ({
+  getDefaultCurrency: mockGetDefaultCurrency,
+}))
+
 vi.mock('@/lib/pricing', () => ({
-  getPackageName: mockGetPackageName,
-  getPackagePriceCents: mockGetPackagePriceCents,
-  getPackageTotalCents: mockGetPackageTotalCents,
+  getConfigPackageName: mockGetPackageName,
+  getConfigPackagePriceCents: mockGetPackagePriceCents,
+  getConfigPackageTotalCents: mockGetPackageTotalCents,
 }))
 
 function createRequest(body: object) {
@@ -67,6 +73,7 @@ describe('POST /api/payments/create-intent', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockRateLimitMiddleware.mockReturnValue(null)
+    mockGetDefaultCurrency.mockReturnValue('usd')
     mockGetPackagePriceCents.mockReturnValue(8900)
     mockGetPackageTotalCents.mockReturnValue(8900)
     mockGetPackageName.mockReturnValue('The VIP Arrival')

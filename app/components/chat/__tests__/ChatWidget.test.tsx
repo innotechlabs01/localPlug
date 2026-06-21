@@ -22,7 +22,15 @@ vi.mock('@/app/components/ratings/RatingForm', () => ({
 
 import ChatWidget from '../ChatWidget'
 
-const mockFetch = vi.fn()
+const mockFetch = vi.fn((url: string) => {
+  if (url === '/api/config') {
+    return Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({ connectTimeoutMs: 90000, reconnectTimeoutMs: 60000 }),
+    })
+  }
+  return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
+})
 
 beforeEach(() => {
   vi.stubGlobal('fetch', mockFetch)

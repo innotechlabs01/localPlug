@@ -1,7 +1,34 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from 'vitest'
 import { render, screen, fireEvent, act } from '@testing-library/react'
 import { I18nProvider } from '@/lib/i18n'
 import BookingForm from '../booking-form'
+
+beforeAll(() => {
+  global.fetch = vi.fn((url: string) => {
+    if (url === '/api/config') {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          packages: {
+            'smooth-landing': { name: 'The VIP Arrival', price: 89 },
+            'first-24': { name: 'The 24h Insider', price: 159 },
+            'full-insider': { name: 'The Peace of Mind', price: 269 },
+          },
+          returnTripCharge: 48,
+          serviceFee: 5,
+          taxRate: 0.19,
+          currency: 'usd',
+          advanceBookingDays: 10,
+        }),
+      })
+    }
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
+  })
+})
+
+afterAll(() => {
+  vi.restoreAllMocks()
+})
 
 vi.mock('../lib/persistence', () => ({
   createPersistence: () => ({
