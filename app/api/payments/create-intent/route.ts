@@ -7,7 +7,7 @@ import { getDefaultCurrency } from '@/lib/config'
 import type { PaymentRecord } from '@/app/components/booking/lib/types'
 
 export async function POST(req: Request) {
-  const rateLimitResponse = rateLimitMiddleware(req)
+  const rateLimitResponse = await rateLimitMiddleware(req)
   if (rateLimitResponse) return rateLimitResponse
 
   try {

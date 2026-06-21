@@ -3,10 +3,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useClerk } from '@clerk/nextjs'
 
-const INACTIVITY_TIMEOUT_MS = parseInt(
-  process.env.NEXT_PUBLIC_INACTIVITY_TIMEOUT || '900000',
-  10
-)
 const WARNING_BEFORE_MS = 60000
 
 export function InactivityGuard() {
@@ -14,6 +10,16 @@ export function InactivityGuard() {
   const timerRef = useRef<ReturnType<typeof setTimeout>>()
   const warningRef = useRef<ReturnType<typeof setTimeout>>()
   const [showWarning, setShowWarning] = useState(false)
+  const [timeout, setTimeout_] = useState(900000)
+
+  useEffect(() => {
+    const envTimeout = parseInt(process.env.NEXT_PUBLIC_INACTIVITY_TIMEOUT || '')
+    if (envTimeout > 0) { setTimeout_(envTimeout); return }
+    fetch('/api/config')
+      .then(r => r.json())
+      .then(cfg => { if (cfg?.inactivityTimeoutMs) setTimeout_(cfg.inactivityTimeoutMs) })
+      .catch(() => {})
+  }, [])
 
   const cleanUp = () => {
     clearTimeout(timerRef.current)
@@ -26,12 +32,12 @@ export function InactivityGuard() {
 
     warningRef.current = setTimeout(
       () => setShowWarning(true),
-      Math.max(INACTIVITY_TIMEOUT_MS - WARNING_BEFORE_MS, 0)
+      Math.max(timeout - WARNING_BEFORE_MS, 0)
     )
 
     timerRef.current = setTimeout(() => {
       signOut({ redirectUrl: '/sign-in' })
-    }, INACTIVITY_TIMEOUT_MS)
+    }, timeout)
   }
 
   useEffect(() => {

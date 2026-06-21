@@ -1,7 +1,22 @@
-const requestCounts = new Map<string, { count: number; resetAt: number }>()
+import { getRateLimitConfig } from '@/lib/config'
 
-const WINDOW_MS = 60_000
-const MAX_REQUESTS = 20
+let _maxRequests = 20
+let _windowMs = 60_000
+let _rateConfigLoaded = false
+
+async function initRateConfig() {
+  if (_rateConfigLoaded) return
+  try {
+    const cfg = await getRateLimitConfig()
+    _maxRequests = cfg.maxRequests
+    _windowMs = cfg.windowMs
+    _rateConfigLoaded = true
+  } catch {
+    // Keep defaults if config fails to load
+  }
+}
+
+const requestCounts = new Map<string, { count: number; resetAt: number }>()
 
 // Periodically purge expired entries to prevent unbounded Map growth.
 // This is a single-instance limiter — in multi-instance deployments (Vercel),
@@ -23,27 +38,28 @@ if (typeof setInterval !== 'undefined') {
   setInterval(cleanupExpired, CLEANUP_INTERVAL)
 }
 
-export function checkRateLimit(ip: string): { allowed: boolean; remaining: number; resetAt: number } {
+export async function checkRateLimit(ip: string): Promise<{ allowed: boolean; remaining: number; resetAt: number }> {
+  await initRateConfig()
   const now = Date.now()
   const entry = requestCounts.get(ip)
 
   if (!entry || now > entry.resetAt) {
-    requestCounts.set(ip, { count: 1, resetAt: now + WINDOW_MS })
-    return { allowed: true, remaining: MAX_REQUESTS - 1, resetAt: now + WINDOW_MS }
+    requestCounts.set(ip, { count: 1, resetAt: now + _windowMs })
+    return { allowed: true, remaining: _maxRequests - 1, resetAt: now + _windowMs }
   }
 
-  if (entry.count >= MAX_REQUESTS) {
+  if (entry.count >= _maxRequests) {
     return { allowed: false, remaining: 0, resetAt: entry.resetAt }
   }
 
   entry.count++
-  return { allowed: true, remaining: MAX_REQUESTS - entry.count, resetAt: entry.resetAt }
+  return { allowed: true, remaining: _maxRequests - entry.count, resetAt: entry.resetAt }
 }
 
-export function rateLimitMiddleware(req: Request): Response | null {
+export async function rateLimitMiddleware(req: Request): Promise<Response | null> {
   const forwarded = req.headers.get('x-forwarded-for')
   const ip = forwarded?.split(',')[0]?.trim() || '127.0.0.1'
-  const result = checkRateLimit(ip)
+  const result = await checkRateLimit(ip)
 
   if (!result.allowed) {
     return new Response(JSON.stringify({ error: 'too_many_requests', message: 'Too many requests. Please try again later.' }), {

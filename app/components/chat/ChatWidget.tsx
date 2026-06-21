@@ -362,6 +362,9 @@ export default function ChatWidget() {
   const inactivityTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const inactivityWarningRef = useRef<NodeJS.Timeout | null>(null)
 
+  const [timeouts, setTimeouts] = useState({ connectMs: 90000, reconnectMs: 60000 })
+  useEffect(() => { fetch('/api/config').then(r => r.json()).catch(() => {}) }, [])
+
   // Form screen state
   const [formData, setFormData] = useState({
     name: '',
@@ -464,8 +467,8 @@ export default function ChatWidget() {
           message_type: 'system',
         }]
       }))
-    }, 60000) // 60 seconds
-    
+    }, timeouts.reconnectMs) // 60 seconds
+
     inactivityTimeoutRef.current = setTimeout(() => {
       // Close conversation due to inactivity
       handleClose()
@@ -479,8 +482,8 @@ export default function ChatWidget() {
           message_type: 'system',
         }]
       }))
-    }, 90000) // 90 seconds
-  }, [t, inactivityTimeoutRef, inactivityWarningRef])
+    }, timeouts.connectMs) // 90 seconds
+  }, [t, timeouts.connectMs, timeouts.reconnectMs])
 
   // Handle sending messages
   const sendMessage = useCallback(async (content: string) => {

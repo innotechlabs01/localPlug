@@ -5,7 +5,7 @@ import { getPackageName, getPackageTotal } from '@/lib/pricing'
 import { rateLimitMiddleware } from '@/lib/rate-limit'
 
 export async function POST(request: Request) {
-  const rateLimitResponse = rateLimitMiddleware(request)
+  const rateLimitResponse = await rateLimitMiddleware(request)
   if (rateLimitResponse) return rateLimitResponse
 
   try {

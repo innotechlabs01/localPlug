@@ -3,7 +3,7 @@ import { getPayment } from '@/app/components/booking/lib/payment-store'
 import { rateLimitMiddleware } from '@/lib/rate-limit'
 
 export async function GET(req: Request) {
-  const rateLimitResponse = rateLimitMiddleware(req)
+  const rateLimitResponse = await rateLimitMiddleware(req)
   if (rateLimitResponse) return rateLimitResponse
 
   const { searchParams } = new URL(req.url)
