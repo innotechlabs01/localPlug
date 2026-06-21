@@ -82,8 +82,8 @@ async function main() {
 
   if (existing.rows.length === 0) {
     await db.execute({
-      sql: `INSERT INTO users (clerk_id, email, name, role_id, status, employee_status, created_at, updated_at)
-            VALUES (?, ?, ?, 1, 'active', 'active', datetime('now'), datetime('now'))`,
+      sql: `INSERT INTO users (clerk_id, email, name, password_hash, role_id, status, employee_status, created_at, updated_at)
+            VALUES (?, ?, ?, '', 1, 'active', 'active', datetime('now'), datetime('now'))`,
       args: [clerkUser.id, email, fullName],
     })
     console.log('   ✓ User created in local DB with admin role (id=1)')

@@ -40,8 +40,8 @@ export async function getUserPermissions(clerkId: string): Promise<ModulePermiss
     } catch { /* clerk fetch may fail */ }
 
     await db.execute({
-      sql: `INSERT OR IGNORE INTO users (clerk_id, name, email, role_id, status, created_at, updated_at)
-            VALUES (?, ?, ?, ?, 'active', datetime('now'), datetime('now'))`,
+      sql: `INSERT OR IGNORE INTO users (clerk_id, name, email, password_hash, role_id, status, created_at, updated_at)
+            VALUES (?, ?, ?, '', ?, 'active', datetime('now'), datetime('now'))`,
       args: [clerkId, name, email, viewerRoleId],
     })
 
@@ -57,6 +57,17 @@ export async function getUserPermissions(clerkId: string): Promise<ModulePermiss
     }
 
     console.log(`[Permissions] Auto-registered user ${clerkId} (${name}) as viewer`)
+
+    // Also set Clerk public_metadata so role is visible in Clerk Dashboard
+    const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY || ''
+    if (CLERK_SECRET_KEY) {
+      try {
+        const client = await clerkClient()
+        await client.users.updateUserMetadata(clerkId, {
+          publicMetadata: { role: 'viewer' },
+        })
+      } catch { /* non-critical */ }
+    }
 
     user = await db.execute({
       sql: `SELECT u.id, u.role_id, r.name as role_name

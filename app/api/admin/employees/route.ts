@@ -16,7 +16,7 @@ export async function GET() {
         u.id, u.clerk_id, u.name, u.email, u.phone, u.avatar_url,
         u.vehicle_info, u.license_number, u.vehicle_plate,
         u.employee_status, u.verification_status, u.rating, u.total_trips, u.total_revenue,
-        u.status, u.created_at,
+        u.status, u.created_at, u.hotel_id,
         r.id as role_id, r.name as role_name, r.description as role_description
       FROM users u
       LEFT JOIN roles r ON u.role_id = r.id

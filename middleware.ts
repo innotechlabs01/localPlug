@@ -14,6 +14,8 @@ const isPublicRoute = createRouteMatcher([
   '/api/chat/request-escalate',
   '/api/chat/close',
   '/api/ratings(.*)',
+  '/api/hotels(.*)',
+  '/api/promotions/validate(.*)',
   '/booking/confirmation',
   '/sign-in(.*)',
   '/sign-up(.*)',

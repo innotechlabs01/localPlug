@@ -15,8 +15,8 @@ async function autoRegisterUser(clerkId: string): Promise<{ roleId: number; role
   const now = new Date().toISOString()
 
   const result = await db.execute({
-    sql: `INSERT OR IGNORE INTO users (clerk_id, name, email, role_id, status, created_at, updated_at)
-          VALUES (?, ?, ?, ?, 'active', ?, ?)`,
+    sql: `INSERT OR IGNORE INTO users (clerk_id, name, email, password_hash, role_id, status, created_at, updated_at)
+          VALUES (?, ?, ?, '', ?, 'active', ?, ?)`,
     args: [clerkId, 'New User', '', viewerRoleId, now, now],
   })
 
