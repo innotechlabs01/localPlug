@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { RealtimeProvider } from '@/lib/admin/realtime-context'
-import { useDateFilter } from '@/lib/admin/date-filter-context'
+
 import { getTimeAgoI18n } from '@/lib/date-utils'
 
 interface Conversation {
@@ -25,6 +25,7 @@ interface Conversation {
   agent_email: string | null
   message_count: number
   last_message: string | null
+  last_sender_type: string | null
 }
 
 interface Message {
@@ -95,8 +96,6 @@ export default function IaChatPage() {
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null)
   const [channelFilter, setChannelFilter] = useState<ChannelFilter>('all')
   const [isTakingOver, setIsTakingOver] = useState(false)
-  const { dateFrom, dateTo } = useDateFilter()
-
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -119,8 +118,6 @@ export default function IaChatPage() {
         }
       }
       if (search) params.set('search', search)
-      if (dateFrom) params.set('dateFrom', dateFrom)
-      if (dateTo) params.set('dateTo', dateTo)
 
       const res = await fetch(`/api/chat/conversations?${params}`)
       const data = await res.json()
@@ -132,7 +129,7 @@ export default function IaChatPage() {
     } finally {
       setIsLoadingConv(false)
     }
-  }, [filter, search, dateFrom, dateTo])
+  }, [filter, search])
 
   const fetchMessages = useCallback(async (convId: number) => {
     setIsLoadingMsg(true)
@@ -461,7 +458,10 @@ export default function IaChatPage() {
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-medium text-[#f0f2f5] truncate">
+                    <p className="text-[13px] font-medium text-[#f0f2f5] truncate flex items-center gap-1.5">
+                      {conv.last_sender_type === 'user' && conv.status !== 'closed' && (
+                        <span className="w-2 h-2 rounded-full bg-[#f59e0b] shrink-0" title="Pending response" />
+                      )}
                       {conv.user_name || conv.user_identifier}
                     </p>
                     <p className="text-[13px] text-[#9ca0b0] truncate mt-0.5">

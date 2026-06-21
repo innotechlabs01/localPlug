@@ -35,6 +35,9 @@ export async function GET(req: Request) {
         (SELECT COUNT(*) FROM orders WHERE dispatch_status = 'assigned') as assigned_dispatch,
         (SELECT COUNT(*) FROM conversations WHERE status = 'human_active') as escalated_conversations,
         (SELECT COUNT(*) FROM conversations WHERE status = 'human_active') as active_conversations,
+        (SELECT COUNT(*) FROM conversations c WHERE c.status != 'closed' AND (
+          SELECT sender_type FROM messages m WHERE m.conversation_id = c.id ORDER BY m.created_at DESC LIMIT 1
+        ) = 'user') as pending_user_reply,
         (SELECT COUNT(*) FROM drivers WHERE status = 'available') as available_drivers,
         (SELECT COUNT(*) FROM drivers WHERE status = 'busy') as busy_drivers
     `),

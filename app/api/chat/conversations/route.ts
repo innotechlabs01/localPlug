@@ -25,7 +25,8 @@ export async function GET(request: Request) {
         sa.name as agent_name,
         sa.email as agent_email,
         (SELECT COUNT(*) FROM messages m WHERE m.conversation_id = c.id) as message_count,
-        (SELECT content FROM messages m WHERE m.conversation_id = c.id ORDER BY m.created_at DESC LIMIT 1) as last_message
+        (SELECT content FROM messages m WHERE m.conversation_id = c.id ORDER BY m.created_at DESC LIMIT 1) as last_message,
+        (SELECT sender_type FROM messages m WHERE m.conversation_id = c.id ORDER BY m.created_at DESC LIMIT 1) as last_sender_type
       FROM conversations c
       LEFT JOIN support_agents sa ON c.assigned_agent_id = sa.id
       WHERE 1=1
