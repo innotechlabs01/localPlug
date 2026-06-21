@@ -93,7 +93,11 @@ async function loadConfig(): Promise<Map<string, string>> {
     const result = await db.execute('SELECT key, value FROM settings')
     const map = new Map<string, string>(Object.entries(DEFAULTS))
     for (const row of result.rows) {
-      map.set(row.key as string, row.value as string)
+      const key = row.key as string | null
+      const value = row.value as string | null
+      if (key) {
+        map.set(key, value ?? '')
+      }
     }
     _cache = map
     _cacheAt = now
@@ -106,7 +110,9 @@ async function loadConfig(): Promise<Map<string, string>> {
 }
 
 function getValue(map: Map<string, string>, key: string): string {
-  return map.get(key) ?? DEFAULTS[key] ?? ''
+  const v = map.get(key)
+  if (v === undefined || v === '' || v === null) return DEFAULTS[key] ?? ''
+  return v
 }
 
 // ── Public API ──
@@ -123,7 +129,7 @@ export async function getPackagePrice(packageId: string): Promise<number> {
   const cfg = await loadConfig()
   const key = PKG_KEY_MAP[packageId]
   if (!key) return 0
-  return Number(getValue(cfg, key)) || 0
+  return Number(getValue(cfg, key))
 }
 
 export async function getPackagePriceCents(packageId: string): Promise<number> {
@@ -132,7 +138,7 @@ export async function getPackagePriceCents(packageId: string): Promise<number> {
 
 export async function getReturnTripCharge(): Promise<number> {
   const cfg = await loadConfig()
-  return Number(getValue(cfg, KEYS.RETURN_TRIP_CHARGE)) || 0
+  return Number(getValue(cfg, KEYS.RETURN_TRIP_CHARGE))
 }
 
 export async function getReturnTripChargeCents(): Promise<number> {
@@ -156,12 +162,12 @@ export async function getPackageName(packageId: string): Promise<string> {
 
 export async function getServiceFee(): Promise<number> {
   const cfg = await loadConfig()
-  return Number(getValue(cfg, KEYS.SERVICE_FEE_FLAT)) || 0
+  return Number(getValue(cfg, KEYS.SERVICE_FEE_FLAT))
 }
 
 export async function getTaxRate(): Promise<number> {
   const cfg = await loadConfig()
-  return Number(getValue(cfg, KEYS.TAX_RATE_IVA)) || 0
+  return Number(getValue(cfg, KEYS.TAX_RATE_IVA))
 }
 
 export async function getDefaultCurrency(): Promise<string> {
@@ -171,44 +177,44 @@ export async function getDefaultCurrency(): Promise<string> {
 
 export async function getAdvanceBookingDays(): Promise<number> {
   const cfg = await loadConfig()
-  return Number(getValue(cfg, KEYS.ADVANCE_BOOKING_DAYS)) || 10
+  return Number(getValue(cfg, KEYS.ADVANCE_BOOKING_DAYS))
 }
 
 export async function getHotelCommissionRate(): Promise<number> {
   const cfg = await loadConfig()
-  return Number(getValue(cfg, KEYS.HOTEL_COMMISSION)) || 0.10
+  return Number(getValue(cfg, KEYS.HOTEL_COMMISSION))
 }
 
 export async function getDriverCommissionRate(): Promise<number> {
   const cfg = await loadConfig()
-  return Number(getValue(cfg, KEYS.DRIVER_COMMISSION)) || 30
+  return Number(getValue(cfg, KEYS.DRIVER_COMMISSION))
 }
 
 export async function getStripeFeePercent(): Promise<number> {
   const cfg = await loadConfig()
-  return Number(getValue(cfg, KEYS.STRIPE_FEE_PCT)) || 0.029
+  return Number(getValue(cfg, KEYS.STRIPE_FEE_PCT))
 }
 
 export async function getStripeFeeFixed(): Promise<number> {
   const cfg = await loadConfig()
-  return Number(getValue(cfg, KEYS.STRIPE_FEE_FIXED)) || 0.30
+  return Number(getValue(cfg, KEYS.STRIPE_FEE_FIXED))
 }
 
 export async function getHotelRevenuePerNight(): Promise<number> {
   const cfg = await loadConfig()
-  return Number(getValue(cfg, KEYS.HOTEL_REVENUE_NIGHT)) || 85
+  return Number(getValue(cfg, KEYS.HOTEL_REVENUE_NIGHT))
 }
 
 export async function getTrmFallbackRate(): Promise<number> {
   const cfg = await loadConfig()
-  return Number(getValue(cfg, KEYS.TRM_FALLBACK)) || 4200
+  return Number(getValue(cfg, KEYS.TRM_FALLBACK))
 }
 
 export async function getRateLimitConfig(): Promise<{ maxRequests: number; windowMs: number }> {
   const cfg = await loadConfig()
   return {
-    maxRequests: Number(getValue(cfg, KEYS.RATE_LIMIT_MAX)) || 20,
-    windowMs: Number(getValue(cfg, KEYS.RATE_LIMIT_WINDOW)) || 60000,
+    maxRequests: Number(getValue(cfg, KEYS.RATE_LIMIT_MAX)),
+    windowMs: Number(getValue(cfg, KEYS.RATE_LIMIT_WINDOW)),
   }
 }
 
@@ -219,28 +225,28 @@ export async function getPaymentTimeoutConfig(): Promise<{
 }> {
   const cfg = await loadConfig()
   return {
-    intentTimeoutMs: Number(getValue(cfg, KEYS.PAYMENT_TIMEOUT)) || 60000,
-    pollingIntervalMs: Number(getValue(cfg, KEYS.PAYMENT_POLL_INTERVAL)) || 2000,
-    maxAttempts: Number(getValue(cfg, KEYS.PAYMENT_POLL_MAX)) || 30,
+    intentTimeoutMs: Number(getValue(cfg, KEYS.PAYMENT_TIMEOUT)),
+    pollingIntervalMs: Number(getValue(cfg, KEYS.PAYMENT_POLL_INTERVAL)),
+    maxAttempts: Number(getValue(cfg, KEYS.PAYMENT_POLL_MAX)),
   }
 }
 
 export async function getAdminRefreshInterval(): Promise<number> {
   const cfg = await loadConfig()
-  return Number(getValue(cfg, KEYS.ADMIN_REFRESH)) || 30000
+  return Number(getValue(cfg, KEYS.ADMIN_REFRESH))
 }
 
 export async function getChatTimeouts(): Promise<{ connectionMs: number; reconnectMs: number }> {
   const cfg = await loadConfig()
   return {
-    connectionMs: Number(getValue(cfg, KEYS.CHAT_CONNECT_TIMEOUT)) || 90000,
-    reconnectMs: Number(getValue(cfg, KEYS.CHAT_RECONNECT_TIMEOUT)) || 60000,
+    connectionMs: Number(getValue(cfg, KEYS.CHAT_CONNECT_TIMEOUT)),
+    reconnectMs: Number(getValue(cfg, KEYS.CHAT_RECONNECT_TIMEOUT)),
   }
 }
 
 export async function getInactivityTimeout(): Promise<number> {
   const cfg = await loadConfig()
-  return Number(getValue(cfg, KEYS.INACTIVITY_TIMEOUT)) || 900000
+  return Number(getValue(cfg, KEYS.INACTIVITY_TIMEOUT))
 }
 
 export async function getExperiencePrice(expId: string): Promise<number> {
@@ -255,7 +261,7 @@ export async function getExperiencePrice(expId: string): Promise<number> {
   }
   const key = keyMap[expId]
   if (!key) return 0
-  return Number(getValue(cfg, key)) || 0
+  return Number(getValue(cfg, key))
 }
 
 export async function getAllPublicConfig() {
@@ -264,31 +270,31 @@ export async function getAllPublicConfig() {
     packages: {
       'smooth-landing': {
         name: 'The VIP Arrival',
-        price: Number(getValue(cfg, KEYS.PKG_SMOOTH_LANDING)) || 89,
+        price: Number(getValue(cfg, KEYS.PKG_SMOOTH_LANDING)),
       },
       'first-24': {
         name: 'The 24h Insider',
-        price: Number(getValue(cfg, KEYS.PKG_FIRST_24)) || 159,
+        price: Number(getValue(cfg, KEYS.PKG_FIRST_24)),
       },
       'full-insider': {
         name: 'The Peace of Mind',
-        price: Number(getValue(cfg, KEYS.PKG_FULL_INSIDER)) || 269,
+        price: Number(getValue(cfg, KEYS.PKG_FULL_INSIDER)),
       },
     },
-    returnTripCharge: Number(getValue(cfg, KEYS.RETURN_TRIP_CHARGE)) || 48,
-    serviceFee: Number(getValue(cfg, KEYS.SERVICE_FEE_FLAT)) || 5,
-    taxRate: Number(getValue(cfg, KEYS.TAX_RATE_IVA)) || 0.19,
+    returnTripCharge: Number(getValue(cfg, KEYS.RETURN_TRIP_CHARGE)),
+    serviceFee: Number(getValue(cfg, KEYS.SERVICE_FEE_FLAT)),
+    taxRate: Number(getValue(cfg, KEYS.TAX_RATE_IVA)),
     currency: getValue(cfg, KEYS.CURRENCY),
-    advanceBookingDays: Number(getValue(cfg, KEYS.ADVANCE_BOOKING_DAYS)) || 10,
-    stripeFeePercent: Number(getValue(cfg, KEYS.STRIPE_FEE_PCT)) || 0.029,
-    stripeFeeFixed: Number(getValue(cfg, KEYS.STRIPE_FEE_FIXED)) || 0.30,
+    advanceBookingDays: Number(getValue(cfg, KEYS.ADVANCE_BOOKING_DAYS)),
+    stripeFeePercent: Number(getValue(cfg, KEYS.STRIPE_FEE_PCT)),
+    stripeFeeFixed: Number(getValue(cfg, KEYS.STRIPE_FEE_FIXED)),
     experiences: {
-      comuna13: Number(getValue(cfg, KEYS.EXP_COMUNA13)) || 89,
-      guatape: Number(getValue(cfg, KEYS.EXP_GUATAPE)) || 149,
-      coffee: Number(getValue(cfg, KEYS.EXP_COFFEE)) || 119,
-      paragliding: Number(getValue(cfg, KEYS.EXP_PARAGLIDING)) || 79,
-      nightlife: Number(getValue(cfg, KEYS.EXP_NIGHTLIFE)) || 249,
-      'vip-city': Number(getValue(cfg, KEYS.EXP_VIP_CITY)) || 399,
+      comuna13: Number(getValue(cfg, KEYS.EXP_COMUNA13)),
+      guatape: Number(getValue(cfg, KEYS.EXP_GUATAPE)),
+      coffee: Number(getValue(cfg, KEYS.EXP_COFFEE)),
+      paragliding: Number(getValue(cfg, KEYS.EXP_PARAGLIDING)),
+      nightlife: Number(getValue(cfg, KEYS.EXP_NIGHTLIFE)),
+      'vip-city': Number(getValue(cfg, KEYS.EXP_VIP_CITY)),
     },
   }
 }
