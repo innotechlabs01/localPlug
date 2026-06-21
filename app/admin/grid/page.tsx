@@ -94,6 +94,7 @@ function PaymentsInner() {
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
   const [selectedTx, setSelectedTx] = useState<PaymentTransaction | null>(null)
+  const [stripeFee, setStripeFee] = useState({ percent: 0.029, fixed: 0.30 })
   const { showToast } = useToast()
 
   useEffect(() => {
@@ -104,6 +105,16 @@ function PaymentsInner() {
         setLoading(false)
       })
       .catch(() => setLoading(false))
+  }, [])
+
+  useEffect(() => {
+    fetch('/api/config')
+      .then(r => r.json())
+      .then(cfg => setStripeFee({
+        percent: cfg.stripeFeePercent ?? 0.029,
+        fixed: cfg.stripeFeeFixed ?? 0.30,
+      }))
+      .catch(() => {})
   }, [])
 
   const filteredTransactions = useMemo(() => {
@@ -703,8 +714,8 @@ function PaymentsInner() {
                     <span className="font-mono">${selectedTx.amount.toFixed(2)}</span>
                   </div>
                   <div className="flex items-center justify-between text-[12px] text-[#9ca0b0]">
-                    <span>{d.processingFee || 'Processing Fee (2.9% + $0.30)'}</span>
-                    <span className="font-mono">${(selectedTx.amount * 0.029 + 0.3).toFixed(2)}</span>
+                    <span>{d.processingFee || `Processing Fee (${(stripeFee.percent * 100).toFixed(1)}% + $${stripeFee.fixed.toFixed(2)})`}</span>
+                    <span className="font-mono">${(selectedTx.amount * stripeFee.percent + stripeFee.fixed).toFixed(2)}</span>
                   </div>
                   <div className="flex items-center justify-between text-[14px] font-semibold pt-2 border-t border-[#282b38] mt-2">
                     <span>{d.totalCharged || 'Total Charged'}</span>
