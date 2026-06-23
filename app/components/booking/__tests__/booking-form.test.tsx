@@ -23,7 +23,7 @@ beforeAll(() => {
       })
     }
     return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
-  })
+  }) as unknown as typeof global.fetch
 })
 
 afterAll(() => {
