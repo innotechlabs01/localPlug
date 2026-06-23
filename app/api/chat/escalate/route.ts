@@ -57,10 +57,32 @@ export async function POST(request: Request) {
       args: [userId],
     })
 
-    // Use support_agents.id if linked, fall back to users.id
-    const agentId = saResult.rows.length > 0
-      ? Number(saResult.rows[0].id)
-      : Number(userId)
+    let agentId: number
+
+    if (saResult.rows.length > 0) {
+      agentId = Number(saResult.rows[0].id)
+    } else {
+      // Auto-create a support_agents record for this admin user
+      const userResult2 = await db.execute({
+        sql: 'SELECT id, email, name FROM users WHERE id = ?',
+        args: [userId],
+      })
+
+      if (userResult2.rows.length === 0) {
+        return NextResponse.json(
+          { error: 'User not found' },
+          { status: 404 }
+        )
+      }
+
+      const userRow = userResult2.rows[0] as unknown as { id: number; email: string; name: string }
+      const insertResult = await db.execute({
+        sql: `INSERT INTO support_agents (user_id, name, email, status, max_conversations, current_conversations)
+              VALUES (?, ?, ?, 'available', 5, 0)`,
+        args: [userRow.id, userRow.name || userRow.email, userRow.email],
+      })
+      agentId = Number(insertResult.lastInsertRowid)
+    }
 
     const conversation = await takeOverConversation(Number(conversationId), agentId, reason)
 
@@ -69,6 +91,27 @@ export async function POST(request: Request) {
         { error: 'Conversation not found or cannot be taken over' },
         { status: 404 }
       )
+    }
+
+    // Auto-assign other unassigned human_active conversations if agent has capacity
+    const { findAvailableAgent: findAgent, incrementAgentLoad: incLoad } = await import('@/lib/services/agent-service')
+    const unassigned = await db.execute({
+      sql: `SELECT id FROM conversations WHERE status = 'human_active' AND assigned_agent_id IS NULL AND id != ? ORDER BY created_at ASC`,
+      args: [conversationId],
+    })
+
+    for (const row of unassigned.rows) {
+      const agent = await findAgent()
+      if (!agent) break
+      await db.execute({
+        sql: `UPDATE conversations SET assigned_agent_id = ?, assigned_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`,
+        args: [agent.id, row.id],
+      })
+      await incLoad(agent.id)
+      await db.execute({
+        sql: `INSERT INTO messages (conversation_id, sender_type, content, message_type) VALUES (?, 'system', ?, 'assignment')`,
+        args: [row.id, `Auto-assigned to ${agent.name}`],
+      })
     }
 
     return NextResponse.json({

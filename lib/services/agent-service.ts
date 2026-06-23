@@ -82,8 +82,9 @@ export async function decrementAgentLoad(agentId: number): Promise<void> {
   if (agent.rows.length === 0) return
 
   const current = Number(agent.rows[0].current_conversations)
+  const max = Number(agent.rows[0].max_conversations)
   const newCount = Math.max(0, current - 1)
-  const newStatus = newCount > 0 ? 'available' : 'available'
+  const newStatus = newCount >= max ? 'busy' : 'available'
 
   await db.execute({
     sql: `

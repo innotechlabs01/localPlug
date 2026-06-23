@@ -37,7 +37,13 @@ export async function POST(request: Request) {
       )
     }
 
-    const availableAgent = await findAvailableAgent(topic)
+    let availableAgent = await findAvailableAgent(topic)
+
+    // Retry once after short delay if no agent found (agent may be transitioning)
+    if (!availableAgent) {
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      availableAgent = await findAvailableAgent(topic)
+    }
 
     if (availableAgent) {
       await db.execute({
