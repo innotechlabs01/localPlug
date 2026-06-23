@@ -3,6 +3,7 @@ import { getDb, buildSafeUpdate } from '@/lib/db'
 import { requirePermission } from '@/lib/admin/permissions'
 import { resolveHotelContext } from '@/lib/admin/hotel-auth'
 import { clerkClient } from '@clerk/nextjs/server'
+import { triggerManagerCreated } from '@/lib/n8n/client'
 
 const ALLOWED_COLUMNS = [
   'name', 'slug', 'description', 'address', 'lat', 'lng',
@@ -130,6 +131,18 @@ export async function POST(req: Request) {
         sql: `INSERT INTO users (clerk_id, name, email, role_id, hotel_id, status, created_at)
               VALUES (?, ?, ?, 5, ?, 'active', datetime('now'))`,
         args: [clerkUser.id, manager_name, manager_email, hotelId],
+      })
+
+      // Send WhatsApp notification to manager via n8n (fire and forget)
+      triggerManagerCreated({
+        managerName: manager_name,
+        managerEmail: manager_email,
+        temporaryPassword: manager_password,
+        hotelName: name,
+        hotelSlug: finalSlug,
+        managerPhone: phone || undefined,
+      }).then(r => {
+        if (!r.success) console.error('[Hotels API] Manager notification failed:', r.error)
       })
 
       return NextResponse.json({

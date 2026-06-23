@@ -266,6 +266,50 @@ export async function triggerFraudDetection(conversationData: {
 }
 
 /**
+ * Trigger n8n workflow for hotel manager creation
+ * Sends WhatsApp with login credentials to the new manager
+ */
+export async function triggerManagerCreated(data: {
+  managerName: string
+  managerEmail: string
+  temporaryPassword: string
+  hotelName: string
+  hotelSlug: string
+  managerPhone?: string
+}): Promise<N8nResponse> {
+  console.log('[n8n] triggerManagerCreated called', { managerEmail: data.managerEmail, hotelName: data.hotelName })
+
+  // Send WhatsApp directly via Evolution API if phone provided
+  const phone = data.managerPhone
+  if (phone) {
+    const message = `🏨 *Bienvenido a LocalPlug!*\n\nHola ${data.managerName},\n\nHas sido asignado como gerente del hotel *${data.hotelName}*.\n\n*Tus credenciales de acceso:*\n📧 Email: ${data.managerEmail}\n🔑 Contraseña: ${data.temporaryPassword}\n\nIngresa a la plataforma para gestionar tu hotel.\n\n_Puedes cambiar tu contraseña después del primer inicio de sesión._`
+
+    sendWhatsAppDirect({
+      number: phone,
+      message,
+    }).then(r => {
+      if (!r.success) console.error('[n8n] Direct WhatsApp send failed:', r.error)
+    })
+  }
+
+  return sendN8nWebhook('manager-created', {
+    type: 'manager_creation',
+    manager: {
+      name: data.managerName,
+      email: data.managerEmail,
+      temporaryPassword: data.temporaryPassword,
+    },
+    hotel: {
+      name: data.hotelName,
+      slug: data.hotelSlug,
+    },
+    evolutionApi: {
+      instanceName: process.env.EVOLUTION_INSTANCE_NAME,
+    },
+  })
+}
+
+/**
  * Send WhatsApp message directly via Evolution API (fallback if n8n is down)
  */
 export async function sendWhatsAppDirect(data: {
