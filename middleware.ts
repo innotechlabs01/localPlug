@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
+import { applyRateLimit } from '@/lib/rate-limit'
 
 const isPublicRoute = createRouteMatcher([
   '/',
@@ -21,18 +22,47 @@ const isPublicRoute = createRouteMatcher([
   '/api/hotels(.*)',
   '/api/promotions/validate(.*)',
   '/api/config',
+  '/api/health(.*)',
   '/booking/confirmation',
   '/sign-in(.*)',
   '/sign-up(.*)',
 ])
 
-const isAdminApiRoute = createRouteMatcher(['/api/admin/(.*)', '/api/chat/messages', '/api/chat/conversations', '/api/chat/agents', '/api/chat/escalate'])
+const isAdminApiRoute = createRouteMatcher([
+  '/api/admin/(.*)',
+  '/api/chat/messages',
+  '/api/chat/conversations',
+  '/api/chat/agents',
+  '/api/chat/escalate',
+])
 const isLookupRoute = createRouteMatcher(['/api/admin/lookup'])
+
+const BODY_MAX_SIZE = 1024 * 1024 // 1MB
 
 export default clerkMiddleware(async (auth, req) => {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { status: 204 })
+    return new Response(null, {
+      status: 204,
+      headers: corsHeaders(req),
+    })
   }
+
+  const { pathname } = new URL(req.url)
+  if (pathname.startsWith('/api/')) {
+    const rateLimitRes = await applyRateLimit(req)
+    if (rateLimitRes) return rateLimitRes
+
+    if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
+      const contentLength = parseInt(req.headers.get('content-length') || '0', 10)
+      if (contentLength > BODY_MAX_SIZE) {
+        return NextResponse.json(
+          { error: 'payload_too_large', message: 'Request body too large' },
+          { status: 413 },
+        )
+      }
+    }
+  }
+
   if (isLookupRoute(req)) {
     return NextResponse.next()
   }
@@ -47,6 +77,23 @@ export default clerkMiddleware(async (auth, req) => {
     await auth.protect()
   }
 })
+
+function corsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get('origin') || ''
+  const allowedOrigins = [
+    process.env.NEXT_PUBLIC_SITE_URL,
+    'https://localplug.vercel.app',
+    'http://localhost:3000',
+  ].filter(Boolean) as string[]
+
+  const isAllowed = allowedOrigins.some(o => origin.startsWith(o))
+  return {
+    'Access-Control-Allow-Origin': isAllowed ? origin : allowedOrigins[0] || '',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, stripe-signature, svix-id, svix-timestamp, svix-signature',
+    'Access-Control-Max-Age': '86400',
+  }
+}
 
 export const config = {
   matcher: [

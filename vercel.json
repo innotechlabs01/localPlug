@@ -1,5 +1,11 @@
 {
   "framework": "nextjs",
   "installCommand": "pnpm install",
-  "buildCommand": "rm -rf .next && pnpm build"
+  "buildCommand": "rm -rf .next && pnpm build",
+  "crons": [
+    {
+      "path": "/api/cron/process-queue",
+      "schedule": "*/5 * * * *"
+    }
+  ]
 }

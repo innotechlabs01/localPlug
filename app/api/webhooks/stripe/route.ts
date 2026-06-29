@@ -47,6 +47,13 @@ export async function POST(req: Request) {
   }
   await setPayment(record)
 
+  if (!existing?.stripeWebhookEventId && event.id) {
+    const dedupCheck = await getPayment(bookingRef)
+    if (dedupCheck?.stripeWebhookEventId) {
+      return NextResponse.json({ received: true })
+    }
+  }
+
   if (event.type === 'payment_intent.succeeded') {
     const customerEmail = intent.receipt_email || intent.metadata?.customerEmail || ''
     const customerName = intent.metadata?.customerName || ''

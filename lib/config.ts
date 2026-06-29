@@ -303,3 +303,41 @@ export async function refreshConfig(): Promise<void> {
   _cache = null
   await loadConfig()
 }
+
+const REQUIRED_ENV_VARS = [
+  'TURSO_DATABASE_URL',
+  'TURSO_API_KEY',
+  'STRIPE_SECRET_KEY',
+  'STRIPE_WEBHOOK_SECRET',
+  'CLERK_SECRET_KEY',
+  'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY',
+]
+
+const WARN_ENV_VARS = [
+  'N8N_BASE_URL',
+  'N8N_API_KEY',
+  'N8N_WEBHOOK_SECRET',
+  'EVOLUTION_API_URL',
+  'EVOLUTION_API_KEY',
+  'EVOLUTION_WEBHOOK_SECRET',
+  'OPENAI_API_KEY',
+]
+
+let _envValidated = false
+
+export function validateEnv(): { missing: string[]; warnings: string[] } {
+  if (_envValidated) return { missing: [], warnings: [] }
+  _envValidated = true
+
+  const missing = REQUIRED_ENV_VARS.filter(k => !process.env[k])
+  const warnings = WARN_ENV_VARS.filter(k => !process.env[k])
+
+  if (missing.length > 0) {
+    console.error(`[Config] Missing required environment variables: ${missing.join(', ')}`)
+  }
+  if (warnings.length > 0) {
+    console.warn(`[Config] Missing optional environment variables: ${warnings.join(', ')}`)
+  }
+
+  return { missing, warnings }
+}
