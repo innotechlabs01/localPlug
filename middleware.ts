@@ -23,6 +23,7 @@ const isPublicRoute = createRouteMatcher([
   '/api/promotions/validate(.*)',
   '/api/config',
   '/api/health(.*)',
+  '/api/cron/(.*)',
   '/booking/confirmation',
   '/sign-in(.*)',
   '/sign-up(.*)',
