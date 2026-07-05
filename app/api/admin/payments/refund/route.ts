@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { requirePermission } from '@/lib/admin/permissions'
+import { createPaddleRefund } from '@/lib/paddle/server'
 
 export async function POST(req: Request) {
   try {
@@ -27,17 +28,14 @@ export async function POST(req: Request) {
     }
 
     const payment = paymentResult.rows[0]
-    const stripePaymentIntentId = payment.stripe_payment_intent_id as string | null
+    const paddleTransactionId = payment.paddle_transaction_id as string | null
 
-    // If we have a Stripe payment intent, process refund via Stripe
-    if (stripePaymentIntentId && process.env.STRIPE_SECRET_KEY) {
+    // If we have a Paddle transaction, process refund via Paddle
+    if (paddleTransactionId) {
       try {
-        const stripe = (await import('stripe')).default
-        const stripeClient = new stripe(process.env.STRIPE_SECRET_KEY)
-
-        const refund = await stripeClient.refunds.create({
-          payment_intent: stripePaymentIntentId,
-          reason: 'requested_by_customer',
+        const refund = await createPaddleRefund({
+          transactionId: paddleTransactionId,
+          reason: reason || 'Admin refund',
         })
 
         // Update payment status
@@ -52,20 +50,27 @@ export async function POST(req: Request) {
           args: [booking_reference]
         })
 
+        // Update split status
+        await db.execute({
+          sql: `UPDATE payments SET split_status = 'refunded', updated_at = datetime('now') WHERE booking_reference = ?`,
+          args: [booking_reference]
+        })
+
         return NextResponse.json({
           success: true,
           refundId: refund.id,
           amount: payment.amount,
         })
-      } catch (stripeError: any) {
-        console.error('[Refund API] Stripe error:', stripeError)
+      } catch (paddleError: unknown) {
+        const message = paddleError instanceof Error ? paddleError.message : 'Unknown error'
+        console.error('[Refund API] Paddle error:', message)
         return NextResponse.json({
-          error: `Stripe refund failed: ${stripeError.message}`
+          error: `Paddle refund failed: ${message}`
         }, { status: 500 })
       }
     }
 
-    // Fallback: manual refund without Stripe
+    // Fallback: manual refund without Paddle
     await db.execute({
       sql: `UPDATE payments SET status = 'refunded', refund_reason = ?, updated_at = datetime('now') WHERE booking_reference = ?`,
       args: [reason || 'Admin manual refund', booking_reference]
@@ -76,11 +81,16 @@ export async function POST(req: Request) {
       args: [booking_reference]
     })
 
+    await db.execute({
+      sql: `UPDATE payments SET split_status = 'refunded', updated_at = datetime('now') WHERE booking_reference = ?`,
+      args: [booking_reference]
+    })
+
     return NextResponse.json({
       success: true,
       refundId: `manual-${Date.now()}`,
       amount: payment.amount,
-      note: 'Manual refund processed (no Stripe integration)',
+      note: 'Manual refund processed (no Paddle transaction)',
     })
   } catch (error) {
     console.error('[Refund API] error:', error)
