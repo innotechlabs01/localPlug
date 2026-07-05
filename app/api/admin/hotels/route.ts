@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { getDb, buildSafeUpdate } from '@/lib/db'
 import { requirePermission } from '@/lib/admin/permissions'
 import { resolveHotelContext } from '@/lib/admin/hotel-auth'
+import { clerkClient } from '@clerk/nextjs/server'
+import { triggerManagerCreated } from '@/lib/n8n/client'
 
 const ALLOWED_COLUMNS = [
   'name', 'slug', 'description', 'address', 'lat', 'lng',
@@ -72,10 +74,17 @@ export async function POST(req: Request) {
     if (authError) return authError
 
     const body = await req.json()
-    const { name, slug, description, address, lat, lng, phone, email, website, photos, stars, status, commission_rate } = body
+    const {
+      name, slug, description, address, lat, lng, phone, email, website, photos, stars, status, commission_rate,
+      manager_name, manager_email, manager_password,
+    } = body
 
     if (!name) {
       return NextResponse.json({ error: 'Hotel name is required' }, { status: 400 })
+    }
+
+    if (!manager_name || !manager_email || !manager_password) {
+      return NextResponse.json({ error: 'Manager name, email, and password are required' }, { status: 400 })
     }
 
     // Generate slug from name if not provided
@@ -89,7 +98,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'A hotel with this slug already exists' }, { status: 409 })
     }
 
-    const result = await db.execute({
+    // Create hotel
+    const hotelResult = await db.execute({
       sql: `INSERT INTO hotels (name, slug, description, address, lat, lng, phone, email, website, photos, stars, status, commission_rate, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
       args: [
@@ -99,7 +109,59 @@ export async function POST(req: Request) {
       ],
     })
 
-    return NextResponse.json({ success: true, id: Number(result.lastInsertRowid), slug: finalSlug })
+    const hotelId = Number(hotelResult.lastInsertRowid)
+
+    // Create Clerk user for hotel manager
+    try {
+      const client = await clerkClient()
+      const nameParts = manager_name.trim().split(/\s+/)
+      const firstName = nameParts[0] || manager_name
+      const lastName = nameParts.slice(1).join(' ') || ''
+
+      const clerkUser = await client.users.createUser({
+        emailAddress: [manager_email],
+        firstName,
+        lastName,
+        password: manager_password,
+        publicMetadata: { role: 'hotel_manager' },
+      })
+
+      // Create user in local DB linked to Clerk and hotel
+      await db.execute({
+        sql: `INSERT INTO users (clerk_id, name, email, role_id, hotel_id, status, created_at)
+              VALUES (?, ?, ?, 5, ?, 'active', datetime('now'))`,
+        args: [clerkUser.id, manager_name, manager_email, hotelId],
+      })
+
+      // Send WhatsApp notification to manager via n8n (fire and forget)
+      triggerManagerCreated({
+        managerName: manager_name,
+        managerEmail: manager_email,
+        temporaryPassword: manager_password,
+        hotelName: name,
+        hotelSlug: finalSlug,
+        managerPhone: phone || undefined,
+      }).then(r => {
+        if (!r.success) console.error('[Hotels API] Manager notification failed:', r.error)
+      })
+
+      return NextResponse.json({
+        success: true,
+        id: hotelId,
+        slug: finalSlug,
+        manager: { email: manager_email, temporaryPassword: manager_password },
+      })
+    } catch (clerkError: any) {
+      console.error('[Hotels API] Clerk user creation failed:', clerkError)
+      // Hotel was created but manager creation failed - still return success with warning
+      return NextResponse.json({
+        success: true,
+        id: hotelId,
+        slug: finalSlug,
+        warning: 'Hotel created but manager account creation failed. You can assign a manager later.',
+        error: clerkError?.errors?.[0]?.message || clerkError?.message || 'Unknown Clerk error',
+      })
+    }
   } catch (error) {
     console.error('[Hotels API] POST error:', error)
     return NextResponse.json({ error: 'Failed to create hotel' }, { status: 500 })

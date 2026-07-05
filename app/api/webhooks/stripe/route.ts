@@ -3,7 +3,7 @@ import { verifyWebhookSignature, buildPaymentRecordFromWebhook } from '@/app/com
 import { getPayment, setPayment } from '@/app/components/booking/lib/payment-store'
 import { triggerPaymentConfirmation } from '@/lib/n8n/client'
 import { getDb } from '@/lib/db'
-import { getPackageName, getPackageTotal } from '@/lib/pricing'
+import { getConfigPackageName, getConfigPackageTotal } from '@/lib/pricing'
 import type { PaymentRecord } from '@/app/components/booking/lib/types'
 
 export async function POST(req: Request) {
@@ -47,6 +47,13 @@ export async function POST(req: Request) {
   }
   await setPayment(record)
 
+  if (!existing?.stripeWebhookEventId && event.id) {
+    const dedupCheck = await getPayment(bookingRef)
+    if (dedupCheck?.stripeWebhookEventId) {
+      return NextResponse.json({ received: true })
+    }
+  }
+
   if (event.type === 'payment_intent.succeeded') {
     const customerEmail = intent.receipt_email || intent.metadata?.customerEmail || ''
     const customerName = intent.metadata?.customerName || ''
@@ -75,7 +82,7 @@ export async function POST(req: Request) {
       try {
         const orderNumber = `ORD-${Date.now().toString(36).toUpperCase()}`
         const needReturn = intent.metadata?.needReturn === 'true'
-        const finalPrice = getPackageTotal(packageId, needReturn)
+        const finalPrice = await getConfigPackageTotal(packageId, needReturn)
 
         await db.execute({
           sql: `INSERT INTO orders (
@@ -91,7 +98,7 @@ export async function POST(req: Request) {
             customerEmail || null,
             customerPhone || null,
             packageId,
-            getPackageName(packageId),
+            await getConfigPackageName(packageId),
             finalPrice,
             'usd',
             flightNumber || null,

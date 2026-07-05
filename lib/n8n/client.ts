@@ -1,6 +1,16 @@
 const N8N_BASE_URL = process.env.N8N_BASE_URL
 const N8N_API_KEY = process.env.N8N_API_KEY || ''
 
+import { enqueueMessage } from '@/lib/queue/message-queue'
+import { isCircuitOpen, recordSuccess, recordFailure } from '@/lib/resilience/circuit-breaker'
+import { logger } from '@/lib/logger'
+
+const WHATSAPP_CIRCUIT = 'evolution-whatsapp'
+const N8N_CIRCUIT = 'n8n-webhook'
+const WHATSAPP_MSG_DELAY_MS = 3000
+const WHATSAPP_RATE_LIMIT_PER_HOUR = 50
+const _whatsappMsgTimestamps: number[] = []
+
 interface N8nWebhookPayload {
   event: string
   data: Record<string, unknown>
@@ -15,6 +25,19 @@ interface N8nResponse {
   confidence?: number
 }
 
+function checkWhatsAppRateLimit(): boolean {
+  const now = Date.now()
+  const oneHourAgo = now - 3600000
+  while (_whatsappMsgTimestamps.length > 0 && _whatsappMsgTimestamps[0] < oneHourAgo) {
+    _whatsappMsgTimestamps.shift()
+  }
+  return _whatsappMsgTimestamps.length < WHATSAPP_RATE_LIMIT_PER_HOUR
+}
+
+function trackWhatsAppSend(): void {
+  _whatsappMsgTimestamps.push(Date.now())
+}
+
 /**
  * Send a webhook event to n8n workflow automation
  */
@@ -23,8 +46,18 @@ export async function sendN8nWebhook(
   data: Record<string, unknown>,
 ): Promise<N8nResponse> {
   if (!N8N_BASE_URL) {
-    console.error('[n8n] N8N_BASE_URL is not configured')
+    logger.error('[n8n] N8N_BASE_URL is not configured')
     return { success: false, error: 'N8N_BASE_URL is not configured' }
+  }
+
+  if (isCircuitOpen(N8N_CIRCUIT)) {
+    logger.warn('[n8n] Circuit open, queuing webhook', { event })
+    await enqueueMessage({
+      channel: 'n8n',
+      recipient: event,
+      content: JSON.stringify(data),
+    })
+    return { success: false, error: 'Circuit open, message queued' }
   }
 
   const payload: N8nWebhookPayload = {
@@ -34,7 +67,6 @@ export async function sendN8nWebhook(
   }
 
   const webhookUrl = `${N8N_BASE_URL}/webhook/${event}`
-  console.log(`[n8n] Sending webhook: ${event}`, { url: webhookUrl, hasApiKey: !!N8N_API_KEY })
 
   try {
     const response = await fetch(webhookUrl, {
@@ -47,24 +79,22 @@ export async function sendN8nWebhook(
     })
 
     if (!response.ok) {
+      recordFailure(N8N_CIRCUIT)
       const errorText = await response.text()
-      console.error(`[n8n] Webhook failed: ${response.status} ${response.statusText}`, { error: errorText })
+      logger.error('[n8n] Webhook failed', new Error(`HTTP ${response.status}`), { event, errorText })
       return { success: false, error: `HTTP ${response.status}: ${response.statusText}` }
     }
+
+    recordSuccess(N8N_CIRCUIT)
 
     let result: Record<string, unknown>
     try {
       result = await response.json()
     } catch {
       const text = await response.text()
-      console.log(`[n8n] Webhook success (text response): ${event}`, { text: text.slice(0, 200) })
       return { success: true, message: text }
     }
-    console.log(`[n8n] Webhook success: ${event}`, {
-      workflowId: result.workflowId,
-      hasMessage: !!result.message,
-      fullResponse: JSON.stringify(result).slice(0, 1000),
-    })
+
     const msg = (typeof result.message === 'string' ? result.message
       : typeof result.response === 'string' ? result.response
       : typeof result.content === 'string' ? result.content
@@ -74,14 +104,10 @@ export async function sendN8nWebhook(
       : JSON.stringify(result))
     const wfId = typeof result.workflowId === 'string' ? result.workflowId : undefined
     const conf = typeof result.confidence === 'number' ? result.confidence : undefined
-    return {
-      success: true,
-      workflowId: wfId,
-      message: msg,
-      confidence: conf,
-    }
+    return { success: true, workflowId: wfId, message: msg, confidence: conf }
   } catch (error) {
-    console.error('[n8n] Webhook error:', error)
+    recordFailure(N8N_CIRCUIT)
+    logger.error('[n8n] Webhook error', error instanceof Error ? error : undefined)
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -91,7 +117,6 @@ export async function sendN8nWebhook(
 
 /**
  * Trigger n8n workflow for payment confirmation
- * Sends booking data to n8n which then sends WhatsApp via Evolution API
  */
 export async function triggerPaymentConfirmation(bookingData: {
   bookingReference: string
@@ -105,9 +130,6 @@ export async function triggerPaymentConfirmation(bookingData: {
   arrivalDate: string
   arrivalTime: string
 }): Promise<N8nResponse> {
-  console.log('[n8n] triggerPaymentConfirmation called', { bookingReference: bookingData.bookingReference })
-
-  // Send WhatsApp directly via Evolution API
   const phone = bookingData.customerPhone
   if (phone) {
     const isSpanish = /[áéíóúñ¿¡]/.test(bookingData.customerName) ||
@@ -118,12 +140,7 @@ export async function triggerPaymentConfirmation(bookingData: {
       ? `🎉 ¡Hola ${bookingData.customerName}!\n\nTu reserva *#${bookingData.bookingReference.slice(0, 8).toUpperCase()}* está registrada.\nTe avisaremos cuando asignemos un conductor.`
       : `🎉 Hello ${bookingData.customerName}!\n\nYour booking *#${bookingData.bookingReference.slice(0, 8).toUpperCase()}* is registered.\nWe'll notify you when a driver is assigned.`
 
-    sendWhatsAppDirect({
-      number: phone,
-      message,
-    }).then(r => {
-      if (!r.success) console.error('[n8n] Direct WhatsApp send failed:', r.error)
-    })
+    await sendOrQueueWhatsApp({ number: phone, message })
   }
 
   return sendN8nWebhook('payment-confirmed', {
@@ -148,9 +165,6 @@ export async function triggerDriverAssigned(data: {
   licensePlate: string
   eta?: string
 }): Promise<N8nResponse> {
-  console.log('[n8n] triggerDriverAssigned called', { bookingReference: data.bookingReference })
-
-  // Send WhatsApp directly via Evolution API
   const phone = data.customerPhone
   if (phone) {
     const isSpanish = /[áéíóúñ¿¡]/.test(data.customerName) ||
@@ -161,12 +175,7 @@ export async function triggerDriverAssigned(data: {
       ? `🚗 Conductor asignado para tu reserva *#${data.bookingReference.slice(0, 8).toUpperCase()}*!\n\nConductor: ${data.driverName}\nVehículo: ${data.vehicle}\nPlaca: ${data.licensePlate}`
       : `🚗 Driver assigned for booking *#${data.bookingReference.slice(0, 8).toUpperCase()}*!\n\nDriver: ${data.driverName}\nVehicle: ${data.vehicle}\nPlate: ${data.licensePlate}`
 
-    sendWhatsAppDirect({
-      number: phone,
-      message,
-    }).then(r => {
-      if (!r.success) console.error('[n8n] Direct WhatsApp send failed:', r.error)
-    })
+    await sendOrQueueWhatsApp({ number: phone, message })
   }
 
   return sendN8nWebhook('driver-assigned', {
@@ -266,7 +275,86 @@ export async function triggerFraudDetection(conversationData: {
 }
 
 /**
- * Send WhatsApp message directly via Evolution API (fallback if n8n is down)
+ * Trigger n8n workflow for hotel manager creation
+ */
+export async function triggerManagerCreated(data: {
+  managerName: string
+  managerEmail: string
+  temporaryPassword: string
+  hotelName: string
+  hotelSlug: string
+  managerPhone?: string
+}): Promise<N8nResponse> {
+  const phone = data.managerPhone
+  if (phone) {
+    const message = `🏨 *Bienvenido a LocalPlug!*\n\nHola ${data.managerName},\n\nHas sido asignado como gerente del hotel *${data.hotelName}*.\n\n*Tus credenciales de acceso:*\n📧 Email: ${data.managerEmail}\n🔑 Contraseña: ${data.temporaryPassword}\n\nIngresa a la plataforma para gestionar tu hotel.\n\n_Puedes cambiar tu contraseña después del primer inicio de sesión._`
+
+    await sendOrQueueWhatsApp({ number: phone, message })
+  }
+
+  return sendN8nWebhook('manager-created', {
+    type: 'manager_creation',
+    manager: {
+      name: data.managerName,
+      email: data.managerEmail,
+      temporaryPassword: data.temporaryPassword,
+    },
+    hotel: {
+      name: data.hotelName,
+      slug: data.hotelSlug,
+    },
+    evolutionApi: {
+      instanceName: process.env.EVOLUTION_INSTANCE_NAME,
+    },
+  })
+}
+
+export async function sendOrQueueWhatsApp(data: {
+  number: string
+  message: string
+  instanceName?: string
+}): Promise<N8nResponse> {
+  if (!checkWhatsAppRateLimit()) {
+    logger.warn('[WhatsApp] Rate limit approaching, queuing message', { number: data.number.slice(-4) })
+    await enqueueMessage({
+      channel: 'whatsapp',
+      recipient: data.number,
+      content: data.message,
+    })
+    return { success: false, error: 'Rate limit, message queued' }
+  }
+
+  if (isCircuitOpen(WHATSAPP_CIRCUIT)) {
+    logger.warn('[WhatsApp] Circuit open, queuing message', { number: data.number.slice(-4) })
+    await enqueueMessage({
+      channel: 'whatsapp',
+      recipient: data.number,
+      content: data.message,
+    })
+    return { success: false, error: 'Circuit open, message queued' }
+  }
+
+  const result = await sendWhatsAppDirect(data)
+
+  if (result.success) {
+    recordSuccess(WHATSAPP_CIRCUIT)
+    trackWhatsAppSend()
+  } else {
+    recordFailure(WHATSAPP_CIRCUIT)
+    logger.error('[WhatsApp] Direct send failed, queuing', undefined, { error: result.error })
+    await enqueueMessage({
+      channel: 'whatsapp',
+      recipient: data.number,
+      content: data.message,
+      max_attempts: 3,
+    })
+  }
+
+  return result
+}
+
+/**
+ * Send WhatsApp message directly via Evolution API
  */
 export async function sendWhatsAppDirect(data: {
   number: string
@@ -281,7 +369,6 @@ export async function sendWhatsAppDirect(data: {
     return { success: false, error: 'Evolution API not configured' }
   }
 
-  // Strip non-digit characters for Evolution API (it expects international format without +)
   const cleanNumber = data.number.replace(/\D/g, '')
 
   try {
@@ -298,7 +385,8 @@ export async function sendWhatsAppDirect(data: {
     })
 
     if (!response.ok) {
-      return { success: false, error: `Evolution API HTTP ${response.status}` }
+      const body = await response.text().catch(() => '')
+      return { success: false, error: `Evolution API HTTP ${response.status}: ${body.slice(0, 200)}` }
     }
 
     return { success: true }
@@ -328,7 +416,6 @@ export async function sendWhatsAppButtons(data: {
     return { success: false, error: 'Evolution API not configured' }
   }
 
-  // Strip non-digit characters for Evolution API (it expects international format without +)
   const cleanNumber = data.number.replace(/\D/g, '')
 
   try {

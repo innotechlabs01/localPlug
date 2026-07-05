@@ -2,11 +2,12 @@ import { NextResponse } from 'next/server'
 import { createPaymentIntent } from '@/app/components/booking/lib/stripe-server'
 import { getPayment, hasPayment, setPayment } from '@/app/components/booking/lib/payment-store'
 import { rateLimitMiddleware } from '@/lib/rate-limit'
-import { getPackageName, getPackagePriceCents, getPackageTotalCents } from '@/lib/pricing'
+import { getConfigPackageName, getConfigPackagePriceCents, getConfigPackageTotalCents } from '@/lib/pricing'
+import { getDefaultCurrency } from '@/lib/config'
 import type { PaymentRecord } from '@/app/components/booking/lib/types'
 
 export async function POST(req: Request) {
-  const rateLimitResponse = rateLimitMiddleware(req)
+  const rateLimitResponse = await rateLimitMiddleware(req)
   if (rateLimitResponse) return rateLimitResponse
 
   try {
@@ -33,7 +34,7 @@ export async function POST(req: Request) {
       )
     }
 
-    const baseAmount = getPackagePriceCents(packageId)
+    const baseAmount = await getConfigPackagePriceCents(packageId)
     if (baseAmount === 0) {
       return NextResponse.json(
         { error: 'invalid_request', message: 'Invalid package ID' },
@@ -41,7 +42,7 @@ export async function POST(req: Request) {
       )
     }
 
-    const amount = getPackageTotalCents(packageId, !!needReturn)
+    const amount = await getConfigPackageTotalCents(packageId, !!needReturn)
 
     if (await hasPayment(bookingReference)) {
       const existing = await getPayment(bookingReference)
@@ -57,7 +58,7 @@ export async function POST(req: Request) {
       bookingReference,
       packageId,
       amount,
-      currency: 'usd',
+      currency: await getDefaultCurrency(),
       customerEmail,
       customerName,
       customerPhone,
@@ -72,9 +73,9 @@ export async function POST(req: Request) {
     const record: PaymentRecord = {
       bookingReference,
       packageId,
-      packageName: getPackageName(packageId),
+      packageName: await getConfigPackageName(packageId),
       amount,
-      currency: 'usd',
+      currency: await getDefaultCurrency(),
       status: 'pending',
       stripePaymentIntentId: paymentIntentId,
       customerEmail,

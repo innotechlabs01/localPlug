@@ -3,7 +3,7 @@ import { getDb } from '@/lib/db'
 import { rateLimitMiddleware } from '@/lib/rate-limit'
 
 export async function GET(request: NextRequest) {
-  const rateLimitResponse = rateLimitMiddleware(request)
+  const rateLimitResponse = await rateLimitMiddleware(request)
   if (rateLimitResponse) return rateLimitResponse
 
   const { searchParams } = new URL(request.url)

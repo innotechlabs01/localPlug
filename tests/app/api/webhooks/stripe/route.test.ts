@@ -41,8 +41,8 @@ vi.mock('@/lib/db', () => ({
 }))
 
 vi.mock('@/lib/pricing', () => ({
-  getPackageName: mockGetPackageName,
-  getPackageTotal: mockGetPackageTotal,
+  getConfigPackageName: mockGetPackageName,
+  getConfigPackageTotal: mockGetPackageTotal,
 }))
 
 function createSucceededEvent(overrides?: Record<string, unknown>) {

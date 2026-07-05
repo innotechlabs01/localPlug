@@ -6,11 +6,15 @@ import { useToast } from '@/lib/admin/toast-context'
 
 const navItems = [
   { id: 'section-company', label: 'Company Information' },
-  { id: 'section-pricing', label: 'Pricing Plans' },
-  { id: 'section-services', label: 'Service Configuration' },
+  { id: 'section-pricing', label: 'Package Pricing' },
+  { id: 'section-fees', label: 'Fees & Taxes' },
+  { id: 'section-commissions', label: 'Commissions' },
+  { id: 'section-business-rules', label: 'Business Rules' },
+  { id: 'section-timeouts', label: 'Operational Timeouts' },
+  { id: 'section-experiences', label: 'Experience Pricing' },
   { id: 'section-payments', label: 'Payment Integration' },
-  { id: 'section-roles', label: 'User Roles & Permissions' },
-  { id: 'section-notifications', label: 'Notification Settings' },
+  { id: 'section-roles', label: 'User Roles' },
+  { id: 'section-notifications', label: 'Notifications' },
   { id: 'section-regional', label: 'Language & Regional' },
 ]
 
@@ -170,84 +174,214 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        {/* Section 2: Pricing Plans */}
+        {/* Section: Package Pricing */}
         <section className="settings-section" id="section-pricing">
           <div className="settings-section-header">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-            <span className="settings-section-title">{d.pricingPlans || 'Pricing Plans'}</span>
-            <span className="settings-section-desc">{d.configurePricing || 'Configure service pricing tiers'}</span>
+            <span className="settings-section-title">Package Pricing</span>
+            <span className="settings-section-desc">Configure service package prices in USD</span>
           </div>
           <div className="settings-section-body">
-            <div className="plan-cards">
-              <div className="plan-card">
-                <div className="plan-name">{d.planStandard || 'Standard'}</div>
-                <div className="plan-sub">{d.planStandardSub || 'Essential transportation'}</div>
-                <div className="plan-price-row"><span className="plan-price-label">{d.airportPickup || 'Airport Pickup'}</span><span className="plan-price-value">$25</span></div>
-                <div className="plan-price-row"><span className="plan-price-label">{d.returnTransport || 'Return Transport'}</span><span className="plan-price-value">$20</span></div>
-                <div className="plan-price-row"><span className="plan-price-label">{d.cityTour || 'City Tour'}</span><span className="plan-price-value">$15</span></div>
-                <button className="btn btn-secondary plan-edit" onClick={() => showToast(d.editPlan || 'Edit Standard pricing')}>{d.editPlan || 'Edit Plan'}</button>
-              </div>
-              <div className="plan-card featured">
-                <div className="plan-name">{d.planPremium || 'Premium'}</div>
-                <div className="plan-sub">{d.planPremiumSub || 'Enhanced travel experience'}</div>
-                <div className="plan-price-row"><span className="plan-price-label">{d.airportPickup || 'Airport Pickup'}</span><span className="plan-price-value">$45</span></div>
-                <div className="plan-price-row"><span className="plan-price-label">{d.returnTransport || 'Return Transport'}</span><span className="plan-price-value">$35</span></div>
-                <div className="plan-price-row"><span className="plan-price-label">{d.cityTour || 'City Tour'}</span><span className="plan-price-value">$30</span></div>
-                <div className="plan-features">
-                  <div className="plan-feature">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
-                    {d.vipVehicle || 'VIP Vehicle Included'}
+            <div className="form-grid">
+              {[
+                { key: 'pkg_smooth_landing_price', label: 'Smooth Landing', sub: 'The VIP Arrival', defaultVal: '89' },
+                { key: 'pkg_first_24_price', label: 'First 24h Insider', sub: 'The 24h Insider', defaultVal: '159' },
+                { key: 'pkg_full_insider_price', label: 'Full Insider Pass', sub: 'The Peace of Mind', defaultVal: '269' },
+                { key: 'return_trip_charge', label: 'Return Trip Charge', sub: 'Round-trip add-on', defaultVal: '48' },
+              ].map(item => (
+                <div key={item.key} className="input-group">
+                  <label className="input-label">
+                    {item.label}
+                    <small style={{ display: 'block', fontSize: 11, color: 'var(--fg-muted)', fontWeight: 400, marginTop: 2 }}>{item.sub}</small>
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ color: 'var(--fg-muted)', fontSize: 14 }}>$</span>
+                    <input className="input" type="number" min="0" step="1"
+                      value={settings[item.key] ?? item.defaultVal}
+                      onChange={(e) => setSettings(prev => ({ ...prev, [item.key]: e.target.value }))}
+                      style={{ width: 120 }}
+                    />
+                    <span style={{ color: 'var(--fg-muted)', fontSize: 12 }}>USD</span>
                   </div>
                 </div>
-                <button className="btn btn-secondary plan-edit" onClick={() => showToast(d.editPlan || 'Edit Premium pricing')}>{d.editPlan || 'Edit Plan'}</button>
-              </div>
-              <div className="plan-card">
-                <div className="plan-name">{d.planVip || 'VIP'}</div>
-                <div className="plan-sub">{d.planVipSub || 'White-glove concierge service'}</div>
-                <div className="plan-price-row"><span className="plan-price-label">{d.airportPickup || 'Airport Pickup'}</span><span className="plan-price-value">$80</span></div>
-                <div className="plan-price-row"><span className="plan-price-label">{d.returnTransport || 'Return Transport'}</span><span className="plan-price-value">$65</span></div>
-                <div className="plan-price-row"><span className="plan-price-label">{d.cityTour || 'City Tour'}</span><span className="plan-price-value">$55</span></div>
-                <div className="plan-features">
-                  <div className="plan-feature">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
-                    {d.luxuryVehicle || 'Luxury Vehicle Included'}
-                  </div>
-                  <div className="plan-feature">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
-                    {d.personalConcierge || 'Personal Concierge'}
-                  </div>
-                </div>
-                <button className="btn btn-secondary plan-edit" onClick={() => showToast(d.editPlan || 'Edit VIP pricing')}>{d.editPlan || 'Edit Plan'}</button>
-              </div>
+              ))}
+            </div>
+            <div style={{ marginTop: 16, padding: 12, background: 'var(--surface)', borderRadius: 'var(--radius-sm)', fontSize: 12, color: 'var(--fg-secondary)' }}>
+              <strong>Preview:</strong> First 24h (${settings['pkg_first_24_price'] || '159'}) + Return (${settings['return_trip_charge'] || '48'}) = <strong style={{ color: 'var(--accent-gold)' }}>${(Number(settings['pkg_first_24_price'] || 159) + Number(settings['return_trip_charge'] || 48)).toFixed(2)}</strong>
             </div>
           </div>
         </section>
 
-        {/* Section 3: Service Configuration */}
-        <section className="settings-section" id="section-services">
+        {/* Section: Fees & Taxes */}
+        <section className="settings-section" id="section-fees">
           <div className="settings-section-header">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-            <span className="settings-section-title">{d.serviceConfig || 'Service Configuration'}</span>
-            <span className="settings-section-desc">{d.enableDisableServices || 'Enable or disable services'}</span>
+            <span className="settings-section-title">Fees & Taxes</span>
+            <span className="settings-section-desc">Configure service fees and tax rates</span>
           </div>
           <div className="settings-section-body">
-            <div className="toggle-group">
+            <div className="form-grid">
               {[
-                { label: d.airportPickupService || 'Airport Pickup Service', desc: d.airportPickupDesc || 'Transportation from MDE airport', on: true },
-                { label: d.returnTransportService || 'Return Transportation', desc: d.returnTransportDesc || 'Transfer back to airport', on: true },
-                { label: d.cityTourService || 'City Tours', desc: d.cityTourDesc || 'Guided city tours and excursions', on: true },
-                { label: d.vipService || 'VIP Experience', desc: d.vipDesc || 'Premium concierge service tier', on: true },
-                { label: d.addonServices || 'Add-on Services', desc: d.addonDesc || 'Flowers, champagne, extras', on: true },
-                { label: d.whatsappNotifications || 'WhatsApp Notifications', desc: d.whatsappDesc || 'Send booking updates via WhatsApp', on: true },
-                { label: d.emailConfirmations || 'Email Confirmations', desc: d.emailDesc || 'Send booking confirmations via email', on: true },
-                { label: d.smsAlerts || 'SMS Alerts', desc: d.smsDesc || 'Send alerts via text message', on: false },
-              ].map((item, idx) => (
-                <div key={idx} className="toggle-row">
-                  <div className="toggle-label">
+                { key: 'service_fee_flat', label: 'Service Fee (flat)', sub: 'Per-booking service charge', defaultVal: '5', prefix: '$', suffix: 'USD', step: '0.01' },
+                { key: 'tax_rate_iva', label: 'IVA Tax Rate', sub: 'Colombian VAT (e.g. 0.19 = 19%)', defaultVal: '0.19', prefix: '', suffix: '', step: '0.01' },
+                { key: 'stripe_fee_percent', label: 'Stripe Fee %', sub: 'Processing percentage', defaultVal: '0.029', prefix: '', suffix: '', step: '0.001' },
+                { key: 'stripe_fee_fixed', label: 'Stripe Fee Fixed', sub: 'Per-transaction fixed fee', defaultVal: '0.30', prefix: '$', suffix: 'USD', step: '0.01' },
+              ].map(item => (
+                <div key={item.key} className="input-group">
+                  <label className="input-label">
                     {item.label}
-                    <small>{item.desc}</small>
+                    <small style={{ display: 'block', fontSize: 11, color: 'var(--fg-muted)', fontWeight: 400, marginTop: 2 }}>{item.sub}</small>
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {item.prefix ? <span style={{ color: 'var(--fg-muted)', fontSize: 14 }}>{item.prefix}</span> : null}
+                    <input className="input" type="number" min="0" step={item.step}
+                      value={settings[item.key] ?? item.defaultVal}
+                      onChange={(e) => setSettings(prev => ({ ...prev, [item.key]: e.target.value }))}
+                      style={{ width: 120 }}
+                    />
+                    {item.suffix ? <span style={{ color: 'var(--fg-muted)', fontSize: 12 }}>{item.suffix}</span> : null}
                   </div>
-                  <div className={`toggle${item.on ? ' on' : ''}`} onClick={toggleSwitch} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Section: Commissions */}
+        <section className="settings-section" id="section-commissions">
+          <div className="settings-section-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><line x1="12" y1="18" x2="12" y2="22"/></svg>
+            <span className="settings-section-title">Commissions</span>
+            <span className="settings-section-desc">Configure platform revenue shares</span>
+          </div>
+          <div className="settings-section-body">
+            <div className="form-grid">
+              {[
+                { key: 'hotel_commission_rate', label: 'Hotel Commission', sub: 'Platform commission rate (e.g. 0.10 = 10%)', defaultVal: '0.10', step: '0.01' },
+                { key: 'driver_commission_rate', label: 'Driver Commission', sub: 'Driver revenue share percentage', defaultVal: '30', suffix: '%', step: '1' },
+                { key: 'hotel_revenue_per_night', label: 'Hotel Revenue/Night', sub: 'Avg revenue per night for reporting', defaultVal: '85', prefix: '$', suffix: 'USD', step: '1' },
+              ].map(item => (
+                <div key={item.key} className="input-group">
+                  <label className="input-label">
+                    {item.label}
+                    <small style={{ display: 'block', fontSize: 11, color: 'var(--fg-muted)', fontWeight: 400, marginTop: 2 }}>{item.sub}</small>
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {item.prefix ? <span style={{ color: 'var(--fg-muted)', fontSize: 14 }}>{item.prefix}</span> : null}
+                    <input className="input" type="number" min="0" step={item.step}
+                      value={settings[item.key] ?? item.defaultVal}
+                      onChange={(e) => setSettings(prev => ({ ...prev, [item.key]: e.target.value }))}
+                      style={{ width: 120 }}
+                    />
+                    {item.suffix ? <span style={{ color: 'var(--fg-muted)', fontSize: 12 }}>{item.suffix}</span> : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Section: Business Rules */}
+        <section className="settings-section" id="section-business-rules">
+          <div className="settings-section-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="2" width="20" height="8" rx="2"/><path d="M6 10v2"/><path d="M18 10v2"/><path d="M6 18h4"/><path d="M14 18h4"/><path d="M6 14v4"/><path d="M18 14v4"/></svg>
+            <span className="settings-section-title">Business Rules</span>
+            <span className="settings-section-desc">Configure operational rules and limits</span>
+          </div>
+          <div className="settings-section-body">
+            <div className="form-grid">
+              {[
+                { key: 'advance_booking_days', label: 'Advance Booking Days', sub: 'Minimum days before arrival', defaultVal: '10', suffix: 'days', step: '1' },
+                { key: 'rate_limit_max_requests', label: 'Rate Limit Max', sub: 'Max requests per window', defaultVal: '20', suffix: 'req', step: '1' },
+                { key: 'rate_limit_window_ms', label: 'Rate Limit Window', sub: 'Time window in milliseconds', defaultVal: '60000', suffix: 'ms', step: '1000' },
+                { key: 'payment_intent_timeout_ms', label: 'Payment Timeout', sub: 'Stripe intent creation timeout', defaultVal: '60000', suffix: 'ms', step: '1000' },
+                { key: 'payment_polling_interval_ms', label: 'Payment Poll Interval', sub: 'Status polling interval', defaultVal: '2000', suffix: 'ms', step: '500' },
+                { key: 'payment_polling_max_attempts', label: 'Payment Max Polls', sub: 'Max status check attempts', defaultVal: '30', suffix: 'attempts', step: '1' },
+              ].map(item => (
+                <div key={item.key} className="input-group">
+                  <label className="input-label">
+                    {item.label}
+                    <small style={{ display: 'block', fontSize: 11, color: 'var(--fg-muted)', fontWeight: 400, marginTop: 2 }}>{item.sub}</small>
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input className="input" type="number" min="0" step={item.step}
+                      value={settings[item.key] ?? item.defaultVal}
+                      onChange={(e) => setSettings(prev => ({ ...prev, [item.key]: e.target.value }))}
+                      style={{ width: 140 }}
+                    />
+                    <span style={{ color: 'var(--fg-muted)', fontSize: 12 }}>{item.suffix}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Section: Operational Timeouts */}
+        <section className="settings-section" id="section-timeouts">
+          <div className="settings-section-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span className="settings-section-title">Operational Timeouts</span>
+            <span className="settings-section-desc">Configure system refresh and timeout intervals</span>
+          </div>
+          <div className="settings-section-body">
+            <div className="form-grid">
+              {[
+                { key: 'admin_refresh_interval_ms', label: 'Admin Refresh', sub: 'Dashboard auto-refresh interval', defaultVal: '30000', suffix: 'ms', step: '5000' },
+                { key: 'chat_connection_timeout_ms', label: 'Chat Connection', sub: 'Max connection wait time', defaultVal: '90000', suffix: 'ms', step: '5000' },
+                { key: 'chat_reconnect_timeout_ms', label: 'Chat Reconnect', sub: 'Reconnection delay', defaultVal: '60000', suffix: 'ms', step: '5000' },
+                { key: 'inactivity_timeout_ms', label: 'Inactivity Timeout', sub: 'Admin auto-logout timeout', defaultVal: '900000', suffix: 'ms', step: '30000' },
+              ].map(item => (
+                <div key={item.key} className="input-group">
+                  <label className="input-label">
+                    {item.label}
+                    <small style={{ display: 'block', fontSize: 11, color: 'var(--fg-muted)', fontWeight: 400, marginTop: 2 }}>{item.sub}</small>
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input className="input" type="number" min="0" step={item.step}
+                      value={settings[item.key] ?? item.defaultVal}
+                      onChange={(e) => setSettings(prev => ({ ...prev, [item.key]: e.target.value }))}
+                      style={{ width: 140 }}
+                    />
+                    <span style={{ color: 'var(--fg-muted)', fontSize: 12 }}>{item.suffix}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Section: Experience Pricing */}
+        <section className="settings-section" id="section-experiences">
+          <div className="settings-section-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <span className="settings-section-title">Experience Pricing</span>
+            <span className="settings-section-desc">Configure tour and experience prices in USD</span>
+          </div>
+          <div className="settings-section-body">
+            <div className="form-grid">
+              {[
+                { key: 'exp_guatape_price', label: 'Guatape & El Penol', sub: 'Full-day trip', defaultVal: '149' },
+                { key: 'exp_comuna13_price', label: 'Comuna 13 Tour', sub: 'Guided neighborhood tour', defaultVal: '89' },
+                { key: 'exp_coffee_price', label: 'Coffee Tour', sub: 'Coffee farm experience', defaultVal: '119' },
+                { key: 'exp_paragliding_price', label: 'Paragliding', sub: 'Tandem flight', defaultVal: '79' },
+                { key: 'exp_nightlife_price', label: 'Nightlife Experience', sub: 'VIP club access', defaultVal: '249' },
+                { key: 'exp_vip_city_price', label: 'VIP City Experience', sub: 'Full concierge day', defaultVal: '399' },
+              ].map(item => (
+                <div key={item.key} className="input-group">
+                  <label className="input-label">
+                    {item.label}
+                    <small style={{ display: 'block', fontSize: 11, color: 'var(--fg-muted)', fontWeight: 400, marginTop: 2 }}>{item.sub}</small>
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ color: 'var(--fg-muted)', fontSize: 14 }}>$</span>
+                    <input className="input" type="number" min="0" step="1"
+                      value={settings[item.key] ?? item.defaultVal}
+                      onChange={(e) => setSettings(prev => ({ ...prev, [item.key]: e.target.value }))}
+                      style={{ width: 120 }}
+                    />
+                    <span style={{ color: 'var(--fg-muted)', fontSize: 12 }}>USD</span>
+                  </div>
                 </div>
               ))}
             </div>

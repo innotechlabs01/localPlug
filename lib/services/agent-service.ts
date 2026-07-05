@@ -46,51 +46,37 @@ export async function findAvailableAgent(topic?: string): Promise<SupportAgent |
   return agents[0]
 }
 
-export async function incrementAgentLoad(agentId: number): Promise<void> {
+export async function incrementAgentLoad(agentId: number): Promise<boolean> {
   const db = getDb()
 
-  const agent = await db.execute({
-    sql: 'SELECT current_conversations, max_conversations FROM support_agents WHERE id = ?',
+  const result = await db.execute({
+    sql: `
+      UPDATE support_agents
+      SET current_conversations = current_conversations + 1,
+          status = CASE WHEN current_conversations + 1 >= max_conversations THEN 'busy' ELSE 'available' END,
+          last_active_at = datetime('now'),
+          updated_at = datetime('now')
+      WHERE id = ? AND current_conversations < max_conversations
+    `,
     args: [agentId],
   })
 
-  if (agent.rows.length === 0) return
-
-  const current = Number(agent.rows[0].current_conversations)
-  const max = Number(agent.rows[0].max_conversations)
-  const newCount = current + 1
-  const newStatus = newCount >= max ? 'busy' : 'available'
-
-  await db.execute({
-    sql: `
-      UPDATE support_agents
-      SET current_conversations = ?, status = ?, last_active_at = datetime('now'), updated_at = datetime('now')
-      WHERE id = ?
-    `,
-    args: [newCount, newStatus, agentId],
-  })
+  return result.rowsAffected > 0
 }
 
-export async function decrementAgentLoad(agentId: number): Promise<void> {
+export async function decrementAgentLoad(agentId: number): Promise<boolean> {
   const db = getDb()
 
-  const agent = await db.execute({
-    sql: 'SELECT current_conversations, max_conversations FROM support_agents WHERE id = ?',
+  const result = await db.execute({
+    sql: `
+      UPDATE support_agents
+      SET current_conversations = MAX(0, current_conversations - 1),
+          status = CASE WHEN MAX(0, current_conversations - 1) >= max_conversations THEN 'busy' ELSE 'available' END,
+          updated_at = datetime('now')
+      WHERE id = ? AND current_conversations > 0
+    `,
     args: [agentId],
   })
 
-  if (agent.rows.length === 0) return
-
-  const current = Number(agent.rows[0].current_conversations)
-  const newCount = Math.max(0, current - 1)
-  const newStatus = newCount > 0 ? 'available' : 'available'
-
-  await db.execute({
-    sql: `
-      UPDATE support_agents
-      SET current_conversations = ?, status = ?, updated_at = datetime('now')
-      WHERE id = ?
-    `,
-    args: [newCount, newStatus, agentId],
-  })
+  return result.rowsAffected > 0
 }

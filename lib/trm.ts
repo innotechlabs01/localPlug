@@ -1,6 +1,8 @@
 // TRM (Tasa Representativa del Mercado) service
 // Fetches real-time USD/COP exchange rate with caching
 
+import { getTrmFallbackRate } from '@/lib/config'
+
 const TRM_API_URL = 'https://api.exchangerate-api.com/v4/latest/USD'
 const CACHE_DURATION_MS = 60 * 60 * 1000 // 1 hour
 
@@ -10,6 +12,17 @@ interface TrmCache {
 }
 
 let cache: TrmCache | null = null
+
+let _trmFallback = 4200
+let _trmConfigLoaded = false
+
+async function initTrmFallback() {
+  if (_trmConfigLoaded) return
+  try {
+    _trmFallback = await getTrmFallbackRate()
+    _trmConfigLoaded = true
+  } catch {}
+}
 
 export async function getTrmRate(): Promise<number> {
   // Return cached rate if still valid
@@ -24,8 +37,8 @@ export async function getTrmRate(): Promise<number> {
 
     if (!res.ok) {
       console.error('[TRM] API error:', res.status)
-      // Return cached rate if available, otherwise default
-      return cache?.rate ?? 4200
+      await initTrmFallback()
+      return cache?.rate ?? _trmFallback
     }
 
     const data = await res.json()
@@ -38,10 +51,12 @@ export async function getTrmRate(): Promise<number> {
     }
 
     console.error('[TRM] Invalid COP rate in response')
-    return cache?.rate ?? 4200
+    await initTrmFallback()
+    return cache?.rate ?? _trmFallback
   } catch (err) {
     console.error('[TRM] Fetch error:', err)
-    return cache?.rate ?? 4200
+    await initTrmFallback()
+    return cache?.rate ?? _trmFallback
   }
 }
 

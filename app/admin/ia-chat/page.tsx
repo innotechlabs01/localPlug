@@ -96,6 +96,7 @@ export default function IaChatPage() {
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null)
   const [channelFilter, setChannelFilter] = useState<ChannelFilter>('all')
   const [isTakingOver, setIsTakingOver] = useState(false)
+  const [currentAgentId, setCurrentAgentId] = useState<number | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -162,6 +163,21 @@ export default function IaChatPage() {
     fetchConversations()
     fetchAgents()
 
+    // Fetch current agent's support_agents ID and auto-set to available
+    fetch('/api/chat/agent-me')
+      .then(r => r.json())
+      .then(d => {
+        if (d.agentId) {
+          setCurrentAgentId(d.agentId)
+          fetch('/api/chat/agents', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ agentId: d.agentId, status: 'available' }),
+          }).catch(() => {})
+        }
+      })
+      .catch(() => {})
+
     // Poll for new conversations every 30s
     const pollConversations = setInterval(() => {
       if (!document.hidden) fetchConversations()
@@ -181,6 +197,15 @@ export default function IaChatPage() {
     if (selectedConv) {
       fetchMessages(selectedConv.id)
     }
+  }, [selectedConv, fetchMessages])
+
+  // Poll for new messages every 5s when a conversation is selected
+  useEffect(() => {
+    if (!selectedConv) return
+    const poll = setInterval(() => {
+      if (!document.hidden) fetchMessages(selectedConv.id)
+    }, 5_000)
+    return () => clearInterval(poll)
   }, [selectedConv, fetchMessages])
 
   const selectConversation = useCallback((conv: Conversation) => {
@@ -204,6 +229,7 @@ export default function IaChatPage() {
           message: content,
           userIdentifier: selectedConv.user_identifier,
           senderType: 'agent',
+          agentId: currentAgentId,
         }),
       })
 
@@ -226,7 +252,7 @@ export default function IaChatPage() {
     } finally {
       setIsSending(false)
     }
-  }, [inputValue, selectedConv, isSending, fetchConversations])
+  }, [inputValue, selectedConv, isSending, fetchConversations, currentAgentId])
 
   const handleEscalate = useCallback(async () => {
     if (!selectedConv || !escalateReason.trim()) return

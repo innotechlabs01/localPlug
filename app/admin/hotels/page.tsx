@@ -55,6 +55,7 @@ export default function HotelsPage() {
   const [hotelForm, setHotelForm] = useState<Record<string, any>>({})
   const [roomForm, setRoomForm] = useState<Record<string, any>>({})
   const [promoForm, setPromoForm] = useState<Record<string, any>>({})
+  const [createdCredentials, setCreatedCredentials] = useState<{ email: string; password: string } | null>(null)
 
   const fetchStats = useCallback(async (hotelId: number) => {
     try {
@@ -159,7 +160,12 @@ export default function HotelsPage() {
   // ───── Hotel CRUD ─────
   const openCreateHotel = () => {
     setEditHotel(null)
-    setHotelForm({ name: '', description: '', address: '', phone: '', email: '', website: '', stars: 3, status: 'active', commission_rate: 0.10 })
+    setHotelForm({
+      name: '', description: '', address: '', phone: '', email: '', website: '',
+      stars: 3, status: 'active', commission_rate: 0.10,
+      manager_name: '', manager_email: '', manager_password: '',
+    })
+    setCreatedCredentials(null)
     setHotelModal(true)
   }
 
@@ -183,8 +189,13 @@ export default function HotelsPage() {
         body: JSON.stringify(body),
       })
       if (res.ok) {
+        const data = await res.json()
         showToast(editHotel ? 'Hotel updated' : 'Hotel created')
-        setHotelModal(false)
+        if (!editHotel && data.manager) {
+          setCreatedCredentials(data.manager)
+        } else {
+          setHotelModal(false)
+        }
         fetchHotels()
       } else {
         const err = await res.json()
@@ -698,48 +709,96 @@ export default function HotelsPage() {
       {/* ── HOTEL MODAL ── */}
       {hotelModal && (
         <Modal onClose={() => setHotelModal(false)} title={editHotel ? 'Edit Hotel' : 'New Hotel'}>
-          <ModalField label="Hotel Name">
-            <input value={hotelForm.name || ''} onChange={e => setHotelForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Hotel Estelar" />
-          </ModalField>
-          <ModalField label="Description">
-            <textarea rows={3} value={hotelForm.description || ''} onChange={e => setHotelForm(p => ({ ...p, description: e.target.value }))} />
-          </ModalField>
-          <div className="grid grid-cols-2 gap-3">
-            <ModalField label="Address">
-              <input value={hotelForm.address || ''} onChange={e => setHotelForm(p => ({ ...p, address: e.target.value }))} />
-            </ModalField>
-            <ModalField label="Phone">
-              <input value={hotelForm.phone || ''} onChange={e => setHotelForm(p => ({ ...p, phone: e.target.value }))} />
-            </ModalField>
-            <ModalField label="Email">
-              <input value={hotelForm.email || ''} onChange={e => setHotelForm(p => ({ ...p, email: e.target.value }))} />
-            </ModalField>
-            <ModalField label="Website">
-              <input value={hotelForm.website || ''} onChange={e => setHotelForm(p => ({ ...p, website: e.target.value }))} />
-            </ModalField>
-            <ModalField label="Stars (1-5)">
-              <select value={hotelForm.stars || 3} onChange={e => setHotelForm(p => ({ ...p, stars: parseInt(e.target.value) }))}>
-                {[1,2,3,4,5].map(n => <option key={n} value={n}>{n} ⭐</option>)}
-              </select>
-            </ModalField>
-            <ModalField label="Commission Rate">
-              <div className="flex items-center gap-2">
-                <input type="number" step="0.01" min="0" max="1" value={hotelForm.commission_rate || 0.10}
-                  onChange={e => setHotelForm(p => ({ ...p, commission_rate: parseFloat(e.target.value) || 0 }))} />
-                <span className="text-fg-muted text-[12px]">{(Number(hotelForm.commission_rate) * 100).toFixed(0)}%</span>
+          {createdCredentials ? (
+            <div className="text-center py-6">
+              <div className="text-4xl mb-4">✅</div>
+              <h3 className="text-[18px] font-bold text-fg mb-2">Hotel Created Successfully!</h3>
+              <p className="text-[13px] text-fg-muted mb-6">Share these credentials with the hotel manager:</p>
+              <div className="p-4 rounded-lg mb-6" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                <div className="text-[12px] text-fg-muted mb-1">Email</div>
+                <div className="text-[15px] font-mono font-medium text-fg mb-3">{createdCredentials.email}</div>
+                <div className="text-[12px] text-fg-muted mb-1">Temporary Password</div>
+                <div className="text-[15px] font-mono font-medium text-fg">{createdCredentials.password}</div>
               </div>
-            </ModalField>
-            <ModalField label="Status">
-              <select value={hotelForm.status || 'active'} onChange={e => setHotelForm(p => ({ ...p, status: e.target.value }))}>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </ModalField>
-          </div>
-          <div className="flex justify-end gap-2 mt-6">
-            <button className="btn btn-secondary" onClick={() => setHotelModal(false)}>Cancel</button>
-            <button className="btn btn-primary" onClick={saveHotel}>{editHotel ? 'Update' : 'Create'}</button>
-          </div>
+              <p className="text-[11px] text-fg-muted mb-4">
+                The hotel manager can change their password after first login.
+              </p>
+              <button
+                className="btn btn-primary"
+                onClick={() => {
+                  navigator.clipboard.writeText(`Email: ${createdCredentials.email}\nPassword: ${createdCredentials.password}`)
+                  showToast('Credentials copied to clipboard')
+                }}
+              >
+                Copy Credentials
+              </button>
+              <button className="btn btn-secondary ml-2" onClick={() => setHotelModal(false)}>Done</button>
+            </div>
+          ) : (
+            <>
+              <ModalField label="Hotel Name">
+                <input value={hotelForm.name || ''} onChange={e => setHotelForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Hotel Estelar" />
+              </ModalField>
+              <ModalField label="Description">
+                <textarea rows={3} value={hotelForm.description || ''} onChange={e => setHotelForm(p => ({ ...p, description: e.target.value }))} placeholder="Brief description of the hotel..." />
+              </ModalField>
+              <div className="grid grid-cols-2 gap-3">
+                <ModalField label="Address">
+                  <input value={hotelForm.address || ''} onChange={e => setHotelForm(p => ({ ...p, address: e.target.value }))} placeholder="Street, City, Country" />
+                </ModalField>
+                <ModalField label="Phone">
+                  <input value={hotelForm.phone || ''} onChange={e => setHotelForm(p => ({ ...p, phone: e.target.value }))} placeholder="+1 234 567 890" />
+                </ModalField>
+                <ModalField label="Email">
+                  <input type="email" value={hotelForm.email || ''} onChange={e => setHotelForm(p => ({ ...p, email: e.target.value }))} placeholder="info@hotelestar.com" />
+                </ModalField>
+                <ModalField label="Website">
+                  <input value={hotelForm.website || ''} onChange={e => setHotelForm(p => ({ ...p, website: e.target.value }))} placeholder="https://hotelestar.com" />
+                </ModalField>
+                <ModalField label="Stars (1-5)">
+                  <select value={hotelForm.stars || 3} onChange={e => setHotelForm(p => ({ ...p, stars: parseInt(e.target.value) }))}>
+                    {[1,2,3,4,5].map(n => <option key={n} value={n}>{n} ⭐</option>)}
+                  </select>
+                </ModalField>
+                <ModalField label="Commission Rate">
+                  <div className="flex items-center gap-2">
+                    <input type="number" step="0.01" min="0" max="1" value={hotelForm.commission_rate || 0.10}
+                      onChange={e => setHotelForm(p => ({ ...p, commission_rate: parseFloat(e.target.value) || 0 }))} />
+                    <span className="text-fg-muted text-[12px]">{(Number(hotelForm.commission_rate) * 100).toFixed(0)}%</span>
+                  </div>
+                </ModalField>
+                <ModalField label="Status">
+                  <select value={hotelForm.status || 'active'} onChange={e => setHotelForm(p => ({ ...p, status: e.target.value }))}>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </ModalField>
+              </div>
+
+              {/* Hotel Manager Section - only when creating */}
+              {!editHotel && (
+                <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
+                  <div className="text-[13px] font-semibold text-fg mb-3">Hotel Manager Account</div>
+                  <ModalField label="Manager Full Name">
+                    <input value={hotelForm.manager_name || ''} onChange={e => setHotelForm(p => ({ ...p, manager_name: e.target.value }))} placeholder="e.g. Juan Perez" />
+                  </ModalField>
+                  <div className="grid grid-cols-2 gap-3">
+                    <ModalField label="Manager Email (Login)">
+                      <input type="email" value={hotelForm.manager_email || ''} onChange={e => setHotelForm(p => ({ ...p, manager_email: e.target.value }))} placeholder="gerente@hotelestar.com" />
+                    </ModalField>
+                    <ModalField label="Temporary Password">
+                      <input type="text" value={hotelForm.manager_password || ''} onChange={e => setHotelForm(p => ({ ...p, manager_password: e.target.value }))} placeholder="Min. 8 characters" />
+                    </ModalField>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 mt-6">
+                <button className="btn btn-secondary" onClick={() => setHotelModal(false)}>Cancel</button>
+                <button className="btn btn-primary" onClick={saveHotel}>{editHotel ? 'Update' : 'Create Hotel & Manager'}</button>
+              </div>
+            </>
+          )}
         </Modal>
       )}
 
@@ -750,17 +809,17 @@ export default function HotelsPage() {
             <input value={roomForm.name || ''} onChange={e => setRoomForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Suite Deluxe" />
           </ModalField>
           <ModalField label="Description">
-            <textarea rows={2} value={roomForm.description || ''} onChange={e => setRoomForm(p => ({ ...p, description: e.target.value }))} />
+            <textarea rows={2} value={roomForm.description || ''} onChange={e => setRoomForm(p => ({ ...p, description: e.target.value }))} placeholder="Room description..." />
           </ModalField>
           <div className="grid grid-cols-2 gap-3">
             <ModalField label="Base Price / Night ($)">
               <input type="number" step="0.01" min="0" value={roomForm.price_per_night || ''}
-                onChange={e => setRoomForm(p => ({ ...p, price_per_night: e.target.value }))} />
+                onChange={e => setRoomForm(p => ({ ...p, price_per_night: e.target.value }))} placeholder="0.00" />
 
             </ModalField>
             <ModalField label="Capacity">
               <input type="number" min="1" value={roomForm.capacity || 1}
-                onChange={e => setRoomForm(p => ({ ...p, capacity: parseInt(e.target.value) || 1 }))} />
+                onChange={e => setRoomForm(p => ({ ...p, capacity: parseInt(e.target.value) || 1 }))} placeholder="1" />
             </ModalField>
             <ModalField label="Amenities (comma-separated)">
               <input value={roomForm.amenities || ''} onChange={e => setRoomForm(p => ({ ...p, amenities: e.target.value }))}
@@ -801,7 +860,7 @@ export default function HotelsPage() {
             </ModalField>
             <ModalField label="Discount Amount ($)">
               <input type="number" step="0.01" min="0" value={promoForm.discount_amount || ''}
-                onChange={e => setPromoForm(p => ({ ...p, discount_amount: e.target.value }))} />
+                onChange={e => setPromoForm(p => ({ ...p, discount_amount: e.target.value }))} placeholder="0.00" />
             </ModalField>
           </div>
           {promoForm.type === 'promo_code' && (
@@ -813,7 +872,7 @@ export default function HotelsPage() {
           <div className="grid grid-cols-2 gap-3 mt-3">
             <ModalField label="Usage Limit (empty = unlimited)">
               <input type="number" min="0" value={promoForm.usage_limit || ''}
-                onChange={e => setPromoForm(p => ({ ...p, usage_limit: e.target.value || null }))} />
+                onChange={e => setPromoForm(p => ({ ...p, usage_limit: e.target.value || null }))} placeholder="Unlimited" />
             </ModalField>
             <ModalField label="Active">
               <select value={promoForm.is_active ? '1' : '0'} onChange={e => setPromoForm(p => ({ ...p, is_active: e.target.value === '1' }))}>
@@ -868,7 +927,9 @@ function ModalField({ label, children }: { label: string; children: React.ReactN
   return (
     <div className="mb-3">
       <label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{label}</label>
-      {children}
+      <div className="[&>input]:w-full [&>input]:px-3 [&>input]:py-2 [&>input]:rounded-lg [&>input]:bg-[var(--bg-dark)] [&>input]:border [&>input]:border-[var(--border)] [&>input]:text-[var(--fg)] [&>input]:text-[13px] [&>input]:outline-none [&>input]:focus:border-[var(--accent-gold)] [&>input]:transition-colors [&>textarea]:w-full [&>textarea]:px-3 [&>textarea]:py-2 [&>textarea]:rounded-lg [&>textarea]:bg-[var(--bg-dark)] [&>textarea]:border [&>textarea]:border-[var(--border)] [&>textarea]:text-[var(--fg)] [&>textarea]:text-[13px] [&>textarea]:outline-none [&>textarea]:focus:border-[var(--accent-gold)] [&>textarea]:transition-colors [&>select]:w-full [&>select]:px-3 [&>select]:py-2 [&>select]:rounded-lg [&>select]:bg-[var(--bg-dark)] [&>select]:border [&>select]:border-[var(--border)] [&>select]:text-[var(--fg)] [&>select]:text-[13px] [&>select]:outline-none [&>select]:focus:border-[var(--accent-gold)] [&>select]:transition-colors">
+        {children}
+      </div>
     </div>
   )
 }

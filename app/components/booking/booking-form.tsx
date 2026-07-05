@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import StepProgress from './step-progress'
 import StepFlightLogistics from './step-flight-logistics'
@@ -9,6 +9,7 @@ import StepDestination from './step-destination'
 import StepPackages from './step-packages'
 import StepPayment from './step-payment'
 import BookingConfirmation from './booking-confirmation'
+import { BookingSummarySidebar, MobileStickyBar } from './booking-summary'
 import Button from '@/app/components/ui/button'
 import LangToggle from '@/app/components/ui/lang-toggle'
 import { ToastProvider, useToast } from './lib/toast'
@@ -99,6 +100,29 @@ function DesktopStepProgress({ currentStep, stepDetails }: { currentStep: number
 
 function BookingFormInner() {
   const { t } = useI18n()
+
+  interface BookingConfig {
+    packages: Record<string, { name: string; price: number }>
+    returnTripCharge: number
+    serviceFee: number
+    taxRate: number
+    currency: string
+    advanceBookingDays: number
+  }
+
+  const [bookingConfig, setBookingConfig] = useState<BookingConfig | null>(null)
+  const [configError, setConfigError] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/config')
+      .then(r => {
+        if (!r.ok) throw new Error(`Config fetch failed: ${r.status}`)
+        return r.json()
+      })
+      .then(cfg => setBookingConfig(cfg))
+      .catch(() => setConfigError(true))
+  }, [])
+
   const stepDetails = getStepDetails(t)
   const [step, setStep] = useState<Step>(0)
   const [flightData, setFlightData] = useState({
@@ -285,6 +309,32 @@ function BookingFormInner() {
     )
   }
 
+  if (configError) {
+    return (
+      <div className="min-h-screen bg-bg-dark flex flex-col">
+        <header className="bg-[var(--bg-card)] border-b border-[var(--border)]">
+          <div className="mx-auto max-w-container px-4 md:px-12 py-4 flex items-center justify-between">
+            <Link href="/" className="font-display text-2xl font-semibold text-white no-underline tracking-tight">
+              Medellín{' '}<span className="text-[var(--accent-gold)]">Premium</span>
+            </Link>
+          </div>
+        </header>
+        <main className="flex-1 flex items-center justify-center px-4">
+          <div className="text-center p-8 max-w-md">
+            <div className="w-16 h-16 rounded-full bg-[rgba(239,68,68,0.12)] flex items-center justify-center mx-auto mb-4">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+            <h2 className="text-display-lg text-white mb-2">Service Temporarily Unavailable</h2>
+            <p className="text-body-md text-[var(--text-secondary)]">We are unable to process bookings at this moment. Please try again shortly.</p>
+            <button onClick={() => window.location.reload()} className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-[var(--radius-md)] bg-gold-gradient text-[var(--bg-dark)] font-bold">
+              Try Again
+            </button>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-bg-dark flex flex-col">
       <header className="bg-[var(--bg-card)] border-b border-[var(--border)]">
@@ -310,16 +360,42 @@ function BookingFormInner() {
 
       <main className="flex-1">
         <div className="mx-auto max-w-container px-4 md:px-12 py-8 md:py-12">
-          <div className="md:grid md:grid-cols-[280px_1fr] md:gap-12 lg:gap-16">
-            <aside className="hidden md:block">
-              <div className="md:sticky md:top-8 pt-8">
-                <DesktopStepProgress currentStep={step} stepDetails={stepDetails} />
-              </div>
-            </aside>
-
-            <div>
-              <div className="md:hidden mb-8">
+          <div className="lg:grid lg:grid-cols-[1fr_360px] lg:gap-10 xl:gap-14 items-start">
+            <div className="min-w-0">
+              <div className="md:hidden mb-6">
                 <StepProgress currentStep={step} totalSteps={TOTAL_STEPS} />
+              </div>
+
+              <div className="hidden md:flex items-center gap-3 mb-8">
+                {stepDetails.map((s, i) => {
+                  const isActive = i === step
+                  const isCompleted = i < step
+                  return (
+                    <div key={s.label} className="flex items-center gap-3">
+                      <div className={`flex items-center gap-2.5 text-[12px] font-medium transition-colors duration-250 ${
+                        isActive ? 'text-[var(--accent-gold)]' : isCompleted ? 'text-[var(--success)]' : 'text-[var(--text-muted)]'
+                      }`}>
+                        <span className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold border-[1.5px] transition-all duration-250 ${
+                          isActive
+                            ? 'bg-[rgba(212,165,116,0.12)] border-[var(--accent-gold)] text-[var(--accent-gold)]'
+                            : isCompleted
+                            ? 'bg-[rgba(34,197,94,0.12)] border-[var(--success)] text-[var(--success)]'
+                            : 'border-[var(--border)]'
+                        }`}>
+                          {isCompleted ? (
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                          ) : (
+                            i + 1
+                          )}
+                        </span>
+                        <span className="hidden lg:inline">{s.label}</span>
+                      </div>
+                      {i < stepDetails.length - 1 && (
+                        <div className={`w-6 h-px transition-colors duration-250 ${i < step ? 'bg-[var(--success)]' : 'bg-[var(--border)]'}`} />
+                      )}
+                    </div>
+                  )
+                })}
               </div>
 
               <div className="bg-[var(--bg-card)] rounded-[var(--radius-xl)] p-6 md:p-10 lg:p-12 border border-[var(--border)]">
@@ -327,6 +403,7 @@ function BookingFormInner() {
                   <StepFlightLogistics
                     data={flightData}
                     onChange={setFlightData}
+                    config={bookingConfig}
                   />
                 )}
                 {step === 1 && (
@@ -357,6 +434,7 @@ function BookingFormInner() {
                   <StepPackages
                     value={selectedPackage}
                     onChange={setSelectedPackage}
+                    config={bookingConfig}
                   />
                 )}
 
@@ -372,6 +450,7 @@ function BookingFormInner() {
                     needReturn={flightData.needReturn}
                     onPaymentSuccess={handlePaymentSuccess}
                     onPaymentError={() => {}}
+                    config={bookingConfig}
                   />
                 )}
 
@@ -382,6 +461,7 @@ function BookingFormInner() {
                       onClick={prevStep}
                       disabled={step === 0}
                     >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
                       {t.common.back}
                     </Button>
                     <Button
@@ -390,6 +470,7 @@ function BookingFormInner() {
                       disabled={!canProceed()}
                     >
                       {t.common.continue}
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
                     </Button>
                   </div>
                 )}
@@ -400,6 +481,7 @@ function BookingFormInner() {
                       variant="ghost"
                       onClick={prevStep}
                     >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
                       {t.booking.steps.payment.backToPackages}
                     </Button>
                   </div>
@@ -415,9 +497,29 @@ function BookingFormInner() {
                 </div>
               )}
             </div>
+
+            <aside className="hidden lg:block lg:sticky lg:top-[88px]">
+              <BookingSummarySidebar
+                packageId={selectedPackage}
+                needReturn={flightData.needReturn}
+                config={bookingConfig}
+              />
+            </aside>
           </div>
         </div>
       </main>
+
+      {selectedPackage && (
+        <MobileStickyBar
+          packageId={selectedPackage}
+          needReturn={flightData.needReturn}
+          currentStep={step}
+          totalSteps={TOTAL_STEPS}
+          onConfirm={() => {}}
+          isSubmitting={isSubmitting}
+          config={bookingConfig}
+        />
+      )}
 
       <footer className="bg-[var(--bg-card)] border-t border-[var(--border)] py-8">
         <div className="mx-auto max-w-container px-4 md:px-12 text-center">

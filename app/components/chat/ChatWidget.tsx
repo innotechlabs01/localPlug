@@ -27,6 +27,7 @@ interface ChatWidgetState {
   initialLoading: boolean
   lastMessageAt: string | null
   inactivityWarningShown: boolean
+  isEscalated: boolean
   userPhone: string | null
   userCountry: string | null
   countryCode: string | null
@@ -350,6 +351,7 @@ export default function ChatWidget() {
     initialLoading: false,
     lastMessageAt: null,
     inactivityWarningShown: false,
+    isEscalated: false,
     userPhone: null,
     userCountry: null,
     countryCode: null
@@ -361,6 +363,9 @@ export default function ChatWidget() {
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const inactivityTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const inactivityWarningRef = useRef<NodeJS.Timeout | null>(null)
+
+  const [timeouts, setTimeouts] = useState({ connectMs: 90000, reconnectMs: 60000 })
+  useEffect(() => { fetch('/api/config').then(r => r.json()).catch(() => {}) }, [])
 
   // Form screen state
   const [formData, setFormData] = useState({
@@ -464,8 +469,8 @@ export default function ChatWidget() {
           message_type: 'system',
         }]
       }))
-    }, 60000) // 60 seconds
-    
+    }, timeouts.reconnectMs) // 60 seconds
+
     inactivityTimeoutRef.current = setTimeout(() => {
       // Close conversation due to inactivity
       handleClose()
@@ -479,8 +484,8 @@ export default function ChatWidget() {
           message_type: 'system',
         }]
       }))
-    }, 90000) // 90 seconds
-  }, [t, inactivityTimeoutRef, inactivityWarningRef])
+    }, timeouts.connectMs) // 90 seconds
+  }, [t, timeouts.connectMs, timeouts.reconnectMs])
 
   // Handle sending messages
   const sendMessage = useCallback(async (content: string) => {
@@ -592,7 +597,8 @@ export default function ChatWidget() {
             content: msg,
             message_type: 'escalation',
           }],
-          isLoading: false
+          isLoading: false,
+          isEscalated: true
         }))
       }
     } catch (err) {
@@ -764,6 +770,19 @@ export default function ChatWidget() {
                     className="flex-1 px-4 py-2.5 bg-[#1a1a2e] rounded-full border border-[#0f3460] focus:outline-none focus:ring-2 focus:ring-[#e94560] text-white placeholder-gray-500 text-sm shadow-sm"
                     disabled={state.isLoading || state.isClosed}
                   />
+                  {!state.isEscalated && !state.isClosed && state.conversationId && (
+                    <button
+                      onClick={handleEscalate}
+                      disabled={state.isLoading}
+                      title={t.chatWidget.escalateToHuman || 'Talk to a person'}
+                      className="w-10 h-10 rounded-full bg-[#16213e] border border-[#0f3460] text-gray-400 flex items-center justify-center shrink-0 hover:bg-[#0f3460] hover:text-white transition-colors disabled:opacity-40 shadow-sm"
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                      </svg>
+                    </button>
+                  )}
                   <button
                     onClick={() => sendMessage(state.inputValue)}
                     disabled={state.isLoading || state.isClosed || !state.inputValue.trim()}

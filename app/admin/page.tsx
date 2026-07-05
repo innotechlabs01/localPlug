@@ -113,6 +113,17 @@ export default function AdminDashboard() {
   const [toast, setToast] = useState<{ message: string } | null>(null)
   const [drivers, setDrivers] = useState<{ id: number; name: string; vehicle: string; plate: string; status: string }[]>([])
   const [loading, setLoading] = useState(true)
+  const [configValues, setConfigValues] = useState({ returnTripCharge: 48, hotelRevenuePerNight: 85 })
+
+  useEffect(() => {
+    fetch('/api/config')
+      .then(r => r.json())
+      .then(cfg => setConfigValues({
+        returnTripCharge: cfg.returnTripCharge ?? 48,
+        hotelRevenuePerNight: 85,
+      }))
+      .catch(() => {})
+  }, [])
 
   const loadData = useCallback(async () => {
     try {
@@ -552,21 +563,21 @@ export default function AdminDashboard() {
                   <div className="rev-dot" style={{ background: 'var(--accent)' }} />
                   <span className="rev-label">{d.baseServices as string}</span>
                   <span className="rev-amount">
-                    ${(totalRevenue - (todayBookings.filter(b => b.returnTransport).reduce((s, b) => s + (b.returnFee || 48), 0)) - (todayBookings.reduce((s, b) => s + (b.hotelSubtotal || (b.numNights || 0) * 85), 0))).toLocaleString()}
+                    ${(totalRevenue - (todayBookings.filter(b => b.returnTransport).reduce((s, b) => s + (b.returnFee || configValues.returnTripCharge), 0)) - (todayBookings.reduce((s, b) => s + (b.hotelSubtotal || (b.numNights || 0) * configValues.hotelRevenuePerNight), 0))).toLocaleString()}
                   </span>
                 </div>
                 <div className="rev-item">
                   <div className="rev-dot" style={{ background: 'var(--info)' }} />
                   <span className="rev-label">{d.returnTransportRev as string}</span>
                   <span className="rev-amount">
-                    ${todayBookings.filter(b => b.returnTransport).reduce((s, b) => s + (b.returnFee || 48), 0).toLocaleString()}
+                    ${todayBookings.filter(b => b.returnTransport).reduce((s, b) => s + (b.returnFee || configValues.returnTripCharge), 0).toLocaleString()}
                   </span>
                 </div>
                 <div className="rev-item">
                   <div className="rev-dot" style={{ background: 'var(--gold)' }} />
                   <span className="rev-label">{d.hotelAccommodation as string}</span>
                   <span className="rev-amount">
-                    ${todayBookings.reduce((s, b) => s + (b.hotelSubtotal || (b.numNights || 0) * 85), 0).toLocaleString()}
+                    ${todayBookings.reduce((s, b) => s + (b.hotelSubtotal || (b.numNights || 0) * configValues.hotelRevenuePerNight), 0).toLocaleString()}
                   </span>
                 </div>
                 <div className="rev-item" style={{ borderTop: '1px solid var(--border)', paddingTop: 10, marginTop: 4 }}>

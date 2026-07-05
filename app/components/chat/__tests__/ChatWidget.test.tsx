@@ -22,7 +22,15 @@ vi.mock('@/app/components/ratings/RatingForm', () => ({
 
 import ChatWidget from '../ChatWidget'
 
-const mockFetch = vi.fn()
+const mockFetch = vi.fn((url: string) => {
+  if (url === '/api/config') {
+    return Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({ connectTimeoutMs: 90000, reconnectTimeoutMs: 60000 }),
+    })
+  }
+  return Promise.resolve({ ok: true, json: () => Promise.resolve({}) })
+})
 
 beforeEach(() => {
   vi.stubGlobal('fetch', mockFetch)
@@ -158,7 +166,7 @@ describe('ChatWidget', () => {
     await waitFor(() => {
       const sendCalls = mockFetch.mock.calls.filter((c: any) => c[0] === '/api/chat/send')
       expect(sendCalls.length).toBeGreaterThanOrEqual(1)
-      const body = JSON.parse(sendCalls[0][1].body)
+      const body = JSON.parse((sendCalls[0] as any)[1].body)
       expect(body.message).toBe('Hello')
     })
   })

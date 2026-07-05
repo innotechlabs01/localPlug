@@ -11,7 +11,7 @@ function getStripe(): Stripe {
 }
 
 export async function POST(req: Request) {
-  const rateLimitResponse = rateLimitMiddleware(req)
+  const rateLimitResponse = await rateLimitMiddleware(req)
   if (rateLimitResponse) return rateLimitResponse
 
   try {

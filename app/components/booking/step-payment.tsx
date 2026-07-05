@@ -8,13 +8,14 @@ import PaymentForm from './payment-form'
 
 const stripePromise = getStripe()
 
-const PACKAGE_PRICES_USD: Record<string, number> = {
-  'smooth-landing': 89,
-  'first-24': 159,
-  'full-insider': 269,
+interface BookingConfig {
+  packages: Record<string, { name: string; price: number }>
+  returnTripCharge: number
+  serviceFee: number
+  taxRate: number
+  currency: string
+  advanceBookingDays: number
 }
-
-const RETURN_TRIP_CHARGE = 48
 
 interface FlightData {
   flightNumber: string
@@ -35,6 +36,7 @@ interface StepPaymentProps {
   needReturn?: boolean
   onPaymentSuccess: () => void
   onPaymentError: (message: string) => void
+  config?: BookingConfig | null
 }
 
 export default function StepPayment({
@@ -48,6 +50,7 @@ export default function StepPayment({
   needReturn,
   onPaymentSuccess,
   onPaymentError,
+  config,
 }: StepPaymentProps) {
   const { t } = useI18n()
   const paymentT = t.booking.steps.payment
@@ -112,8 +115,8 @@ export default function StepPayment({
 
   const hasReturn = needReturn ?? flightData.needReturn ?? false
   const packageName = t.booking.steps.packages.packages[packageId as keyof typeof t.booking.steps.packages.packages]?.name || packageId
-  const basePrice = PACKAGE_PRICES_USD[packageId] || 0
-  const totalPrice = basePrice + (hasReturn ? RETURN_TRIP_CHARGE : 0)
+  const basePrice = config?.packages?.[packageId]?.price ?? 0
+  const totalPrice = basePrice + (hasReturn ? (config?.returnTripCharge ?? 48) : 0)
   const packageT = t.booking.steps.packages.packages[packageId as keyof typeof t.booking.steps.packages.packages]
 
   return (
@@ -123,9 +126,9 @@ export default function StepPayment({
         {paymentT.subtitle}
       </p>
 
-      <div className="bg-[var(--bg-elevated)] rounded-[var(--radius-lg)] p-6 mb-8 border border-[var(--border)]">
-        <h4 className="text-base font-semibold text-white mb-4 flex items-center gap-3">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-gold)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <div className="bg-[var(--bg-elevated)] rounded-[var(--radius-lg)] p-5 mb-8 border border-[var(--border)]">
+        <h4 className="text-[14px] font-semibold text-white mb-4 pb-3 border-b border-[var(--border)] flex items-center gap-2">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent-gold)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
             <polyline points="14 2 14 8 20 8" />
           </svg>
@@ -133,37 +136,33 @@ export default function StepPayment({
         </h4>
 
         <div className="space-y-0">
-          {packageT?.subtitle && (
-            <div className="flex justify-between py-3 border-b border-[var(--border)] text-sm">
+          {packageT?.name && (
+            <div className="flex justify-between py-2.5 text-[13px]">
               <span className="text-[var(--text-secondary)]">{paymentT.summaryExperience}</span>
-              <span className="text-white font-medium">{packageName}</span>
+              <span className="text-white font-medium">{packageT.name}</span>
             </div>
           )}
-          <div className="flex justify-between py-3 border-b border-[var(--border)] text-sm">
-            <span className="text-[var(--text-secondary)]">{paymentT.summaryArrival}</span>
+          <div className="flex justify-between py-2.5 text-[13px]">
+            <span className="text-[var(--text-secondary)]">{paymentT.summaryArrival || 'Arrival'}</span>
             <span className="text-white font-medium">{flightData.arrivalDate || '-'}</span>
           </div>
-          <div className="flex justify-between py-3 border-b border-[var(--border)] text-sm">
-            <span className="text-[var(--text-secondary)]">{paymentT.summaryFlight}</span>
+          <div className="flex justify-between py-2.5 text-[13px]">
+            <span className="text-[var(--text-secondary)]">{paymentT.summaryFlight || 'Flight'}</span>
             <span className="text-white font-medium">{flightData.flightNumber || '-'}</span>
           </div>
-          <div className="flex justify-between py-3 border-b border-[var(--border)] text-sm">
-            <span className="text-[var(--text-secondary)]">{paymentT.summaryDestination}</span>
-            <span className="text-white font-medium">{destinationAddress || paymentT.summaryToBeConfirmed}</span>
-          </div>
-          <div className="flex justify-between py-3 border-b border-[var(--border)] text-sm">
-            <span className="text-[var(--text-secondary)]">{paymentT.summaryPlan}</span>
-            <span className="text-white font-medium">{packageName}</span>
+          <div className="flex justify-between py-2.5 text-[13px]">
+            <span className="text-[var(--text-secondary)]">{paymentT.summaryDestination || 'Destination'}</span>
+            <span className="text-white font-medium max-w-[200px] truncate text-right">{destinationAddress || paymentT.summaryToBeConfirmed || 'To be confirmed'}</span>
           </div>
           {hasReturn && (
-            <div className="flex justify-between py-3 border-b border-[var(--border)] text-sm">
-              <span className="text-[var(--text-secondary)]">{paymentT.summaryReturnTrip}</span>
-              <span className="text-white font-medium">${RETURN_TRIP_CHARGE} USD</span>
+            <div className="flex justify-between py-2.5 text-[13px]">
+              <span className="text-[var(--text-secondary)]">{paymentT.summaryReturnTrip || 'Return Transport'}</span>
+              <span className="text-[var(--accent-gold)] font-medium">+${config?.returnTripCharge ?? 48}.00</span>
             </div>
           )}
-          <div className="flex justify-between py-3 text-base font-bold">
-            <span className="text-[var(--text-secondary)]">{paymentT.summaryTotal}</span>
-            <span className="text-[var(--accent-gold)]">${totalPrice} USD</span>
+          <div className="flex justify-between py-3 mt-2 border-t border-[var(--border)] text-[15px] font-semibold">
+            <span className="text-white">{paymentT.summaryTotal}</span>
+            <span className="text-[var(--accent-gold)]">${totalPrice}.00 USD</span>
           </div>
         </div>
       </div>
