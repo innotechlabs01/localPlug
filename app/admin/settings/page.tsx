@@ -224,7 +224,7 @@ export default function SettingsPage() {
               {[
                 { key: 'service_fee_flat', label: 'Service Fee (flat)', sub: 'Per-booking service charge', defaultVal: '5', prefix: '$', suffix: 'USD', step: '0.01' },
                 { key: 'tax_rate_iva', label: 'IVA Tax Rate', sub: 'Colombian VAT (e.g. 0.19 = 19%)', defaultVal: '0.19', prefix: '', suffix: '', step: '0.01' },
-                { key: 'platform_fee_percent', label: 'Platform Fee %', sub: 'Commission percentage', defaultVal: '0.10', prefix: '', suffix: '', step: '0.001' },
+                { key: 'platform_fee_percent', label: 'Platform Fee %', sub: 'Commission percentage (e.g. 0.10 = 10%)', defaultVal: '0.10', prefix: '', suffix: '', step: '0.01' },
                 { key: 'platform_fee_fixed', label: 'Platform Fee Fixed', sub: 'Per-transaction fixed fee', defaultVal: '0.30', prefix: '$', suffix: 'USD', step: '0.01' },
               ].map(item => (
                 <div key={item.key} className="input-group">
@@ -294,7 +294,7 @@ export default function SettingsPage() {
                 { key: 'advance_booking_days', label: 'Advance Booking Days', sub: 'Minimum days before arrival', defaultVal: '10', suffix: 'days', step: '1' },
                 { key: 'rate_limit_max_requests', label: 'Rate Limit Max', sub: 'Max requests per window', defaultVal: '20', suffix: 'req', step: '1' },
                 { key: 'rate_limit_window_ms', label: 'Rate Limit Window', sub: 'Time window in milliseconds', defaultVal: '60000', suffix: 'ms', step: '1000' },
-                { key: 'payment_intent_timeout_ms', label: 'Payment Timeout', sub: 'Stripe intent creation timeout', defaultVal: '60000', suffix: 'ms', step: '1000' },
+                { key: 'payment_intent_timeout_ms', label: 'Payment Timeout', sub: 'Payment creation timeout', defaultVal: '60000', suffix: 'ms', step: '1000' },
                 { key: 'payment_polling_interval_ms', label: 'Payment Poll Interval', sub: 'Status polling interval', defaultVal: '2000', suffix: 'ms', step: '500' },
                 { key: 'payment_polling_max_attempts', label: 'Payment Max Polls', sub: 'Max status check attempts', defaultVal: '30', suffix: 'attempts', step: '1' },
               ].map(item => (
@@ -393,30 +393,29 @@ export default function SettingsPage() {
           <div className="settings-section-header">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
             <span className="settings-section-title">{d.paymentIntegration || 'Payment Integration'}</span>
-            <span className="settings-section-desc">{d.stripeProcessing || 'Stripe payment processing'}</span>
+            <span className="settings-section-desc">{d.paddleProcessing || 'Paddle payment processing'}</span>
           </div>
           <div className="settings-section-body">
             <div className="stripe-connect-card">
               <div className="stripe-status">
                 <div className="stripe-status-dot" />
                 <span className="stripe-status-text">{d.connected || 'Connected'}</span>
-                <span style={{ fontSize: 12, color: 'var(--fg-secondary)', marginLeft: 4 }}>{d.viaStripe || 'via Stripe'}</span>
+                <span style={{ fontSize: 12, color: 'var(--fg-secondary)', marginLeft: 4 }}>{d.viaPaddle || 'via Paddle'}</span>
               </div>
               <div className="stripe-field">
-                <label>{d.publishableKey || 'Publishable Key'}</label>
-                <div className="value">pk_live_51H3h...</div>
+                <label>{d.clientToken || 'Client Token'}</label>
+                <div className="value">tok_live_51H3h...</div>
               </div>
               <div className="stripe-field">
-                <label>{d.secretKey || 'Secret Key'}</label>
-                <div className="value">sk_live_••••••••••••••••••••••••</div>
+                <label>{d.apiKey || 'API Key'}</label>
+                <div className="value">••••••••••••••••••••••••</div>
               </div>
               <div className="stripe-field">
                 <label>{d.webhookUrl || 'Webhook URL'}</label>
-                <div className="value">https://api.localplug.com/stripe/webhook</div>
+                <div className="value">https://api.localplug.com/paddle/webhook</div>
               </div>
               <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                <button className="btn btn-secondary btn-sm" onClick={() => showToast(d.reconnect || 'Reconnect Stripe')}>{d.reconnect || 'Reconnect'}</button>
-                <button className="btn btn-danger btn-sm" onClick={() => showToast(d.disconnect || 'Disconnect Stripe')}>{d.disconnect || 'Disconnect'}</button>
+                <button className="btn btn-secondary btn-sm" onClick={() => showToast(d.reconnect || 'Reconnect Paddle')}>{d.reconnect || 'Reconnect'}</button>
               </div>
             </div>
           </div>
