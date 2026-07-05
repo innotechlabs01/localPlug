@@ -224,8 +224,8 @@ export default function SettingsPage() {
               {[
                 { key: 'service_fee_flat', label: 'Service Fee (flat)', sub: 'Per-booking service charge', defaultVal: '5', prefix: '$', suffix: 'USD', step: '0.01' },
                 { key: 'tax_rate_iva', label: 'IVA Tax Rate', sub: 'Colombian VAT (e.g. 0.19 = 19%)', defaultVal: '0.19', prefix: '', suffix: '', step: '0.01' },
-                { key: 'stripe_fee_percent', label: 'Stripe Fee %', sub: 'Processing percentage', defaultVal: '0.029', prefix: '', suffix: '', step: '0.001' },
-                { key: 'stripe_fee_fixed', label: 'Stripe Fee Fixed', sub: 'Per-transaction fixed fee', defaultVal: '0.30', prefix: '$', suffix: 'USD', step: '0.01' },
+                { key: 'platform_fee_percent', label: 'Platform Fee %', sub: 'Commission percentage', defaultVal: '0.10', prefix: '', suffix: '', step: '0.001' },
+                { key: 'platform_fee_fixed', label: 'Platform Fee Fixed', sub: 'Per-transaction fixed fee', defaultVal: '0.30', prefix: '$', suffix: 'USD', step: '0.01' },
               ].map(item => (
                 <div key={item.key} className="input-group">
                   <label className="input-label">

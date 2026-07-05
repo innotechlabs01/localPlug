@@ -76,7 +76,7 @@ export default function PaymentsPage() {
   const [data, setData] = useState<PaymentsApiResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [stripeFee, setStripeFee] = useState({ percent: 0.029, fixed: 0.30 })
+  const [platformFee, setPlatformFee] = useState({ percent: 0.10, fixed: 0.30 })
 
   useEffect(() => {
     let mounted = true
@@ -106,9 +106,9 @@ export default function PaymentsPage() {
   useEffect(() => {
     fetch('/api/config')
       .then(r => r.json())
-      .then(cfg => setStripeFee({
-        percent: cfg.stripeFeePercent ?? 0.029,
-        fixed: cfg.stripeFeeFixed ?? 0.30,
+      .then(cfg => setPlatformFee({
+        percent: cfg.platformFeePercent ?? 0.10,
+        fixed: cfg.platformFeeFixed ?? 0.30,
       }))
       .catch(() => {})
   }, [])
@@ -297,7 +297,7 @@ export default function PaymentsPage() {
             <div className="stripe-detail"><span className="label">Total processed</span><span className="value">{formatCurrency(kpi.totalRev)}</span></div>
             <div className="stripe-detail"><span className="label">Pending settlement</span><span className="value">{formatCurrency(kpi.pending)}</span></div>
             <div className="stripe-detail"><span className="label">Last payout</span><span className="value">{formatCurrency(data?.summary?.lastPayout || 0)}</span></div>
-            <div className="stripe-detail"><span className="label">Processing fee rate</span><span className="value">{(stripeFee.percent * 100).toFixed(1)}% + ${stripeFee.fixed.toFixed(2)}</span></div>
+            <div className="stripe-detail"><span className="label">Processing fee rate</span><span className="value">{(platformFee.percent * 100).toFixed(1)}% + ${platformFee.fixed.toFixed(2)}</span></div>
           </div>
 
           {/* Payment Summary */}
