@@ -29,32 +29,36 @@ export async function POST(req: Request) {
 
     const payment = paymentResult.rows[0]
     const paddleTransactionId = payment.paddle_transaction_id as string | null
+    const refundReason = reason || 'Admin refund'
 
     // If we have a Paddle transaction, process refund via Paddle
     if (paddleTransactionId) {
       try {
         const refund = await createPaddleRefund({
           transactionId: paddleTransactionId,
-          reason: reason || 'Admin refund',
+          reason: refundReason,
         })
 
-        // Update payment status
-        await db.execute({
-          sql: `UPDATE payments SET status = 'refunded', refund_id = ?, refund_reason = ?, updated_at = datetime('now') WHERE booking_reference = ?`,
-          args: [refund.id, reason || 'Admin refund', booking_reference]
-        })
+        // Atomic update: all three tables in a single transaction
+        // First UPDATE includes status check to prevent concurrent double refunds
+        const results = await db.batch([
+          {
+            sql: `UPDATE payments SET status = 'refunded', refund_id = ?, refund_reason = ?, updated_at = datetime('now') WHERE booking_reference = ? AND status = 'completed'`,
+            args: [refund.id, refundReason, booking_reference]
+          },
+          {
+            sql: `UPDATE orders SET payment_status = 'refunded', updated_at = datetime('now') WHERE booking_reference = ?`,
+            args: [booking_reference]
+          },
+          {
+            sql: `UPDATE payments SET split_status = 'refunded', updated_at = datetime('now') WHERE booking_reference = ?`,
+            args: [booking_reference]
+          },
+        ])
 
-        // Update order payment status
-        await db.execute({
-          sql: `UPDATE orders SET payment_status = 'refunded', updated_at = datetime('now') WHERE booking_reference = ?`,
-          args: [booking_reference]
-        })
-
-        // Update split status
-        await db.execute({
-          sql: `UPDATE payments SET split_status = 'refunded', updated_at = datetime('now') WHERE booking_reference = ?`,
-          args: [booking_reference]
-        })
+        if (results[0].rowsAffected === 0) {
+          return NextResponse.json({ error: 'Payment already refunded or not eligible' }, { status: 409 })
+        }
 
         return NextResponse.json({
           success: true,
@@ -62,38 +66,42 @@ export async function POST(req: Request) {
           amount: payment.amount,
         })
       } catch (paddleError: unknown) {
-        const message = paddleError instanceof Error ? paddleError.message : 'Unknown error'
-        console.error('[Refund API] Paddle error:', message)
+        console.error('[Refund API] Paddle error:', paddleError)
         return NextResponse.json({
-          error: `Paddle refund failed: ${message}`
+          error: 'Refund processing failed'
         }, { status: 500 })
       }
     }
 
     // Fallback: manual refund without Paddle
-    await db.execute({
-      sql: `UPDATE payments SET status = 'refunded', refund_reason = ?, updated_at = datetime('now') WHERE booking_reference = ?`,
-      args: [reason || 'Admin manual refund', booking_reference]
-    })
+    const manualRefundId = `manual-${Date.now()}`
+    const results = await db.batch([
+      {
+        sql: `UPDATE payments SET status = 'refunded', refund_id = ?, refund_reason = ?, updated_at = datetime('now') WHERE booking_reference = ? AND status = 'completed'`,
+        args: [manualRefundId, reason || 'Admin manual refund', booking_reference]
+      },
+      {
+        sql: `UPDATE orders SET payment_status = 'refunded', updated_at = datetime('now') WHERE booking_reference = ?`,
+        args: [booking_reference]
+      },
+      {
+        sql: `UPDATE payments SET split_status = 'refunded', updated_at = datetime('now') WHERE booking_reference = ?`,
+        args: [booking_reference]
+      },
+    ])
 
-    await db.execute({
-      sql: `UPDATE orders SET payment_status = 'refunded', updated_at = datetime('now') WHERE booking_reference = ?`,
-      args: [booking_reference]
-    })
-
-    await db.execute({
-      sql: `UPDATE payments SET split_status = 'refunded', updated_at = datetime('now') WHERE booking_reference = ?`,
-      args: [booking_reference]
-    })
+    if (results[0].rowsAffected === 0) {
+      return NextResponse.json({ error: 'Payment already refunded or not eligible' }, { status: 409 })
+    }
 
     return NextResponse.json({
       success: true,
-      refundId: `manual-${Date.now()}`,
+      refundId: manualRefundId,
       amount: payment.amount,
       note: 'Manual refund processed (no Paddle transaction)',
     })
   } catch (error) {
     console.error('[Refund API] error:', error)
-    return NextResponse.json({ error: 'Failed to process refund' }, { status: 500 })
+    return NextResponse.json({ error: 'Refund processing failed' }, { status: 500 })
   }
 }
