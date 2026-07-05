@@ -9,7 +9,7 @@ specs/002-booking-persistence-mock/plan.md
 For context about flight validation, 15-day date enforcement, and flight-based user tracking, refer to:
 specs/003-flight-validation-tracking/plan.md
 
-For context about Stripe payment gateway integration, webhook-based payment confirmation, and payment record storage, refer to:
+For context about Paddle payment integration, webhook-based payment confirmation, and payment record storage, refer to:
 specs/004-stripe-payment-gateway/plan.md
 
 For context about admin dashboard, order queue, team management, and i18n translations, refer to:

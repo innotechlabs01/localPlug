@@ -204,7 +204,7 @@ app/api/
 
 **From Project Specs (mentioned in AGENTS.md):**
 - specs/001-professional-landing-page/plan.md - Project structure
-- specs/004-stripe-payment-gateway/plan.md - Payment system
+- specs/004-stripe-payment-gateway/plan.md - Paddle payment system
 - specs/005-admin-dashboard-i18n/plan.md - Admin dashboard
 - specs/009-whatsapp-evolution-api/SETUP-GUIDE.md - WhatsApp integration
 - specs/010-whatsapp-n8n-communication/plan.md - n8n workflows
