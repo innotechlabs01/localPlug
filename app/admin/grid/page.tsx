@@ -57,7 +57,7 @@ interface PaymentData {
     failureRate: string
     driverPayouts: number
     driverPayoutsPct: string
-    stripeBalance: number
+    platformBalance: number
   }
   revenueByService: RevenueItem[]
   transactions: PaymentTransaction[]
@@ -318,7 +318,7 @@ function PaymentsInner() {
             </div>
           </div>
 
-          {/* Stripe Balance */}
+          {/* Platform Balance */}
           <div className="bg-[#181b25] border border-[#282b38] rounded-[10px] p-4 hover:border-[#14b8a6] hover:shadow-[0_0_0_1px_rgba(20,184,166,0.3)] transition-all">
             <div className="flex items-start justify-between mb-2">
               <div className="w-9 h-9 rounded-[6px] bg-[rgba(20,184,166,0.12)] flex items-center justify-center text-[#14b8a6]">
@@ -327,8 +327,8 @@ function PaymentsInner() {
                 </svg>
               </div>
             </div>
-            <div className="text-[11px] font-medium text-[#646880] mb-0.5">{d.stripeBalance || 'Stripe Balance'}</div>
-            <div className="text-[24px] font-bold text-[#f0f2f5] leading-[1.1]">${data.kpis.stripeBalance.toLocaleString()}</div>
+            <div className="text-[11px] font-medium text-[#646880] mb-0.5">{d.platformBalance || 'Platform Balance'}</div>
+            <div className="text-[24px] font-bold text-[#f0f2f5] leading-[1.1]">${data.kpis.platformBalance.toLocaleString()}</div>
             <div className="flex items-center gap-1 mt-1.5 text-[12px] font-medium text-[#10b981]">
               {d.availableForPayout || 'Available for payout'}
             </div>
