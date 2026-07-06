@@ -326,6 +326,7 @@ export default {
         couldNotInitiate: 'No se pudo iniciar el pago.',
         serviceUnreachable: 'No se pudo contactar al servicio de pago. Intenta de nuevo.',
         backToPackages: 'Volver a Paquetes',
+        paymentTimedOut: 'La verificación del pago expiró. Por favor intenta de nuevo.',
         paymentReceived: '¡Pago recibido! Confirmando tu reserva...',
       },
     },

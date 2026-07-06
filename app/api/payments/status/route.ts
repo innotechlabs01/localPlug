@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getPayment } from '@/app/components/booking/lib/payment-store'
+import { getPayment } from '@/lib/services/payment-service'
 import { rateLimitMiddleware } from '@/lib/rate-limit'
 
 export async function GET(req: Request) {
@@ -25,16 +25,16 @@ export async function GET(req: Request) {
   }
 
   return NextResponse.json({
-    bookingReference: record.bookingReference,
-    packageId: record.packageId,
-    packageName: record.packageName,
+    bookingReference: record.booking_reference,
+    packageId: record.package_id,
+    packageName: record.package_name,
     amount: record.amount,
     currency: record.currency,
     status: record.status,
-    stripePaymentIntentId: record.stripePaymentIntentId,
-    customerEmail: record.customerEmail,
-    customerName: record.customerName,
-    createdAt: record.createdAt,
-    updatedAt: record.updatedAt,
+    paddleTransactionId: record.paddle_transaction_id,
+    customerEmail: record.customer_email,
+    customerName: record.customer_name,
+    createdAt: record.created_at,
+    updatedAt: record.updated_at,
   })
 }

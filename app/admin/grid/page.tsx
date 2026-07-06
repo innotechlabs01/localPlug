@@ -372,7 +372,7 @@ function PaymentsInner() {
         </div>
       )}
 
-      {/* ── PAYMENT TRANSACTIONS + STRIPE ── */}
+      {/* ── PAYMENT TRANSACTIONS + PADDLE ── */}
       <div>
         <div className="section-title">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-60">
@@ -485,7 +485,7 @@ function PaymentsInner() {
             )}
           </div>
 
-          {/* Stripe Integration Sidebar */}
+           {/* Paddle Integration Sidebar */}
           <div className="space-y-4">
             {/* Paddle Card */}
             <div className="bg-gradient-to-br from-[rgba(99,102,241,0.08)] to-[rgba(139,92,246,0.06)] border border-[rgba(99,102,241,0.2)] rounded-[10px] p-5">
@@ -497,7 +497,7 @@ function PaymentsInner() {
                 </div>
                 <div className="flex-1">
                   <div className="text-[14px] font-semibold text-[#f0f2f5]">{d.paddleIntegration || 'Paddle Integration'}</div>
-                  <div className="text-[11px] text-[#646880]">{d.paymentProcessing || 'Payment processing with Stripe'}</div>
+                  <div className="text-[11px] text-[#646880]">{d.paymentProcessing || 'Payment processing with Paddle'}</div>
                 </div>
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-[rgba(16,185,129,0.12)] text-[#10b981]">
                   {d.connected || 'Connected'}
@@ -695,7 +695,7 @@ function PaymentsInner() {
                 </div>
                 <div className="flex flex-col gap-0.5">
                   <span className="text-[10px] uppercase tracking-[0.3px] font-medium text-[#646880]">{d.paymentMethod || 'Payment Method'}</span>
-                  <span className="text-[13px] font-medium text-[#f0f2f5]">Stripe</span>
+                  <span className="text-[13px] font-medium text-[#f0f2f5]">Paddle</span>
                 </div>
                 <div className="flex flex-col gap-0.5">
                   <span className="text-[10px] uppercase tracking-[0.3px] font-medium text-[#646880]">{d.status || 'Status'}</span>
@@ -734,7 +734,7 @@ function PaymentsInner() {
                     { dot: 'var(--accent)', title: d.paymentInitiated || 'Payment Initiated', desc: (d.transactionCreated || 'Transaction created and sent to processor'), time: formatDate(selectedTx.created_at) },
                     { dot: 'var(--accent)', title: d.authorized || 'Authorized', desc: d.authorizedDesc || 'Payment authorized by bank', time: formatDate(selectedTx.created_at) },
                     { dot: 'var(--accent)', title: d.captured || 'Captured', desc: d.capturedDesc || 'Funds captured successfully', time: formatDate(selectedTx.created_at) },
-                    { dot: 'var(--accent)', title: d.settled || 'Settled', desc: d.settledDesc || 'Funds settled to Stripe balance', time: formatDate(selectedTx.created_at) },
+                    { dot: 'var(--accent)', title: d.settled || 'Settled', desc: d.settledDesc || 'Funds settled to Paddle balance', time: formatDate(selectedTx.created_at) },
                   ] : selectedTx.status === 'pending' ? [
                     { dot: 'var(--accent)', title: d.paymentInitiated || 'Payment Initiated', desc: d.transactionCreated || 'Transaction created', time: formatDate(selectedTx.created_at) },
                     { dot: 'var(--info)', title: d.awaitingConfirmation || 'Awaiting Confirmation', desc: d.awaitingConfirmationDesc || 'Waiting for payment confirmation', time: formatDate(selectedTx.created_at), glow: true },

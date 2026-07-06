@@ -327,6 +327,7 @@ export default {
         couldNotInitiate: 'Could not initiate payment.',
         serviceUnreachable: 'Could not reach payment service. Please try again.',
         backToPackages: 'Back to Packages',
+        paymentTimedOut: 'Payment verification timed out. Please try again.',
 
       },
     },

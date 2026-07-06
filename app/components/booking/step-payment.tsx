@@ -1,12 +1,21 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { Elements } from '@stripe/react-stripe-js'
-import { getStripe } from '@/app/components/booking/lib/stripe-client'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useI18n } from '@/lib/i18n'
-import PaymentForm from './payment-form'
 
-const stripePromise = getStripe()
+interface StepPaymentProps {
+  bookingReference: string
+  packageId: string
+  customerEmail: string
+  customerName: string
+  customerPhone: string
+  flightData: FlightData
+  destinationAddress: string
+  needReturn?: boolean
+  onPaymentSuccess: () => void
+  onPaymentError: (message: string) => void
+  config?: BookingConfig | null
+}
 
 interface BookingConfig {
   packages: Record<string, { name: string; price: number }>
@@ -25,20 +34,6 @@ interface FlightData {
   needReturn?: boolean
 }
 
-interface StepPaymentProps {
-  bookingReference: string
-  packageId: string
-  customerEmail: string
-  customerName: string
-  customerPhone: string
-  flightData: FlightData
-  destinationAddress: string
-  needReturn?: boolean
-  onPaymentSuccess: () => void
-  onPaymentError: (message: string) => void
-  config?: BookingConfig | null
-}
-
 export default function StepPayment({
   bookingReference,
   packageId,
@@ -54,12 +49,14 @@ export default function StepPayment({
 }: StepPaymentProps) {
   const { t } = useI18n()
   const paymentT = t.booking.steps.payment
-  const [clientSecret, setClientSecret] = useState<string | null>(null)
+  const [transactionId, setTransactionId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [timedOut, setTimedOut] = useState(false)
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [phase, setPhase] = useState<'loading' | 'ready' | 'paying' | 'polling' | 'done'>('loading')
 
-  const fetchClientSecret = useCallback(async () => {
+  const fetchTransaction = useCallback(async () => {
     try {
       const res = await fetch('/api/payments/create-intent', {
         method: 'POST',
@@ -90,8 +87,9 @@ export default function StepPayment({
         return
       }
 
-      setClientSecret(data.clientSecret)
+      setTransactionId(data.transactionId)
       setLoading(false)
+      setPhase('ready')
     } catch {
       setError(t.booking.steps.payment.serviceUnreachable)
       setLoading(false)
@@ -99,14 +97,90 @@ export default function StepPayment({
   }, [bookingReference, packageId, customerEmail, customerName])
 
   useEffect(() => {
-    fetchClientSecret()
-  }, [fetchClientSecret])
+    fetchTransaction()
+  }, [fetchTransaction])
 
   useEffect(() => {
-    if (clientSecret) return
+    if (transactionId) return
     const timer = setTimeout(() => setTimedOut(true), 60000)
     return () => clearTimeout(timer)
-  }, [clientSecret])
+  }, [transactionId])
+
+  useEffect(() => {
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current)
+      }
+    }
+  }, [])
+
+  const pollPaymentStatus = useCallback(async () => {
+    let attempts = 0
+    const maxAttempts = 45
+
+    pollingRef.current = setInterval(async () => {
+      attempts++
+      try {
+        const res = await fetch(`/api/payments/status?bookingRef=${encodeURIComponent(bookingReference)}`)
+        const data = await res.json()
+
+        if (data.status === 'completed') {
+          if (pollingRef.current) clearInterval(pollingRef.current)
+          setPhase('done')
+          onPaymentSuccess()
+          return
+        }
+
+        if (data.status === 'failed') {
+          if (pollingRef.current) clearInterval(pollingRef.current)
+          setPhase('ready')
+          onPaymentError(t.common.paymentFailed)
+          return
+        }
+
+        if (attempts >= maxAttempts) {
+          if (pollingRef.current) clearInterval(pollingRef.current)
+          setPhase('ready')
+          onPaymentError(t.booking.steps.payment.paymentTimedOut || 'Payment verification timed out. Please try again.')
+        }
+      } catch {
+        if (attempts >= maxAttempts) {
+          if (pollingRef.current) clearInterval(pollingRef.current)
+          setPhase('ready')
+          onPaymentError(t.booking.steps.payment.paymentTimedOut || 'Payment verification timed out. Please try again.')
+        }
+      }
+    }, 2000)
+  }, [bookingReference, onPaymentSuccess, onPaymentError, t])
+
+  const handlePay = async () => {
+    if (!transactionId) return
+
+    setPhase('paying')
+
+    try {
+      const paddleModule = await import('@paddle/paddle-js')
+      const paddle = await paddleModule.initializePaddle({
+        token: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN || '',
+        environment: process.env.NEXT_PUBLIC_PADDLE_ENV === 'production' ? 'production' : 'sandbox',
+      })
+
+      await paddle!.Checkout.open({
+        transactionId,
+        settings: {
+          displayMode: 'overlay',
+          successUrl: window.location.href,
+        },
+      })
+
+      setPhase('polling')
+      pollPaymentStatus()
+    } catch (err) {
+      const message = err instanceof Error ? err.message : t.common.paymentFailed
+      setPhase('ready')
+      onPaymentError(message)
+    }
+  }
 
   const handleError = (message: string) => {
     setError(message)
@@ -178,7 +252,7 @@ export default function StepPayment({
             <p className="text-body-md text-[#f87171] font-medium">{error}</p>
             <button
               type="button"
-              onClick={() => { setError(null); setLoading(true); setClientSecret(null); fetchClientSecret() }}
+              onClick={() => { setError(null); setLoading(true); setTransactionId(null); fetchTransaction() }}
               className="text-body-md text-[var(--accent-gold)] underline mt-1 hover:text-[var(--accent-gold-light)]"
             >
               {paymentT.tryAgain}
@@ -197,7 +271,7 @@ export default function StepPayment({
         </div>
       )}
 
-      {timedOut && !clientSecret && !error && (
+      {timedOut && !transactionId && !error && (
         <div className="py-8 text-center">
           <p className="text-body-md text-[var(--text-secondary)] mb-2">
             {paymentT.paymentTakingLong}
@@ -208,14 +282,27 @@ export default function StepPayment({
         </div>
       )}
 
-      {clientSecret && (
-        <Elements key={clientSecret} stripe={stripePromise} options={{ clientSecret }}>
-          <PaymentForm
-            onError={handleError}
-            onPaymentSuccess={onPaymentSuccess}
-            bookingReference={bookingReference}
-          />
-        </Elements>
+      {phase === 'ready' && transactionId && (
+        <div>
+          <button
+            onClick={handlePay}
+            className="w-full py-4 rounded-xl bg-gradient-to-r from-mountain-emerald to-emerald-600 text-white text-label-md font-bold hover:from-mountain-emerald/90 hover:to-emerald-600/90 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_4px_14px_rgba(5,150,105,0.25)] hover:shadow-[0_6px_20px_rgba(5,150,105,0.35)]"
+          >
+            {t.common.payAndConfirm}
+          </button>
+        </div>
+      )}
+
+      {(phase === 'paying' || phase === 'polling') && (
+        <div className="flex items-center gap-3 mt-4 text-[var(--text-secondary)]" aria-live="polite">
+          <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          <span className="text-body-md">
+            {phase === 'paying' ? paymentT.preparingForm : paymentT.paymentReceived}
+          </span>
+        </div>
       )}
     </div>
   )

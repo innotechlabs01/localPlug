@@ -396,21 +396,21 @@ export default function SettingsPage() {
             <span className="settings-section-desc">{d.paddleProcessing || 'Paddle payment processing'}</span>
           </div>
           <div className="settings-section-body">
-            <div className="stripe-connect-card">
-              <div className="stripe-status">
-                <div className="stripe-status-dot" />
-                <span className="stripe-status-text">{d.connected || 'Connected'}</span>
+            <div className="paddle-connect-card">
+              <div className="paddle-status">
+                <div className="paddle-status-dot" />
+                <span className="paddle-status-text">{d.connected || 'Connected'}</span>
                 <span style={{ fontSize: 12, color: 'var(--fg-secondary)', marginLeft: 4 }}>{d.viaPaddle || 'via Paddle'}</span>
               </div>
-              <div className="stripe-field">
+              <div className="paddle-field">
                 <label>{d.clientToken || 'Client Token'}</label>
                 <div className="value">tok_live_51H3h...</div>
               </div>
-              <div className="stripe-field">
+              <div className="paddle-field">
                 <label>{d.apiKey || 'API Key'}</label>
                 <div className="value">••••••••••••••••••••••••</div>
               </div>
-              <div className="stripe-field">
+              <div className="paddle-field">
                 <label>{d.webhookUrl || 'Webhook URL'}</label>
                 <div className="value">https://api.localplug.com/paddle/webhook</div>
               </div>

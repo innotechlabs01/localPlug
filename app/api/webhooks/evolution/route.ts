@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { triggerAiChatMessage } from '@/lib/n8n/client'
+import { timingSafeEqual } from '@/lib/string-utils'
 
 interface EvolutionEvent {
   event: string
@@ -41,7 +42,8 @@ function normalizePhone(jid: string): string {
 export async function POST(req: Request) {
   try {
     const signature = req.headers.get('x-evolution-signature')
-    if (!signature || signature !== process.env.EVOLUTION_WEBHOOK_SECRET) {
+    const secret = process.env.EVOLUTION_WEBHOOK_SECRET
+    if (!signature || !secret || !timingSafeEqual(signature, secret)) {
       console.error('[Evolution Webhook] Invalid or missing signature')
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
     }

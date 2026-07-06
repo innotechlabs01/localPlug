@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
-import { createPaymentIntent } from '@/app/components/booking/lib/stripe-server'
-import { getPayment, hasPayment, setPayment } from '@/app/components/booking/lib/payment-store'
+import { createTransaction, formatPaddleAmount } from '@/lib/paddle/server'
+import { getPayment, hasPayment, setPayment } from '@/lib/services/payment-service'
 import { rateLimitMiddleware } from '@/lib/rate-limit'
 import { getConfigPackageName, getConfigPackagePriceCents, getConfigPackageTotalCents } from '@/lib/pricing'
 import { getDefaultCurrency } from '@/lib/config'
-import type { PaymentRecord } from '@/app/components/booking/lib/types'
+import type { PaymentRecord } from '@/lib/payment-record'
 
 export async function POST(req: Request) {
   const rateLimitResponse = await rateLimitMiddleware(req)
@@ -24,8 +24,6 @@ export async function POST(req: Request) {
       arrivalTime?: string
       needReturn?: boolean
     }
-
-    console.log('[Create Payment Intent] Received needReturn:', needReturn)
 
     if (!bookingReference || !packageId || !customerEmail || !customerName) {
       return NextResponse.json(
@@ -54,38 +52,49 @@ export async function POST(req: Request) {
       }
     }
 
-    const { clientSecret, paymentIntentId } = await createPaymentIntent({
-      bookingReference,
-      packageId,
-      amount,
-      currency: await getDefaultCurrency(),
-      customerEmail,
-      customerName,
-      customerPhone,
-      flightNumber,
-      airline,
-      arrivalDate,
-      arrivalTime,
-      needReturn,
+    const currency = await getDefaultCurrency()
+    const packageName = await getConfigPackageName(packageId)
+
+    const items = [
+      {
+        description: packageName,
+        name: packageId,
+        unitPrice: { amount: formatPaddleAmount(amount), currencyCode: currency },
+        quantity: 1,
+      },
+    ]
+
+    const txn = await createTransaction({
+      items,
+      customData: {
+        booking_reference: bookingReference,
+        package_id: packageId,
+        need_return: String(!!needReturn),
+      },
+      customer: { email: customerEmail, name: customerName },
+      currencyCode: currency,
     })
 
     const now = new Date().toISOString()
     const record: PaymentRecord = {
-      bookingReference,
-      packageId,
-      packageName: await getConfigPackageName(packageId),
+      booking_reference: bookingReference,
+      package_id: packageId,
+      package_name: packageName,
       amount,
-      currency: await getDefaultCurrency(),
+      currency,
       status: 'pending',
-      stripePaymentIntentId: paymentIntentId,
-      customerEmail,
-      customerName,
-      createdAt: now,
-      updatedAt: now,
+      paddle_transaction_id: txn.id,
+      paddle_webhook_event_id: '',
+      customer_email: customerEmail,
+      customer_name: customerName,
+      customer_phone: customerPhone || '',
+      error_message: null,
+      created_at: now,
+      updated_at: now,
     }
     await setPayment(record)
 
-    return NextResponse.json({ clientSecret, paymentIntentId, amount })
+    return NextResponse.json({ transactionId: txn.id, amount })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Internal error'
     return NextResponse.json(
@@ -94,5 +103,3 @@ export async function POST(req: Request) {
     )
   }
 }
-
-

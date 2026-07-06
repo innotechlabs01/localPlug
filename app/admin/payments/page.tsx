@@ -289,15 +289,15 @@ export default function PaymentsPage() {
 
         {/* Right: Side Panel */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Stripe Overview */}
-          <div className="stripe-card">
-            <div className="stripe-title">Paddle Gateway</div>
-            <div className="stripe-balance">{formatCurrency(kpi.platformBalance)}</div>
-            <div className="stripe-sub">Connected · Live mode</div>
-            <div className="stripe-detail"><span className="label">Total processed</span><span className="value">{formatCurrency(kpi.totalRev)}</span></div>
-            <div className="stripe-detail"><span className="label">Pending settlement</span><span className="value">{formatCurrency(kpi.pending)}</span></div>
-            <div className="stripe-detail"><span className="label">Last payout</span><span className="value">{formatCurrency(data?.summary?.lastPayout || 0)}</span></div>
-            <div className="stripe-detail"><span className="label">Processing fee rate</span><span className="value">{(platformFee.percent * 100).toFixed(1)}% + ${platformFee.fixed.toFixed(2)}</span></div>
+          {/* Paddle Gateway */}
+          <div className="paddle-card">
+            <div className="paddle-title">Paddle Gateway</div>
+            <div className="paddle-balance">{formatCurrency(kpi.platformBalance)}</div>
+            <div className="paddle-sub">Connected · Live mode</div>
+            <div className="paddle-detail"><span className="label">Total processed</span><span className="value">{formatCurrency(kpi.totalRev)}</span></div>
+            <div className="paddle-detail"><span className="label">Pending settlement</span><span className="value">{formatCurrency(kpi.pending)}</span></div>
+            <div className="paddle-detail"><span className="label">Last payout</span><span className="value">{formatCurrency(data?.summary?.lastPayout || 0)}</span></div>
+            <div className="paddle-detail"><span className="label">Processing fee rate</span><span className="value">{(platformFee.percent * 100).toFixed(1)}% + ${platformFee.fixed.toFixed(2)}</span></div>
           </div>
 
           {/* Payment Summary */}

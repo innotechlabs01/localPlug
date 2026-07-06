@@ -111,7 +111,9 @@ export default function StepDestination({ data, onChange, customerNotes = '', on
             setHotels(parsed)
           }
         })
-        .catch(() => {})
+        .catch((err) => {
+          console.error('[StepDestination] Failed to load hotels:', err)
+        })
         .finally(() => setHotelsLoading(false))
     }
   }, [data.hasPlace, hotels.length, hotelsLoading])

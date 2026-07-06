@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
+import { timingSafeEqual } from '@/lib/string-utils'
 
 interface N8nWebhookEvent {
   event: string
@@ -14,7 +15,8 @@ interface N8nWebhookEvent {
 export async function POST(request: Request) {
   try {
     const signature = request.headers.get('x-n8n-signature')
-    if (!signature || signature !== process.env.N8N_WEBHOOK_SECRET) {
+    const secret = process.env.N8N_WEBHOOK_SECRET
+    if (!signature || !secret || !timingSafeEqual(signature, secret)) {
       console.error('[n8n Webhook] Invalid or missing signature')
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
     }

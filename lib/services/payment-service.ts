@@ -1,5 +1,5 @@
 import { getDb } from '@/lib/db'
-import type { PaymentRecord } from './types'
+import type { PaymentRecord } from '@/lib/payment-record'
 
 export async function getPayment(bookingReference: string): Promise<PaymentRecord | null> {
   const db = getDb()
@@ -12,20 +12,20 @@ export async function getPayment(bookingReference: string): Promise<PaymentRecor
 
   const row = result.rows[0]
   return {
-    bookingReference: row.booking_reference as string,
-    packageId: row.package_id as string,
-    packageName: row.package_name as string,
+    booking_reference: row.booking_reference as string,
+    package_id: row.package_id as string,
+    package_name: row.package_name as string,
     amount: row.amount as number,
     currency: row.currency as string,
     status: row.status as PaymentRecord['status'],
-    paddleTransactionId: (row.paddle_transaction_id as string) || (row.transaction_id as string) || '',
-    paddleWebhookEventId: (row.paddle_webhook_event_id as string) || (row.webhook_event_id as string) || undefined,
-    customerEmail: row.customer_email as string,
-    customerName: row.customer_name as string,
-    customerPhone: (row.customer_phone as string) || undefined,
-    errorMessage: row.error_message as string | undefined,
-    createdAt: row.created_at as string,
-    updatedAt: row.updated_at as string,
+    paddle_transaction_id: (row.paddle_transaction_id as string) || (row.transaction_id as string) || '',
+    paddle_webhook_event_id: (row.paddle_webhook_event_id as string) || (row.webhook_event_id as string) || '',
+    customer_email: row.customer_email as string,
+    customer_name: row.customer_name as string,
+    customer_phone: (row.customer_phone as string) || '',
+    error_message: row.error_message as string | null,
+    created_at: row.created_at as string,
+    updated_at: row.updated_at as string,
   }
 }
 
@@ -38,20 +38,20 @@ export async function setPayment(record: PaymentRecord): Promise<void> {
        customer_phone, error_message, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
-      record.bookingReference,
-      record.packageId,
-      record.packageName,
+      record.booking_reference,
+      record.package_id,
+      record.package_name,
       record.amount,
       record.currency,
       record.status,
-      record.paddleTransactionId,
-      record.paddleWebhookEventId || null,
-      record.customerEmail,
-      record.customerName,
-      record.customerPhone || null,
-      record.errorMessage || null,
-      record.createdAt,
-      record.updatedAt,
+      record.paddle_transaction_id,
+      record.paddle_webhook_event_id || null,
+      record.customer_email,
+      record.customer_name,
+      record.customer_phone || null,
+      record.error_message || null,
+      record.created_at,
+      record.updated_at,
     ],
   })
 }
