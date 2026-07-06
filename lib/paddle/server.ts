@@ -1,5 +1,3 @@
-'use server'
-
 import { getDefaultCurrency } from '@/lib/config'
 
 const BASE_URL =
