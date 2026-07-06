@@ -17,7 +17,7 @@ function log(level: 'info' | 'warn' | 'error', message: string, meta?: any): voi
 
 /**
  * Sends a WhatsApp welcome message after a successful payment.
- * This function is called by the Stripe webhook handler.
+ * This function is called by the Paddle webhook handler.
  */
 export async function sendWelcomeWhatsAppMessage(paymentRecord: PaymentRecord): Promise<void> {
   log('info', 'Processing WhatsApp welcome message', { bookingReference: paymentRecord.booking_reference });
@@ -142,11 +142,11 @@ export async function sendWelcomeWhatsAppMessage(paymentRecord: PaymentRecord): 
 
   // In a full implementation, we would now trigger the n8n workflow to send the message via Evolution API.
   // For now, we rely on the webhook infrastructure to handle this.
-  // The n8n workflow "Payment → WhatsApp Welcome" should be triggered by the Stripe webhook
+  // The n8n workflow "Payment → WhatsApp Welcome" should be triggered by the Paddle webhook
   // and will use the payment data to send the message.
 
   // Note: The actual sending of the WhatsApp message is handled by the n8n workflow,
-  // which is triggered by the Stripe webhook (see T016).
+  // which is triggered by the Paddle webhook (see T016).
 }
 
 /**

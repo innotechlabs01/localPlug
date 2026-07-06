@@ -399,6 +399,134 @@ export async function sendWhatsAppDirect(data: {
 }
 
 /**
+ * Trigger n8n workflow for driver new assignment notification (with accept/decline)
+ */
+export async function triggerDriverNewAssignment(data: {
+  assignmentId: number
+  orderId: number
+  bookingReference: string
+  customerName: string
+  customerPhone?: string
+  driverId: number
+  driverName: string
+  driverPhone?: string
+  vehiclePlate: string
+  vehicleBrand: string
+  serviceType: string
+  pickupLocation: string
+  destination: string
+  pickupDate: string
+  pickupTime: string
+  estimatedDuration: string
+  observations: string
+}): Promise<N8nResponse> {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+
+  return sendN8nWebhook('driver-new-assignment', {
+    event: 'driver_assignment',
+    assignmentId: data.assignmentId,
+    serviceId: data.bookingReference,
+    driver: {
+      id: String(data.driverId),
+      name: data.driverName,
+      phone: data.driverPhone || '',
+    },
+    vehicle: {
+      id: '',
+      plate: data.vehiclePlate,
+      brand: data.vehicleBrand,
+      model: '',
+      color: '',
+    },
+    service: {
+      type: data.serviceType,
+      pickup: data.pickupLocation,
+      destination: data.destination,
+      pickupDate: data.pickupDate,
+      pickupTime: data.pickupTime,
+      estimatedDuration: data.estimatedDuration,
+      observations: data.observations,
+    },
+    actions: {
+      accept: {
+        type: 'POST',
+        endpoint: `${siteUrl}/api/assignments/${data.assignmentId}/accept`,
+      },
+      decline: {
+        type: 'POST',
+        endpoint: `${siteUrl}/api/assignments/${data.assignmentId}/decline`,
+      },
+    },
+    evolutionApi: {
+      instanceName: process.env.EVOLUTION_INSTANCE_NAME,
+    },
+  })
+}
+
+/**
+ * Trigger n8n workflow for client driver confirmed notification
+ */
+export async function triggerClientDriverConfirmed(data: {
+  assignmentId: number
+  orderId: number
+  bookingReference: string
+  customerName: string
+  customerPhone?: string
+  driverName: string
+  driverPhone?: string
+  driverPhoto?: string
+  vehiclePlate: string
+  vehicleBrand: string
+  pickupDate: string
+  pickupTime: string
+  pickupLocation: string
+  destination: string
+}): Promise<N8nResponse> {
+  const phone = data.customerPhone
+  if (phone) {
+    const isSpanish = /[áéíóúñ¿¡]/.test(data.customerName) ||
+      data.customerName.toLowerCase().includes('maría') ||
+      data.customerName.toLowerCase().includes('josé')
+
+    const message = isSpanish
+      ? `🚗 *Tu conductor ha confirmado!*\n\n*Conductor:* ${data.driverName}\n*Vehículo:* ${data.vehicleBrand}\n*Placa:* ${data.vehiclePlate}\n*Fecha:* ${data.pickupDate}\n*Hora:* ${data.pickupTime}\n*Recogida:* ${data.pickupLocation}\n*Destino:* ${data.destination}\n\n📞 Contacto: ${data.driverPhone || 'No disponible'}\nEstado: *Confirmado*`
+      : `🚗 *Your driver is confirmed!*\n\n*Driver:* ${data.driverName}\n*Vehicle:* ${data.vehicleBrand}\n*Plate:* ${data.vehiclePlate}\n*Date:* ${data.pickupDate}\n*Time:* ${data.pickupTime}\n*Pickup:* ${data.pickupLocation}\n*Destination:* ${data.destination}\n\n📞 Contact: ${data.driverPhone || 'Not available'}\nStatus: *Confirmed*`
+
+    await sendOrQueueWhatsApp({ number: phone, message })
+  }
+
+  return sendN8nWebhook('driver-confirmed', {
+    event: 'driver_confirmed',
+    assignmentId: data.assignmentId,
+    serviceId: data.bookingReference,
+    client: {
+      name: data.customerName,
+      phone: data.customerPhone || '',
+    },
+    driver: {
+      name: data.driverName,
+      phone: data.driverPhone || '',
+      photo: data.driverPhoto || '',
+    },
+    vehicle: {
+      plate: data.vehiclePlate,
+      brand: data.vehicleBrand,
+      model: '',
+      color: '',
+    },
+    service: {
+      pickup: data.pickupLocation,
+      destination: data.destination,
+      pickupDate: data.pickupDate,
+      pickupTime: data.pickupTime,
+    },
+    evolutionApi: {
+      instanceName: process.env.EVOLUTION_INSTANCE_NAME,
+    },
+  })
+}
+
+/**
  * Send WhatsApp message with buttons via Evolution API
  */
 export async function sendWhatsAppButtons(data: {

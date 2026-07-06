@@ -1,14 +1,8 @@
 import { NextResponse } from 'next/server'
-import Stripe from 'stripe'
-import { getPayment, setPayment } from '@/app/components/booking/lib/payment-store'
+import { getPayment, setPayment } from '@/lib/services/payment-service'
+import { getTransaction } from '@/lib/paddle/server'
 import { rateLimitMiddleware } from '@/lib/rate-limit'
-import type { PaymentRecord } from '@/app/components/booking/lib/types'
-
-function getStripe(): Stripe {
-  const key = process.env.STRIPE_SECRET_KEY
-  if (!key) throw new Error('STRIPE_SECRET_KEY is not configured')
-  return new Stripe(key)
-}
+import type { PaymentRecord } from '@/lib/payment-record'
 
 export async function POST(req: Request) {
   const rateLimitResponse = await rateLimitMiddleware(req)
@@ -16,24 +10,23 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json()
-    const { bookingReference, paymentIntentId } = body as {
+    const { bookingReference, transactionId } = body as {
       bookingReference: string
-      paymentIntentId: string
+      transactionId: string
     }
 
-    if (!bookingReference || !paymentIntentId) {
+    if (!bookingReference || !transactionId) {
       return NextResponse.json(
         { error: 'invalid_request', message: 'Missing required fields' },
         { status: 400 },
       )
     }
 
-    const stripe = getStripe()
-    const intent = await stripe.paymentIntents.retrieve(paymentIntentId)
+    const txn = await getTransaction(transactionId)
 
-    if (intent.status !== 'succeeded') {
+    if (txn.status !== 'completed' && txn.status !== 'paid' && txn.status !== 'billed') {
       return NextResponse.json(
-        { error: 'payment_not_succeeded', message: `PaymentIntent status is ${intent.status}` },
+        { error: 'payment_not_succeeded', message: `Transaction status is ${txn.status}` },
         { status: 400 },
       )
     }
@@ -41,17 +34,20 @@ export async function POST(req: Request) {
     const existing = await getPayment(bookingReference)
     const now = new Date().toISOString()
     const record: PaymentRecord = {
-      bookingReference,
-      packageId: existing?.packageId || '',
-      packageName: existing?.packageName || '',
+      booking_reference: bookingReference,
+      package_id: existing?.package_id || '',
+      package_name: existing?.package_name || '',
       amount: existing?.amount || 0,
-      currency: existing?.currency || 'usd',
+      currency: existing?.currency || 'USD',
       status: 'completed',
-      stripePaymentIntentId: paymentIntentId,
-      customerEmail: existing?.customerEmail || '',
-      customerName: existing?.customerName || '',
-      createdAt: existing?.createdAt || now,
-      updatedAt: now,
+      paddle_transaction_id: transactionId,
+      paddle_webhook_event_id: '',
+      customer_email: existing?.customer_email || '',
+      customer_name: existing?.customer_name || '',
+      customer_phone: existing?.customer_phone || '',
+      error_message: null,
+      created_at: existing?.created_at || now,
+      updated_at: now,
     }
     await setPayment(record)
 

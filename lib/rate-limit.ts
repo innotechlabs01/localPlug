@@ -14,6 +14,33 @@ function createRedisClient() {
   return { url, token }
 }
 
+let _healthCheckTimer: ReturnType<typeof setInterval> | null = null
+
+function startRedisHealthCheck() {
+  if (_healthCheckTimer || !_redisClient) return
+  _healthCheckTimer = setInterval(async () => {
+    try {
+      const response = await fetch(`${_redisClient!.url}/ping`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${_redisClient!.token}` },
+      })
+      if (response.ok) {
+        if (_redisFailed) {
+          console.log('[RateLimit] Redis recovered, resetting fallback')
+          _redisFailed = false
+        }
+      } else if (!_redisFailed) {
+        _redisFailed = true
+      }
+    } catch {
+      if (!_redisFailed) {
+        console.error('[RateLimit] Redis health check failed, falling back to in-memory')
+        _redisFailed = true
+      }
+    }
+  }, 30_000)
+}
+
 async function redisIncr(key: string, ttlMs: number): Promise<number> {
   if (_redisFailed || !_redisClient) return -1
   try {
@@ -57,6 +84,9 @@ async function initRateConfig() {
 }
 
 _redisClient = createRedisClient()
+if (typeof setInterval !== 'undefined') {
+  startRedisHealthCheck()
+}
 
 const requestCounts = new Map<string, { count: number; resetAt: number }>()
 

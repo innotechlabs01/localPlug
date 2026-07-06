@@ -10,8 +10,6 @@ const KEYS = {
   TAX_RATE_IVA: 'tax_rate_iva',
   HOTEL_COMMISSION: 'hotel_commission_rate',
   DRIVER_COMMISSION: 'driver_commission_rate',
-  STRIPE_FEE_PCT: 'stripe_fee_percent',
-  STRIPE_FEE_FIXED: 'stripe_fee_fixed',
   HOTEL_REVENUE_NIGHT: 'hotel_revenue_per_night',
   TRM_FALLBACK: 'trm_fallback_rate',
   ADVANCE_BOOKING_DAYS: 'advance_booking_days',
@@ -34,6 +32,8 @@ const KEYS = {
   EXP_PARAGLIDING: 'exp_paragliding_price',
   EXP_NIGHTLIFE: 'exp_nightlife_price',
   EXP_VIP_CITY: 'exp_vip_city_price',
+  PLATFORM_FEE_PCT: 'platform_fee_percent',
+  PLATFORM_FEE_FIXED: 'platform_fee_fixed',
 } as const
 
 // ── Defaults (match current hardcodes exactly) ──
@@ -46,8 +46,6 @@ const DEFAULTS: Record<string, string> = {
   [KEYS.TAX_RATE_IVA]: '0.19',
   [KEYS.HOTEL_COMMISSION]: '0.10',
   [KEYS.DRIVER_COMMISSION]: '30',
-  [KEYS.STRIPE_FEE_PCT]: '0.029',
-  [KEYS.STRIPE_FEE_FIXED]: '0.30',
   [KEYS.HOTEL_REVENUE_NIGHT]: '85',
   [KEYS.TRM_FALLBACK]: '4200',
   [KEYS.ADVANCE_BOOKING_DAYS]: '10',
@@ -70,6 +68,8 @@ const DEFAULTS: Record<string, string> = {
   [KEYS.EXP_PARAGLIDING]: '79',
   [KEYS.EXP_NIGHTLIFE]: '249',
   [KEYS.EXP_VIP_CITY]: '399',
+  [KEYS.PLATFORM_FEE_PCT]: '0.10',
+  [KEYS.PLATFORM_FEE_FIXED]: '0.30',
 }
 
 // ── Cache ──
@@ -190,16 +190,6 @@ export async function getDriverCommissionRate(): Promise<number> {
   return Number(getValue(cfg, KEYS.DRIVER_COMMISSION))
 }
 
-export async function getStripeFeePercent(): Promise<number> {
-  const cfg = await loadConfig()
-  return Number(getValue(cfg, KEYS.STRIPE_FEE_PCT))
-}
-
-export async function getStripeFeeFixed(): Promise<number> {
-  const cfg = await loadConfig()
-  return Number(getValue(cfg, KEYS.STRIPE_FEE_FIXED))
-}
-
 export async function getHotelRevenuePerNight(): Promise<number> {
   const cfg = await loadConfig()
   return Number(getValue(cfg, KEYS.HOTEL_REVENUE_NIGHT))
@@ -264,9 +254,21 @@ export async function getExperiencePrice(expId: string): Promise<number> {
   return Number(getValue(cfg, key))
 }
 
+export async function getPlatformFeePercent(): Promise<number> {
+  const cfg = await loadConfig()
+  return Number(getValue(cfg, KEYS.PLATFORM_FEE_PCT))
+}
+
+export async function getPlatformFeeFixed(): Promise<number> {
+  const cfg = await loadConfig()
+  return Number(getValue(cfg, KEYS.PLATFORM_FEE_FIXED))
+}
+
 export async function getAllPublicConfig() {
   const cfg = await loadConfig()
   return {
+    platformFeePercent: Number(getValue(cfg, KEYS.PLATFORM_FEE_PCT)),
+    platformFeeFixed: Number(getValue(cfg, KEYS.PLATFORM_FEE_FIXED)),
     packages: {
       'smooth-landing': {
         name: 'The VIP Arrival',
@@ -286,8 +288,6 @@ export async function getAllPublicConfig() {
     taxRate: Number(getValue(cfg, KEYS.TAX_RATE_IVA)),
     currency: getValue(cfg, KEYS.CURRENCY),
     advanceBookingDays: Number(getValue(cfg, KEYS.ADVANCE_BOOKING_DAYS)),
-    stripeFeePercent: Number(getValue(cfg, KEYS.STRIPE_FEE_PCT)),
-    stripeFeeFixed: Number(getValue(cfg, KEYS.STRIPE_FEE_FIXED)),
     experiences: {
       comuna13: Number(getValue(cfg, KEYS.EXP_COMUNA13)),
       guatape: Number(getValue(cfg, KEYS.EXP_GUATAPE)),
@@ -307,8 +307,6 @@ export async function refreshConfig(): Promise<void> {
 const REQUIRED_ENV_VARS = [
   'TURSO_DATABASE_URL',
   'TURSO_API_KEY',
-  'STRIPE_SECRET_KEY',
-  'STRIPE_WEBHOOK_SECRET',
   'CLERK_SECRET_KEY',
   'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY',
 ]
@@ -317,6 +315,9 @@ const WARN_ENV_VARS = [
   'N8N_BASE_URL',
   'N8N_API_KEY',
   'N8N_WEBHOOK_SECRET',
+  'PADDLE_API_KEY',
+  'PADDLE_WEBHOOK_SECRET',
+  'NEXT_PUBLIC_PADDLE_CLIENT_TOKEN',
   'EVOLUTION_API_URL',
   'EVOLUTION_API_KEY',
   'EVOLUTION_WEBHOOK_SECRET',

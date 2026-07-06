@@ -173,6 +173,9 @@ function BookingFormInner() {
       case 1:
         return !!profile && !!customerEmail.trim() && !!customerName.trim() && !!customerPhone.trim()
       case 2:
+        if (destination.hasPlace) {
+          return !!destination.address.trim()
+        }
         return true
       case 3:
         return !!selectedPackage
@@ -449,7 +452,9 @@ function BookingFormInner() {
                     destinationAddress={destination.address}
                     needReturn={flightData.needReturn}
                     onPaymentSuccess={handlePaymentSuccess}
-                    onPaymentError={() => {}}
+                    onPaymentError={(message) => {
+                      showToast({ type: 'error', message })
+                    }}
                     config={bookingConfig}
                   />
                 )}
@@ -509,13 +514,13 @@ function BookingFormInner() {
         </div>
       </main>
 
-      {selectedPackage && (
+      {selectedPackage && step < 4 && (
         <MobileStickyBar
           packageId={selectedPackage}
           needReturn={flightData.needReturn}
           currentStep={step}
           totalSteps={TOTAL_STEPS}
-          onConfirm={() => {}}
+          onConfirm={nextStep}
           isSubmitting={isSubmitting}
           config={bookingConfig}
         />

@@ -1812,14 +1812,14 @@ tbody tr:hover {
 .badge-status.failed { background: var(--danger-soft); color: var(--danger); }
 .payout-item { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border-light); }
 .payout-item:last-child { border-bottom: none; }
-.stripe-card { background: linear-gradient(135deg, #635bff, #0a2540); border-radius: var(--radius-lg); padding: 24px; color: #fff; }
-.stripe-card .stripe-title { font-size: 14px; font-weight: 600; opacity: 0.85; margin-bottom: 14px; }
-.stripe-card .stripe-balance { font-size: 30px; font-weight: 700; line-height: 1; font-family: var(--font-mono); }
-.stripe-card .stripe-sub { font-size: 12px; opacity: 0.65; margin-top: 4px; }
-.stripe-detail { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-top: 1px solid rgba(255,255,255,0.12); }
-.stripe-detail:first-of-type { border-top: none; }
-.stripe-detail .label { font-size: 12px; opacity: 0.8; }
-.stripe-detail .value { font-size: 13px; font-weight: 600; }
+.paddle-card { background: linear-gradient(135deg, #635bff, #0a2540); border-radius: var(--radius-lg); padding: 24px; color: #fff; }
+.paddle-card .paddle-title { font-size: 14px; font-weight: 600; opacity: 0.85; margin-bottom: 14px; }
+.paddle-card .paddle-balance { font-size: 30px; font-weight: 700; line-height: 1; font-family: var(--font-mono); }
+.paddle-card .paddle-sub { font-size: 12px; opacity: 0.65; margin-top: 4px; }
+.paddle-detail { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-top: 1px solid rgba(255,255,255,0.12); }
+.paddle-detail:first-of-type { border-top: none; }
+.paddle-detail .label { font-size: 12px; opacity: 0.8; }
+.paddle-detail .value { font-size: 13px; font-weight: 600; }
 
 /* ── Fleet Page ── */
 .fleet-page { display: flex; flex-direction: column; gap: 28px; }
@@ -1944,14 +1944,14 @@ tbody tr:hover {
 .toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 20px; height: 20px; border-radius: 50%; background: white; transition: all var(--transition); box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
 .toggle.on::after { left: 22px; }
 
-/* ── Settings Stripe Connection Card ── */
-.stripe-connect-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px; display: flex; flex-direction: column; gap: 14px; }
-.stripe-status { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: var(--accent-soft); border-radius: var(--radius-sm); }
-.stripe-status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent-glow); }
-.stripe-status-text { font-size: 13px; font-weight: 600; color: var(--accent); }
-.stripe-field { display: flex; flex-direction: column; gap: 4px; }
-.stripe-field label { font-size: 11px; font-weight: 500; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.5px; }
-.stripe-field .value { font-size: 13px; font-family: var(--font-mono); color: var(--fg-secondary); padding: 8px 12px; background: var(--surface); border-radius: var(--radius-sm); border: 1px solid var(--border-light); word-break: break-all; }
+/* ── Settings Paddle Connection Card ── */
+.paddle-connect-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+.paddle-status { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: var(--accent-soft); border-radius: var(--radius-sm); }
+.paddle-status-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent-glow); }
+.paddle-status-text { font-size: 13px; font-weight: 600; color: var(--accent); }
+.paddle-field { display: flex; flex-direction: column; gap: 4px; }
+.paddle-field label { font-size: 11px; font-weight: 500; color: var(--fg-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.paddle-field .value { font-size: 13px; font-family: var(--font-mono); color: var(--fg-secondary); padding: 8px 12px; background: var(--surface); border-radius: var(--radius-sm); border: 1px solid var(--border-light); word-break: break-all; }
 
 /* ── Settings Roles Table ── */
 .settings-table table { width: 100%; }

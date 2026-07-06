@@ -34,7 +34,6 @@ export interface PersistenceQueueEntry {
   lastError?: string
 }
 
-// Payment types
 export type PaymentStatus = 'pending' | 'completed' | 'failed' | 'refunded'
 
 export interface PaymentRecord {
@@ -44,8 +43,8 @@ export interface PaymentRecord {
   amount: number
   currency: string
   status: PaymentStatus
-  stripePaymentIntentId: string
-  stripeWebhookEventId?: string
+  paddleTransactionId: string
+  paddleWebhookEventId?: string
   customerEmail: string
   customerName: string
   customerPhone?: string
@@ -61,9 +60,8 @@ export interface CreatePaymentIntentRequest {
   customerName: string
 }
 
-export interface CreatePaymentIntentResponse {
-  clientSecret: string
-  paymentIntentId: string
+export interface CreateCheckoutResponse {
+  transactionId: string
   amount: number
 }
 
@@ -74,7 +72,7 @@ export interface PaymentStatusResponse {
   amount: number
   currency: string
   status: PaymentStatus
-  stripePaymentIntentId: string
+  paddleTransactionId: string
   customerEmail: string
   customerName: string
   createdAt: string

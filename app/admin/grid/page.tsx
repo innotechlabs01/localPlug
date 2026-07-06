@@ -57,7 +57,7 @@ interface PaymentData {
     failureRate: string
     driverPayouts: number
     driverPayoutsPct: string
-    stripeBalance: number
+    platformBalance: number
   }
   revenueByService: RevenueItem[]
   transactions: PaymentTransaction[]
@@ -94,7 +94,7 @@ function PaymentsInner() {
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
   const [selectedTx, setSelectedTx] = useState<PaymentTransaction | null>(null)
-  const [stripeFee, setStripeFee] = useState({ percent: 0.029, fixed: 0.30 })
+  const [platformFee, setPlatformFee] = useState({ percent: 0.10, fixed: 0.30 })
   const { showToast } = useToast()
 
   useEffect(() => {
@@ -110,9 +110,9 @@ function PaymentsInner() {
   useEffect(() => {
     fetch('/api/config')
       .then(r => r.json())
-      .then(cfg => setStripeFee({
-        percent: cfg.stripeFeePercent ?? 0.029,
-        fixed: cfg.stripeFeeFixed ?? 0.30,
+      .then(cfg => setPlatformFee({
+        percent: cfg.platformFeePercent ?? 0.10,
+        fixed: cfg.platformFeeFixed ?? 0.30,
       }))
       .catch(() => {})
   }, [])
@@ -318,7 +318,7 @@ function PaymentsInner() {
             </div>
           </div>
 
-          {/* Stripe Balance */}
+          {/* Platform Balance */}
           <div className="bg-[#181b25] border border-[#282b38] rounded-[10px] p-4 hover:border-[#14b8a6] hover:shadow-[0_0_0_1px_rgba(20,184,166,0.3)] transition-all">
             <div className="flex items-start justify-between mb-2">
               <div className="w-9 h-9 rounded-[6px] bg-[rgba(20,184,166,0.12)] flex items-center justify-center text-[#14b8a6]">
@@ -327,8 +327,8 @@ function PaymentsInner() {
                 </svg>
               </div>
             </div>
-            <div className="text-[11px] font-medium text-[#646880] mb-0.5">{d.stripeBalance || 'Stripe Balance'}</div>
-            <div className="text-[24px] font-bold text-[#f0f2f5] leading-[1.1]">${data.kpis.stripeBalance.toLocaleString()}</div>
+            <div className="text-[11px] font-medium text-[#646880] mb-0.5">{d.platformBalance || 'Platform Balance'}</div>
+            <div className="text-[24px] font-bold text-[#f0f2f5] leading-[1.1]">${data.kpis.platformBalance.toLocaleString()}</div>
             <div className="flex items-center gap-1 mt-1.5 text-[12px] font-medium text-[#10b981]">
               {d.availableForPayout || 'Available for payout'}
             </div>
@@ -372,7 +372,7 @@ function PaymentsInner() {
         </div>
       )}
 
-      {/* ── PAYMENT TRANSACTIONS + STRIPE ── */}
+      {/* ── PAYMENT TRANSACTIONS + PADDLE ── */}
       <div>
         <div className="section-title">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-60">
@@ -485,9 +485,9 @@ function PaymentsInner() {
             )}
           </div>
 
-          {/* Stripe Integration Sidebar */}
+           {/* Paddle Integration Sidebar */}
           <div className="space-y-4">
-            {/* Stripe Card */}
+            {/* Paddle Card */}
             <div className="bg-gradient-to-br from-[rgba(99,102,241,0.08)] to-[rgba(139,92,246,0.06)] border border-[rgba(99,102,241,0.2)] rounded-[10px] p-5">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-[6px] bg-[rgba(99,102,241,0.12)] flex items-center justify-center">
@@ -496,8 +496,8 @@ function PaymentsInner() {
                   </svg>
                 </div>
                 <div className="flex-1">
-                  <div className="text-[14px] font-semibold text-[#f0f2f5]">{d.stripeIntegration || 'Stripe Integration'}</div>
-                  <div className="text-[11px] text-[#646880]">{d.paymentProcessing || 'Payment processing with Stripe'}</div>
+                  <div className="text-[14px] font-semibold text-[#f0f2f5]">{d.paddleIntegration || 'Paddle Integration'}</div>
+                  <div className="text-[11px] text-[#646880]">{d.paymentProcessing || 'Payment processing with Paddle'}</div>
                 </div>
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-[rgba(16,185,129,0.12)] text-[#10b981]">
                   {d.connected || 'Connected'}
@@ -527,14 +527,14 @@ function PaymentsInner() {
               </div>
               <div className="mt-4 flex gap-2">
                 <button
-                  onClick={() => showToast('Opening Stripe dashboard...')}
+                  onClick={() => showToast('Opening Paddle dashboard...')}
                   className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-[#10b981] text-white text-[12px] font-medium rounded-[6px] hover:bg-[#059669] transition-all"
                 >
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
                     <polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
                   </svg>
-                  {d.stripeDashboard || 'Stripe Dashboard'}
+                  {d.paddleDashboard || 'Paddle Dashboard'}
                 </button>
                 <button
                   onClick={() => showToast('Payout settings')}
@@ -695,7 +695,7 @@ function PaymentsInner() {
                 </div>
                 <div className="flex flex-col gap-0.5">
                   <span className="text-[10px] uppercase tracking-[0.3px] font-medium text-[#646880]">{d.paymentMethod || 'Payment Method'}</span>
-                  <span className="text-[13px] font-medium text-[#f0f2f5]">Stripe</span>
+                  <span className="text-[13px] font-medium text-[#f0f2f5]">Paddle</span>
                 </div>
                 <div className="flex flex-col gap-0.5">
                   <span className="text-[10px] uppercase tracking-[0.3px] font-medium text-[#646880]">{d.status || 'Status'}</span>
@@ -714,8 +714,8 @@ function PaymentsInner() {
                     <span className="font-mono">${selectedTx.amount.toFixed(2)}</span>
                   </div>
                   <div className="flex items-center justify-between text-[12px] text-[#9ca0b0]">
-                    <span>{d.processingFee || `Processing Fee (${(stripeFee.percent * 100).toFixed(1)}% + $${stripeFee.fixed.toFixed(2)})`}</span>
-                    <span className="font-mono">${(selectedTx.amount * stripeFee.percent + stripeFee.fixed).toFixed(2)}</span>
+                    <span>{d.processingFee || `Processing Fee (${(platformFee.percent * 100).toFixed(1)}% + $${platformFee.fixed.toFixed(2)})`}</span>
+                    <span className="font-mono">${(selectedTx.amount * platformFee.percent + platformFee.fixed).toFixed(2)}</span>
                   </div>
                   <div className="flex items-center justify-between text-[14px] font-semibold pt-2 border-t border-[#282b38] mt-2">
                     <span>{d.totalCharged || 'Total Charged'}</span>
@@ -734,7 +734,7 @@ function PaymentsInner() {
                     { dot: 'var(--accent)', title: d.paymentInitiated || 'Payment Initiated', desc: (d.transactionCreated || 'Transaction created and sent to processor'), time: formatDate(selectedTx.created_at) },
                     { dot: 'var(--accent)', title: d.authorized || 'Authorized', desc: d.authorizedDesc || 'Payment authorized by bank', time: formatDate(selectedTx.created_at) },
                     { dot: 'var(--accent)', title: d.captured || 'Captured', desc: d.capturedDesc || 'Funds captured successfully', time: formatDate(selectedTx.created_at) },
-                    { dot: 'var(--accent)', title: d.settled || 'Settled', desc: d.settledDesc || 'Funds settled to Stripe balance', time: formatDate(selectedTx.created_at) },
+                    { dot: 'var(--accent)', title: d.settled || 'Settled', desc: d.settledDesc || 'Funds settled to Paddle balance', time: formatDate(selectedTx.created_at) },
                   ] : selectedTx.status === 'pending' ? [
                     { dot: 'var(--accent)', title: d.paymentInitiated || 'Payment Initiated', desc: d.transactionCreated || 'Transaction created', time: formatDate(selectedTx.created_at) },
                     { dot: 'var(--info)', title: d.awaitingConfirmation || 'Awaiting Confirmation', desc: d.awaitingConfirmationDesc || 'Waiting for payment confirmation', time: formatDate(selectedTx.created_at), glow: true },

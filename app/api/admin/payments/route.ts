@@ -47,7 +47,7 @@ export async function GET() {
     failureRate,
     driverPayouts,
     driverPayoutsPct,
-    stripeBalance: totalRevenue - driverPayouts,
+    platformBalance: totalRevenue - driverPayouts,
   }
 
   const revenueResult = await db.execute(

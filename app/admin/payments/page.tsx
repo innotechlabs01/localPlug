@@ -44,7 +44,7 @@ interface PaymentsApiResponse {
     failedCount: number
     pendingCount: number
     driverPayouts: number
-    stripeBalance: number
+    platformBalance: number
   }
   revenueByService: Array<{ package_name: string; amount: number; percentage: string; count: number }>
   transactions: ApiTransaction[]
@@ -76,7 +76,7 @@ export default function PaymentsPage() {
   const [data, setData] = useState<PaymentsApiResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [stripeFee, setStripeFee] = useState({ percent: 0.029, fixed: 0.30 })
+  const [platformFee, setPlatformFee] = useState({ percent: 0.10, fixed: 0.30 })
 
   useEffect(() => {
     let mounted = true
@@ -106,9 +106,9 @@ export default function PaymentsPage() {
   useEffect(() => {
     fetch('/api/config')
       .then(r => r.json())
-      .then(cfg => setStripeFee({
-        percent: cfg.stripeFeePercent ?? 0.029,
-        fixed: cfg.stripeFeeFixed ?? 0.30,
+      .then(cfg => setPlatformFee({
+        percent: cfg.platformFeePercent ?? 0.10,
+        fixed: cfg.platformFeeFixed ?? 0.30,
       }))
       .catch(() => {})
   }, [])
@@ -125,7 +125,7 @@ export default function PaymentsPage() {
       net: payment.amount,
       date: payment.created_at ? new Date(payment.created_at).toLocaleDateString('en-US') : '',
       status: payment.status,
-      method: 'Stripe',
+      method: 'Paddle',
       email: payment.customer_email,
       phone: payment.customer_phone,
       errorMessage: payment.error_message,
@@ -144,7 +144,7 @@ export default function PaymentsPage() {
       net: payment.amount,
       date: payment.created_at ? new Date(payment.created_at).toLocaleDateString('en-US') : '',
       status: payment.status,
-      method: 'Stripe',
+      method: 'Paddle',
       email: payment.customer_email,
       phone: payment.customer_phone,
       errorMessage: payment.error_message,
@@ -164,8 +164,8 @@ export default function PaymentsPage() {
     const failedCount = apiKpis?.failedCount ?? payments.filter(p => p.status === 'failed').length
     const pendingCount = apiKpis?.pendingCount ?? payments.filter(p => p.status === 'pending').length
     const driverPayouts = apiKpis?.driverPayouts ?? 0
-    const stripeBalance = apiKpis?.stripeBalance ?? totalNet - refunds
-    return { totalRev, totalFees, totalNet, completed, pending, refunds, successfulCount, failedCount, pendingCount, driverPayouts, stripeBalance }
+    const platformBalance = apiKpis?.platformBalance ?? totalNet - refunds
+    return { totalRev, totalFees, totalNet, completed, pending, refunds, successfulCount, failedCount, pendingCount, driverPayouts, platformBalance }
   }, [data?.kpis, data?.summary, payments])
 
   const payouts = useMemo(() => {
@@ -201,7 +201,7 @@ export default function PaymentsPage() {
             { label: 'Failed / Declined', value: String(kpi.failedCount), sub: 'Needs review', iconClass: 'red' },
             { label: 'Pending', value: String(kpi.pendingCount), sub: 'Awaiting confirmation', iconClass: 'amber' },
             { label: 'Driver Payouts', value: formatCurrency(kpi.driverPayouts), sub: 'This period', iconClass: 'blue' },
-            { label: 'Stripe Balance', value: formatCurrency(kpi.stripeBalance), sub: 'Available for payout', iconClass: 'purple' },
+            { label: 'Platform Balance', value: formatCurrency(kpi.platformBalance), sub: 'Available for payout', iconClass: 'purple' },
           ].map((card, idx) => (
             <div key={idx} className="pay-kpi">
               <div className="kpi-top">
@@ -289,15 +289,15 @@ export default function PaymentsPage() {
 
         {/* Right: Side Panel */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Stripe Overview */}
-          <div className="stripe-card">
-            <div className="stripe-title">Stripe Gateway</div>
-            <div className="stripe-balance">{formatCurrency(kpi.stripeBalance)}</div>
-            <div className="stripe-sub">Connected · Live mode</div>
-            <div className="stripe-detail"><span className="label">Total processed</span><span className="value">{formatCurrency(kpi.totalRev)}</span></div>
-            <div className="stripe-detail"><span className="label">Pending settlement</span><span className="value">{formatCurrency(kpi.pending)}</span></div>
-            <div className="stripe-detail"><span className="label">Last payout</span><span className="value">{formatCurrency(data?.summary?.lastPayout || 0)}</span></div>
-            <div className="stripe-detail"><span className="label">Processing fee rate</span><span className="value">{(stripeFee.percent * 100).toFixed(1)}% + ${stripeFee.fixed.toFixed(2)}</span></div>
+          {/* Paddle Gateway */}
+          <div className="paddle-card">
+            <div className="paddle-title">Paddle Gateway</div>
+            <div className="paddle-balance">{formatCurrency(kpi.platformBalance)}</div>
+            <div className="paddle-sub">Connected · Live mode</div>
+            <div className="paddle-detail"><span className="label">Total processed</span><span className="value">{formatCurrency(kpi.totalRev)}</span></div>
+            <div className="paddle-detail"><span className="label">Pending settlement</span><span className="value">{formatCurrency(kpi.pending)}</span></div>
+            <div className="paddle-detail"><span className="label">Last payout</span><span className="value">{formatCurrency(data?.summary?.lastPayout || 0)}</span></div>
+            <div className="paddle-detail"><span className="label">Processing fee rate</span><span className="value">{(platformFee.percent * 100).toFixed(1)}% + ${platformFee.fixed.toFixed(2)}</span></div>
           </div>
 
           {/* Payment Summary */}
@@ -312,7 +312,7 @@ export default function PaymentsPage() {
                   <span className="value">{formatCurrency(kpi.totalRev)}</span>
                 </div>
                 <div className="pay-summary-row">
-                  <span className="label">Stripe Fees</span>
+                  <span className="label">Platform Fees</span>
                   <span className="value" style={{ color: 'var(--danger)' }}>-{formatCurrency(kpi.totalFees)}</span>
                 </div>
                 <div className="pay-summary-row">

@@ -24,6 +24,7 @@ const isPublicRoute = createRouteMatcher([
   '/api/config',
   '/api/health(.*)',
   '/api/cron/(.*)',
+  '/api/assignments/(.*)',
   '/booking/confirmation',
   '/sign-in(.*)',
   '/sign-up(.*)',
@@ -91,7 +92,7 @@ function corsHeaders(req: Request): Record<string, string> {
   return {
     'Access-Control-Allow-Origin': isAllowed ? origin : allowedOrigins[0] || '',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, stripe-signature, svix-id, svix-timestamp, svix-signature',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, svix-id, svix-timestamp, svix-signature',
     'Access-Control-Max-Age': '86400',
   }
 }
