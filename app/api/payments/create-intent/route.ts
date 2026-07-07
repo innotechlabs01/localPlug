@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createTransaction, formatPaddleAmount } from '@/lib/paddle/server'
 import { getPayment, hasPayment, setPayment } from '@/lib/services/payment-service'
 import { rateLimitMiddleware } from '@/lib/rate-limit'
-import { getConfigPackageName, getConfigPackagePriceCents, getConfigPackageTotalCents } from '@/lib/pricing'
+import { getConfigPackageName, getConfigPackagePriceCents, getConfigPackageGrandTotalCents } from '@/lib/pricing'
 import { getDefaultCurrency } from '@/lib/config'
 import type { PaymentRecord } from '@/lib/payment-record'
 
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
       )
     }
 
-    const amount = await getConfigPackageTotalCents(packageId, !!needReturn)
+    const amount = await getConfigPackageGrandTotalCents(packageId, !!needReturn)
 
     if (await hasPayment(bookingReference)) {
       const existing = await getPayment(bookingReference)

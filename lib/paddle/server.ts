@@ -1,14 +1,23 @@
 import { getDefaultCurrency } from '@/lib/config'
 
-const BASE_URL =
-  process.env.PADDLE_ENV === 'production'
-    ? 'https://api.paddle.com'
-    : 'https://sandbox-api.paddle.com'
+function getBaseUrl() {
+  if (
+    process.env.PADDLE_ENV === 'production' ||
+    process.env.PADDLE_LIVE === '1' ||
+    process.env.PADDLE_LIVE === 'true'
+  ) {
+    return 'https://api.paddle.com'
+  }
+  return 'https://sandbox-api.paddle.com'
+}
 
 function getClient() {
-  const apiKey = process.env.PADDLE_API_KEY
+  const apiKey =
+    process.env.PADDLE_API_KEY ||
+    process.env.PADDLE_SANDBOX_API_KEY ||
+    ''
   if (!apiKey) throw new Error('PADDLE_API_KEY is not configured')
-  return { apiKey, baseUrl: BASE_URL }
+  return { apiKey, baseUrl: getBaseUrl() }
 }
 
 interface TransactionItem {

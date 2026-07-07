@@ -32,9 +32,13 @@ export function BookingSummarySidebar({
 }) {
   const { t } = useI18n()
   const basePrice = config?.packages?.[packageId]?.price ?? 0
-  const total = (config?.packages?.[packageId]?.price ?? 0) + (needReturn ? (config?.returnTripCharge ?? 48) : 0)
-  const packageName = t.booking.steps.packages.packages?.[packageId as keyof typeof t.booking.steps.packages.packages]?.name || packageId
   const returnCharge = needReturn ? (config?.returnTripCharge ?? 48) : 0
+  const subtotal = basePrice + returnCharge
+  const serviceFee = config?.serviceFee ?? 5
+  const taxRate = config?.taxRate ?? 0.19
+  const iva = (subtotal - serviceFee) * taxRate
+  const total = subtotal + serviceFee + iva
+  const packageName = t.booking.steps.packages.packages?.[packageId as keyof typeof t.booking.steps.packages.packages]?.name || packageId
 
   return (
     <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-[var(--radius-xl)] overflow-hidden shadow-[0_16px_48px_rgba(0,0,0,0.5)]">
@@ -69,13 +73,13 @@ export function BookingSummarySidebar({
 
             <div className="flex justify-between items-start py-1.5 text-[13px]">
               <span className="text-[var(--text-secondary)]">Service Fee</span>
-              <span className="font-medium text-white text-right min-w-[80px]">$${(config?.serviceFee ?? 5).toFixed(2)}</span>
+              <span className="font-medium text-white text-right min-w-[80px]">${serviceFee.toFixed(2)}</span>
             </div>
 
             <div className="flex justify-between items-start py-1.5 text-[13px]">
               <span className="text-[var(--text-secondary)]">IVA (19%)</span>
               <span className="font-medium text-white text-right min-w-[80px]">
-                ${((total - (config?.serviceFee ?? 5)) * (config?.taxRate ?? 0.19)).toFixed(2)}
+                ${iva.toFixed(2)}
               </span>
             </div>
           </>
@@ -124,7 +128,11 @@ export function MobileStickyBar({
   config,
 }: BookingSummaryProps) {
   const { t } = useI18n()
-  const total = packageId ? ((config?.packages?.[packageId]?.price ?? 0) + (needReturn ? (config?.returnTripCharge ?? 48) : 0)) : 0
+  const subtotal = packageId ? ((config?.packages?.[packageId]?.price ?? 0) + (needReturn ? (config?.returnTripCharge ?? 48) : 0)) : 0
+  const serviceFee = config?.serviceFee ?? 5
+  const taxRate = config?.taxRate ?? 0.19
+  const iva = (subtotal - serviceFee) * taxRate
+  const total = packageId ? (subtotal + serviceFee + iva) : 0
   const isLastStep = currentStep === totalSteps - 1
 
   return (
