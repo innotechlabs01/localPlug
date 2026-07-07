@@ -155,6 +155,18 @@ export async function getPackageTotalCents(packageId: string, needReturn: boolea
   return (await getPackageTotal(packageId, needReturn)) * 100
 }
 
+export async function getPackageGrandTotal(packageId: string, needReturn: boolean): Promise<number> {
+  const subtotal = await getPackageTotal(packageId, needReturn)
+  const serviceFee = await getServiceFee()
+  const taxRate = await getTaxRate()
+  const iva = (subtotal - serviceFee) * taxRate
+  return subtotal + serviceFee + iva
+}
+
+export async function getPackageGrandTotalCents(packageId: string, needReturn: boolean): Promise<number> {
+  return Math.round((await getPackageGrandTotal(packageId, needReturn)) * 100)
+}
+
 export async function getPackageName(packageId: string): Promise<string> {
   const cfg = await loadConfig()
   return cfg.get(`pkg_${packageId.replace(/-/g, '_')}_name`) || packageId

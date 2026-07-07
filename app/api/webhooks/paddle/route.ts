@@ -4,7 +4,10 @@ import { getDb } from '@/lib/db'
 import { getPlatformFeePercent } from '@/lib/config'
 
 function getPaddleClient() {
-  const apiKey = process.env.PADDLE_API_KEY
+  const apiKey =
+    process.env.PADDLE_API_KEY ||
+    process.env.PADDLE_SANDBOX_API_KEY ||
+    ''
   if (!apiKey) throw new Error('PADDLE_API_KEY is not configured')
   return new Paddle(apiKey)
 }

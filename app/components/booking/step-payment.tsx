@@ -190,7 +190,12 @@ export default function StepPayment({
   const hasReturn = needReturn ?? flightData.needReturn ?? false
   const packageName = t.booking.steps.packages.packages[packageId as keyof typeof t.booking.steps.packages.packages]?.name || packageId
   const basePrice = config?.packages?.[packageId]?.price ?? 0
-  const totalPrice = basePrice + (hasReturn ? (config?.returnTripCharge ?? 48) : 0)
+  const returnCharge = hasReturn ? (config?.returnTripCharge ?? 48) : 0
+  const subtotal = basePrice + returnCharge
+  const serviceFee = config?.serviceFee ?? 5
+  const taxRate = config?.taxRate ?? 0.19
+  const iva = (subtotal - serviceFee) * taxRate
+  const totalPrice = subtotal + serviceFee + iva
   const packageT = t.booking.steps.packages.packages[packageId as keyof typeof t.booking.steps.packages.packages]
 
   return (
