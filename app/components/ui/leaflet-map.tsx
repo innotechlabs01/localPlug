@@ -29,9 +29,8 @@ export default function LeafletMap({ address, className }: LeafletMapProps) {
     setLoading(true)
     setError(null)
 
-    // Geocode address using Nominatim
-    const encoded = encodeURIComponent(address.trim())
-    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encoded}&limit=1&countrycodes=co`)
+    // Geocode address using server-side Nominatim proxy
+    fetch(`/api/geocode?q=${encodeURIComponent(address.trim())}`)
       .then(r => r.json())
       .then(data => {
         if (cancelled) return
