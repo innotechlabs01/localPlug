@@ -1,5 +1,3 @@
-import { getDefaultCurrency } from '@/lib/config'
-
 function getBaseUrl() {
   if (
     process.env.PADDLE_ENV === 'production' ||
@@ -20,35 +18,40 @@ function getClient() {
   return { apiKey, baseUrl: getBaseUrl() }
 }
 
+function getDefaultProductId(): string {
+  return process.env.PADDLE_PRODUCT_ID || process.env.PADDLE_PRO_PRODUCT_ID || ''
+}
+
 interface TransactionItem {
   description: string
   name: string
   unitPrice: { amount: string; currencyCode: string }
   quantity: number
+  productId?: string
 }
 
 export async function createTransaction(params: {
   items: TransactionItem[]
   customData: Record<string, string>
   customer?: { email: string; name: string }
-  currencyCode?: string
 }) {
   const { apiKey, baseUrl } = getClient()
+  const defaultProductId = getDefaultProductId()
 
   const body: Record<string, unknown> = {
     items: params.items.map((item) => ({
       price: {
+        product_id: item.productId || defaultProductId,
         description: item.description,
         name: item.name,
         unit_price: {
           amount: item.unitPrice.amount,
-          currency_code: item.unitPrice.currencyCode,
+          currency_code: item.unitPrice.currencyCode.toUpperCase(),
         },
       },
       quantity: item.quantity,
     })),
     custom_data: params.customData,
-    currency_code: params.currencyCode || 'USD',
   }
 
   if (params.customer) {
@@ -98,7 +101,7 @@ export function formatPaddleAmount(cents: number): string {
 
 export async function createPaddleRefund(params: {
   transactionId: string
-  amount?: number // Optional: partial refund amount in cents. If omitted, full refund
+  amount?: number
   reason?: string
 }) {
   const { apiKey, baseUrl } = getClient()

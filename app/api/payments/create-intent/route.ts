@@ -72,7 +72,6 @@ export async function POST(req: Request) {
         need_return: String(!!needReturn),
       },
       customer: { email: customerEmail, name: customerName },
-      currencyCode: currency,
     })
 
     const now = new Date().toISOString()
