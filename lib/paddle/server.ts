@@ -19,7 +19,9 @@ function getClient() {
 }
 
 function getDefaultProductId(): string {
-  return process.env.PADDLE_PRODUCT_ID || process.env.PADDLE_PRO_PRODUCT_ID || ''
+  const id = process.env.PADDLE_PRODUCT_ID || process.env.PADDLE_PRO_PRODUCT_ID
+  if (!id) throw new Error('PADDLE_PRODUCT_ID or PADDLE_PRO_PRODUCT_ID is not configured')
+  return id
 }
 
 interface TransactionItem {
