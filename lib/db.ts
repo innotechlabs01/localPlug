@@ -15,7 +15,7 @@ export function getDb() {
     }
     _client = createClient({ url, authToken, concurrency: DB_CONCURRENCY })
     if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'test') {
-      import('@/lib/config').then(({ validateEnv }) => validateEnv()).catch(() => {})
+      import('@lp/config').then(({ validateEnv }) => validateEnv()).catch(() => {})
     }
   }
   return _client
