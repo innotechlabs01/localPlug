@@ -14,7 +14,8 @@
 | 1 | B5A | Auth infrastructure (Clerk, middleware, guards, ctx, in-memory roles) | 🟢 | — | — | — | `packages/auth` created; Clerk wrappers (clerk.ts), middleware helpers (middleware.ts), API guards (guards.ts), context (context.ts), in-memory roles (roles.ts); re-exported from lib/ for backward compat; **no DB/Drizzle** |
 | 1 | B6 | Validation (shared Zod schemas by domain: common, auth, booking, dispatch, driver, vehicle, payment, customer, notification) | 🟢 | — | — | — | `packages/validation` created with domain-organized schemas; Input/Output/DTO/Form/API/Event separation; re-exported from lib/ for backward compat |
 | 1 | B7 | Types (shared domain types in 4 layers: domain, api, events, shared) | 🟢 | — | — | — | `packages/types` created with 4-layer structure: domain/ entities, api/ DTOs, events/ payloads, shared/ primitives; zero external deps; all enums centralized in shared |
-| 1 | ✅ CHECKPOINT | Foundation gate: compiles? deploys? no behavior change? tests green? flags work? rollback proven? | ⬜ | — | — | — | **mandatory before Core** |
+| 1 | 📋 AUDIT | Foundation Audit (post-B7): shared single-source? config single-source? auth via packages? validation via packages? types via packages? cross-imports clean? circular deps 0? build/typecheck/lint pass? legacy compat 100%? flags OFF? | 🟢 | — | — | — | **PASS** — all 12 criteria met; `FOUNDATION_AUDIT.md` created |
+| 1 | ✅ CHECKPOINT | Foundation gate: compiles? deploys? no behavior change? tests green? flags work? rollback proven? | 🟢 | — | — | — | **PASSED** — Foundation consolidated. Ready for Stage 2 (Domain Extraction) |
 | 2 | B4 | Database (Drizzle) | ⬜ | `use-drizzle` | — | — | |
 | 2 | B8 | Repositories | ⬜ | — | — | — | |
 | 2 | B9 | Domain-service pattern | ⬜ | — | — | — | |
