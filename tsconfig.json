@@ -23,7 +23,7 @@
         "name": "next"
       }
     ],
-    "paths": {
+"paths": {
       "@/*": [
         "./*"
       ],
@@ -35,6 +35,9 @@
       ],
       "@lp/auth": [
         "packages/auth/src"
+      ],
+      "@lp/validation": [
+        "packages/validation/src"
       ]
     }
   },

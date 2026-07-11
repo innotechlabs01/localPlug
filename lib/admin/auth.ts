@@ -1,3 +1,7 @@
+// DB-backed admin auth (roles persisted in DB) — B5B territory.
+// For NEW code: use @lp/auth guards/context (Clerk-only, no DB).
+// This file kept for existing admin API compatibility.
+
 import { auth } from '@clerk/nextjs/server'
 import { getDb } from '@/lib/db'
 import { NextResponse } from 'next/server'
@@ -69,3 +73,6 @@ export async function requireRole(allowedRoles: RoleName[]) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 }
+
+// Re-export Clerk-only auth infrastructure from @lp/auth for new code
+export * from '@lp/auth'
