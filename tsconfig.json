@@ -32,6 +32,9 @@
       ],
       "@lp/config": [
         "packages/config/src"
+      ],
+      "@lp/auth": [
+        "packages/auth/src"
       ]
     }
   },

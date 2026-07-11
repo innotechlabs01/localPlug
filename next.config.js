@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ['@lp/shared', '@lp/config'],
+  transpilePackages: ['@lp/shared', '@lp/config', '@lp/auth'],
   async redirects() {
     return [
       {
