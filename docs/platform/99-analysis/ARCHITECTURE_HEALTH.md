@@ -18,6 +18,13 @@
 | Proven rollback (flag/migration tested) | 100% | n/a (no HR change yet) | ▲ building |
 | Test coverage (domains) | 80%+ | TBD | ▲ building |
 
+> **Foundation Checkpoint (≥96%):** at the end of Stage 1, "Architecture Health ≥96%" means the
+> *foundation* KPIs are green and the dashboard shows **no regression** — compile/lint/build/tests/
+> flags/rollback/boundary-guards/CI all ✔, and ownership/cycle metrics are not worsened. The full
+> targets (100% correct ownership, 0 circular dependencies) are **end-of-2C** invariants, reached
+> during Core Platform + Business Domains, not at this gate. Do not block Foundation on domain
+> ownership; block on foundation health. See `IMPLEMENTATION_RULES.md` → Foundation Checkpoint.
+
 ## How each KPI is measured
 - **Correct ownership / SSOT:** diff `SOURCE_OF_TRUTH_MATRIX` vs `DATABASE_OWNERSHIP_MATRIX` after
   each step; count concepts/tables with exactly one writer.

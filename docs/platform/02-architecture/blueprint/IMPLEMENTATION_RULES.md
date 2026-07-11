@@ -82,17 +82,65 @@ contract.
 > (RBAC, permissions, roles, claims, audit) — lives in Core Platform, **requires B4 (Drizzle)**.
 > This removes the Foundation-before-Core dependency conflict.
 
-## The Foundation Checkpoint (mandatory before Core Platform)
-After Stage 1, answer **all** before proceeding:
-1. Does it compile? (`next build` + `tsc --noEmit`)
-2. Does it deploy? (staging deploy green)
-3. Did behavior change? (regression suite identical to main)
-4. Do all tests pass? (unit + integration green)
-5. Do feature flags work? (boot flags toggle paths in staging)
-6. Was rollback proven? (flip a flag / revert a migration in staging)
+## Checkpoints (mandatory gates inside Foundation)
 
-If any answer is "no", the step that broke it is fixed before Core begins. This is Rule 10 in
-practice.
+### Shared Package Review (between B1 and B3)
+Before `packages/shared` is created, ask: **will this really be shared?**
+- **YES** → `packages/shared`.
+- **NO** → it stays in its domain.
+Many projects end with a bloated `shared` nobody understands. This review prevents it.
+
+### Foundation Checkpoint (after Stage 1, before Core Platform)
+All must be ✔ — **do not proceed if any fails**:
+1. **Compiles** (`tsc --noEmit` + `next build`) ✔
+2. **Lint** ✔ (`pnpm lint`, boundary guards active)
+3. **Build** ✔ (production build green)
+4. **Tests** ✔ (unit + integration green)
+5. **Feature Flags** ✔ (boot flags toggle paths in staging)
+6. **Rollback** ✔ (flip a flag / revert a migration proven in staging)
+7. **No Behavior Changes** ✔ (regression suite identical to `main`)
+8. **Boundary Guards** ✔ (eslint boundaries enforced; no domain logic in `app/` or routes)
+9. **CI** ✔ (`ci-migration.yml` green) **and** Architecture Health ≥ 96% — see note below
+
+> **Architecture Health at this gate:** `ARCHITECTURE_HEALTH.md` "≥96%" here means the
+> *foundation* KPIs are green and the dashboard shows **no regression** (compile/lint/build/tests/
+> flags/rollback/boundary-guards/CI all ✔, ownership/cycle metrics not worsened). The full
+> invariants — 100% correct ownership, 0 circular dependencies — are reached at the **end of 2C**,
+> not at this gate. Do not block Foundation on domain-ownership KPIs; block on foundation health.
+
+If any item fails, the breaking step is fixed before Core begins. This is Rule 10 in practice.
+
+## Package Boundary Rules (what each Foundation package may contain)
+
+These prevent the classic `shared` / `config` bloat. Enforced by review + boundaries lint.
+
+### `packages/shared` — primitives only, never business
+May contain: `date`, `money`, `string`, `uuid`, `env` (safe access), `logger` (interface),
+`result` (Result/Either), base `errors`, shared value objects. **Nothing about the business.
+Never.** If it names a domain concept, it does not belong here.
+
+### `packages/config` — wiring only, never logic
+May contain: `env` binding, feature-flag **registry** (flags catalog), constants, runtime config.
+**No services, no clients, no utilities.** The flag *registry* lives here; flag *evaluation* is a
+thin read used by domains.
+
+### Auth (B5A) — Identity only
+Auth **administrates Identity** (who you are: Clerk session, middleware, guards, context,
+in-memory roles). It does **NOT** own: Permissions, Business Roles, Driver Approval, Admin Access
+Rules — those belong to their domains (RBAC in B5B on domains; approval/access in the relevant
+domain). Auth answers "who is this user", not "what may they do".
+
+### Validation (B6) — one policy for all input
+Every external input follows: **Zod schema → Domain DTO → Domain Service**. Never `UI → DB`
+directly. Routes validate with Zod, build a domain DTO, hand it to the domain service. No business
+rule lives in a route or a component.
+
+### Types (B7) — contracts, not entities
+Prefer `domains/<domain>/entities/<Entity>.ts` over `types/<Entity>.ts`. `packages/types` (if it
+survives) holds **only** shared contracts, events, API DTOs, and public types. **No business
+entities.** Entities live with their domain. Goal: the separate `types` package shrinks over time.
+
+See `03-engineering/DEFINITION_OF_DONE.md` for the per-task acceptance bar.
 
 ## Enforcement
 - **Lint boundary guards** (B0) enforce Rules 3,4,5 mechanically: a domain may not import a

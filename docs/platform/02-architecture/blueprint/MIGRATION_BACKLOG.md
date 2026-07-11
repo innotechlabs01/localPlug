@@ -29,12 +29,13 @@
 | # | ID | Title | Type | Depends on | Legacy | Outcome |
 |---|---|---|---|---|---|---|
 | 1 | B0 | Monorepo (Turborepo + pnpm) + ESLint boundaries + CI + Prettier + Husky + Commitlint + Changesets | Move | 2C.0 | B0 | `packages/*` exist; lint enforces ownership rules (Rules 3,4,5) |
-| 2 | B1 | `packages/shared` (utils, i18n, resilience) **+ absorb Maps (geocode) & Moderation (comment-filter) as stateless libs** | Move | B0 | B1, B6, B7 | Stateless utilities extracted; geo + filter are libs, not domains |
-| 3 | B3 | `packages/config` (env/settings; merge `pricing.ts`; split static vs runtime) | Move/Merge | B1 | B3 | Single config source (TECH_DEBT M-1) |
-| 4 | B5A | `packages/auth` **infrastructure** (Clerk, middleware, guards, context, in-memory roles) — **no Drizzle** | Move | B1 | B5(part) | Auth bootstrap without DB persistence (TECH_DEBT H-5 part 1) |
-| 5 | B6 | `packages/validation` (shared zod / input schemas) | New | B1 | — | One input-validation layer for all domains/routes |
-| 6 | B7 | `packages/types` (shared domain TS types / interfaces) | New | B1 | — | Shared contracts; ends implicit `any` across domains |
-| 7 | ✅ | **FOUNDATION CHECKPOINT** — gate before Core Platform | Gate | B0–B7 | — | Confirms compile/deploy/no-change/tests/flags/rollback |
+| 2 | B1 | `packages/shared` — **primitives only** (date, money, string, uuid, env, logger iface, result, base errors, shared value objects). No business. See `IMPLEMENTATION_RULES.md` → Package Boundary Rules. | Move | B0 | B1, B6, B7 | Shared primitives extracted; `lib/utils` re-exports for backward-compat (no behavior change) |
+| 2b | ⮑ | **Shared Package Review** (checkpoint) — confirm each util is truly shared; else it stays in its domain | Gate | B1 | — | Prevents `shared` bloat |
+| 3 | B3 | `packages/config` — **wiring only** (env binding, feature-flag *registry*, constants, runtime config). No services/clients/utils. Merges `pricing.ts`; splits static vs runtime. | Move/Merge | B1 | B3 | Single config source (TECH_DEBT M-1) |
+| 4 | B5A | `packages/auth` **infrastructure = Identity only** (Clerk, middleware, guards, context, in-memory roles). **No** Permissions/Business-Roles/Driver-Approval/Admin-Access — those belong to domains (B5B + domain). No Drizzle. | Move | B1 | B5(part) | Auth bootstrap = "who is this user" (TECH_DEBT H-5 part 1) |
+| 5 | B6 | `packages/validation` — **one policy**: every input → Zod → Domain DTO → Domain Service. Never UI→DB. Shared Zod schemas for all routes/domains. | New | B1 | — | One input-validation layer; no business rule in routes |
+| 6 | B7 | `packages/types` — **contracts only** (shared contracts, events, API DTOs, public types). No business entities (those live in `domains/<d>/entities/`). | New | B1 | — | Shared contracts; `types` package shrinks over time |
+| 7 | ✅ | **FOUNDATION CHECKPOINT** — strict 9-item gate (compile/lint/build/tests/flags/rollback/no-change/boundary-guards/CI + Architecture Health ≥96%) + `DEFINITION_OF_DONE.md` | Gate | B0–B7 | — | All ✔ before Core Platform |
 
 ## Stage 2 — Core Platform (the technical heart; logic leaves routes)
 | # | ID | Title | Type | Depends on | Legacy | Outcome |
