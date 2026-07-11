@@ -13,7 +13,7 @@
 | 1 | B3 | Config (runtime boundary: typed env, feature flags, constants, runtime helpers) | 🟢 | — | — | — | `packages/config` created; **config↔db cycle eliminated**: `lib/db.ts` now imports `validateEnv` from `@lp/config`; `@lp/config` has zero project/db imports; `lib/config.ts` re-exports boundary + DB settings from `lib/settings.ts`; `lib/feature-flags.ts` re-exports from `@lp/config` |
 | 1 | B5A | Auth infrastructure (Clerk, middleware, guards, ctx, in-memory roles) | 🟢 | — | — | — | `packages/auth` created; Clerk wrappers (clerk.ts), middleware helpers (middleware.ts), API guards (guards.ts), context (context.ts), in-memory roles (roles.ts); re-exported from lib/ for backward compat; **no DB/Drizzle** |
 | 1 | B6 | Validation (shared Zod schemas by domain: common, auth, booking, dispatch, driver, vehicle, payment, customer, notification) | 🟢 | — | — | — | `packages/validation` created with domain-organized schemas; Input/Output/DTO/Form/API/Event separation; re-exported from lib/ for backward compat |
-| 1 | B7 | Types (shared domain types in 4 layers: domain, api, events, shared) | ⬜ | — | — | — | |
+| 1 | B7 | Types (shared domain types in 4 layers: domain, api, events, shared) | 🟢 | — | — | — | `packages/types` created with 4-layer structure: domain/ entities, api/ DTOs, events/ payloads, shared/ primitives; zero external deps; all enums centralized in shared |
 | 1 | ✅ CHECKPOINT | Foundation gate: compiles? deploys? no behavior change? tests green? flags work? rollback proven? | ⬜ | — | — | — | **mandatory before Core** |
 | 2 | B4 | Database (Drizzle) | ⬜ | `use-drizzle` | — | — | |
 | 2 | B8 | Repositories | ⬜ | — | — | — | |

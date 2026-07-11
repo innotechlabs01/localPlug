@@ -38,6 +38,9 @@
       ],
       "@lp/validation": [
         "packages/validation/src"
+      ],
+      "@lp/types": [
+        "packages/types/src"
       ]
     }
   },
