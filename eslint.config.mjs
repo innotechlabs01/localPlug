@@ -2,6 +2,7 @@ import nextPlugin from '@next/eslint-plugin-next'
 import reactPlugin from 'eslint-plugin-react'
 import reactHooksPlugin from 'eslint-plugin-react-hooks'
 import boundariesPlugin from 'eslint-plugin-boundaries'
+import tsParser from '@typescript-eslint/parser'
 
 export default [
   {
@@ -38,6 +39,10 @@ export default [
     // Soft guard (warn only): domains/packages must not import app/ UI; APIs stay thin.
     // Promoted to 'error' once domains exist (Stage 3).
     files: ['packages/**/*.{ts,tsx}'],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: { ecmaVersion: 2022, sourceType: 'module' },
+    },
     rules: {
       'boundaries/element-types': [
         'warn',

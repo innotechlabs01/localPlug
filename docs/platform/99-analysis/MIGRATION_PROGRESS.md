@@ -8,7 +8,8 @@
 |---|---|---|---|---|---|---|---|
 | 0 | 2C.0 | Migration Workspace (branch, flags, CI, dashboard) | 🟢 | — | — | — | branch `migration/platform-v2` + `lib/feature-flags.ts` + `ci-migration.yml` + dashboard |
 | 1 | B0 | Tooling (Turbo, pnpm, ESLint boundaries, CI, Prettier, Husky, Commitlint, Changesets) | 🟢 | — | — | — | turbo 2.10.4; pnpm workspace; boundaries(warn); husky+commitlint+changesets; build ✔ |
-| 1 | B1 | Shared utilities (+Maps, Moderation) | ⬜ | — | — | — | |
+| 1 | B1 | Shared utilities — primitives only (date, money, string, uuid, env, logger, result, errors, value-objects) | 🟢 | — | — | — | `packages/shared` created; `date` & `string` moved from `lib/` + re-exported (no behavior change); Maps/Moderation intentionally excluded (not primitives) |
+| 1 | 🔎 REVIEW | Shared Package Review (post-B1): every util must be truly shared | 🟢 | — | — | — | PASS — all 9 modules generic; no business/domain logic |
 | 1 | B3 | Config | ⬜ | — | — | — | |
 | 1 | B5A | Auth infrastructure (Clerk, middleware, guards, ctx, in-memory roles) | ⬜ | — | — | — | no Drizzle |
 | 1 | B6 | Validation (shared schemas) | ⬜ | — | — | — | |
