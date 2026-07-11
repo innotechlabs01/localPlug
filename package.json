@@ -15,7 +15,11 @@
     "db:clear-drivers": "npx tsx scripts/migrate.ts clear-drivers",
     "db:reset-orders": "npx tsx scripts/migrate.ts reset-orders",
     "db:status": "npx tsx scripts/migrate.ts status",
-    "setup-admin": "npx tsx scripts/setup-admin.ts"
+    "setup-admin": "npx tsx scripts/setup-admin.ts",
+    "turbo": "turbo",
+    "changeset": "changeset",
+    "changeset:version": "changeset version",
+    "prepare": "husky"
   },
   "keywords": [],
   "author": "",
@@ -62,6 +66,12 @@
     "prettier": "^3.8.3",
     "tailwindcss": "^3.4.19",
     "typescript": "^5.8.3",
-    "vitest": "^4.1.6"
+    "vitest": "^4.1.6",
+    "turbo": "^2.5.0",
+    "eslint-plugin-boundaries": "^5.1.0",
+    "husky": "^9.1.7",
+    "@commitlint/cli": "^19.8.0",
+    "@commitlint/config-conventional": "^19.8.0",
+    "@changesets/cli": "^2.28.0"
   }
 }

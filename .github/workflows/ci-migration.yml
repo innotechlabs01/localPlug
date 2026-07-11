@@ -1,0 +1,78 @@
+name: CI - Migration (2C)
+
+# Epic 2C.0 — Migration Workspace: validates the migration line independently of `develop`.
+# This is the "dual pipeline": `ci-develop.yml` validates the CURRENT state (main integration),
+# this workflow validates the NEW state (migration/platform-v2 + 2c/* feature branches).
+#
+# All boot feature flags are OFF here (default) — i.e. it validates the migrated code with the
+# old behavior path active. The flag-ON (new behavior) path is exercised in the staging deploy,
+# not in CI, to keep CI fast and deterministic. See blueprint/MIGRATION_WORKSPACE.md.
+
+on:
+  push:
+    branches: ['migration/platform-v2']
+  pull_request:
+    branches: ['migration/platform-v2']
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+
+  typecheck:
+    name: TypeScript Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec tsc --noEmit
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      # All migration boot flags OFF (default) — validates migrated code on the old behavior path.
+      - run: pnpm test
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck, test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
