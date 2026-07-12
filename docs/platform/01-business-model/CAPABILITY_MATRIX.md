@@ -1,35 +1,47 @@
 # CAPABILITY_MATRIX (All Business Capabilities)
 
 > Every capability in LocalPlug, scored on 10 dimensions.
-> This is the single source of truth for platform completeness.
+> Evolution stages: Capability → Domain → Runtime → Application → Portal
 > Last scored: 2026-07-11
+
+---
+
+## Evolution Stages
+
+| Stage | Meaning | Gate |
+|-------|---------|------|
+| **Capability** | Concept exists, no code | Documented in CAPABILITY_MATRIX |
+| **Domain** | Domain package with entities, services, repos | All 13 domain files exist |
+| **Runtime** | Events published, outbox pattern working | Events flow through bus |
+| **Application** | Admin page consumes API (no direct DB) | Admin refactored |
+| **Portal** | Standalone portal consuming domain services | Portal deployed |
 
 ---
 
 ## Summary
 
-| Capability | Score | Grade | Extraction Priority |
-|------------|:-----:|:-----:|:---:|
-| Drivers | 72% | Mature Domain | ✅ Done |
-| Booking | 65% | Domain Exists | ✅ Done |
-| Dispatch | 55% | Domain Exists | ✅ Done |
-| Payments | 52% | Domain Exists | ✅ Done |
-| Vehicles | 48% | Partially Extracted | Done (B17) |
-| Trips | 45% | Partially Extracted | Done (B16) |
-| Notifications | 40% | Partially Extracted | B11A ✅, B11B pending |
-| Hotels | 28% | Embedded | 🔴 B28 |
-| Customers | 25% | Embedded | 🔴 B18 |
-| Ratings | 28% | Embedded | 🔴 B27 |
-| Chat | 22% | Embedded | 🔴 B29 |
-| Settings | 30% | Embedded | 🔴 B21 |
-| Analytics | 18% | Embedded | 🔴 B20 |
-| Cases | 22% | Embedded | 🔴 B31 |
-| AI | 18% | Embedded | 🔴 B30 |
-| Maps | 10% | Non-existent | Future |
-| Moderation | 12% | Non-existent | Future |
-| Partners | 5% | Concept only | Future |
-| CRM | 5% | Concept only | Future |
-| Support | 8% | Concept only | Future |
+| Capability | Score | Stage | Evolution | Priority |
+|------------|:-----:|:-----:|:---------:|:--------:|
+| Drivers | 72% | Runtime | ✅ Complete | — |
+| Booking | 65% | Runtime | ✅ Complete | — |
+| Dispatch | 55% | Runtime | ✅ Complete | — |
+| Payments | 52% | Runtime | ⚠️ Consolidate 3 impls | — |
+| Vehicles | 48% | Runtime | ✅ Complete (B17) | — |
+| Trips | 45% | Runtime | ✅ Complete (B16) | — |
+| Notifications | 40% | Domain | ⏳ B11B pending | — |
+| Hotels | 28% | Capability | 🔴 Extract first | 1 |
+| Customers | 25% | Capability | 🔴 Schema fix first | 2 |
+| Ratings | 28% | Capability | 🔴 Consolidate 2 tables | 3 |
+| Cases | 22% | Capability | 🔴 Clean boundaries | 4 |
+| Chat | 22% | Capability | 🔴 Most complex | 5 |
+| AI | 18% | Capability | 🔴 Extract with Chat | 6 |
+| Analytics | 18% | Capability | 🔴 Read-only, lowest effort | 7 |
+| Settings | 30% | Capability | 🔴 High coupling | 8 |
+| Maps | 10% | Capability | Future | — |
+| Moderation | 12% | Capability | Future | — |
+| Partners | 5% | Capability | Future | — |
+| CRM | 5% | Capability | Future | — |
+| Support | 8% | Capability | Future | — |
 
 ---
 
