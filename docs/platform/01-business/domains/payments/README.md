@@ -1,39 +1,27 @@
 # PAYMENTS DOMAIN
 
-> Payment processing, splits, refunds, and financial records.
+> Payment processing, invoices, refunds, subscriptions, and settlements.
 
 ## Responsibility
-- Owns: payment processing, payment splits, refunds, financial records
-- Does NOT own: booking charges (Booking), hotel commissions (Hotels)
+- Owns: invoices, transactions, refunds, subscriptions, checkout, webhooks, settlements
+- Does NOT own: booking charges (Booking), hotel commissions (Hotels), driver payouts (Drivers)
 
 ## Boundaries
 - Inbound: Booking (charge), Admin, API consumers
-- Outbound: Notifications (payment status), Analytics (revenue)
+- Outbound: Notifications (payment status), Analytics (revenue), Hotels (commission)
 
 ## Status
+- Stage: Capability (not yet extracted)
 - Maturity: 52%
 - Extraction: Partial (3 duplicate implementations need consolidation)
-- Portal: None (Finance Portal planned)
 
 ## Domain Model
-- **Entities**: Payment, PaymentSplit, Refund, PaymentMethod
-- **Value Objects**: PaymentStatus, PaymentMethod, Currency, SplitType
-- **Aggregates**: Payment (root: Payment, invariants: amount consistency, split totals)
-- **Events**: payment.initiated, payment.succeeded, payment.failed, payment.refunded
-- **Policies**: Split calculation, refund rules, retry logic
+- Entities: Invoice, Transaction, Refund, Subscription, Checkout, Webhook, Settlement
+- Value Objects: PaymentStatus, PaymentMethod, Currency, SplitType, SubscriptionStatus
+- Aggregates: Invoice (root, invariants: amount consistency, split totals)
+- Events: payment.initiated, payment.succeeded, payment.failed, payment.refunded, payout.created
+- Policies: SplitCalculationPolicy, RefundPolicy, RetryPolicy, SettlementPolicy
 
-## Key Files
-- `packages/domains/_services/src/payment.ts` — Domain service
-- `lib/payment-service.ts` — Legacy implementation (needs consolidation)
-- `app/api/payments/` — API routes
-- `packages/db/src/domains/payments/` — DB schema
-
-## Duplicate Implementations (Must Consolidate)
-1. `lib/payment-service.ts` — 281L, legacy
-2. `app/api/bookings/step-payment.tsx` — Server action, inline
-3. `packages/domains/_services/src/payment.ts` — Domain service
-
-## Extraction Plan
-1. Consolidate 3 implementations into domain service
-2. Add payment events
-3. Create Finance Portal
+## Provider Abstraction (NOT in this domain)
+Providers are infrastructure: Paddle, Stripe, MercadoPago, DLocal, FastSpring.
+This domain defines the contract, providers implement it.

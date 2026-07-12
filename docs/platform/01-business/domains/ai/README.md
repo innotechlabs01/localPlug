@@ -1,33 +1,23 @@
 # AI DOMAIN
 
-> AI response generation, model management, and confidence scoring.
+> AI response generation, model management, confidence scoring, and learning.
 
 ## Responsibility
-- Owns: AI response generation, model selection, confidence scoring, learning
-- Does NOT own: chat conversations (Chat), notifications (Communication)
+- Owns: AI responses, model selection, confidence scoring, conversation memory, knowledge base, intent recognition, escalation triggers
+- Does NOT own: chat conversations (Chat), notifications (Communication), training data (Analytics)
 
 ## Boundaries
 - Inbound: Chat (request), Admin (configuration)
-- Outbound: Chat (response), Analytics (metrics)
+- Outbound: Chat (response), Analytics (metrics), Cases (escalation)
 
 ## Status
+- Stage: Capability (not yet extracted)
 - Maturity: 18%
-- Extraction: Not started (split across Chat, n8n, WhatsApp)
-- Portal: None
+- Extraction: Not started
 
 ## Domain Model
-- **Entities**: AIResponse, AIConfidence, AIModel, AILearning
-- **Value Objects**: AIModelType, ConfidenceLevel, ResponseQuality
-- **Aggregates**: AIResponse (root: AIResponse, invariants: confidence thresholds)
-- **Events**: ai.response_generated, ai.confidence_scored, ai.learning_updated
-- **Policies**: Confidence thresholds, model selection, fallback rules
-
-## Key Files
-- `lib/agent-service.ts` — AI agent (shared with Chat)
-- `lib/ai-confidence.ts` — Confidence scoring
-- `app/admin/ia-chat/` — Admin AI Chat page (951L)
-
-## Extraction Plan
-1. Separate AI from Chat domain
-2. Create AI domain package
-3. Build model management UI
+- Entities: AIResponse, AIModel, AIConfidence, AIMemory, AIKnowledge, AIIntent, AIAgent
+- Value Objects: AIModelType, ConfidenceLevel, ResponseQuality, IntentType
+- Aggregates: AIAgent (root, invariants: confidence thresholds, model selection)
+- Events: ai.response.generated, ai.confidence.scored, ai.escalated, ai.learning.updated
+- Policies: ConfidencePolicy, ModelSelectionPolicy, EscalationPolicy, LearningPolicy
