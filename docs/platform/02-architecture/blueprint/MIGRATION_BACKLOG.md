@@ -61,11 +61,11 @@
 | 19 | B19 | `domains/payments` (Merge paddle + payment-record; **Delete** `payment-store.ts` dup) | Merge/Delete | B4,B13 | B16 | Single payments owner (TECH_DEBT H-1,C-5) |
 | 20 | B20 | `domains/analytics` (read models) | Move | B4 | B12 | Analytics read-only |
 | 21 | B21 | `domains/settings` | Move | B3,B4 | B11 | Settings owned |
-| 22 | B27 | `domains/ratings` (Split UI↔logic) | Split | B1,B4 | B8 | Ratings owned |
-| 23 | B28 | `domains/hotels` (hotels/rooms/promotions) | Move | B4 | B9 | Hotels owned |
-| 24 | B29 | `domains/chat` (Split chat/agent services + conversation) | Split | B4,B11,B7 | B18 | Chat owned |
-| 25 | B30 | `domains/ai` (ollama-service) | Move | B29,B11 | B19 | Concierge engine owned |
-| 26 | B31 | `domains/cases` (cases/tasks/documents) | Move | B15,B5 | B22 | Cases owned |
+| 22 | B27 | `domains/ratings` (Split UI↔logic; consolidate 2 rating tables) | Split | B1,B4 | B8 | Ratings owned; single rating table |
+| 23 | B28 | `domains/hotels` (Split from Admin: 4 tables, 8 APIs, 935L page; extract CommissionPolicy; manager provisioning) | Split | B4,B3,B9,B10 | B9 | Hotels owned; commission single-source-of-truth (TECH_DEBT: formula dup x4) |
+| 24 | B29 | `domains/chat` (Split chat/agent services + conversation + AI coupling) | Split | B4,B11,B7 | B18 | Chat owned; AI concerns separated |
+| 25 | B30 | `domains/ai` (ollama-service + GPT-4o + prompt management) | Move | B29,B11 | B19 | Concierge engine owned |
+| 26 | B31 | `domains/cases` (cases/tasks/documents — clean boundaries) | Move | B15,B5 | B22 | Cases owned |
 
 ## Stage 4 — Delivery (apps consume the platform)
 | # | ID | Title | Type | Depends on | Legacy | Outcome |
