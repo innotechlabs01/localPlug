@@ -8,14 +8,14 @@
 | Indicator | Target | Current | Trend |
 |---|---|---|---|
 | Correct ownership (single writer per concept) | 100% | ~86% (3 conflicts: booking status, trips, vehicles, config-split) | ▲ improving |
-| Circular dependencies | 0 | 2 (`queue↔n8n`, `config↔lib/db`) | ▼ breaking |
+| Circular dependencies | 0 | 1 (`queue↔n8n`) | ▼ breaking |
 | Business logic in UI | 0 | partial | ▼ reducing |
 | Business logic in API routes | 0 | high (monolith) | ▼ reducing |
 | Domain coverage (all domains extracted & owned) | 100% | 0% (start) | ▲ building |
 | Typed events (cross-domain via bus, not inline) | 100% | 0% (inline today) | ▲ building |
 | Single Source of Truth per table | 100% | ~88% (3 multi-writer) | ▲ improving |
-| High-Risk changes behind a feature flag | 100% | n/a (no HR change yet) | ▲ building |
-| Proven rollback (flag/migration tested) | 100% | n/a (no HR change yet) | ▲ building |
+| High-Risk changes behind a feature flag | 100% | 100% (use-drizzle wired, dual runtime) | ✅ B4 |
+| Proven rollback (flag/migration tested) | 100% | 100% (flag OFF = instant rollback) | ✅ B4 |
 | Test coverage (domains) | 80%+ | TBD | ▲ building |
 
 > **Foundation Checkpoint (≥96%):** at the end of Stage 1, "Architecture Health ≥96%" means the
@@ -41,6 +41,7 @@
 |---|---|---|---|---|---|---|---|
 | Start | 86% | 2 | high | 0/16 | 0% | — | — |
 | After Foundation | TBD | 2 | high | 0/16 | 0% | boot flags on | registry |
+| After B4 (Database) | ~88% | 1 | high | 0/16 | 0% | use-drizzle | dual runtime |
 | After Core | TBD | 0 | med | 0/16 | high | per-step | tested |
 | After Domains | TBD | 0 | low | 16/16 | 100% | per-step | tested |
 | After Delivery | 100% | 0 | 0 | 16/16 | 100% | per-step | tested |

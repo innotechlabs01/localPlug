@@ -16,7 +16,7 @@
 | 1 | B7 | Types (shared domain types in 4 layers: domain, api, events, shared) | 🟢 | — | — | — | `packages/types` created with 4-layer structure: domain/ entities, api/ DTOs, events/ payloads, shared/ primitives; zero external deps; all enums centralized in shared |
 | 1 | 📋 AUDIT | Foundation Audit (post-B7): shared single-source? config single-source? auth via packages? validation via packages? types via packages? cross-imports clean? circular deps 0? build/typecheck/lint pass? legacy compat 100%? flags OFF? | 🟢 | — | — | — | **PASS** — all 12 criteria met; `FOUNDATION_AUDIT.md` created |
 | 1 | ✅ CHECKPOINT | Foundation gate: compiles? deploys? no behavior change? tests green? flags work? rollback proven? | 🟢 | — | — | — | **PASSED** — Foundation consolidated. Ready for Stage 2 (Domain Extraction) |
-| 2 | B4 | Database (Drizzle) | ⬜ | `use-drizzle` | — | — | |
+| 2 | B4 | Database (Drizzle) | 🟢 | `use-drizzle` | — | — | Schema (33 tables, 7 domain files), repositories (4 full + 18 stubs), unified factory (`createDatabase()`), legacy/Drizzle dual runtime, observability metrics, seed, migration. Build ✔, lint ✔, tsc ✔ |
 | 2 | B8 | Repositories | ⬜ | — | — | — | |
 | 2 | B9 | Domain-service pattern | ⬜ | — | — | — | |
 | 2 | B10 | Event bus + outbox | ⬜ | — | — | — | breaks queue↔n8n |

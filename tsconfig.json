@@ -41,6 +41,12 @@
       ],
       "@lp/types": [
         "packages/types/src"
+      ],
+      "@lp/db": [
+        "packages/db/src"
+      ],
+      "@lp/db/*": [
+        "packages/db/src/*"
       ]
     }
   },
