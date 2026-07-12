@@ -1,7 +1,7 @@
 # MIGRATION_PROGRESS (dashboard — Epic 2C)
 
-> Live status of every 2C step. Updated on each merged PR. Companion to `MIGRATION_WORKSPACE.md`
-> (prep), `ARCHITECTURE_HEALTH.md` (KPIs), `IMPLEMENTATION_RULES.md` (contract).
+> Live status of every 2C step. Updated on each merged PR. Companion to `02-architecture/blueprint/MIGRATION_WORKSPACE.md`
+> (prep), `ARCHITECTURE_HEALTH.md` (KPIs), `02-architecture/blueprint/IMPLEMENTATION_RULES.md` (contract).
 > Status: ⬜ pending · 🟡 in progress · 🟢 done · 🔴 blocked.
 
 | Stage | Step | Title | Status | Flag | Gate | Deployed | Notes |

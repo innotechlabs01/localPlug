@@ -1,84 +1,136 @@
-# PLATFORM_INDEX
+# PLATFORM_INDEX (Reading Order)
 
-> **Single entry point for humans and AIs.**
-> This file is a navigation map only. It contains no technical rules.
-> Read it first, then follow the reading order below before writing any code.
->
-> **Scope:** LocalPlug is a **Business Platform** — a set of reusable domains
-> (Booking, Dispatch, Drivers, Trips, Vehicles, Customers, Payments, Notifications, …)
-> consumed by multiple applications (Admin, Driver Portal, Customer Portal, Landing, and
-> future Analytics / Public API / Partners). The Driver Portal is the *first new application*,
-> not the project itself. The first five Epics build the platform; applications come after.
+> **Start here.** This is the canonical directory for the LocalPlug Platform documentation.
+> Read top-down. Each layer is more stable than the one below it.
 
 ---
 
-## How to use this file
-
-- If you are a **developer**: start here, then open the linked files in order.
-- If you are an **AI agent**: load this file first, then load only the files your task requires (prefer `09-ai/` for context). Never implement before reading the Constitution and the relevant domain/workflow/state-machine files.
-
----
-
-## Reading order (mandatory before implementing)
+## Directory Structure
 
 ```
-START HERE  →  PLATFORM_INDEX.md  (you are here)
-
-   ↓
-(1) 00-CONSTITUTION.md        — non-negotiable platform rules
-   ↓
-(2) 01-business/              — what the platform does (domains)
-   ↓
-(3) 02-architecture/          — how it is structured (monorepo, DDD, events)
-   ↓
-(4) 06-workflows/             — end-to-end business flows
-   ↓
-(5) 07-state-machines/        — entity lifecycles & status transitions
-   ↓
-(6) 03-engineering/           — coding, testing, security, quality gates
-   ↓
-(7) 05-decisions/             — Architecture Decision Records (ADRs)
-   ↓
-(8) 09-ai/                    — AI context, prompts, architecture & implementation rules
-   ↓
-(9) 11-product-management/    — backlog, epics, features, sprints, MVP, releases
-   ↓
-(10) 12-quality/              — checklists every change must pass
-
-   ↓
-NOW YOU ARE ALLOWED TO IMPLEMENT CODE
+docs/platform/
+├── 00-CONSTITUTION.md              ← The immutable law (start here)
+│
+├── 01-business-model/              ← WHAT the company is (most stable)
+│   ├── README.md
+│   ├── VISION.md                   ← Problem, solution, where we're going
+│   ├── CAPABILITIES.md             ← What the platform can do
+│   ├── DOMAIN_MAP.md               ← Who owns what, how domains relate
+│   ├── MONETIZATION.md             ← How the platform makes money
+│   └── STRATEGIC_ROADMAP.md        ← 1-3 year trajectory
+│
+├── 01-business/                    ← WHAT each domain does
+│   ├── booking/
+│   ├── dispatch/
+│   ├── drivers/
+│   ├── trips/
+│   ├── vehicles/
+│   ├── payments/
+│   ├── notifications/
+│   └── analytics/
+│
+├── 02-architecture/                ← HOW the platform is designed
+│   ├── blueprint/                  ← Migration plan, ownership, execution
+│   ├── patterns/                   ← Technical patterns (persistence, events)
+│   ├── decisions/                  ← ADRs (architectural decision records)
+│   ├── workflows/                  ← Business flow diagrams
+│   ├── state-machines/             ← Entity state transitions
+│   └── *.md                        ← DDD, monorepo, packages, deployment
+│
+├── 03-engineering/                 ← HOW we build (standards)
+│   ├── coding-standards.md
+│   ├── testing.md
+│   ├── quality-gates.md
+│   ├── security.md
+│   ├── DEFINITION_OF_DONE.md
+│   ├── quality/                    ← Checklists (API, DB, security, UX)
+│   └── reference/                  ← Conventions, glossary, naming
+│
+├── 04-infrastructure/              ← WHERE it runs
+│   ├── infrastructure.md
+│   ├── docker.md
+│   ├── coolify.md
+│   ├── monitoring.md
+│   ├── observability.md
+│   └── backup.md
+│
+├── 06-applications/                ← WHO consumes the platform
+│   ├── ui/                         ← Design system, UX flows
+│   ├── admin/                      ← (future)
+│   ├── driver/                     ← (future)
+│   ├── customer/                   ← (future)
+│   └── landing/                    ← (future)
+│
+├── 07-product/                     ← HOW it evolves
+│   ├── EPICS.md
+│   ├── FEATURES.md
+│   ├── SPRINTS.md
+│   ├── RELEASE_PLAN.md
+│   └── USER_STORIES.md
+│
+├── 08-analysis/                    ← HOW we audit and improve
+│   ├── MIGRATION_PROGRESS.md       ← Live status of Epic 2C
+│   ├── ARCHITECTURE_HEALTH.md      ← Platform health metrics
+│   ├── TECH_DEBT.md
+│   ├── FOUNDATION_AUDIT.md
+│   └── platform-digital-twin/      ← Complete system inventory
+│
+├── 09-ai/                          ← HOW AI agents collaborate
+│   ├── prompts.md
+│   ├── context.md
+│   ├── architecture-rules.md
+│   └── implementation-rules.md
+│
+└── archive/                        ← Historical versions (never delete)
 ```
 
 ---
 
-## Directory map
+## Reading Order (by role)
 
-| Path | What it is | Read when… |
-|---|---|---|
-| `00-CONSTITUTION.md` | Immutable platform rules | Always, first |
-| `README.md` | Overview of the docs repo | Onboarding |
-| `01-business/` | Business domains (booking, dispatch, drivers, trips, vehicles, payments, notifications, analytics) | Building/understanding a feature |
-| `02-architecture/` | Monorepo, DDD, event-driven, packages, applications, realtime, deployment | Structuring code |
-| `02-architecture/blueprint/` | **Epic 2A master plan**: domain/package/app maps, data/api/event/db/folder ownership, dependency + context + bounded-context diagrams, sequence diagrams, file classification, migration backlog (v2, 4-stage order), `IMPLEMENTATION_RULES.md` (2C execution contract) | Defining future architecture (no code) |
-| `03-engineering/` | AI rules, coding standards, testing, security, performance, review, quality gates | Writing/ reviewing code |
-| `04-operations/` | Infra, Docker, Coolify, monitoring, backup, observability | Deploying/operating |
-| `05-decisions/` | ADRs — why we decided what we decided | Questioning a past decision |
-| `06-workflows/` | Booking, dispatch, assignment, trip, payment, notification flows | Tracing a use case |
-| `07-state-machines/` | Booking, assignment, trip, payment, driver lifecycles | Implementing status transitions |
-| `08-ui/` | Design system, UI inventory, UX flows | Building UI |
-| `09-ai/` | Master context, prompts, architecture rules, implementation rules | Acting as / instructing an AI |
-| `10-reference/` | Glossary, naming, conventions | Looking up a term or rule |
-| `11-product-management/` | Backlog, epics, features, stories, sprints, MVP, releases, changelog, decisions | Planning / product strategy |
-| `12-quality/` | Review, UX, API, DB, security, performance, pre-release checklists | Gating every change |
-| `99-analysis/` | PLATFORM_DISCOVERY (as-is map), CURRENT_ARCHITECTURE (as-is snapshot), PLATFORM_AUDIT, TECH_DEBT, MIGRATION_PLAN, REFACTOR_REPORT, `platform-digital-twin/` (Epic 2B — real-system mirror: files, modules, dependencies, runtime map, matrices), `architecture-validation/` (Epic 2B.5 — audit Blueprint ↔ Twin ↔ Plan B0–B29: backlog/ownership/event/DB/API/realtime/monorepo checks, readiness score, gates) | Gap analysis, current vs target |
-| `archive/` | Past spec versions (spec-v1, etc.) — never delete, only move | Historical context |
+### New Team Member
+1. `00-CONSTITUTION.md` — understand the law
+2. `01-business-model/VISION.md` — understand the purpose
+3. `01-business-model/CAPABILITIES.md` — understand what it does
+4. `01-business-model/DOMAIN_MAP.md` — understand the organization
+5. `02-architecture/blueprint/README.md` — understand the migration
+
+### Developer
+1. `00-CONSTITUTION.md` — understand the law
+2. `03-engineering/coding-standards.md` — understand the rules
+3. `03-engineering/DEFINITION_OF_DONE.md` — understand completion criteria
+4. `02-architecture/patterns/` — understand technical patterns
+5. `08-analysis/MIGRATION_PROGRESS.md` — understand current state
+
+### Product Manager
+1. `00-CONSTITUTION.md` — understand the law
+2. `01-business-model/STRATEGIC_ROADMAP.md` — understand the trajectory
+3. `01-business-model/MONETIZATION.md` — understand the business
+4. `07-product/EPICS.md` — understand what's being built
+5. `08-analysis/MIGRATION_PROGRESS.md` — understand progress
+
+### AI Agent
+1. `00-CONSTITUTION.md` — understand the law
+2. `09-ai/architecture-rules.md` — understand architectural constraints
+3. `09-ai/implementation-rules.md` — understand implementation rules
+4. `02-architecture/blueprint/IMPLEMENTATION_RULES.md` — understand execution rules
+5. `08-analysis/MIGRATION_PROGRESS.md` — understand current state
 
 ---
 
-## Golden rules (summary — full text in Constitution)
+## Stability Gradient
 
-1. Business rules never depend on frameworks.
-2. Applications contain no business logic; domains do.
-3. Cross-domain communication happens only through typed events.
-4. Every architectural decision is recorded as an ADR.
-5. Documentation is migrated, never deleted (`archive/`).
+From most stable to most changeable:
+
+```
+00-CONSTITUTION          ← Changes rarely (years)
+01-business-model        ← Changes quarterly
+01-business              ← Changes monthly
+02-architecture          ← Changes per epic
+03-engineering           ← Changes per sprint
+04-infrastructure        ← Changes per release
+06-applications          ← Changes per feature
+07-product               ← Changes per sprint
+08-analysis              ← Changes continuously
+09-ai                    ← Changes per session
+```
