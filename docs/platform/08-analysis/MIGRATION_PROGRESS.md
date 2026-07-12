@@ -20,7 +20,8 @@
 | 2 | B8 | Persistence Architecture | 🟢 | — | — | — | Documento constitucional: Repository Contract, CQRS separation, Transactions, Unit of Work, Specifications, Pagination, Soft Delete, Auditing, Contract Tests. Patterns directory created |
 | 2 | B9 | Domain-service pattern | 🟢 | — | — | — | `packages/domains/_services` created: BaseDomainService, Result types, ServiceContract, BookingService (reference), PaymentService, DriverService, VehicleService, AssignmentService, NotificationService (stubs) |
 | 2 | B10 | Event bus + outbox | 🟢 | — | — | — | EVENT_ARCHITECTURE.md (canonical event model); packages/events: EventType registry (35 events), DomainEvent<T> envelope, InMemoryEventBus, OutboxProcessor, OutboxRepository contract, createOutboxEntry helper; replaces queue↔n8n cycle |
-| 2 | B11 | Notifications | ⬜ | `use-domain-notifications` | — | — | |
+| 2 | B11A | Communication domain (architecture contract) | 🟢 | — | — | — | packages/communication/docs: NOTIFICATION_ARCHITECTURE, PROVIDERS, ROUTING, TEMPLATES, PREFERENCES, RETRY_POLICY, DELIVERY, EVENTS, METRICS |
+| 2 | B11B | Communication domain (runtime) | ⬜ | `use-domain-notifications` | — | — | handlers, providers, template engine, n8n decomposition |
 | 2 | B12 | Shared API layer | ⬜ | — | — | — | |
 | 2 | B5B | Auth persistence (RBAC, perms, roles, claims, audit) | ⬜ | `use-domain-auth` | — | — | needs B4 |
 | 3 | B13 | Booking | ⬜ | `use-domain-booking` | — | — | |

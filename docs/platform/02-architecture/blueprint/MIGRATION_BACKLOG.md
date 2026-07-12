@@ -44,7 +44,8 @@
 | 8 | B8 | `packages/domains/_repositories` (generic repo layer over Drizzle) | New | B4 | — | Domains read/write only via repositories |
 | 9 | B9 | `packages/domains/_services` (base domain-service pattern) | New | B8 | — | Standard service shape; logic moves here, not routes |
 | 10 | B10 | `packages/events` (typed event bus + outbox) | New | B1,B4 | B23(catalog) | Typed events replace inline n8n/DB side-effects (breaks `queue↔n8n` cycle) |
-| 11 | B11 | `domains/notifications` (Split whatsapp-service + n8n client + templating; centralize i18n) | Split | B1,B4,B5,B10 | B17 | Notifications owned (TECH_DEBT H-6) |
+| 11a | B11A | `packages/communication` (Architecture contract: providers, routing, templates, preferences, retry, DLQ, delivery, metrics) | New | B10 | B17 | Communication domain contract (TECH_DEBT H-6) |
+| 11b | B11B | `packages/communication` (Runtime: handlers, providers, template engine, n8n client decomposition) | Split | B11A,B4,B5 | B17 | Communication runtime (TECH_DEBT H-6) |
 | 12 | B12 | `packages/api` (response/error envelope, route guard, webhook-auth, admin-fetch) | Move | B5,B10 | B24 | Shared API contract for every route |
 | 13 | B5B | `packages/auth` **persistence** (RBAC, permissions, roles, claims, audit) — **needs Drizzle (B4)** | Move/Merge | B4,B5A | B5(part) | Single auth + RBAC on domains (TECH_DEBT H-5 part 2) |
 
