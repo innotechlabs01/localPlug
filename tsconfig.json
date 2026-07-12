@@ -47,6 +47,15 @@
       ],
       "@lp/db/*": [
         "packages/db/src/*"
+      ],
+      "@lp/events": [
+        "packages/events/src"
+      ],
+      "@lp/domains": [
+        "packages/domains/_services/src"
+      ],
+      "@lp/domains/*": [
+        "packages/domains/_services/src/*"
       ]
     }
   },

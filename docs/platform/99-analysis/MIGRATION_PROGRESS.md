@@ -19,7 +19,7 @@
 | 2 | B4 | Database (Drizzle) | 🟢 | `use-drizzle` | — | — | Schema (33 tables, 7 domain files), repositories (4 full + 18 stubs), unified factory (`createDatabase()`), legacy/Drizzle dual runtime, observability metrics, seed, migration. Build ✔, lint ✔, tsc ✔ |
 | 2 | B8 | Persistence Architecture | 🟢 | — | — | — | Documento constitucional: Repository Contract, CQRS separation, Transactions, Unit of Work, Specifications, Pagination, Soft Delete, Auditing, Contract Tests. Patterns directory created |
 | 2 | B9 | Domain-service pattern | 🟢 | — | — | — | `packages/domains/_services` created: BaseDomainService, Result types, ServiceContract, BookingService (reference), PaymentService, DriverService, VehicleService, AssignmentService, NotificationService (stubs) |
-| 2 | B10 | Event bus + outbox | 🟡 | — | — | — | EVENT_ARCHITECTURE.md written: Event Taxonomy (3 types), Ownership, Outbox Pattern, Event Bus, Idempotency, Envelope, Consumers, Versioning, Observability, Implementation Plan |
+| 2 | B10 | Event bus + outbox | 🟢 | — | — | — | EVENT_ARCHITECTURE.md (canonical event model); packages/events: EventType registry (35 events), DomainEvent<T> envelope, InMemoryEventBus, OutboxProcessor, OutboxRepository contract, createOutboxEntry helper; replaces queue↔n8n cycle |
 | 2 | B11 | Notifications | ⬜ | `use-domain-notifications` | — | — | |
 | 2 | B12 | Shared API layer | ⬜ | — | — | — | |
 | 2 | B5B | Auth persistence (RBAC, perms, roles, claims, audit) | ⬜ | `use-domain-auth` | — | — | needs B4 |
