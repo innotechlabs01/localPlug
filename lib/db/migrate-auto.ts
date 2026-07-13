@@ -1,4 +1,5 @@
 import { getDb } from '@/lib/db'
+import { ensurePlansSchema } from './migrate-plans'
 
 let _migrated = false
 
@@ -171,5 +172,8 @@ export async function ensureSchema(): Promise<void> {
   }
 
   console.log('[Schema] Auto-migration complete')
+
+  await ensurePlansSchema()
+
   _migrated = true
 }
