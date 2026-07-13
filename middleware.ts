@@ -5,7 +5,12 @@ import { applyRateLimit } from '@/lib/rate-limit'
 const isPublicRoute = createRouteMatcher([
   '/',
   '/booking',
+  '/driver',
+  '/hotel',
   '/api/booking',
+  '/api/driver/list',
+  '/api/driver/my-assignments',
+  '/api/hotel/orders/(.*)',
   '/api/payments/status',
   '/api/payments/create-intent',
   '/api/payments/confirm',
