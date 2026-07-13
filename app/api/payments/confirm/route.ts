@@ -31,6 +31,14 @@ export async function POST(req: Request) {
       )
     }
 
+    const txnBookingRef = txn.custom_data?.booking_reference
+    if (txnBookingRef && txnBookingRef !== bookingReference) {
+      return NextResponse.json(
+        { error: 'invalid_transaction', message: 'Transaction does not match booking' },
+        { status: 400 },
+      )
+    }
+
     const existing = await getPayment(bookingReference)
     const now = new Date().toISOString()
     const record: PaymentRecord = {

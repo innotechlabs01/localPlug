@@ -43,13 +43,13 @@ export async function POST(req: Request) {
       )
     }
 
-    let totalAmountUsd: number
+    let totalAmountCents: number
     let packageName: string
     let usedPackageId: string
 
     if (plan_id) {
       const { total, plan } = await calculatePlanTotal(plan_id, tour_ids, num_people)
-      totalAmountUsd = total
+      totalAmountCents = Math.round(total * 100)
       packageName = plan.name as string
       usedPackageId = `plan-${plan_id}`
     } else {
@@ -60,7 +60,7 @@ export async function POST(req: Request) {
           { status: 400 },
         )
       }
-      totalAmountUsd = await getConfigPackageGrandTotalCents(packageId!, !!needReturn)
+      totalAmountCents = await getConfigPackageGrandTotalCents(packageId!, !!needReturn)
       packageName = await getConfigPackageName(packageId!)
       usedPackageId = packageId!
     }
@@ -81,7 +81,7 @@ export async function POST(req: Request) {
       {
         description: packageName,
         name: usedPackageId,
-        unitPrice: { amount: formatPaddleAmount(totalAmountUsd), currencyCode: currency },
+        unitPrice: { amount: formatPaddleAmount(totalAmountCents), currencyCode: currency },
         quantity: 1,
       },
     ]
@@ -101,7 +101,7 @@ export async function POST(req: Request) {
       booking_reference: bookingReference,
       package_id: usedPackageId,
       package_name: packageName,
-      amount: totalAmountUsd,
+      amount: totalAmountCents,
       currency,
       status: 'pending',
       paddle_transaction_id: txn.id,
@@ -115,7 +115,7 @@ export async function POST(req: Request) {
     }
     await setPayment(record)
 
-    return NextResponse.json({ transactionId: txn.id, amount: totalAmountUsd })
+    return NextResponse.json({ transactionId: txn.id, amount: totalAmountCents })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Internal error'
     return NextResponse.json(

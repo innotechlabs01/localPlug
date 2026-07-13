@@ -241,7 +241,7 @@ export default function StepPayment({
           )}
           <div className="flex justify-between py-3 mt-2 border-t border-[var(--border)] text-[15px] font-semibold">
             <span className="text-white">{paymentT.summaryTotal}</span>
-            <span className="text-[var(--accent-gold)]">${totalPrice}.00 USD</span>
+            <span className="text-[var(--accent-gold)]">${Number(totalPrice).toFixed(2)} USD</span>
           </div>
         </div>
       </div>

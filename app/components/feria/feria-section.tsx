@@ -91,7 +91,7 @@ export default function FeriaSection() {
               <div className="space-y-4 pt-8">
                 <div className="relative rounded-[var(--radius-xl)] overflow-hidden aspect-square">
                   <Image
-                    src="/images/experencies-13.jpg"
+                    src="/images/experiences-15.jpg"
                     alt="Desfile de Silleteros"
                     fill
                     className="object-cover"

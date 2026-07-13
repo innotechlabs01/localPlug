@@ -109,9 +109,9 @@ export default function DriverPage() {
   const selectedDriver = drivers.find(d => d.id === selectedDriverId)
 
   const filteredAssignments = assignments.filter(a => {
-    if (activeTab === 'pending') return ['pending', 'offered'].includes(a.status)
-    if (activeTab === 'active') return ['confirmed'].includes(a.status)
-    return ['completed', 'cancelled', 'expired'].includes(a.status)
+    if (activeTab === 'pending') return ['pending_acceptance'].includes(a.status)
+    if (activeTab === 'active') return ['accepted'].includes(a.status)
+    return ['declined', 'completed', 'cancelled', 'expired'].includes(a.status)
   })
 
   if (loading) {
@@ -264,7 +264,7 @@ export default function DriverPage() {
                       </div>
                     )}
 
-                    {['pending', 'offered'].includes(assignment.status) && (
+                    {['pending_acceptance'].includes(assignment.status) && (
                       <div className="flex gap-2 mt-4">
                         <button
                           onClick={() => handleAction(assignment.id, 'accept')}
