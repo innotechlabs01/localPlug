@@ -1416,4 +1416,16 @@ export default {
     noMatch: 'Passwords do not match',
     reset: 'Reset Password',
   },
+  feria: {
+    tag: 'Feria de las Flores 2026',
+    title: 'Experience the World\'s Greatest Flower Festival',
+    description: 'Every August, Medellín transforms into a sea of color during the Feria de las Flores. Watch the legendary Silleteros parade, explore flower farms, and immerse yourself in the culture that makes this the #1 festival in South America.',
+    highlights: [
+      'Desfile de Silleteros — iconic flower parade',
+      'Live music, dancing & traditional cuisine',
+      'Guided tours to flower farms in Santa Elena',
+      'Nightly concerts across the city',
+    ],
+    cta: 'Book Your Feria Experience',
+  },
 }

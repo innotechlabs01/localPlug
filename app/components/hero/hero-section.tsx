@@ -4,6 +4,32 @@ import Image from 'next/image'
 import HeroCta from './hero-cta'
 import { useI18n } from '@/lib/i18n'
 
+const FERIA_DATES = 'Aug 1 – 10, 2026'
+const FERIA_COUNTDOWN_DAYS = 18
+
+function FeriaBanner() {
+  return (
+    <div className="relative z-20 bg-gradient-to-r from-[#e94560] via-[#ff6b6b] to-[#e94560] py-2.5 px-4 text-center">
+      <div className="flex items-center justify-center gap-3 flex-wrap">
+        <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-white">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M12 6v6l4 2"/>
+          </svg>
+          {FERIA_COUNTDOWN_DAYS} days away
+        </span>
+        <span className="text-white/80">|</span>
+        <span className="text-sm font-semibold text-white">
+          🌸 Feria de las Flores {FERIA_DATES}
+        </span>
+        <span className="text-white/80">|</span>
+        <a href="#feria" className="text-xs font-bold uppercase tracking-wider text-white underline underline-offset-2 hover:text-white/80 transition-colors">
+          Book Now →
+        </a>
+      </div>
+    </div>
+  )
+}
+
 function TrustIndicator({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
   return (
     <div className="flex items-center gap-3">
@@ -21,11 +47,13 @@ function TrustIndicator({ icon, title, description }: { icon: React.ReactNode; t
 function HeroInner() {
   const { t } = useI18n()
   return (
-    <section className="relative min-h-screen flex items-center overflow-hidden bg-gradient-to-b from-[var(--bg-dark)] to-[#0d1512]">
-      {/* Background image */}
+    <>
+      <FeriaBanner />
+      <section className="relative min-h-screen flex items-center overflow-hidden bg-gradient-to-b from-[var(--bg-dark)] to-[#0d1512]">
+      {/* Background image — Medellín skyline at sunset */}
       <div className="absolute inset-0 z-0">
         <Image
-          src="/images/hero-split.jpg"
+          src="https://images.unsplash.com/photo-1727719917899-0167d90709d1?w=1920&q=80&auto=format&fit=crop"
           alt={t.hero.altBackground}
           fill
           className="object-cover opacity-40"
@@ -98,7 +126,7 @@ function HeroInner() {
       <div className="absolute right-[5%] top-1/2 -translate-y-1/2 z-5 max-w-[480px] hidden lg:block animate-fade-in-up" style={{ animationDelay: '0.5s', animationFillMode: 'both' }}>
         <div className="rounded-[var(--radius-xl)] overflow-hidden shadow-[0_24px_64px_rgba(0,0,0,0.5)] relative">
           <Image
-            src="/images/hero-card.jpg"
+            src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=480&q=80&auto=format&fit=crop"
             alt={t.hero.altCard}
             width={480}
             height={380}
@@ -111,6 +139,7 @@ function HeroInner() {
         </div>
       </div>
     </section>
+    </>
   )
 }
 

@@ -1415,4 +1415,16 @@ export default {
     noMatch: 'Las contraseñas no coinciden',
     reset: 'Restablecer Contraseña',
   },
+  feria: {
+    tag: 'Feria de las Flores 2026',
+    title: 'Vive la Fiesta de las Flores más Grande del Mundo',
+    description: 'Cada agosto, Medellín se transforma en un mar de color durante la Feria de las Flores. Disfruta del legendario Desfile de Silleteros, visita fincas floricultoras y sumérgete en la cultura que la convierte en la #1 de Sudamérica.',
+    highlights: [
+      'Desfile de Silleteros — el icónico desfile de flores',
+      'Música en vivo, baile y gastronomía tradicional',
+      'Tours guiados a fincas floricultoras en Santa Elena',
+      'Conciertos nocturnos por toda la ciudad',
+    ],
+    cta: 'Reserva tu Experiencia Feria',
+  },
 }

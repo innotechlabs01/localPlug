@@ -6,12 +6,12 @@ import Image from 'next/image'
 import { useScrollReveal } from '@/app/hooks/use-scroll-reveal'
 
 const experienceImages = [
-  '/images/experiences-1.jpg',
-  '/images/experiences-2.jpg',
-  '/images/experiences-3.jpg',
-  '/images/experiences-4.jpg',
-  '/images/experiences-5.jpg',
-  '/images/experiences-6.jpg',
+  'https://images.unsplash.com/photo-1583996052840-2428a468e4bd?w=800&q=80&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1580060839134-75a5edca2e99?w=800&q=80&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1524350876685-274059332603?w=800&q=80&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&q=80&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=800&q=80&auto=format&fit=crop',
+  'https://images.unsplash.com/photo-1540962351504-03099e0a754b?w=800&q=80&auto=format&fit=crop',
 ]
 
 export default function ExperiencesSection() {
