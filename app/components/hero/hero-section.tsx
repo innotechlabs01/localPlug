@@ -53,7 +53,7 @@ function HeroInner() {
       {/* Background image — Medellín skyline at sunset */}
       <div className="absolute inset-0 z-0">
         <Image
-          src="https://images.unsplash.com/photo-1727719917899-0167d90709d1?w=1920&q=80&auto=format&fit=crop"
+          src="/images/hero-split.jpg"
           alt={t.hero.altBackground}
           fill
           className="object-cover opacity-40"
@@ -126,7 +126,7 @@ function HeroInner() {
       <div className="absolute right-[5%] top-1/2 -translate-y-1/2 z-5 max-w-[480px] hidden lg:block animate-fade-in-up" style={{ animationDelay: '0.5s', animationFillMode: 'both' }}>
         <div className="rounded-[var(--radius-xl)] overflow-hidden shadow-[0_24px_64px_rgba(0,0,0,0.5)] relative">
           <Image
-            src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=480&q=80&auto=format&fit=crop"
+            src="/images/hero-card.jpg"
             alt={t.hero.altCard}
             width={480}
             height={380}

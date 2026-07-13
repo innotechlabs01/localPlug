@@ -15,7 +15,7 @@ export default function FeriaSection() {
       {/* Full-width background image */}
       <div className="absolute inset-0 z-0">
         <Image
-          src="https://images.unsplash.com/photo-1490750967868-88aa4f44baee?w=1920&q=80&auto=format&fit=crop"
+          src="/images/experiences-7.jpg"
           alt="Feria de las Flores — Medellín"
           fill
           className="object-cover"
@@ -71,7 +71,7 @@ export default function FeriaSection() {
               <div className="space-y-4">
                 <div className="relative rounded-[var(--radius-xl)] overflow-hidden aspect-[3/4]">
                   <Image
-                    src="https://images.unsplash.com/photo-1490750967868-88aa4f44baee?w=600&q=80&auto=format&fit=crop"
+                    src="/images/experiences-7.jpg"
                     alt="Silletero con silleta de flores"
                     fill
                     className="object-cover"
@@ -80,7 +80,7 @@ export default function FeriaSection() {
                 </div>
                 <div className="relative rounded-[var(--radius-xl)] overflow-hidden aspect-square">
                   <Image
-                    src="https://images.unsplash.com/photo-1487530811176-3780de880c2d?w=600&q=80&auto=format&fit=crop"
+                    src="/images/experiences-8.jpg"
                     alt="Flores tropicales de Colombia"
                     fill
                     className="object-cover"
@@ -91,7 +91,7 @@ export default function FeriaSection() {
               <div className="space-y-4 pt-8">
                 <div className="relative rounded-[var(--radius-xl)] overflow-hidden aspect-square">
                   <Image
-                    src="https://images.unsplash.com/photo-1455659817273-f96807779a8a?w=600&q=80&auto=format&fit=crop"
+                    src="/images/experencies-13.jpg"
                     alt="Desfile de Silleteros"
                     fill
                     className="object-cover"
@@ -100,7 +100,7 @@ export default function FeriaSection() {
                 </div>
                 <div className="relative rounded-[var(--radius-xl)] overflow-hidden aspect-[3/4]">
                   <Image
-                    src="https://images.unsplash.com/photo-1490750967868-88aa4f44baee?w=600&q=80&auto=format&fit=crop&sat=-100"
+                    src="/images/experiences-12.jpg"
                     alt="Medellín durante la Feria"
                     fill
                     className="object-cover"
