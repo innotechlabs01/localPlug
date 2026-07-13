@@ -35,6 +35,14 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/).
   extracción de paquetes `migration/platform-v2`). Se agregaron los aliases
   `@lp/*` para que los 148 tests pasen. (Pre-existent, no causado por los
   cambios anteriores).
+- **Errores de TypeScript (`tsc --noEmit`)** — pre-existentes de la
+  extracción `migration/platform-v2` y del feature de planes:
+  - `packages/communication/src/kernel.ts`: imports `../contracts/*` → `./contracts/*`,
+    y `event.type` (shorthand inválido) → `event: event.type` (campo de `ProcessingResult`).
+  - `lib/db/migrate-plans.ts`: `SEED_PLANS` inferia `tours: never[]`; se agregó
+    interfaz `SeedPlan`/`SeedTour`.
+  - `lib/i18n/locales/{en,es}.ts`: falta clave `pricing.tours` usada por
+    `pricing-section.tsx`. Ahora `tsc --noEmit` pasa sin errores.
 
 ### Archivos modificados / Modified files
 
