@@ -2,14 +2,14 @@
 // Orchestrates the full pipeline: event → handler → preferences → template → route → deliver
 
 import type { DomainEvent } from '@lp/events'
-import type { CommunicationProvider, Channel } from '../contracts/provider'
-import type { CommunicationHandler, NotificationIntent } from '../contracts/handler'
-import type { CommunicationRouter } from '../contracts/router'
-import type { CommunicationTemplate } from '../contracts/template'
-import type { DeliveryTracker } from '../contracts/delivery'
-import type { PreferenceResolver } from '../contracts/preferences'
-import type { RetryEvaluator } from '../contracts/retry'
-import type { CommunicationMetrics } from '../contracts/metrics'
+import type { CommunicationProvider, Channel } from './contracts/provider'
+import type { CommunicationHandler, NotificationIntent } from './contracts/handler'
+import type { CommunicationRouter } from './contracts/router'
+import type { CommunicationTemplate } from './contracts/template'
+import type { DeliveryTracker } from './contracts/delivery'
+import type { PreferenceResolver } from './contracts/preferences'
+import type { RetryEvaluator } from './contracts/retry'
+import type { CommunicationMetrics } from './contracts/metrics'
 
 export interface RuntimeConfig {
   readonly enableAutoValidation: boolean
@@ -102,7 +102,7 @@ export class CommunicationRuntime {
     if (!handler) {
       return {
         success: false,
-        event.type,
+        event: event.type,
         error: `No handler registered for "${event.type}"`,
         duration: Date.now() - startTime,
         attempts: [],
@@ -114,7 +114,7 @@ export class CommunicationRuntime {
     if (!intent) {
       return {
         success: true,
-        event.type,
+        event: event.type,
         skipped: true,
         reason: 'Handler returned null (no notification needed)',
         duration: Date.now() - startTime,
@@ -222,7 +222,7 @@ export class CommunicationRuntime {
 
     return {
       success: allDelivered || (!anyFailed && results.length > 0),
-      event.type,
+      event: event.type,
       notificationId: event.id,
       duration: totalDuration,
       attempts: results,

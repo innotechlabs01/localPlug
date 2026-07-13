@@ -353,6 +353,7 @@ export default {
     popular: 'Most Popular',
     starting: '/ starting',
     selectPlan: 'Select Plan',
+    tours: 'Available Tours',
     plans: [
       {
         name: 'The Welcome Pack',

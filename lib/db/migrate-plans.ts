@@ -2,7 +2,24 @@ import { getDb } from '@/lib/db'
 
 let _migrated = false
 
-const SEED_PLANS = [
+interface SeedTour {
+  name: string
+  description: string
+  price_per_person_usd: number
+}
+
+interface SeedPlan {
+  name: string
+  slug: string
+  description: string
+  price_usd: number
+  is_popular: number
+  sort_order: number
+  features: string[]
+  tours: SeedTour[]
+}
+
+const SEED_PLANS: SeedPlan[] = [
   {
     name: 'The Welcome Pack',
     slug: 'welcome-pack',

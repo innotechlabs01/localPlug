@@ -352,6 +352,7 @@ export default {
     popular: 'Más Popular',
     starting: '/ desde',
     selectPlan: 'Seleccionar Plan',
+    tours: 'Tours Disponibles',
     plans: [
       {
         name: 'The Welcome Pack',
