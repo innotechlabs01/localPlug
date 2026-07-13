@@ -1,0 +1,11 @@
+// Common validation schemas barrel
+export * from './uuid'
+export * from './email'
+export * from './phone'
+export * from './pagination'
+export * from './money'
+export * from './date'
+export * from './coordinates'
+export * from './address'
+export * from './metadata'
+export * from './primitives'

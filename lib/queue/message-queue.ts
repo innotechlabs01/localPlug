@@ -119,6 +119,7 @@ export async function requeueDeadMessages(): Promise<number> {
           SET status = 'pending', attempts = 0, next_retry_at = NULL, last_error = NULL,
               max_attempts = max_attempts + 3, updated_at = datetime('now')
           WHERE status = 'dead' AND updated_at >= datetime('now', '-24 hours')`,
+    args: []
   })
   logger.info('Requeued dead messages', { count: result.rowsAffected })
   return result.rowsAffected

@@ -17,14 +17,48 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
+    "baseUrl": ".",
     "plugins": [
       {
         "name": "next"
       }
     ],
-    "paths": {
+"paths": {
       "@/*": [
         "./*"
+      ],
+      "@lp/shared": [
+        "packages/shared/src"
+      ],
+      "@lp/config": [
+        "packages/config/src"
+      ],
+      "@lp/auth": [
+        "packages/auth/src"
+      ],
+      "@lp/validation": [
+        "packages/validation/src"
+      ],
+      "@lp/types": [
+        "packages/types/src"
+      ],
+      "@lp/db": [
+        "packages/db/src"
+      ],
+      "@lp/db/*": [
+        "packages/db/src/*"
+      ],
+      "@lp/events": [
+        "packages/events/src"
+      ],
+      "@lp/domains": [
+        "packages/domains/_services/src"
+      ],
+      "@lp/domains/*": [
+        "packages/domains/_services/src/*"
+      ],
+      "@lp/communication": [
+        "packages/communication/src"
       ]
     }
   },
@@ -37,6 +71,7 @@
   ],
   "exclude": [
     "node_modules",
-    "admin-page-backups"
+    "admin-page-backups",
+    "apps"
   ]
 }
