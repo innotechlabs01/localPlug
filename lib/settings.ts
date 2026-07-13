@@ -315,3 +315,39 @@ export async function refreshConfig(): Promise<void> {
   _cache = null
   await loadConfig()
 }
+
+// ── Plan helpers ──
+export async function getPlanById(id: number) {
+  const db = getDb()
+  const result = await db.execute({ sql: 'SELECT * FROM plans WHERE id = ? AND is_active = 1', args: [id] })
+  return result.rows?.[0] || null
+}
+
+export async function getPlanBySlug(slug: string) {
+  const db = getDb()
+  const result = await db.execute({ sql: 'SELECT * FROM plans WHERE slug = ? AND is_active = 1', args: [slug] })
+  return result.rows?.[0] || null
+}
+
+export async function getPlanTours(planId: number) {
+  const db = getDb()
+  const result = await db.execute({ sql: 'SELECT * FROM plan_tours WHERE plan_id = ? AND is_active = 1', args: [planId] })
+  return result.rows || []
+}
+
+export async function calculatePlanTotal(planId: number, tourIds: number[], numPeople: number) {
+  const plan = await getPlanById(planId)
+  if (!plan) throw new Error('Plan not found')
+
+  let total = Number(plan.price_usd)
+
+  if (tourIds.length > 0 && numPeople > 0) {
+    const tours = await getPlanTours(planId)
+    const selectedTours = tours.filter((t: any) => tourIds.includes(t.id))
+    for (const tour of selectedTours) {
+      total += Number(tour.price_per_person_usd) * numPeople
+    }
+  }
+
+  return { total, plan, breakdown: { planPrice: plan.price_usd, tourIds, numPeople } }
+}
