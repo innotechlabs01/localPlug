@@ -30,6 +30,11 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/).
   email/nombre del cliente. Se eliminó la PII; el cliente solo usa el campo `status`.
 - **Ancla incorrecta en Hero CTA** — "Explore Plans" apuntaba a `#services` (inexistente)
   en lugar de `#pricing`.
+- **Tests fallando por aliases faltantes** — `vitest.config.ts` solo tenía
+  `@` → raíz, pero el código usa `@lp/db/factory` y `@lp/shared` (de la
+  extracción de paquetes `migration/platform-v2`). Se agregaron los aliases
+  `@lp/*` para que los 148 tests pasen. (Pre-existent, no causado por los
+  cambios anteriores).
 
 ### Archivos modificados / Modified files
 
