@@ -278,23 +278,42 @@ export async function getPlatformFeeFixed(): Promise<number> {
 
 export async function getAllPublicConfig() {
   const cfg = await loadConfig()
+
+  // Load plans from DB
+  let plans: Record<string, { name: string; price: number; features: string[]; is_popular: boolean }> = {}
+  try {
+    const db = getDb()
+    const plansResult = await db.execute('SELECT id, name, slug, price_usd, is_popular FROM plans WHERE is_active = 1 ORDER BY sort_order ASC')
+    const featuresResult = await db.execute('SELECT plan_id, text FROM plan_features ORDER BY sort_order ASC')
+
+    const featuresByPlan: Record<number, string[]> = {}
+    for (const row of featuresResult.rows) {
+      const pid = row.plan_id as number
+      if (!featuresByPlan[pid]) featuresByPlan[pid] = []
+      featuresByPlan[pid].push(row.text as string)
+    }
+
+    for (const row of plansResult.rows) {
+      plans[row.slug as string] = {
+        name: row.name as string,
+        price: Number(row.price_usd),
+        features: featuresByPlan[row.id as number] || [],
+        is_popular: Boolean(row.is_popular),
+      }
+    }
+  } catch {
+    // Fallback to settings if DB fails
+    plans = {
+      'smooth-landing': { name: 'The Welcome Pack', price: Number(getValue(cfg, KEYS.PKG_SMOOTH_LANDING)), features: [], is_popular: false },
+      'first-24': { name: 'The 24h Insider', price: Number(getValue(cfg, KEYS.PKG_FIRST_24)), features: [], is_popular: true },
+      'full-insider': { name: 'The Medellin Freedom Pass', price: Number(getValue(cfg, KEYS.PKG_FULL_INSIDER)), features: [], is_popular: false },
+    }
+  }
+
   return {
     platformFeePercent: Number(getValue(cfg, KEYS.PLATFORM_FEE_PCT)),
     platformFeeFixed: Number(getValue(cfg, KEYS.PLATFORM_FEE_FIXED)),
-    packages: {
-      'smooth-landing': {
-        name: 'The VIP Arrival',
-        price: Number(getValue(cfg, KEYS.PKG_SMOOTH_LANDING)),
-      },
-      'first-24': {
-        name: 'The 24h Insider',
-        price: Number(getValue(cfg, KEYS.PKG_FIRST_24)),
-      },
-      'full-insider': {
-        name: 'The Peace of Mind',
-        price: Number(getValue(cfg, KEYS.PKG_FULL_INSIDER)),
-      },
-    },
+    packages: plans,
     returnTripCharge: Number(getValue(cfg, KEYS.RETURN_TRIP_CHARGE)),
     serviceFee: Number(getValue(cfg, KEYS.SERVICE_FEE_FLAT)),
     taxRate: Number(getValue(cfg, KEYS.TAX_RATE_IVA)),

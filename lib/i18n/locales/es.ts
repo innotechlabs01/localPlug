@@ -406,6 +406,7 @@ export default {
       analytics: 'Analíticas',
       payments: 'Pagos',
       hotels: 'Hoteles',
+      plans: 'Planes',
       roles: 'Roles',
       signOut: 'Cerrar Sesión',
       sectionExecutive: 'Ejecutivo',

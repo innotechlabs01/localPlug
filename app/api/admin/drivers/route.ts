@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { getDb, buildSafeUpdate } from '@/lib/db'
 import { requirePermission } from '@/lib/admin/permissions'
+import { clerkClient } from '@clerk/nextjs/server'
+import { triggerDriverCreated } from '@/lib/n8n/client'
 
 const ALLOWED_DRIVER_COLUMNS = ['name', 'phone', 'email', 'vehicle', 'plate', 'category', 'status', 'rating', 'languages', 'experience_level', 'notes', 'license_expiry', 'soat_expiry', 'tech_inspection_expiry', 'insurance_expiry', 'year', 'capacity', 'emergency_contact', 'emergency_phone', 'city']
 
@@ -14,7 +16,8 @@ export async function GET() {
       SELECT d.*,
         (SELECT COUNT(*) FROM orders o WHERE o.assigned_to = d.id AND o.dispatch_status = 'assigned') as active_orders
       FROM drivers d
-      ORDER BY d.status ASC, d.rating DESC
+      WHERE d.status = 'active'
+      ORDER BY d.rating DESC
     `)
 
     const now = new Date()
@@ -57,11 +60,16 @@ export async function POST(req: Request) {
       name, phone, email, vehicle, plate, category,
       languages, experience_level, notes,
       license_expiry, soat_expiry, tech_inspection_expiry, insurance_expiry,
-      year, capacity, emergency_contact, emergency_phone, city
+      year, capacity, emergency_contact, emergency_phone, city,
+      driver_email, driver_password,
     } = body
 
     if (!name || !vehicle || !plate) {
       return NextResponse.json({ error: 'name, vehicle, plate required' }, { status: 400 })
+    }
+
+    if (!driver_email || !driver_password) {
+      return NextResponse.json({ error: 'driver_email and driver_password required' }, { status: 400 })
     }
 
     const db = getDb()
@@ -88,7 +96,56 @@ export async function POST(req: Request) {
       ],
     })
 
-    return NextResponse.json({ success: true, id: Number(result.lastInsertRowid) })
+    const driverId = Number(result.lastInsertRowid)
+
+    // Create Clerk user for driver
+    try {
+      const client = await clerkClient()
+      const nameParts = name.trim().split(/\s+/)
+      const firstName = nameParts[0] || name
+      const lastName = nameParts.slice(1).join(' ') || ''
+
+      const clerkUser = await client.users.createUser({
+        emailAddress: [driver_email],
+        firstName,
+        lastName,
+        password: driver_password,
+        publicMetadata: { role: 'driver', driver_id: driverId },
+      })
+
+      // Link Clerk user to driver record
+      await db.execute({
+        sql: `UPDATE drivers SET clerk_user_id = ?, updated_at = datetime('now') WHERE id = ?`,
+        args: [clerkUser.id, driverId],
+      })
+
+      // Send WhatsApp notification via n8n (fire and forget)
+      triggerDriverCreated({
+        driverName: name,
+        driverEmail: driver_email,
+        temporaryPassword: driver_password,
+        driverPhone: phone || undefined,
+        vehicle,
+        plate,
+      }).then(r => {
+        if (!r.success) console.error('[Drivers API] Driver notification failed:', r.error)
+      })
+
+      return NextResponse.json({
+        success: true,
+        id: driverId,
+        credentials: { email: driver_email, temporaryPassword: driver_password },
+      })
+    } catch (clerkError: any) {
+      console.error('[Drivers API] Clerk user creation failed:', clerkError)
+      // Driver was created but Clerk creation failed - still return success with warning
+      return NextResponse.json({
+        success: true,
+        id: driverId,
+        warning: 'Driver created but login account creation failed. Assign login later.',
+        error: clerkError?.errors?.[0]?.message || clerkError?.message || 'Unknown Clerk error',
+      })
+    }
   } catch (error) {
     console.error('[Drivers API] POST error:', error)
     return NextResponse.json({ error: 'Failed' }, { status: 500 })

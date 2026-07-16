@@ -13,6 +13,8 @@ export interface DestinationData {
   address: string
   wantsGuatape: boolean
   additionalTrips?: string[]
+  selectedHotelId?: number
+  selectedRoomId?: number
 }
 
 export interface Booking {

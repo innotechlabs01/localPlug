@@ -3,10 +3,10 @@
 import { useState, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { useAuth, useClerk } from '@clerk/nextjs'
+import { useAuth, useClerk, useUser } from '@clerk/nextjs'
 import { useI18n } from '@/lib/i18n'
 import { RealtimeProvider, useRealtime } from '@/lib/admin/realtime-context'
-import { InactivityGuard } from '@/app/components/admin/InactivityGuard'
+import { InactivityGuard } from '@/app/admin/components/InactivityGuard'
 import { ToastProvider, useToast } from '@/lib/admin/toast-context'
 import { DateFilterProvider, useDateFilter } from '@/lib/admin/date-filter-context'
 
@@ -305,13 +305,13 @@ function ToastContainer() {
 
 function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const { isLoaded, isSignedIn } = useAuth()
+  const { user } = useUser()
   const { signOut } = useClerk()
   const pathname = usePathname()
   const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
-  const [visibleModules, setVisibleModules] = useState<Record<string, boolean>>({})
   const [accessDenied, setAccessDenied] = useState(false)
   const [permsLoading, setPermsLoading] = useState(true)
   const { t, lang, setLang } = useI18n()
@@ -330,14 +330,8 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
       .then(data => {
         if (!data) return
         const perms = data.permissions || {}
-        const visible: Record<string, boolean> = {}
-        for (const [slug, p] of Object.entries(perms) as [string, any][]) {
-          if (p.can_view) visible[slug] = true
-        }
-        if (Object.keys(visible).length === 0) {
+        if (Object.keys(perms).length === 0) {
           setAccessDenied(true)
-        } else {
-          setVisibleModules(visible)
         }
       })
       .catch(() => {
@@ -346,48 +340,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
       .finally(() => setPermsLoading(false))
   }, [])
 
-  const navSectionMap: Record<string, { slug: string; items: NavItem[] }> = {
-    dashboard: { slug: 'dashboard', items: [] },
-    dispatch: { slug: 'dispatch', items: [] },
-    reservations: { slug: 'reservations', items: [] },
-    drivers: { slug: 'drivers', items: [] },
-    fleet: { slug: 'fleet', items: [] },
-    customers: { slug: 'customers', items: [] },
-    support: { slug: 'support', items: [] },
-    employees: { slug: 'employees', items: [] },
-    analytics: { slug: 'analytics', items: [] },
-    payments: { slug: 'payments', items: [] },
-    hotels: { slug: 'hotels', items: [] },
-    plans: { slug: 'plans', items: [] },
-  }
-
-  const navItemSlug: Record<string, string> = {
-    '/admin': 'dashboard',
-    '/admin/dispatch': 'dispatch',
-    '/admin/reservations': 'reservations',
-    '/admin/drivers': 'drivers',
-    '/admin/fleet': 'fleet',
-    '/admin/customers': 'customers',
-    '/admin/ia-chat': 'support',
-    '/admin/employees': 'employees',
-    '/admin/analytics': 'analytics',
-    '/admin/payments': 'payments',
-    '/admin/hotels': 'hotels',
-    '/admin/plans': 'plans',
-    '/admin/roles': 'roles',
-  }
-
-  const filteredNavSections = navSections
-    .map(section => ({
-      ...section,
-      items: section.items.filter(item => {
-        const slug = navItemSlug[item.href]
-        return !slug || visibleModules[slug]
-      }),
-    }))
-    .filter(section => section.items.length > 0)
-
-  const hasRolesAccess = visibleModules['roles']
+  const filteredNavSections = navSections // Admin sees all menu items
 
   if (isLoaded && !isSignedIn) {
     router.push('/sign-in')
@@ -422,7 +375,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
             Please contact the platform administrator to request access.
           </p>
           <button
-            onClick={() => signOut({ redirectUrl: '/sign-in' })}
+            onClick={() => signOut({ redirectUrl: '/sign-in/admin' })}
             className="px-6 py-2.5 rounded-lg text-[13px] font-medium transition-all"
             style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}
           >
@@ -470,11 +423,10 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="sidebar-nav">
-          {(() => {
-            const sections = filteredNavSections.map(s => ({ ...s, items: [...s.items] }))
-            const mgmt = sections.find(s => s.labelKey === 'sectionManagement')
-            if (mgmt && hasRolesAccess) {
-              mgmt.items.push({
+          {filteredNavSections.map(s => {
+            const section = { ...s, items: [...s.items] }
+            if (section.labelKey === 'sectionManagement') {
+              section.items.push({
                 labelKey: 'roles',
                 href: '/admin/roles',
                 icon: (
@@ -484,8 +436,8 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                 ),
               })
             }
-            return sections
-          })().map((section) => (
+            return section
+          }).map((section) => (
             <div key={section.labelKey}>
               <div className="nav-section-label">
                 {t.admin.nav[section.labelKey as keyof typeof t.admin.nav] as string}
@@ -512,7 +464,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="sidebar-footer">
-          <button onClick={() => signOut({ redirectUrl: '/sign-in' })} className="nav-item" style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', textAlign: 'left' }}>
+          <button onClick={() => signOut({ redirectUrl: '/sign-in/admin' })} className="nav-item" style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', textAlign: 'left' }}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
               <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
@@ -607,20 +559,21 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                 onClick={() => setProfileOpen(!profileOpen)}
                 className="avatar"
               >
-                AD
+                {user?.firstName?.charAt(0) || 'A'}{user?.lastName?.charAt(0) || 'D'}
               </button>
               {profileOpen && (
-                <div className="absolute right-0 top-full mt-2 w-[200px] bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)] shadow-[var(--shadow-elevated)] py-1 z-50">
+                <div className="absolute right-0 top-full mt-2 w-[220px] bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)] shadow-[var(--shadow-elevated)] py-1 z-50">
                   <div className="px-4 py-3 border-b border-[var(--border-light)]">
-                    <div className="text-[13px] font-medium" style={{ color: 'var(--fg)' }}>{t.admin.layout?.profileName || 'Admin User'}</div>
-                    <div className="text-[11px]" style={{ color: 'var(--fg-muted)' }}>{t.admin.layout?.profileEmail || 'admin@localplug.com'}</div>
+                    <div className="text-[13px] font-medium" style={{ color: 'var(--fg)' }}>
+                      {user?.firstName || 'Admin'} {user?.lastName || 'User'}
+                    </div>
+                    <div className="text-[11px] truncate" style={{ color: 'var(--fg-muted)' }} title={user?.primaryEmailAddress?.emailAddress || ''}>
+                      {user?.primaryEmailAddress?.emailAddress || ''}
+                    </div>
                   </div>
                   <Link href="/reset-password" className="block px-4 py-2 text-[13px] hover:bg-[var(--surface-hover)]" style={{ color: 'var(--fg-secondary)' }}>
                     {t.admin.layout?.resetPassword || 'Reset Password'}
                   </Link>
-                  <button onClick={() => signOut({ redirectUrl: '/sign-in' })} className="block w-full px-4 py-2 text-[13px] text-left hover:bg-[var(--surface-hover)]" style={{ color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 }}>
-                    {t.admin.nav.signOut as string}
-                  </button>
                 </div>
               )}
             </div>

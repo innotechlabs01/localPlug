@@ -36,7 +36,7 @@ export function InactivityGuard() {
     )
 
     timerRef.current = setTimeout(() => {
-      signOut({ redirectUrl: '/sign-in' })
+      signOut({ redirectUrl: '/sign-in/admin' })
     }, timeout)
   }
 

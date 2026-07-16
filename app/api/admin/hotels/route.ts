@@ -100,8 +100,8 @@ export async function POST(req: Request) {
 
     // Create hotel
     const hotelResult = await db.execute({
-      sql: `INSERT INTO hotels (name, slug, description, address, lat, lng, phone, email, website, photos, stars, status, commission_rate, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
+      sql: `INSERT INTO hotels (name, slug, description, address, lat, lng, phone, email, website, photos, stars, status, commission_rate, profile_complete, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, datetime('now'), datetime('now'))`,
       args: [
         name, finalSlug, description || '', address || '',
         lat || null, lng || null, phone || '', email || '', website || '',
@@ -131,6 +131,12 @@ export async function POST(req: Request) {
         sql: `INSERT INTO users (clerk_id, name, email, role_id, hotel_id, status, created_at)
               VALUES (?, ?, ?, 5, ?, 'active', datetime('now'))`,
         args: [clerkUser.id, manager_name, manager_email, hotelId],
+      })
+
+      // Link Clerk user to hotel record
+      await db.execute({
+        sql: `UPDATE hotels SET clerk_user_id = ?, updated_at = datetime('now') WHERE id = ?`,
+        args: [clerkUser.id, hotelId],
       })
 
       // Send WhatsApp notification to manager via n8n (fire and forget)

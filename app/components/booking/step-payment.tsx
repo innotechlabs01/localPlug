@@ -18,7 +18,7 @@ interface StepPaymentProps {
 }
 
 interface BookingConfig {
-  packages: Record<string, { name: string; price: number }>
+  packages: Record<string, { name: string; price: number; features?: string[]; is_popular?: boolean }>
   returnTripCharge: number
   serviceFee: number
   taxRate: number

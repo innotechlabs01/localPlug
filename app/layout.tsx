@@ -3,7 +3,6 @@ import { cookies } from 'next/headers'
 import { ClerkProvider } from '@clerk/nextjs'
 import { Playfair_Display, Plus_Jakarta_Sans } from 'next/font/google'
 import { I18nProvider, type Lang } from '@/lib/i18n'
-import ChatWidget from '@/app/components/chat/ChatWidget'
 import './globals.css'
 
 const playfairDisplay = Playfair_Display({
@@ -94,7 +93,6 @@ export default async function RootLayout({
         <ClerkProvider>
           <I18nProvider initialLang={initialLang}>
             {children}
-            <ChatWidget />
           </I18nProvider>
         </ClerkProvider>
       </body>
