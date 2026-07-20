@@ -26,7 +26,7 @@ export async function GET() {
         description: plan.description,
         price_usd: plan.price_usd,
         is_popular: plan.is_popular,
-        features: featuresResult.rows || [],
+        features: (featuresResult.rows || []).map((f: any) => f.text ?? ''),
         tours: (toursResult.rows || []).map((tour: any) => ({
           id: tour.id,
           name: tour.name,
