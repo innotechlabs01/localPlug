@@ -1,4 +1,5 @@
 import { getDb } from '@/lib/db'
+import { ensurePlansSchema } from './migrate-plans'
 
 let _migrated = false
 
@@ -18,6 +19,7 @@ const MODULES = [
   { name: 'Agenda', slug: 'agenda', icon: 'Calendar', sort: 13 },
   { name: 'Cases', slug: 'cases', icon: 'FolderOpen', sort: 14 },
   { name: 'Hotels', slug: 'hotels', icon: 'Building', sort: 15 },
+  { name: 'Plans', slug: 'plans', icon: 'CreditCard', sort: 16 },
 ]
 
 const DEFAULT_PERMISSIONS: Record<string, { view: boolean; create: boolean; update: boolean; delete: boolean }> = {
@@ -48,6 +50,9 @@ const RESTRICTED_MODULES: Record<string, Record<string, { view: boolean; create:
   },
   analytics: {
     concierge: { view: true, create: false, update: false, delete: false },
+  },
+  plans: {
+    viewer: { view: true, create: false, update: false, delete: false },
   },
 }
 
@@ -171,5 +176,8 @@ export async function ensureSchema(): Promise<void> {
   }
 
   console.log('[Schema] Auto-migration complete')
+
+  await ensurePlansSchema()
+
   _migrated = true
 }

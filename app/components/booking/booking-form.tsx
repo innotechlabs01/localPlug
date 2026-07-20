@@ -102,7 +102,7 @@ function BookingFormInner() {
   const { t } = useI18n()
 
   interface BookingConfig {
-    packages: Record<string, { name: string; price: number }>
+    packages: Record<string, { name: string; price: number; features?: string[]; is_popular?: boolean }>
     returnTripCharge: number
     serviceFee: number
     taxRate: number
@@ -215,6 +215,7 @@ function BookingFormInner() {
     try {
       await persistence.submit(booking)
       logBookingEvent('Booking confirmed after payment', { id: booking.id })
+      setSubmitted(true)
     } catch (err) {
       logBookingError('Payment submission', err)
       const toastId = showToast({
@@ -225,8 +226,6 @@ function BookingFormInner() {
           onClick: () => dismissToast(toastId),
         },
       })
-    } finally {
-      setSubmitted(true)
     }
   }
 
@@ -278,8 +277,6 @@ function BookingFormInner() {
           onClick: () => dismissToast(toastId),
         },
       })
-
-      setSubmitted(true)
     } finally {
       setIsSubmitting(false)
     }

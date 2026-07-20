@@ -1,21 +1,24 @@
-import { createClient } from '@libsql/client'
+// Database client — delegates to @lp/db factory for dual-path switching.
+// All consumers should import getDb() from here.
+//
+// When use-drizzle=OFF: returns raw @libsql/client (legacy behavior, zero change).
+// When use-drizzle=ON: returns raw @libsql/client + .drizzle property (Drizzle ORM).
+//
+// Business utilities (buildSafeUpdate, executeWithRetry, etc.) remain here
+// because they are application-level, not infrastructure.
 
-let _client: ReturnType<typeof createClient> | null = null
+import { createDatabase, type DatabaseClient } from '@lp/db/factory'
 
-const DB_CONCURRENCY = parseInt(process.env.DB_CONCURRENCY || '16', 10)
+let _client: DatabaseClient | null = null
+
 const DB_BUSY_RETRY_MAX = 3
 const DB_BUSY_RETRY_BASE_MS = 100
 
-export function getDb() {
+export function getDb(): DatabaseClient {
   if (!_client) {
-    const url = process.env.TURSO_DATABASE_URL
-    const authToken = process.env.TURSO_API_KEY
-    if (!url || !authToken) {
-      throw new Error('TURSO_DATABASE_URL and TURSO_API_KEY must be configured')
-    }
-    _client = createClient({ url, authToken, concurrency: DB_CONCURRENCY })
+    _client = createDatabase()
     if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'test') {
-      import('@/lib/config').then(({ validateEnv }) => validateEnv()).catch(() => {})
+      import('@lp/config').then(({ validateEnv }) => validateEnv()).catch(() => {})
     }
   }
   return _client

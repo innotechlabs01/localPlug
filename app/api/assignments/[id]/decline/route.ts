@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { requireWebhookAuth } from '@/lib/webhook-auth'
+import { getDriverFromSession } from '@/lib/driver/auth'
 
 export async function POST(
   req: Request,
@@ -8,7 +9,14 @@ export async function POST(
 ) {
   try {
     const authError = requireWebhookAuth(req)
-    if (authError) return authError
+    let driverSession: { driver: { id: number }; clerkId: string } | null = null
+    if (authError) {
+      const driverResult = await getDriverFromSession()
+      if ('error' in driverResult) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+      driverSession = driverResult
+    }
 
     const { id } = await params
     const assignmentId = Number(id)
@@ -28,6 +36,10 @@ export async function POST(
     }
 
     const assignment = assignmentResult.rows[0]
+
+    if (driverSession && assignment.driver_id !== driverSession.driver.id) {
+      return NextResponse.json({ error: 'Not your assignment' }, { status: 403 })
+    }
 
     if (assignment.status !== 'pending_acceptance') {
       return NextResponse.json({

@@ -689,20 +689,27 @@ export default function DriversPage() {
                       <div><label style={{ display: 'block', fontSize: 10, color: 'var(--fg-secondary)', marginBottom: 4 }}>{d.modalInsurance || 'Insurance'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} value={formData.insurance_expiry || ''} onChange={e => setFormData(p => ({ ...p, insurance_expiry: e.target.value }))} /></div>
                     </div>
                   </div>
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>Document uploads</label>
-                    <div style={{
-                      minHeight: 86, border: '1px dashed #282b38', borderRadius: 8,
-                      display: 'grid', placeItems: 'center', textAlign: 'center',
-                      color: 'var(--fg-secondary)', background: 'var(--bg)', fontSize: 12,
-                    }}>
-                      Drop license, SOAT, technical inspection, insurance, vehicle photos
-                    </div>
-                  </div>
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalNotes || 'Operational notes'}</label>
-                    <textarea rows={3} style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none', resize: 'none' }}
-                      placeholder={d.modalNotesPlace || 'VIP handling notes, airport authorization, language preferences...'}
+                   <div style={{ gridColumn: '1 / -1' }}>
+                     <label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>Document uploads</label>
+                     <div style={{
+                       minHeight: 86, border: '1px dashed #282b38', borderRadius: 8,
+                       display: 'grid', placeItems: 'center', textAlign: 'center',
+                       color: 'var(--fg-secondary)', background: 'var(--bg)', fontSize: 12,
+                     }}>
+                       Drop license, SOAT, technical inspection, insurance, vehicle photos
+                     </div>
+                   </div>
+                   <div style={{ gridColumn: '1 / -1' }}>
+                     <label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>Login Credentials</label>
+                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+                       <div><label style={{ display: 'block', fontSize: 10, color: 'var(--fg-secondary)', marginBottom: 4 }}>Driver Email (Login)</label><input type="email" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder="driver@company.com" value={formData.driver_email || ''} onChange={e => setFormData(p => ({ ...p, driver_email: e.target.value }))} /></div>
+                       <div><label style={{ display: 'block', fontSize: 10, color: 'var(--fg-secondary)', marginBottom: 4 }}>Temporary Password</label><input type="text" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder="Min. 8 characters" value={formData.driver_password || ''} onChange={e => setFormData(p => ({ ...p, driver_password: e.target.value }))} /></div>
+                     </div>
+                   </div>
+                   <div style={{ gridColumn: '1 / -1' }}>
+                     <label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalNotes || 'Operational notes'}</label>
+                     <textarea rows={3} style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none', resize: 'none' }}
+                       placeholder={d.modalNotesPlace || 'VIP handling notes, airport authorization, language preferences...'}
                       value={formData.notes || ''} onChange={e => setFormData(p => ({ ...p, notes: e.target.value }))} />
                   </div>
                 </div>

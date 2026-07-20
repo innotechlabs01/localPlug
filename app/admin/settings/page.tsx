@@ -27,6 +27,15 @@ export default function SettingsPage() {
 
   const { showToast } = useToast()
 
+  const [notifSettings, setNotifSettings] = useState<Record<string, boolean>>({
+    notif_new_booking: true,
+    notif_booking_cancelled: true,
+    notif_driver_assigned: true,
+    notif_payment_received: true,
+    notif_support_ticket: true,
+    notif_emergency_alert: true,
+  })
+
   const scrollToSection = (id: string) => {
     const el = document.getElementById(id)
     if (el) {
@@ -43,6 +52,7 @@ export default function SettingsPage() {
         if (!res.ok) throw new Error('Failed to fetch settings')
         const data = await res.json()
         setSettings(data)
+        if (data.notifSettings) setNotifSettings(data.notifSettings)
       } catch (error) {
         console.error('Error fetching settings:', error)
         showToast('Failed to load settings')
@@ -60,7 +70,7 @@ export default function SettingsPage() {
       const res = await fetch('/api/admin/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings),
+        body: JSON.stringify({ ...settings, notifSettings }),
       })
       if (!res.ok) throw new Error('Failed to save settings')
       showToast('Settings saved successfully')
@@ -70,16 +80,8 @@ export default function SettingsPage() {
     }
   }
 
-  const toggleSwitch = (e: React.MouseEvent<HTMLDivElement>) => {
-    const el = e.currentTarget
-    const isOn = el.classList.toggle('on')
-    // Update settings based on toggle - we need to identify which setting this is
-    // For now, we'll show a toast and rely on manual save
-    showToast(isOn ? 'Enabled' : 'Disabled')
-  }
-
-  const toggleCheck = (e: React.MouseEvent<HTMLDivElement>) => {
-    e.currentTarget.classList.toggle('checked')
+  const toggleNotif = (key: string) => {
+    setNotifSettings(prev => ({ ...prev, [key]: !prev[key] }))
   }
 
   return (
@@ -469,14 +471,22 @@ export default function SettingsPage() {
           <div className="settings-section-body">
             <div className="check-group">
               {[
-                { title: d.notifNewBooking || 'New Booking', channels: ['Email', 'In-App', 'WhatsApp'] },
-                { title: d.notifBookingCancelled || 'Booking Cancelled', channels: ['Email', 'In-App'] },
-                { title: d.notifDriverAssigned || 'Driver Assigned', channels: ['In-App', 'WhatsApp'] },
-                { title: d.notifPaymentReceived || 'Payment Received', channels: ['Email', 'In-App'] },
-                { title: d.notifSupportTicket || 'Support Ticket', channels: ['In-App', 'Email'] },
-                { title: d.notifEmergencyAlert || 'Emergency Alert', channels: ['In-App', 'WhatsApp', 'SMS'] },
-              ].map((item, idx) => (
-                <div key={idx} className="check-item checked" onClick={toggleCheck}>
+                { key: 'notif_new_booking', title: d.notifNewBooking || 'New Booking', channels: ['Email', 'In-App', 'WhatsApp'] },
+                { key: 'notif_booking_cancelled', title: d.notifBookingCancelled || 'Booking Cancelled', channels: ['Email', 'In-App'] },
+                { key: 'notif_driver_assigned', title: d.notifDriverAssigned || 'Driver Assigned', channels: ['In-App', 'WhatsApp'] },
+                { key: 'notif_payment_received', title: d.notifPaymentReceived || 'Payment Received', channels: ['Email', 'In-App'] },
+                { key: 'notif_support_ticket', title: d.notifSupportTicket || 'Support Ticket', channels: ['In-App', 'Email'] },
+                { key: 'notif_emergency_alert', title: d.notifEmergencyAlert || 'Emergency Alert', channels: ['In-App', 'WhatsApp', 'SMS'] },
+              ].map((item) => (
+                <div
+                  key={item.key}
+                  className={`check-item ${notifSettings[item.key] ? 'checked' : ''}`}
+                  onClick={() => toggleNotif(item.key)}
+                  role="checkbox"
+                  aria-checked={notifSettings[item.key]}
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleNotif(item.key) } }}
+                >
                   <div className="check-box">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
                   </div>
@@ -505,34 +515,50 @@ export default function SettingsPage() {
             <div className="select-group">
               <div className="input-group">
                 <label className="input-label">{d.defaultLanguage || 'Default Language'}</label>
-                <select className="input">
-                  <option>{d.langEnglish || 'English'}</option>
-                  <option selected>{d.langSpanish || 'Spanish'}</option>
-                  <option>{d.langFrench || 'French'}</option>
-                  <option>{d.langPortuguese || 'Portuguese'}</option>
+                <select
+                  className="input"
+                  value={settings.default_language ?? 'es'}
+                  onChange={(e) => setSettings(prev => ({ ...prev, default_language: e.target.value }))}
+                >
+                  <option value="en">{d.langEnglish || 'English'}</option>
+                  <option value="es">{d.langSpanish || 'Spanish'}</option>
+                  <option value="fr">{d.langFrench || 'French'}</option>
+                  <option value="pt">{d.langPortuguese || 'Portuguese'}</option>
                 </select>
               </div>
               <div className="input-group">
                 <label className="input-label">{d.currency || 'Currency'}</label>
-                <select className="input">
-                  <option>USD ($)</option>
-                  <option selected>COP ($)</option>
+                <select
+                  className="input"
+                  value={settings.currency ?? 'COP'}
+                  onChange={(e) => setSettings(prev => ({ ...prev, currency: e.target.value }))}
+                >
+                  <option value="USD">USD ($)</option>
+                  <option value="COP">COP ($)</option>
                 </select>
               </div>
               <div className="input-group">
                 <label className="input-label">{d.timezone || 'Timezone'}</label>
-                <select className="input">
-                  <option selected>America/Bogota (UTC-5)</option>
-                  <option>America/New_York (UTC-5)</option>
-                  <option>America/Mexico_City (UTC-6)</option>
-                  <option>America/Sao_Paulo (UTC-3)</option>
+                <select
+                  className="input"
+                  value={settings.timezone ?? 'America/Bogota'}
+                  onChange={(e) => setSettings(prev => ({ ...prev, timezone: e.target.value }))}
+                >
+                  <option value="America/Bogota">America/Bogota (UTC-5)</option>
+                  <option value="America/New_York">America/New_York (UTC-5)</option>
+                  <option value="America/Mexico_City">America/Mexico_City (UTC-6)</option>
+                  <option value="America/Sao_Paulo">America/Sao_Paulo (UTC-3)</option>
                 </select>
               </div>
               <div className="input-group">
                 <label className="input-label">{d.dateFormat || 'Date Format'}</label>
-                <select className="input">
-                  <option selected>MM/DD/YYYY</option>
-                  <option>DD/MM/YYYY</option>
+                <select
+                  className="input"
+                  value={settings.date_format ?? 'MM/DD/YYYY'}
+                  onChange={(e) => setSettings(prev => ({ ...prev, date_format: e.target.value }))}
+                >
+                  <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+                  <option value="DD/MM/YYYY">DD/MM/YYYY</option>
                 </select>
               </div>
             </div>

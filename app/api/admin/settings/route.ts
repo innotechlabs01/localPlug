@@ -33,10 +33,10 @@ export async function PUT(req: Request) {
     
     // Update each setting in the database
     for (const [key, value] of Object.entries(settingsData)) {
-      await db.execute(
-        'INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, datetime(\'now\'))',
-        [key, String(value)]
-      )
+      await db.execute({
+        sql: 'INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?, ?, datetime(\'now\'))',
+        args: [key, String(value)]
+      })
     }
     
     return NextResponse.json({ success: true })

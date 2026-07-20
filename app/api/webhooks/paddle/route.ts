@@ -61,17 +61,32 @@ export async function POST(req: Request) {
     // Get platform fee percentage from config (default 10%)
     const feeRate = await getPlatformFeePercent()
 
-    // Calculate split
+    // Calculate split — only compute hotel payout for hotel bookings
     let platformFeeCents = 0
     let hotelPayoutCents = 0
     let splitStatus = 'pending'
+
+    // Check if this is a hotel booking
+    const orderCheck = await db.execute({
+      sql: `SELECT is_hotel_booking, hotel_commission_rate FROM orders WHERE booking_reference = ?`,
+      args: [bookingReference],
+    })
+    const isHotelBooking = orderCheck.rows.length > 0 && Number(orderCheck.rows[0].is_hotel_booking) === 1
+    const hotelCommissionRate = isHotelBooking ? (Number(orderCheck.rows[0].hotel_commission_rate) || 0.10) : 0
 
     // Use Paddle totals from the transaction details
     const totalAmount = (event.data as any)?.details?.totals?.total as number | undefined
 
     if (totalAmount && totalAmount > 0) {
-      platformFeeCents = Math.round(totalAmount * feeRate)
-      hotelPayoutCents = totalAmount - platformFeeCents
+      if (isHotelBooking && hotelCommissionRate > 0) {
+        // Customer pays: base × (1+r). So base = total/(1+r). Platform keeps total - base.
+        hotelPayoutCents = Math.round(totalAmount / (1 + hotelCommissionRate))
+        platformFeeCents = totalAmount - hotelPayoutCents
+      } else {
+        // Non-hotel: platform keeps feeRate of total
+        platformFeeCents = Math.round(totalAmount * feeRate)
+        hotelPayoutCents = 0
+      }
       splitStatus = 'completed'
     }
 

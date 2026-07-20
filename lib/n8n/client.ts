@@ -464,6 +464,39 @@ export async function triggerDriverNewAssignment(data: {
 }
 
 /**
+ * Trigger n8n workflow for driver creation notification
+ */
+export async function triggerDriverCreated(data: {
+  driverName: string
+  driverEmail: string
+  temporaryPassword: string
+  driverPhone?: string
+  vehicle: string
+  plate: string
+}): Promise<N8nResponse> {
+  const phone = data.driverPhone
+  if (phone) {
+    const message = `🚗 *Bienvenido a LocalPlug!*\n\nHola ${data.driverName},\n\nHas sido registrado como conductor en LocalPlug.\n\n*Tus credenciales de acceso:*\n📧 Email: ${data.driverEmail}\n🔑 Contraseña: ${data.temporaryPassword}\n\n*Tu vehículo:*\n🚗 ${data.vehicle}\n🔢 Placa: ${data.plate}\n\nIngresa a la plataforma para ver tus asignaciones.\n\n_Puedes cambiar tu contraseña después del primer inicio de sesión._`
+
+    await sendOrQueueWhatsApp({ number: phone, message })
+  }
+
+  return sendN8nWebhook('driver-created', {
+    type: 'driver_creation',
+    driver: {
+      name: data.driverName,
+      email: data.driverEmail,
+      temporaryPassword: data.temporaryPassword,
+      vehicle: data.vehicle,
+      plate: data.plate,
+    },
+    evolutionApi: {
+      instanceName: process.env.EVOLUTION_INSTANCE_NAME,
+    },
+  })
+}
+
+/**
  * Trigger n8n workflow for client driver confirmed notification
  */
 export async function triggerClientDriverConfirmed(data: {

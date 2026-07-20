@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server'
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
+import { clerkMiddleware, createRouteMatcher, clerkClient } from '@clerk/nextjs/server'
 import { applyRateLimit } from '@/lib/rate-limit'
 
 const isPublicRoute = createRouteMatcher([
   '/',
   '/booking',
+  '/booking/confirmation',
   '/api/booking',
   '/api/payments/status',
   '/api/payments/create-intent',
@@ -24,10 +25,10 @@ const isPublicRoute = createRouteMatcher([
   '/api/config',
   '/api/health(.*)',
   '/api/cron/(.*)',
-  '/api/assignments/(.*)',
-  '/booking/confirmation',
+  '/api/plans',
+  '/api/trm',
+  '/api/geocode',
   '/sign-in(.*)',
-  '/sign-up(.*)',
 ])
 
 const isAdminApiRoute = createRouteMatcher([
@@ -68,6 +69,44 @@ export default clerkMiddleware(async (auth, req) => {
   if (isLookupRoute(req)) {
     return NextResponse.next()
   }
+
+  // Strict role-based portal separation (page routes only, not /api/)
+  const isPortalPage =
+    (pathname.startsWith('/admin') || pathname.startsWith('/hotel') || pathname.startsWith('/driver')) &&
+    !pathname.startsWith('/api/')
+
+  if (isPortalPage && !isPublicRoute(req)) {
+    const { userId } = await auth()
+    if (!userId) {
+      const signInUrl = pathname.startsWith('/admin')
+        ? '/sign-in/admin'
+        : pathname.startsWith('/hotel') ? '/sign-in/hotel' : '/sign-in/driver'
+      return NextResponse.redirect(new URL(signInUrl, req.url))
+    }
+
+    try {
+      const client = await clerkClient()
+      const clerkUser = await client.users.getUser(userId)
+      const role = clerkUser.publicMetadata?.role as string | undefined
+
+      const portalForRole: Record<string, string> = {
+        admin: '/admin',
+        hotel_manager: '/hotel',
+        driver: '/driver',
+      }
+
+      if (role && portalForRole[role]) {
+        const expectedPortal = portalForRole[role]
+        if (!pathname.startsWith(expectedPortal)) {
+          return NextResponse.redirect(new URL(expectedPortal, req.url))
+        }
+      }
+      // No role or unknown role: let through (API handlers reject via DB role check)
+    } catch {
+      // Clerk fetch failed — let through; API handlers will reject
+    }
+  }
+
   if (isAdminApiRoute(req)) {
     const { userId } = await auth()
     if (!userId) {

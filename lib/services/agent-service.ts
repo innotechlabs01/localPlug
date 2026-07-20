@@ -23,6 +23,7 @@ export async function findAvailableAgent(topic?: string): Promise<SupportAgent |
         AND current_conversations < max_conversations
       ORDER BY current_conversations ASC
     `,
+    args: []
   })
 
   if (candidates.rows.length === 0) return null
