@@ -32,8 +32,6 @@ export async function GET(req: Request) {
     currency: record.currency,
     status: record.status,
     paddleTransactionId: record.paddle_transaction_id,
-    customerEmail: record.customer_email,
-    customerName: record.customer_name,
     createdAt: record.created_at,
     updatedAt: record.updated_at,
   })

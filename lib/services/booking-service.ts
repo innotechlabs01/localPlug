@@ -74,16 +74,21 @@ function mapStatus(status: string): Booking['status'] {
   return 'submitted'
 }
 
-export async function searchBookings(airline: string, flightNumber: string): Promise<Booking[]> {
+export async function searchBookings(airline: string, flightNumber: string, hotelId?: number): Promise<Booking[]> {
   const searchKey = buildKey(airline, flightNumber)
   const [airlinePart, flightPart] = searchKey.split(':')
 
   try {
     const db = getDb()
-    const result = await db.execute({
-      sql: `SELECT * FROM orders WHERE LOWER(airline) = ? AND LOWER(flight_number) = ?`,
-      args: [airlinePart, flightPart],
-    })
+    let sql = `SELECT * FROM orders WHERE LOWER(airline) = ? AND LOWER(flight_number) = ?`
+    const args: (string | number)[] = [airlinePart, flightPart]
+
+    if (hotelId !== undefined) {
+      sql += ` AND hotel_id = ?`
+      args.push(hotelId)
+    }
+
+    const result = await db.execute({ sql, args })
 
     return result.rows.map(mapRowToBooking)
   } catch (err) {
@@ -92,10 +97,22 @@ export async function searchBookings(airline: string, flightNumber: string): Pro
   }
 }
 
-export async function countBookings(): Promise<number> {
+export async function countBookings(filters?: { hotelId?: number; driverId?: number }): Promise<number> {
   try {
     const db = getDb()
-    const result = await db.execute({ sql: `SELECT COUNT(*) as cnt FROM orders`, args: [] })
+    let sql = `SELECT COUNT(*) as cnt FROM orders WHERE 1=1`
+    const args: number[] = []
+
+    if (filters?.hotelId !== undefined) {
+      sql += ` AND hotel_id = ?`
+      args.push(filters.hotelId)
+    }
+    if (filters?.driverId !== undefined) {
+      sql += ` AND driver_id = ?`
+      args.push(filters.driverId)
+    }
+
+    const result = await db.execute({ sql, args })
     return Number(result.rows[0]?.cnt || 0)
   } catch {
     return 0

@@ -9,7 +9,7 @@ interface StepPackagesProps {
 }
 
 interface BookingConfig {
-  packages: Record<string, { name: string; price: number }>
+  packages: Record<string, { name: string; price: number; features?: string[]; is_popular?: boolean }>
   returnTripCharge: number
   serviceFee: number
   taxRate: number
@@ -43,9 +43,11 @@ export default function StepPackages({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
         {packageIds.map((pkgId) => {
           const selected = value === pkgId
+          const pkgConfig = config?.packages?.[pkgId]
           const pkgData = pkgT.packages[pkgId as keyof typeof pkgT.packages]
-          const price = config?.packages?.[pkgId]?.price ?? 0
-          const isPopular = popularFlags[pkgId]
+          const price = pkgConfig?.price ?? 0
+          const features = pkgConfig?.features || pkgData.features || []
+          const isPopular = pkgConfig?.is_popular ?? popularFlags[pkgId] ?? false
           const isElite = pkgId === 'full-insider'
 
           return (
@@ -89,7 +91,7 @@ export default function StepPackages({
               </div>
 
               <ul className="flex flex-col gap-2">
-                {pkgData.features.map((f: string) => (
+                {features.map((f: string) => (
                   <li key={f} className="flex items-center gap-2 text-[12.5px] text-[var(--text-secondary)] leading-[1.4]">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--accent-gold)" strokeWidth="2" className="shrink-0">
                       <polyline points="20 6 9 17 4 12" />

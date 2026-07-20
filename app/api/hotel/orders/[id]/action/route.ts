@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
+import { getHotelFromSession } from '@/lib/hotel/auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -8,6 +9,11 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const result = await getHotelFromSession()
+    if ('error' in result) {
+      return NextResponse.json({ error: result.error }, { status: result.status })
+    }
+
     const { id } = await params
     const body = await req.json()
     const { action } = body
@@ -17,6 +23,15 @@ export async function POST(
     }
 
     const db = getDb()
+
+    // Verify order belongs to this hotel
+    const orderCheck = await db.execute({
+      sql: `SELECT id FROM orders WHERE id = ? AND hotel_id = ?`,
+      args: [Number(id), result.hotel.id],
+    })
+    if (orderCheck.rows.length === 0) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+    }
 
     const statusMap: Record<string, string> = {
       'accept': 'accepted',

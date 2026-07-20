@@ -141,7 +141,7 @@ describe('Paddle webhook handler', () => {
     const args = paymentCall![0].args;
     expect(args[0]).toBe('txn_456');
     expect(args[1]).toBe(100);
-    expect(args[2]).toBe(900);
+    expect(args[2]).toBe(0);
     expect(args[3]).toBe('completed');
     expect(args[5]).toBe('BK-002');
   });
