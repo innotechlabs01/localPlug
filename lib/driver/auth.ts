@@ -47,6 +47,7 @@ export async function getDriverFromSession(): Promise<{ driver: DriverProfile; c
 export async function ensureDriverProfile(clerkId: string): Promise<DriverProfile> {
   const db = getDb()
 
+  // 1. Check by clerk_user_id
   const existing = await db.execute({
     sql: `SELECT d.* FROM drivers d WHERE d.clerk_user_id = ?`,
     args: [clerkId],
@@ -56,7 +57,7 @@ export async function ensureDriverProfile(clerkId: string): Promise<DriverProfil
     return existing.rows[0] as unknown as DriverProfile
   }
 
-  // Auto-create driver profile from Clerk user data
+  // 2. Get Clerk user data
   let clerkUser
   try {
     const client = await clerkClient()
@@ -68,6 +69,27 @@ export async function ensureDriverProfile(clerkId: string): Promise<DriverProfil
   const email = clerkUser.emailAddresses?.[0]?.emailAddress || ''
   const name = [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ').trim() || email || 'Conductor'
 
+  // 3. Check if a driver with this email already exists (e.g. created by admin/webhook)
+  const byEmail = await db.execute({
+    sql: `SELECT d.* FROM drivers d WHERE d.email = ?`,
+    args: [email],
+  })
+
+  if (byEmail.rows.length > 0) {
+    // Link existing driver record to this Clerk user
+    await db.execute({
+      sql: `UPDATE drivers SET clerk_user_id = ?, updated_at = datetime('now') WHERE id = ?`,
+      args: [clerkId, (byEmail.rows[0] as any).id],
+    })
+    console.log(`[Driver Auth] Linked existing driver (${email}) to Clerk user ${clerkId}`)
+    const linked = await db.execute({
+      sql: `SELECT d.* FROM drivers d WHERE d.clerk_user_id = ?`,
+      args: [clerkId],
+    })
+    return linked.rows[0] as unknown as DriverProfile
+  }
+
+  // 4. No existing record — create new
   const result = await db.execute({
     sql: `INSERT INTO drivers (
       clerk_user_id, name, email, phone, vehicle, plate, category,

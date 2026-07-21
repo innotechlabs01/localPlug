@@ -22,7 +22,7 @@ export async function GET() {
 
     // Check if user has a driver profile
     const driverResult = await db.execute({
-      sql: `SELECT id FROM drivers WHERE clerk_user_id = ? AND status = 'active'`,
+      sql: `SELECT id FROM drivers WHERE clerk_user_id = ?`,
       args: [clerkId],
     })
 
