@@ -61,8 +61,9 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  // Auto-fix role mismatch: if user has driver profile but wrong Clerk role
+  // Auto-create driver profile + fix role mismatch on first load
   useEffect(() => {
+    fetch('/api/driver/ensure').catch(() => {})
     fetch('/api/driver/claim-role').catch(() => {})
   }, [])
 

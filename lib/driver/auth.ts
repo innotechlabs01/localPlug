@@ -1,4 +1,4 @@
-import { auth } from '@clerk/nextjs/server'
+import { auth, clerkClient } from '@clerk/nextjs/server'
 import { getDb } from '@/lib/db'
 
 export interface DriverProfile {
@@ -52,9 +52,42 @@ export async function ensureDriverProfile(clerkId: string): Promise<DriverProfil
     args: [clerkId],
   })
 
-  if (existing.rows.length === 0) {
+  if (existing.rows.length > 0) {
+    return existing.rows[0] as unknown as DriverProfile
+  }
+
+  // Auto-create driver profile from Clerk user data
+  let clerkUser
+  try {
+    const client = await clerkClient()
+    clerkUser = await client.users.getUser(clerkId)
+  } catch {
     throw new Error('DRIVER_NOT_FOUND')
   }
 
-  return existing.rows[0] as unknown as DriverProfile
+  const email = clerkUser.emailAddresses?.[0]?.emailAddress || ''
+  const name = [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ').trim() || email || 'Conductor'
+
+  const result = await db.execute({
+    sql: `INSERT INTO drivers (
+      clerk_user_id, name, email, phone, vehicle, plate, category,
+      status, rating, languages, experience_level, profile_complete,
+      created_at, updated_at
+    ) VALUES (
+      ?, ?, ?, NULL, 'Sin asignar', 'Sin asignar', 'standard',
+      'available', 5.0, 'Spanish', 'Standard', 0,
+      datetime('now'), datetime('now')
+    )`,
+    args: [clerkId, name, email],
+  })
+
+  const driverId = Number(result.lastInsertRowid)
+  console.log(`[Driver Auth] Auto-created driver profile: ${name} (${email}) id=${driverId}`)
+
+  const newDriver = await db.execute({
+    sql: `SELECT d.* FROM drivers d WHERE d.id = ?`,
+    args: [driverId],
+  })
+
+  return newDriver.rows[0] as unknown as DriverProfile
 }
