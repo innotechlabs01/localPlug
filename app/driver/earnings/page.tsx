@@ -114,130 +114,262 @@ export default function DriverEarningsPage() {
 
   if (loading) {
     return (
-      <div className="earnings-container">
-        <div className="earnings-loading">
-          <div className="spinner" />
-          <p>Cargando ganancias...</p>
-        </div>
+      <div style={{
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        minHeight: '60vh',
+      }}>
+        <div style={{
+          width: 40, height: 40,
+          border: '3px solid var(--border)',
+          borderTopColor: 'var(--accent-gold)',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+          marginBottom: 16,
+        }} />
+        <p style={{ color: 'var(--text-secondary)', margin: 0 }}>Cargando ganancias...</p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="earnings-container">
-        <div className="earnings-empty">
-          <div className="empty-icon">⚠️</div>
-          <h2>Error al cargar datos</h2>
-          <p>{error}</p>
-          <button onClick={fetchEarnings} className="retry-button">
-            Reintentar
-          </button>
-        </div>
+      <div style={{
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        minHeight: '60vh', textAlign: 'center',
+      }}>
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" strokeWidth="1.5" style={{ marginBottom: 16 }}>
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+          <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
+        <h2 style={{ margin: '0 0 8px', fontSize: 20, color: 'var(--text-primary)' }}>Error al cargar datos</h2>
+        <p style={{ margin: '0 0 24px', color: 'var(--text-secondary)' }}>{error}</p>
+        <button
+          onClick={fetchEarnings}
+          style={{
+            background: 'var(--accent-gold)', color: 'var(--bg-dark)',
+            border: 'none', padding: '12px 24px',
+            borderRadius: 14, fontSize: 16, fontWeight: 600,
+            cursor: 'pointer',
+            transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent-gold-light, #e8c9a0)' }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--accent-gold)' }}
+        >
+          Reintentar
+        </button>
       </div>
     )
   }
 
+  const sectionTitle: React.CSSProperties = {
+    margin: '0 0 16px',
+    fontSize: 18,
+    fontWeight: 600,
+    fontFamily: 'var(--font-display)',
+    color: 'var(--text-primary)',
+  }
+
   return (
-    <div className="earnings-container">
-      <header className="earnings-header">
-        <h1>Mis Ganancias</h1>
-        <p className="subtitle">Resumen de tu actividad</p>
+    <div>
+      <header style={{ marginBottom: 24 }}>
+        <h1 style={{
+          margin: 0, fontSize: 28, fontWeight: 700,
+          fontFamily: 'var(--font-display)',
+          color: 'var(--text-primary)',
+        }}>Mis Ganancias</h1>
+        <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: 14 }}>Resumen de tu actividad</p>
       </header>
 
-      <section className="weekly-summary">
-        <div className="summary-main">
-          <span className="summary-label">Esta semana</span>
-          <span className="summary-amount">{formatCurrency(summary.thisWeek)}</span>
-          <div className="summary-change">
-            <span className={`change-indicator ${summary.percentChange >= 0 ? 'positive' : 'negative'}`}>
+      <section style={{
+        background: 'var(--bg-card)',
+        borderRadius: 14,
+        padding: 24,
+        marginBottom: 20,
+        border: '1px solid var(--border)',
+        boxShadow: 'var(--shadow-card)',
+        transition: 'box-shadow 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+      }}>
+        <div style={{ textAlign: 'center', marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid var(--border)' }}>
+          <span style={{ display: 'block', fontSize: 14, color: 'var(--text-secondary)', marginBottom: 8 }}>Esta semana</span>
+          <span style={{
+            display: 'block', fontSize: 42, fontWeight: 700,
+            color: 'var(--accent-gold)', lineHeight: 1.1,
+          }}>{formatCurrency(summary.thisWeek)}</span>
+          <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            <span style={{
+              fontSize: 14, fontWeight: 600,
+              color: summary.percentChange >= 0 ? 'var(--accent)' : 'var(--danger)',
+            }}>
               {summary.percentChange >= 0 ? '↑' : '↓'} {Math.abs(summary.percentChange)}%
             </span>
-            <span className="change-label">vs semana anterior</span>
+            <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>vs semana anterior</span>
           </div>
         </div>
-        <div className="summary-secondary">
-          <div className="secondary-item">
-            <span className="secondary-label">Semana anterior</span>
-            <span className="secondary-value">{formatCurrency(summary.lastWeek)}</span>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div style={{ textAlign: 'center' }}>
+            <span style={{ display: 'block', fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>Semana anterior</span>
+            <span style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)' }}>{formatCurrency(summary.lastWeek)}</span>
           </div>
-          <div className="secondary-item">
-            <span className="secondary-label">Viajes esta semana</span>
-            <span className="secondary-value">{summary.totalTrips}</span>
-          </div>
-        </div>
-      </section>
-
-      <section className="earnings-breakdown">
-        <h2>Desglose</h2>
-        <div className="breakdown-grid">
-          <div className="breakdown-card">
-            <span className="breakdown-label">Tarifa base</span>
-            <span className="breakdown-value">{formatCurrency(breakdown.baseFare)}</span>
-          </div>
-          <div className="breakdown-card">
-            <span className="breakdown-label">Propinas</span>
-            <span className="breakdown-value tips">{formatCurrency(breakdown.tips)}</span>
-          </div>
-          <div className="breakdown-card">
-            <span className="breakdown-label">Bonificaciones</span>
-            <span className="breakdown-value bonuses">{formatCurrency(breakdown.bonuses)}</span>
+          <div style={{ textAlign: 'center' }}>
+            <span style={{ display: 'block', fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>Viajes esta semana</span>
+            <span style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)' }}>{summary.totalTrips}</span>
           </div>
         </div>
       </section>
 
-      <section className="daily-chart">
-        <h2>Últimos 7 días</h2>
-        <div className="chart-container">
+      <section style={{ marginBottom: 20 }}>
+        <h2 style={sectionTitle}>Desglose</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+          <div style={{
+            background: 'var(--bg-card)', borderRadius: 14,
+            padding: 16, textAlign: 'center',
+            border: '1px solid var(--border)',
+            boxShadow: 'var(--shadow-card)',
+            transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+            cursor: 'default',
+          }}
+            onMouseEnter={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow-elevated)' }}
+            onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow-card)' }}
+          >
+            <span style={{ display: 'block', fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>Tarifa base</span>
+            <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-primary)' }}>{formatCurrency(breakdown.baseFare)}</span>
+          </div>
+          <div style={{
+            background: 'var(--bg-card)', borderRadius: 14,
+            padding: 16, textAlign: 'center',
+            border: '1px solid var(--border)',
+            boxShadow: 'var(--shadow-card)',
+            transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+            cursor: 'default',
+          }}
+            onMouseEnter={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow-elevated)' }}
+            onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow-card)' }}
+          >
+            <span style={{ display: 'block', fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>Propinas</span>
+            <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--accent)' }}>{formatCurrency(breakdown.tips)}</span>
+          </div>
+          <div style={{
+            background: 'var(--bg-card)', borderRadius: 14,
+            padding: 16, textAlign: 'center',
+            border: '1px solid var(--border)',
+            boxShadow: 'var(--shadow-card)',
+            transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+            cursor: 'default',
+          }}
+            onMouseEnter={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow-elevated)' }}
+            onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow-card)' }}
+          >
+            <span style={{ display: 'block', fontSize: 12, color: 'var(--text-muted)', marginBottom: 8 }}>Bonificaciones</span>
+            <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--accent-gold)' }}>{formatCurrency(breakdown.bonuses)}</span>
+          </div>
+        </div>
+      </section>
+
+      <section style={{
+        background: 'var(--bg-card)',
+        borderRadius: 14,
+        padding: 20,
+        marginBottom: 20,
+        border: '1px solid var(--border)',
+        boxShadow: 'var(--shadow-card)',
+      }}>
+        <h2 style={sectionTitle}>Últimos 7 días</h2>
+        <div style={{
+          display: 'flex', alignItems: 'flex-end',
+          justifyContent: 'space-between',
+          height: 160, gap: 8, paddingTop: 20,
+        }}>
           {dailyEarnings.length > 0 ? (
             dailyEarnings.map((day, index) => (
-              <div key={index} className="chart-bar-wrapper">
-                <div className="chart-bar-container">
+              <div key={index} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%' }}>
+                <div style={{ flex: 1, width: '100%', display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
                   <div
-                    className="chart-bar"
-                    style={{ height: `${(day.amount / maxDailyAmount) * 100}%` }}
+                    style={{
+                      width: '100%', maxWidth: 40,
+                      background: 'linear-gradient(180deg, var(--accent-gold) 0%, var(--accent) 100%)',
+                      borderRadius: '4px 4px 0 0',
+                      minHeight: 4,
+                      position: 'relative',
+                      transition: 'height 0.3s ease',
+                      height: `${(day.amount / maxDailyAmount) * 100}%`,
+                    }}
                   >
-                    <span className="chart-value">{formatCurrency(day.amount)}</span>
+                    <span style={{
+                      position: 'absolute', top: -20, left: '50%',
+                      transform: 'translateX(-50%)',
+                      fontSize: 10, color: 'var(--text-secondary)',
+                      whiteSpace: 'nowrap',
+                    }}>{formatCurrency(day.amount)}</span>
                   </div>
                 </div>
-                <span className="chart-label">{day.day}</span>
+                <span style={{ marginTop: 8, fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{day.day}</span>
               </div>
             ))
           ) : (
-            <div className="chart-empty">Sin datos disponibles</div>
+            <div style={{ width: '100%', textAlign: 'center', color: 'var(--text-muted)', padding: '40px 0' }}>Sin datos disponibles</div>
           )}
         </div>
       </section>
 
-      <section className="trips-list">
-        <h2>Viajes recientes</h2>
+      <section style={{ marginBottom: 24 }}>
+        <h2 style={sectionTitle}>Viajes recientes</h2>
         {trips.length > 0 ? (
-          <div className="trips-container">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {trips.map(trip => (
-              <div key={trip.id} className="trip-card">
-                <div className="trip-header">
-                  <span className="trip-date">{formatDate(trip.date)}</span>
-                  <span className={`trip-status ${trip.status}`}>
+              <div
+                key={trip.id}
+                style={{
+                  background: 'var(--bg-card)',
+                  borderRadius: 14,
+                  padding: 16,
+                  border: '1px solid var(--border)',
+                  boxShadow: 'var(--shadow-card)',
+                  transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+                  cursor: 'default',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.boxShadow = 'var(--shadow-elevated)'
+                  e.currentTarget.style.borderColor = 'var(--accent-gold)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.boxShadow = 'var(--shadow-card)'
+                  e.currentTarget.style.borderColor = 'var(--border)'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                  <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{formatDate(trip.date)}</span>
+                  <span style={{
+                    fontSize: 12, fontWeight: 500,
+                    padding: '4px 10px', borderRadius: 12,
+                    background: trip.status === 'completed' ? 'rgba(74, 222, 128, 0.12)' : 'rgba(250, 204, 21, 0.12)',
+                    color: trip.status === 'completed' ? '#4ade80' : '#facc15',
+                  }}>
                     {trip.status === 'completed' ? 'Completado' : 'Pendiente'}
                   </span>
                 </div>
-                <div className="trip-route">
-                  <div className="route-point">
-                    <span className="route-dot pickup" />
-                    <span className="route-text">{trip.pickup}</span>
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0 }} />
+                    <span style={{ fontSize: 14, color: 'var(--text-primary)' }}>{trip.pickup}</span>
                   </div>
-                  <div className="route-line" />
-                  <div className="route-point">
-                    <span className="route-dot destination" />
-                    <span className="route-text">{trip.destination}</span>
+                  <div style={{ width: 2, height: 20, background: 'var(--border)', marginLeft: 4 }} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--accent-gold)', flexShrink: 0 }} />
+                    <span style={{ fontSize: 14, color: 'var(--text-primary)' }}>{trip.destination}</span>
                   </div>
                 </div>
-                <div className="trip-footer">
-                  <span className="trip-customer">{trip.customerName}</span>
-                  <div className="trip-amounts">
-                    <span className="trip-amount">{formatCurrency(trip.amount)}</span>
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  paddingTop: 12, borderTop: '1px solid var(--border)',
+                }}>
+                  <span style={{ fontSize: 14, color: 'var(--text-secondary)' }}>{trip.customerName}</span>
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={{ display: 'block', fontSize: 16, fontWeight: 600, color: 'var(--accent-gold)' }}>{formatCurrency(trip.amount)}</span>
                     {trip.tip && trip.tip > 0 && (
-                      <span className="trip-tip">+{formatCurrency(trip.tip)} propina</span>
+                      <span style={{ fontSize: 12, color: 'var(--accent)' }}>+{formatCurrency(trip.tip)} propina</span>
                     )}
                   </div>
                 </div>
@@ -245,413 +377,15 @@ export default function DriverEarningsPage() {
             ))}
           </div>
         ) : (
-          <div className="trips-empty">
-            <p>No hay viajes registrados aún</p>
+          <div style={{
+            background: 'var(--bg-card)', borderRadius: 14,
+            padding: '40px 20px', textAlign: 'center',
+            border: '1px solid var(--border)',
+          }}>
+            <p style={{ margin: 0, color: 'var(--text-muted)' }}>No hay viajes registrados aún</p>
           </div>
         )}
       </section>
-
-      <style jsx>{`
-        .earnings-container {
-          min-height: 100vh;
-          background: var(--bg-dark);
-          padding: 24px 16px;
-          max-width: 480px;
-          margin: 0 auto;
-        }
-
-        .earnings-loading,
-        .earnings-empty {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          min-height: 60vh;
-          text-align: center;
-          color: var(--text-primary);
-        }
-
-        .spinner {
-          width: 40px;
-          height: 40px;
-          border: 3px solid var(--border);
-          border-top-color: var(--accent-gold);
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-          margin-bottom: 16px;
-        }
-
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-
-        .empty-icon {
-          font-size: 48px;
-          margin-bottom: 16px;
-        }
-
-        .earnings-empty h2 {
-          margin: 0 0 8px;
-          font-size: 20px;
-        }
-
-        .earnings-empty p {
-          margin: 0 0 24px;
-          color: var(--text-secondary);
-        }
-
-        .retry-button {
-          background: var(--accent-gold);
-          color: var(--bg-dark);
-          border: none;
-          padding: 12px 24px;
-          border-radius: var(--radius-md);
-          font-size: 16px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: opacity 0.2s;
-        }
-
-        .retry-button:hover {
-          opacity: 0.9;
-        }
-
-        .earnings-header {
-          margin-bottom: 24px;
-        }
-
-        .earnings-header h1 {
-          margin: 0;
-          font-size: 28px;
-          font-weight: 700;
-          color: var(--text-primary);
-        }
-
-        .subtitle {
-          margin: 4px 0 0;
-          color: var(--text-secondary);
-          font-size: 14px;
-        }
-
-        .weekly-summary {
-          background: var(--bg-card);
-          border-radius: var(--radius-md);
-          padding: 24px;
-          margin-bottom: 20px;
-          border: 1px solid var(--border);
-        }
-
-        .summary-main {
-          text-align: center;
-          margin-bottom: 20px;
-          padding-bottom: 20px;
-          border-bottom: 1px solid var(--border);
-        }
-
-        .summary-label {
-          display: block;
-          font-size: 14px;
-          color: var(--text-secondary);
-          margin-bottom: 8px;
-        }
-
-        .summary-amount {
-          display: block;
-          font-size: 42px;
-          font-weight: 700;
-          color: var(--accent-gold);
-          line-height: 1.1;
-        }
-
-        .summary-change {
-          margin-top: 12px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-        }
-
-        .change-indicator {
-          font-size: 14px;
-          font-weight: 600;
-        }
-
-        .change-indicator.positive {
-          color: var(--admin-accent);
-        }
-
-        .change-indicator.negative {
-          color: var(--danger);
-        }
-
-        .change-label {
-          font-size: 13px;
-          color: var(--text-muted);
-        }
-
-        .summary-secondary {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 16px;
-        }
-
-        .secondary-item {
-          text-align: center;
-        }
-
-        .secondary-label {
-          display: block;
-          font-size: 12px;
-          color: var(--text-muted);
-          margin-bottom: 4px;
-        }
-
-        .secondary-value {
-          font-size: 18px;
-          font-weight: 600;
-          color: var(--text-primary);
-        }
-
-        .earnings-breakdown {
-          margin-bottom: 20px;
-        }
-
-        .earnings-breakdown h2,
-        .daily-chart h2,
-        .trips-list h2 {
-          margin: 0 0 16px;
-          font-size: 18px;
-          font-weight: 600;
-          color: var(--text-primary);
-        }
-
-        .breakdown-grid {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 12px;
-        }
-
-        .breakdown-card {
-          background: var(--bg-card);
-          border-radius: var(--radius-md);
-          padding: 16px;
-          text-align: center;
-          border: 1px solid var(--border);
-        }
-
-        .breakdown-label {
-          display: block;
-          font-size: 12px;
-          color: var(--text-muted);
-          margin-bottom: 8px;
-        }
-
-        .breakdown-value {
-          font-size: 16px;
-          font-weight: 600;
-          color: var(--text-primary);
-        }
-
-        .breakdown-value.tips {
-          color: var(--admin-accent);
-        }
-
-        .breakdown-value.bonuses {
-          color: var(--accent-gold);
-        }
-
-        .daily-chart {
-          background: var(--bg-card);
-          border-radius: var(--radius-md);
-          padding: 20px;
-          margin-bottom: 20px;
-          border: 1px solid var(--border);
-        }
-
-        .chart-container {
-          display: flex;
-          align-items: flex-end;
-          justify-content: space-between;
-          height: 160px;
-          gap: 8px;
-          padding-top: 20px;
-        }
-
-        .chart-bar-wrapper {
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          height: 100%;
-        }
-
-        .chart-bar-container {
-          flex: 1;
-          width: 100%;
-          display: flex;
-          align-items: flex-end;
-          justify-content: center;
-        }
-
-        .chart-bar {
-          width: 100%;
-          max-width: 40px;
-          background: linear-gradient(180deg, var(--accent-gold) 0%, var(--admin-accent) 100%);
-          border-radius: 4px 4px 0 0;
-          min-height: 4px;
-          position: relative;
-          transition: height 0.3s ease;
-        }
-
-        .chart-value {
-          position: absolute;
-          top: -20px;
-          left: 50%;
-          transform: translateX(-50%);
-          font-size: 10px;
-          color: var(--text-secondary);
-          white-space: nowrap;
-        }
-
-        .chart-label {
-          margin-top: 8px;
-          font-size: 11px;
-          color: var(--text-muted);
-          text-transform: uppercase;
-        }
-
-        .chart-empty {
-          width: 100%;
-          text-align: center;
-          color: var(--text-muted);
-          padding: 40px 0;
-        }
-
-        .trips-list {
-          margin-bottom: 24px;
-        }
-
-        .trips-container {
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-        }
-
-        .trip-card {
-          background: var(--bg-card);
-          border-radius: var(--radius-md);
-          padding: 16px;
-          border: 1px solid var(--border);
-        }
-
-        .trip-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 12px;
-        }
-
-        .trip-date {
-          font-size: 13px;
-          color: var(--text-muted);
-        }
-
-        .trip-status {
-          font-size: 12px;
-          font-weight: 500;
-          padding: 4px 10px;
-          border-radius: 12px;
-        }
-
-        .trip-status.completed {
-          background: rgba(34, 197, 94, 0.15);
-          color: #22c55e;
-        }
-
-        .trip-status.pending {
-          background: rgba(234, 179, 8, 0.15);
-          color: #eab308;
-        }
-
-        .trip-route {
-          margin-bottom: 12px;
-        }
-
-        .route-point {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-        }
-
-        .route-dot {
-          width: 10px;
-          height: 10px;
-          border-radius: 50%;
-          flex-shrink: 0;
-        }
-
-        .route-dot.pickup {
-          background: var(--admin-accent);
-        }
-
-        .route-dot.destination {
-          background: var(--accent-gold);
-        }
-
-        .route-text {
-          font-size: 14px;
-          color: var(--text-primary);
-        }
-
-        .route-line {
-          width: 2px;
-          height: 20px;
-          background: var(--border);
-          margin-left: 4px;
-        }
-
-        .trip-footer {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding-top: 12px;
-          border-top: 1px solid var(--border);
-        }
-
-        .trip-customer {
-          font-size: 14px;
-          color: var(--text-secondary);
-        }
-
-        .trip-amounts {
-          text-align: right;
-        }
-
-        .trip-amount {
-          display: block;
-          font-size: 16px;
-          font-weight: 600;
-          color: var(--accent-gold);
-        }
-
-        .trip-tip {
-          font-size: 12px;
-          color: var(--admin-accent);
-        }
-
-        .trips-empty {
-          background: var(--bg-card);
-          border-radius: var(--radius-md);
-          padding: 40px 20px;
-          text-align: center;
-          border: 1px solid var(--border);
-        }
-
-        .trips-empty p {
-          margin: 0;
-          color: var(--text-muted);
-        }
-      `}</style>
     </div>
   )
 }

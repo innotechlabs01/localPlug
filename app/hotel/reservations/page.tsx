@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
+import { cardStyle, btnPrimary } from '@/lib/hotel/styles'
 import type { Reservation, ReservationStatus } from '@/lib/reservations-types'
 import ReservationKPIs from './components/ReservationKPIs'
 import ReservationFilters from './components/ReservationFilters'
@@ -58,20 +59,32 @@ export default function HotelReservationsPage() {
 
   if (loading && reservations.length === 0) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--accent-gold)', borderTopColor: 'transparent' }} />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '120px 0' }}>
+        <div style={{
+          width: '32px', height: '32px', border: '3px solid var(--border)',
+          borderTopColor: 'var(--accent-gold)', borderRadius: '50%',
+          animation: 'spin 0.6s linear infinite',
+        }} />
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="text-center py-20">
-        <p className="text-sm mb-4" style={{ color: 'var(--danger)' }}>{error}</p>
+      <div style={{ textAlign: 'center', padding: '120px 0' }}>
+        <div style={{
+          width: '48px', height: '48px', borderRadius: '50%', margin: '0 auto 16px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(248,113,113,0.1)', color: 'var(--danger)',
+        }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+        </div>
+        <p style={{ fontSize: '14px', color: 'var(--danger)', marginBottom: '16px' }}>{error}</p>
         <button
           onClick={loadReservations}
-          className="px-4 py-2 rounded-lg text-sm font-medium"
-          style={{ background: 'var(--accent-gold)', color: 'var(--bg-dark)' }}
+          style={{ ...btnPrimary, padding: '10px 24px' }}
         >
           Reintentar
         </button>
@@ -80,32 +93,39 @@ export default function HotelReservationsPage() {
   }
 
   return (
-    <div className="space-y-5">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>Reservaciones</h1>
-          <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-            {filtered.length} de {reservations.length} reservaciones
-          </p>
-        </div>
-        <div className="relative">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ color: 'var(--text-muted)' }}>
-            <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
-          </svg>
-          <input
-            type="text"
-            placeholder="Buscar huésped, vuelo, paquete..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            className="pl-9 pr-4 py-2 rounded-lg text-sm w-full sm:w-72"
-            style={{
-              background: 'var(--bg-card)',
-              border: '1px solid var(--border)',
-              color: 'var(--text-primary)',
-              outline: 'none',
-            }}
-          />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+          <div>
+            <h1 style={{
+              fontSize: '22px', fontWeight: 700, color: 'var(--text-primary)',
+              fontFamily: 'var(--font-display)', margin: 0,
+            }}>Reservaciones</h1>
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px' }}>
+              {filtered.length} de {reservations.length} reservaciones
+            </p>
+          </div>
+          <div style={{ position: 'relative' }}>
+            <svg style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" color="var(--text-muted)">
+              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Buscar huésped, vuelo, paquete..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              style={{
+                paddingLeft: '36px', paddingRight: '16px', paddingTop: '10px', paddingBottom: '10px',
+                borderRadius: 'var(--radius-sm)', fontSize: '13px', width: '280px',
+                background: 'var(--bg-card)', border: '1px solid var(--border)',
+                color: 'var(--text-primary)', outline: 'none',
+                transition: 'border-color 200ms cubic-bezier(0.4,0,0.2,1)',
+              }}
+              onFocus={e => { e.currentTarget.style.borderColor = 'var(--accent-gold)' }}
+              onBlur={e => { e.currentTarget.style.borderColor = 'var(--border)' }}
+            />
+          </div>
         </div>
       </div>
 
@@ -120,7 +140,7 @@ export default function HotelReservationsPage() {
       />
 
       {/* Table */}
-      <div className="rounded-xl overflow-hidden" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+      <div style={cardStyle}>
         <ReservationTable
           reservations={filtered}
           onView={r => { setSelectedReservation(r); setModalOpen(true) }}

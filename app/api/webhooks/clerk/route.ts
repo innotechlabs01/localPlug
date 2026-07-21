@@ -72,20 +72,46 @@ export async function POST(req: Request) {
       })
 
       if (existing.rows.length === 0) {
-        // Create new user with viewer role in local DB
-        const roles = await db.execute("SELECT id FROM roles WHERE name = 'viewer'")
-        const viewerRoleId = roles.rows[0]?.id || 4
+        // Check if user already has a role in Clerk metadata (e.g. admin-created driver/manager)
+        const incomingRole = (evt.data.public_metadata?.role as string) || ''
 
-        await db.execute({
-          sql: `INSERT OR IGNORE INTO users (clerk_id, name, email, password_hash, role_id, status, created_at, updated_at)
-                VALUES (?, ?, ?, '', ?, 'active', datetime('now'), datetime('now'))`,
-          args: [clerkId, name, email, viewerRoleId],
-        })
+        if (incomingRole && ['admin', 'hotel_manager', 'driver'].includes(incomingRole)) {
+          // User was created by admin API with a specific role — preserve it
+          // Map Clerk role to local DB role
+          const roleMap: Record<string, string> = {
+            admin: 'admin',
+            hotel_manager: 'hotel_manager',
+            driver: 'driver',
+          }
+          const dbRoleName = roleMap[incomingRole] || 'viewer'
+          const roles = await db.execute({ sql: 'SELECT id FROM roles WHERE name = ?', args: [dbRoleName] })
+          const roleId = roles.rows[0]?.id || 4
 
-        // Set Clerk metadata so role is visible in Clerk Dashboard
-        await setClerkMetadata(clerkId, { role: 'viewer' })
+          await db.execute({
+            sql: `INSERT OR IGNORE INTO users (clerk_id, name, email, password_hash, role_id, status, created_at, updated_at)
+                  VALUES (?, ?, ?, '', ?, 'active', datetime('now'), datetime('now'))`,
+            args: [clerkId, name, email, roleId],
+          })
 
-        console.log(`[Clerk Webhook] Created user: ${name} (${email}) as viewer`)
+          console.log(`[Clerk Webhook] Created user: ${name} (${email}) as ${incomingRole}`)
+        } else {
+          // Self-registered user — default to viewer
+          const roles = await db.execute("SELECT id FROM roles WHERE name = 'viewer'")
+          const viewerRoleId = roles.rows[0]?.id || 4
+
+          await db.execute({
+            sql: `INSERT OR IGNORE INTO users (clerk_id, name, email, password_hash, role_id, status, created_at, updated_at)
+                  VALUES (?, ?, ?, '', ?, 'active', datetime('now'), datetime('now'))`,
+            args: [clerkId, name, email, viewerRoleId],
+          })
+
+          // Only set viewer role if no role was already set
+          if (!incomingRole) {
+            await setClerkMetadata(clerkId, { role: 'viewer' })
+          }
+
+          console.log(`[Clerk Webhook] Created user: ${name} (${email}) as viewer`)
+        }
       } else {
         // Update existing user info
         await db.execute({

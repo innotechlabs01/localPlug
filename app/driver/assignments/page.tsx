@@ -23,7 +23,7 @@ interface Assignment {
   airline: string | null
 }
 
-const STATUS_MAP: Record<string, { label: string; bg: string; fg: string }> = {
+const STATUS_STYLES: Record<string, { label: string; bg: string; fg: string }> = {
   pending: { label: 'Pendiente', bg: 'rgba(250,204,21,0.12)', fg: '#facc15' },
   pending_acceptance: { label: 'Esperando', bg: 'rgba(250,204,21,0.12)', fg: '#facc15' },
   offered: { label: 'Ofrecida', bg: 'rgba(96,165,250,0.12)', fg: '#60a5fa' },
@@ -85,119 +85,205 @@ export default function DriverAssignmentsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <div className="w-6 h-6 border-2 rounded-full animate-spin" style={{ borderColor: 'var(--admin-accent)', borderTopColor: 'transparent' }} />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '80px 0' }}>
+        <div style={{
+          width: 24, height: 24,
+          border: '2px solid var(--border)',
+          borderTopColor: 'var(--accent-gold)',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+        }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     )
   }
 
   return (
-    <div className="space-y-5">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div>
-        <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>Asignaciones</h1>
-        <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+        <h1 style={{
+          fontSize: 22, fontWeight: 700,
+          fontFamily: 'var(--font-display)',
+          color: 'var(--text-primary)', margin: 0,
+        }}>Asignaciones</h1>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '4px 0 0' }}>
           {filtered.length} asignaciones
         </p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-2">
-        {(['pending', 'active', 'history'] as Tab[]).map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className="px-4 py-2 rounded-lg text-xs font-medium transition-all"
-            style={{
-              background: activeTab === tab ? 'var(--admin-accent)' : 'var(--bg-card)',
-              color: activeTab === tab ? 'var(--bg-dark)' : 'var(--text-secondary)',
-              border: `1px solid ${activeTab === tab ? 'var(--admin-accent)' : 'var(--border)'}`,
-            }}
-          >
-            {tab === 'pending' ? 'Pendientes' : tab === 'active' ? 'Activas' : 'Historial'}
-            <span className="ml-1.5 opacity-60">{counts[tab]}</span>
-          </button>
-        ))}
+      <div style={{ display: 'flex', gap: 8 }}>
+        {(['pending', 'active', 'history'] as Tab[]).map(tab => {
+          const isActive = activeTab === tab
+          return (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              style={{
+                padding: '8px 16px', borderRadius: 10,
+                fontSize: 12, fontWeight: 500,
+                background: isActive ? 'var(--accent-gold)' : 'var(--bg-card)',
+                color: isActive ? '#000' : 'var(--text-secondary)',
+                border: `1px solid ${isActive ? 'var(--accent-gold)' : 'var(--border)'}`,
+                cursor: 'pointer',
+                transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+              }}
+              onMouseEnter={(e) => {
+                if (!isActive) {
+                  e.currentTarget.style.borderColor = 'var(--accent-gold-dim, #b08a5a)'
+                  e.currentTarget.style.color = 'var(--text-primary)'
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isActive) {
+                  e.currentTarget.style.borderColor = 'var(--border)'
+                  e.currentTarget.style.color = 'var(--text-secondary)'
+                }
+              }}
+            >
+              {tab === 'pending' ? 'Pendientes' : tab === 'active' ? 'Activas' : 'Historial'}
+              <span style={{ marginLeft: 6, opacity: 0.6 }}>{counts[tab]}</span>
+            </button>
+          )
+        })}
       </div>
 
-      {/* Assignments list */}
-      <div className="space-y-3">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {filtered.length === 0 ? (
-          <div className="text-center py-16" style={{ color: 'var(--text-muted)' }}>
-            <svg className="mx-auto mb-3 opacity-30" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <div style={{
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center',
+            padding: '64px 24px', textAlign: 'center',
+            color: 'var(--text-muted)',
+          }}>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ marginBottom: 12, opacity: 0.3 }}>
               <rect x="1" y="3" width="15" height="13" /><polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
               <circle cx="5.5" cy="18.5" r="2.5" /><circle cx="18.5" cy="18.5" r="2.5" />
             </svg>
-            <p className="text-sm">No hay asignaciones {activeTab === 'pending' ? 'pendientes' : activeTab === 'active' ? 'activas' : 'en historial'}</p>
+            <p style={{ fontSize: 14, margin: 0 }}>
+              No hay asignaciones {activeTab === 'pending' ? 'pendientes' : activeTab === 'active' ? 'activas' : 'en historial'}
+            </p>
           </div>
         ) : (
           filtered.map(a => {
-            const status = STATUS_MAP[a.status] || { label: a.status, bg: 'rgba(100,100,100,0.12)', fg: '#9ca3af' }
+            const status = STATUS_STYLES[a.status] || { label: a.status, bg: 'rgba(100,100,100,0.12)', fg: '#9ca3af' }
             const canAccept = ['pending', 'pending_acceptance', 'offered'].includes(a.status)
-            const canDecline = canAccept
 
             return (
               <div
                 key={a.id}
-                className="p-4 rounded-xl"
-                style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}
+                style={{
+                  background: 'var(--bg-card)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 14,
+                  padding: 16,
+                  boxShadow: 'var(--shadow-card)',
+                  transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.boxShadow = 'var(--shadow-elevated)'
+                  e.currentTarget.style.borderColor = 'var(--accent-gold)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.boxShadow = 'var(--shadow-card)'
+                  e.currentTarget.style.borderColor = 'var(--border)'
+                }}
               >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="inline-flex px-2 py-0.5 rounded-md text-[11px] font-medium"
-                      style={{ background: status.bg, color: status.fg }}
-                    >
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{
+                      display: 'inline-flex', padding: '3px 10px',
+                      borderRadius: 8, fontSize: 11, fontWeight: 500,
+                      background: status.bg, color: status.fg,
+                    }}>
                       {status.label}
                     </span>
-                    <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                       {a.order_number || `#${a.id}`}
                     </span>
                   </div>
-                  <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                     {a.pickup_date || a.arrival_date || ''} {a.pickup_time || a.arrival_time || ''}
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-3">
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                  gap: 12, fontSize: 13, marginBottom: 12,
+                }}>
                   <div>
-                    <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>Cliente</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Cliente</div>
                     <div style={{ color: 'var(--text-primary)' }}>{a.customer_name || '—'}</div>
                   </div>
                   <div>
-                    <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>Paquete</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Paquete</div>
                     <div style={{ color: 'var(--text-primary)' }}>{a.package_name || '—'}</div>
                   </div>
                   <div>
-                    <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>Vuelo</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Vuelo</div>
                     <div style={{ color: 'var(--text-primary)' }}>{a.airline || ''} {a.flight_number || '—'}</div>
                   </div>
                   <div>
-                    <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>Destino</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Destino</div>
                     <div style={{ color: 'var(--text-primary)' }}>{a.destination_address || '—'}</div>
                   </div>
                 </div>
 
                 {a.customer_phone && (
-                  <div className="text-[12px] mb-3" style={{ color: 'var(--text-muted)' }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
                     Tel: {a.customer_phone}
                   </div>
                 )}
 
                 {canAccept && (
-                  <div className="flex gap-2">
+                  <div style={{ display: 'flex', gap: 8 }}>
                     <button
                       onClick={() => handleAction(a.id, 'accept')}
                       disabled={actionLoading === a.id}
-                      className="px-4 py-1.5 rounded-lg text-xs font-medium text-black transition-all disabled:opacity-50"
-                      style={{ background: 'var(--admin-accent)' }}
+                      style={{
+                        padding: '6px 16px', borderRadius: 8,
+                        fontSize: 12, fontWeight: 500,
+                        background: 'var(--accent-gold)', color: '#000',
+                        border: 'none', cursor: 'pointer',
+                        opacity: actionLoading === a.id ? 0.5 : 1,
+                        transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (actionLoading !== a.id) {
+                          e.currentTarget.style.background = 'var(--accent-gold-light, #e8c9a0)'
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (actionLoading !== a.id) {
+                          e.currentTarget.style.background = 'var(--accent-gold)'
+                        }
+                      }}
                     >
                       {actionLoading === a.id ? 'Procesando...' : 'Aceptar'}
                     </button>
                     <button
                       onClick={() => handleAction(a.id, 'decline')}
                       disabled={actionLoading === a.id}
-                      className="px-4 py-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-50"
-                      style={{ background: 'rgba(248,113,113,0.12)', color: '#f87171', border: '1px solid rgba(248,113,113,0.2)' }}
+                      style={{
+                        padding: '6px 16px', borderRadius: 8,
+                        fontSize: 12, fontWeight: 500,
+                        background: 'rgba(248,113,113,0.12)',
+                        color: '#f87171',
+                        border: '1px solid rgba(248,113,113,0.2)',
+                        cursor: 'pointer',
+                        opacity: actionLoading === a.id ? 0.5 : 1,
+                        transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (actionLoading !== a.id) {
+                          e.currentTarget.style.background = 'rgba(248,113,113,0.18)'
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (actionLoading !== a.id) {
+                          e.currentTarget.style.background = 'rgba(248,113,113,0.12)'
+                        }
+                      }}
                     >
                       Rechazar
                     </button>
