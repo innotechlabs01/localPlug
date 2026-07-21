@@ -53,7 +53,7 @@ export async function GET(req: Request) {
 
     const ordersResult = await db.execute({ sql, args })
 
-    let driverSql = 'SELECT * FROM drivers WHERE 1=1'
+    let driverSql = `SELECT * FROM drivers WHERE status IN ('available', 'active')`
     const driverArgs: (string | number)[] = []
 
     if (driverCat !== 'all') {
