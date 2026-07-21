@@ -59,16 +59,16 @@ interface Assignment {
 
 type Tab = 'pending' | 'active' | 'history'
 
-const STATUS_MAP: Record<string, { label: string; className: string }> = {
-  pending: { label: 'Pendiente', className: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' },
-  pending_acceptance: { label: 'Pendiente aceptación', className: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' },
-  offered: { label: 'Ofrecido', className: 'bg-blue-500/20 text-blue-400 border border-blue-500/30' },
-  accepted: { label: 'Aceptado', className: 'bg-green-500/20 text-green-400 border border-green-500/30' },
-  confirmed: { label: 'Confirmado', className: 'bg-green-500/20 text-green-400 border border-green-500/30' },
-  completed: { label: 'Completado', className: 'bg-gray-500/20 text-gray-400 border border-gray-500/30' },
-  cancelled: { label: 'Cancelado', className: 'bg-red-500/20 text-red-400 border border-red-500/30' },
-  expired: { label: 'Expirado', className: 'bg-orange-500/20 text-orange-400 border border-orange-500/30' },
-  declined: { label: 'Rechazado', className: 'bg-red-500/20 text-red-400 border border-red-500/30' },
+const STATUS_STYLES: Record<string, { label: string; bg: string; fg: string; border: string }> = {
+  pending: { label: 'Pendiente', bg: 'rgba(250, 204, 21, 0.12)', fg: '#facc15', border: 'rgba(250, 204, 21, 0.25)' },
+  pending_acceptance: { label: 'Pendiente aceptación', bg: 'rgba(250, 204, 21, 0.12)', fg: '#facc15', border: 'rgba(250, 204, 21, 0.25)' },
+  offered: { label: 'Ofrecido', bg: 'rgba(96, 165, 250, 0.12)', fg: '#60a5fa', border: 'rgba(96, 165, 250, 0.25)' },
+  accepted: { label: 'Aceptado', bg: 'rgba(74, 222, 128, 0.12)', fg: '#4ade80', border: 'rgba(74, 222, 128, 0.25)' },
+  confirmed: { label: 'Confirmado', bg: 'rgba(74, 222, 128, 0.12)', fg: '#4ade80', border: 'rgba(74, 222, 128, 0.25)' },
+  completed: { label: 'Completado', bg: 'rgba(100, 100, 100, 0.12)', fg: '#9ca3af', border: 'rgba(100, 100, 100, 0.25)' },
+  cancelled: { label: 'Cancelado', bg: 'rgba(248, 113, 113, 0.12)', fg: '#f87171', border: 'rgba(248, 113, 113, 0.25)' },
+  expired: { label: 'Expirado', bg: 'rgba(248, 113, 113, 0.12)', fg: '#f87171', border: 'rgba(248, 113, 113, 0.25)' },
+  declined: { label: 'Rechazado', bg: 'rgba(248, 113, 113, 0.12)', fg: '#f87171', border: 'rgba(248, 113, 113, 0.25)' },
 }
 
 export default function DriverPage() {
@@ -200,8 +200,15 @@ export default function DriverPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+      <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{
+          width: 32, height: 32,
+          border: '2px solid var(--border)',
+          borderTopColor: 'var(--accent-gold)',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+        }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     )
   }
@@ -209,14 +216,28 @@ export default function DriverPage() {
   if (error) {
     const isNotFound = error === 'driver_not_found'
     return (
-      <div className="p-6">
-        <div className="max-w-4xl mx-auto text-center py-20">
-          <div className={`text-lg mb-4 ${isNotFound ? 'text-yellow-400' : 'text-red-400'}`}>
+      <div style={{ padding: 24 }}>
+        <div style={{ maxWidth: 800, margin: '0 auto', textAlign: 'center', padding: '80px 0' }}>
+          <div style={{ fontSize: 18, marginBottom: 16, color: isNotFound ? '#facc15' : '#f87171' }}>
             {isNotFound
               ? 'No se encontró tu perfil de conductor. Contacte al administrador para que te registre.'
               : error}
           </div>
-          <button onClick={() => window.location.reload()} className="btn btn-primary">Reintentar</button>
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              padding: '10px 20px', borderRadius: 8,
+              background: 'var(--accent-gold)', color: '#000',
+              border: 'none', fontSize: 14, fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent-gold-light, #e8c9a0)' }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--accent-gold)' }}
+          >
+            Reintentar
+          </button>
         </div>
       </div>
     )
@@ -228,29 +249,69 @@ export default function DriverPage() {
 
   return (
     <div>
-      <div className="drivers-hero">
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '0 0 24px',
+      }}>
         <div>
-          <h1>Dashboard — {driver.name}</h1>
-          <p>Panel de conductor</p>
+          <h1 style={{
+            fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700,
+            color: 'var(--text-primary)', margin: 0,
+          }}>
+            Dashboard — {driver.name}
+          </h1>
+          <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: '4px 0 0' }}>Panel de conductor</p>
         </div>
-        <div className="drivers-toolbar">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {driver.profile_complete && !editMode && (
-            <button onClick={() => setEditMode(true)} className="btn btn-secondary">Editar Perfil</button>
+            <button
+              onClick={() => setEditMode(true)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                padding: '8px 16px', borderRadius: 8,
+                background: 'transparent', color: 'var(--fg)',
+                border: '1px solid var(--border)',
+                fontSize: 13, fontWeight: 500,
+                cursor: 'pointer',
+                transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--surface-hover, rgba(255,255,255,0.05))'
+                e.currentTarget.style.borderColor = 'var(--fg-muted)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent'
+                e.currentTarget.style.borderColor = 'var(--border)'
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+              </svg>
+              Editar Perfil
+            </button>
           )}
         </div>
       </div>
 
       {needsProfile ? (
-        <div style={{ padding: '0 24px 24px' }}>
-          <div className="card">
-            <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--accent)', marginBottom: 16 }}>
+        <div style={{ padding: '0 0 24px' }}>
+          <div style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-md)',
+            boxShadow: 'var(--shadow-card)',
+            padding: 24,
+            transition: 'border-color 200ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+          }}>
+            <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--accent-gold)', marginBottom: 16 }}>
               {driver.profile_complete ? 'Editar Perfil' : 'Completa Tu Perfil'}
             </h2>
-            <p style={{ fontSize: 13, color: 'var(--fg-muted)', marginBottom: 24 }}>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>
               Completa los datos de tu vehículo y licencia para comenzar a recibir asignaciones.
             </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
               <Input label="Nombre completo *" value={form.name} onChange={v => setForm(f => ({ ...f, name: v }))} />
               <Input label="Teléfono" value={form.phone} onChange={v => setForm(f => ({ ...f, phone: v }))} />
               <Input label="Email" value={form.email} onChange={v => setForm(f => ({ ...f, email: v }))} type="email" />
@@ -259,8 +320,19 @@ export default function DriverPage() {
               <Input label="Placa *" value={form.plate} onChange={v => setForm(f => ({ ...f, plate: v }))} />
 
               <div>
-                <label style={{ fontSize: 11, color: 'var(--fg-muted)', display: 'block', marginBottom: 4 }}>Categoría</label>
-                <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} className="select">
+                <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--fg-secondary)', display: 'block', marginBottom: 6 }}>Categoría</label>
+                <select
+                  value={form.category}
+                  onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+                  style={{
+                    width: '100%', padding: '10px 14px',
+                    background: 'var(--bg)', border: '1px solid var(--border)',
+                    borderRadius: 8, color: 'var(--fg)',
+                    fontSize: 13.5, fontFamily: 'var(--font-sans)',
+                    outline: 'none', cursor: 'pointer',
+                    transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+                  }}
+                >
                   <option value="standard">Estándar</option>
                   <option value="premium">Premium</option>
                   <option value="vip">VIP</option>
@@ -268,8 +340,19 @@ export default function DriverPage() {
               </div>
 
               <div>
-                <label style={{ fontSize: 11, color: 'var(--fg-muted)', display: 'block', marginBottom: 4 }}>Idiomas</label>
-                <select value={form.languages} onChange={e => setForm(f => ({ ...f, languages: e.target.value }))} className="select">
+                <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--fg-secondary)', display: 'block', marginBottom: 6 }}>Idiomas</label>
+                <select
+                  value={form.languages}
+                  onChange={e => setForm(f => ({ ...f, languages: e.target.value }))}
+                  style={{
+                    width: '100%', padding: '10px 14px',
+                    background: 'var(--bg)', border: '1px solid var(--border)',
+                    borderRadius: 8, color: 'var(--fg)',
+                    fontSize: 13.5, fontFamily: 'var(--font-sans)',
+                    outline: 'none', cursor: 'pointer',
+                    transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+                  }}
+                >
                   <option value="Spanish">Español</option>
                   <option value="English">Inglés</option>
                   <option value="Spanish, English">Español e Inglés</option>
@@ -277,8 +360,19 @@ export default function DriverPage() {
               </div>
 
               <div>
-                <label style={{ fontSize: 11, color: 'var(--fg-muted)', display: 'block', marginBottom: 4 }}>Experiencia</label>
-                <select value={form.experience_level} onChange={e => setForm(f => ({ ...f, experience_level: e.target.value }))} className="select">
+                <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--fg-secondary)', display: 'block', marginBottom: 6 }}>Experiencia</label>
+                <select
+                  value={form.experience_level}
+                  onChange={e => setForm(f => ({ ...f, experience_level: e.target.value }))}
+                  style={{
+                    width: '100%', padding: '10px 14px',
+                    background: 'var(--bg)', border: '1px solid var(--border)',
+                    borderRadius: 8, color: 'var(--fg)',
+                    fontSize: 13.5, fontFamily: 'var(--font-sans)',
+                    outline: 'none', cursor: 'pointer',
+                    transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+                  }}
+                >
                   <option value="Standard">Estándar</option>
                   <option value="Experienced">Experimentado</option>
                   <option value="Senior">Senior</option>
@@ -289,18 +383,57 @@ export default function DriverPage() {
               <Input label="Vencimiento de licencia" value={form.license_expiry} onChange={v => setForm(f => ({ ...f, license_expiry: v }))} type="date" />
               <Input label="Cuenta bancaria" value={form.bank_account} onChange={v => setForm(f => ({ ...f, bank_account: v }))} />
 
-              <div className="flex items-center gap-2 pt-6">
-                <input type="checkbox" id="vip" checked={form.vip_compatible} onChange={e => setForm(f => ({ ...f, vip_compatible: e.target.checked }))} />
-                <label htmlFor="vip" style={{ fontSize: 13, color: 'var(--fg-secondary)' }}>Compatible VIP</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingTop: 24 }}>
+                <input
+                  type="checkbox"
+                  id="vip"
+                  checked={form.vip_compatible}
+                  onChange={e => setForm(f => ({ ...f, vip_compatible: e.target.checked }))}
+                  style={{ width: 16, height: 16, accentColor: 'var(--accent-gold)', cursor: 'pointer' }}
+                />
+                <label htmlFor="vip" style={{ fontSize: 13, color: 'var(--fg-secondary)', cursor: 'pointer' }}>Compatible VIP</label>
               </div>
             </div>
 
-            <div className="flex gap-3 mt-6">
-              <button onClick={handleSave} disabled={saving || !form.name || !form.vehicle || !form.plate} className="btn btn-primary">
+            <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
+              <button
+                onClick={handleSave}
+                disabled={saving || !form.name || !form.vehicle || !form.plate}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  padding: '10px 20px', borderRadius: 8,
+                  background: 'var(--accent-gold)', color: '#000',
+                  border: 'none', fontSize: 14, fontWeight: 600,
+                  cursor: saving ? 'not-allowed' : 'pointer',
+                  opacity: saving ? 0.6 : 1,
+                  transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+                }}
+                onMouseEnter={(e) => { if (!saving) e.currentTarget.style.background = 'var(--accent-gold-light, #e8c9a0)' }}
+                onMouseLeave={(e) => { if (!saving) e.currentTarget.style.background = 'var(--accent-gold)' }}
+              >
                 {saving ? 'Guardando...' : driver.profile_complete ? 'Guardar Cambios' : 'Completar Perfil'}
               </button>
               {editMode && (
-                <button onClick={() => setEditMode(false)} className="btn btn-secondary">
+                <button
+                  onClick={() => setEditMode(false)}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                    padding: '10px 20px', borderRadius: 8,
+                    background: 'transparent', color: 'var(--fg)',
+                    border: '1px solid var(--border)',
+                    fontSize: 14, fontWeight: 500,
+                    cursor: 'pointer',
+                    transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--surface-hover, rgba(255,255,255,0.05))'
+                    e.currentTarget.style.borderColor = 'var(--fg-muted)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent'
+                    e.currentTarget.style.borderColor = 'var(--border)'
+                  }}
+                >
                   Cancelar
                 </button>
               )}
@@ -310,114 +443,199 @@ export default function DriverPage() {
       ) : (
         <>
           {stats && (
-            <div className="drivers-kpis grid-6">
-              <div className="stat-card">
-                <div className="stat-label">Viajes totales</div>
-                <div className="stat-value">{stats.total}</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-label">Completados</div>
-                <div className="stat-value">{stats.completed}</div>
-                <div className="stat-change up">+{stats.completed}</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-label">Pendientes</div>
-                <div className="stat-value">{stats.pending}</div>
-                <div className="stat-change down">{stats.pending} activos</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-label">Activos</div>
-                <div className="stat-value">{stats.active}</div>
-                <div className="stat-change up">En curso</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-label">Ganancias</div>
-                <div className="stat-value">${stats.earnings?.toFixed?.(2) ?? stats.earnings}</div>
-                <div className="stat-change up">+{((stats.commissionRate ?? 0.30) * 100).toFixed(0)}% comisión</div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-label">Aceptación %</div>
-                <div className="stat-value">{stats.acceptanceRate ?? 0}%</div>
-                <div className="stat-change up">Tasa de aceptación</div>
-              </div>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+              gap: 14,
+              marginBottom: 24,
+            }}>
+              {[
+                { label: 'Viajes totales', value: stats.total, sub: null, color: 'var(--accent-gold)' },
+                { label: 'Completados', value: stats.completed, sub: `+${stats.completed}`, color: 'var(--accent)' },
+                { label: 'Pendientes', value: stats.pending, sub: `${stats.pending} activos`, color: 'var(--warning)' },
+                { label: 'Activos', value: stats.active, sub: 'En curso', color: 'var(--info)' },
+                { label: 'Ganancias', value: `$${stats.earnings?.toFixed?.(2) ?? stats.earnings}`, sub: `+${((stats.commissionRate ?? 0.30) * 100).toFixed(0)}% comisión`, color: 'var(--accent-gold)' },
+                { label: 'Aceptación %', value: `${stats.acceptanceRate ?? 0}%`, sub: 'Tasa de aceptación', color: 'var(--accent)' },
+              ].map((kpi, i) => (
+                <div
+                  key={i}
+                  style={{
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '18px 16px',
+                    transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+                    position: 'relative',
+                    overflow: 'hidden',
+                    cursor: 'default',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = kpi.color
+                    e.currentTarget.style.boxShadow = `0 0 0 1px ${kpi.color}20`
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border)'
+                    e.currentTarget.style.boxShadow = 'none'
+                  }}
+                >
+                  <span style={{
+                    position: 'absolute', top: 0, left: 0, right: 0,
+                    height: 2.5, background: kpi.color,
+                  }} />
+                  <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--fg-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 6 }}>
+                    {kpi.label}
+                  </div>
+                  <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--fg)', lineHeight: 1.1 }}>
+                    {kpi.value}
+                  </div>
+                  {kpi.sub && (
+                    <div style={{ fontSize: 12, fontWeight: 500, marginTop: 6, color: 'var(--accent)' }}>
+                      {kpi.sub}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           )}
 
-          <div style={{ padding: '0 24px 20px' }}>
-            <div className="filter-tabs">
-              {(['pending', 'active', 'history'] as Tab[]).map(tab => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`filter-tab${activeTab === tab ? ' active' : ''}`}
-                >
-                  {tabLabels[tab]}
-                  <span className="count">{tabCounts[tab]}</span>
-                </button>
-              ))}
-            </div>
+          <div style={{ display: 'flex', gap: 4, marginBottom: 20 }}>
+            {(['pending', 'active', 'history'] as Tab[]).map(tab => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                style={{
+                  padding: '8px 16px', borderRadius: 12,
+                  fontSize: 12, fontWeight: 500,
+                  background: activeTab === tab ? 'rgba(212, 168, 75, 0.12)' : 'transparent',
+                  color: activeTab === tab ? 'var(--accent-gold)' : 'var(--fg-muted)',
+                  border: `1px solid ${activeTab === tab ? 'var(--accent-gold)' : 'var(--border)'}`,
+                  cursor: 'pointer',
+                  transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+                  whiteSpace: 'nowrap',
+                }}
+                onMouseEnter={(e) => {
+                  if (activeTab !== tab) {
+                    e.currentTarget.style.borderColor = 'var(--fg-muted)'
+                    e.currentTarget.style.color = 'var(--fg-secondary)'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (activeTab !== tab) {
+                    e.currentTarget.style.borderColor = 'var(--border)'
+                    e.currentTarget.style.color = 'var(--fg-muted)'
+                  }
+                }}
+              >
+                {tabLabels[tab]}
+                <span style={{ marginLeft: 8, opacity: 0.6 }}>{tabCounts[tab]}</span>
+              </button>
+            ))}
           </div>
 
-          <div style={{ padding: '0 24px 24px' }}>
-            <div className="table-wrap">
-              {filteredAssignments.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--fg-muted)' }}>
-                  No hay asignaciones {tabLabels[activeTab].toLowerCase()}
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {filteredAssignments.map(a => {
-                    const statusInfo = STATUS_MAP[a.status] || { label: a.status, className: 'bg-gray-500/20 text-gray-400 border border-gray-500/30' }
-                    return (
-                      <div key={a.id} className="card" style={{ padding: 16 }}>
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${statusInfo.className}`}>
-                              {statusInfo.label}
-                            </span>
-                            <span style={{ fontSize: 12, color: 'var(--fg-muted)' }}>#{a.order_number || a.id}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span style={{ fontSize: 11, color: 'var(--fg-muted)' }}>{new Date(a.created_at).toLocaleDateString()}</span>
-                            {['pending_acceptance', 'offered'].includes(a.status) && (
-                              <div className="action-btn-group">
-                                <button
-                                  onClick={() => handleAction(a.id, 'accept')}
-                                  disabled={actionLoading === a.id}
-                                  className="action-btn view"
-                                  title="Aceptar"
-                                  style={{ fontSize: 12, width: 'auto', padding: '4px 10px' }}
-                                >
-                                  {actionLoading === a.id ? '...' : 'Aceptar'}
-                                </button>
-                                <button
-                                  onClick={() => handleAction(a.id, 'decline')}
-                                  disabled={actionLoading === a.id}
-                                  className="action-btn danger"
-                                  title="Rechazar"
-                                  style={{ fontSize: 12, width: 'auto', padding: '4px 10px' }}
-                                >
-                                  Rechazar
-                                </button>
-                              </div>
-                            )}
-                          </div>
+          <div>
+            {filteredAssignments.length === 0 ? (
+              <div style={{
+                display: 'flex', flexDirection: 'column', alignItems: 'center',
+                justifyContent: 'center', padding: '48px 24px', textAlign: 'center',
+                color: 'var(--fg-muted)',
+              }}>
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ marginBottom: 16, opacity: 0.3 }}>
+                  <rect x="1" y="3" width="15" height="13" rx="2" /><polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+                  <circle cx="5.5" cy="18.5" r="2.5" /><circle cx="18.5" cy="18.5" r="2.5" />
+                </svg>
+                <p style={{ fontSize: 14, margin: 0 }}>No hay asignaciones {tabLabels[activeTab].toLowerCase()}</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {filteredAssignments.map(a => {
+                  const statusInfo = STATUS_STYLES[a.status] || { label: a.status, bg: 'rgba(100,100,100,0.12)', fg: '#9ca3af', border: 'rgba(100,100,100,0.25)' }
+                  return (
+                    <div
+                      key={a.id}
+                      style={{
+                        background: 'var(--surface)',
+                        border: '1px solid var(--border)',
+                        borderRadius: 'var(--radius-md)',
+                        boxShadow: 'var(--shadow-card)',
+                        padding: 16,
+                        transition: 'border-color 200ms cubic-bezier(0.4, 0, 0.2, 1), box-shadow 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.boxShadow = 'var(--shadow-elevated)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.boxShadow = 'var(--shadow-card)'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{
+                            display: 'inline-block', padding: '3px 10px',
+                            borderRadius: 8, fontSize: 11, fontWeight: 500,
+                            background: statusInfo.bg, color: statusInfo.fg,
+                            border: `1px solid ${statusInfo.border}`,
+                            whiteSpace: 'nowrap',
+                          }}>
+                            {statusInfo.label}
+                          </span>
+                          <span style={{ fontSize: 12, color: 'var(--fg-muted)' }}>#{a.order_number || a.id}</span>
                         </div>
-                        <div className="grid grid-cols-2 gap-2" style={{ fontSize: 13, marginTop: 8 }}>
-                          {a.customer_name && <div><span style={{ color: 'var(--fg-muted)' }}>Cliente:</span> {a.customer_name}</div>}
-                          {a.customer_phone && <div><span style={{ color: 'var(--fg-muted)' }}>Teléfono:</span> {a.customer_phone}</div>}
-                          {a.flight_number && <div><span style={{ color: 'var(--fg-muted)' }}>Vuelo:</span> {a.airline} {a.flight_number}</div>}
-                          {a.arrival_date && <div><span style={{ color: 'var(--fg-muted)' }}>Llegada:</span> {a.arrival_date} {a.arrival_time}</div>}
-                          {a.destination_address && <div className="col-span-2"><span style={{ color: 'var(--fg-muted)' }}>Destino:</span> {a.destination_address}</div>}
-                          {a.package_name && <div><span style={{ color: 'var(--fg-muted)' }}>Paquete:</span> {a.package_name}</div>}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: 11, color: 'var(--fg-muted)' }}>{new Date(a.created_at).toLocaleDateString()}</span>
+                          {['pending_acceptance', 'offered'].includes(a.status) && (
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              <button
+                                onClick={() => handleAction(a.id, 'accept')}
+                                disabled={actionLoading === a.id}
+                                style={{
+                                  padding: '5px 12px', borderRadius: 6,
+                                  fontSize: 12, fontWeight: 500,
+                                  background: 'var(--accent)', color: '#fff',
+                                  border: 'none', cursor: 'pointer',
+                                  opacity: actionLoading === a.id ? 0.5 : 1,
+                                  transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+                                }}
+                                onMouseEnter={(e) => { if (actionLoading !== a.id) e.currentTarget.style.background = '#059669' }}
+                                onMouseLeave={(e) => { if (actionLoading !== a.id) e.currentTarget.style.background = 'var(--accent)' }}
+                              >
+                                {actionLoading === a.id ? '...' : 'Aceptar'}
+                              </button>
+                              <button
+                                onClick={() => handleAction(a.id, 'decline')}
+                                disabled={actionLoading === a.id}
+                                style={{
+                                  padding: '5px 12px', borderRadius: 6,
+                                  fontSize: 12, fontWeight: 500,
+                                  background: 'var(--danger-soft, rgba(248, 113, 113, 0.12))',
+                                  color: '#f87171',
+                                  border: '1px solid var(--danger-soft, rgba(248, 113, 113, 0.2))',
+                                  cursor: 'pointer',
+                                  opacity: actionLoading === a.id ? 0.5 : 1,
+                                  transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+                                }}
+                                onMouseEnter={(e) => { if (actionLoading !== a.id) e.currentTarget.style.background = 'rgba(248, 113, 113, 0.18)' }}
+                                onMouseLeave={(e) => { if (actionLoading !== a.id) e.currentTarget.style.background = 'var(--danger-soft, rgba(248, 113, 113, 0.12))' }}
+                              >
+                                Rechazar
+                              </button>
+                            </div>
+                          )}
                         </div>
-                        {a.observations && <div style={{ marginTop: 8, fontSize: 13, color: 'var(--fg-muted)', fontStyle: 'italic' }}>Notas: {a.observations}</div>}
                       </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 13, marginTop: 10 }}>
+                        {a.customer_name && <div><span style={{ color: 'var(--fg-muted)' }}>Cliente:</span> {a.customer_name}</div>}
+                        {a.customer_phone && <div><span style={{ color: 'var(--fg-muted)' }}>Teléfono:</span> {a.customer_phone}</div>}
+                        {a.flight_number && <div><span style={{ color: 'var(--fg-muted)' }}>Vuelo:</span> {a.airline} {a.flight_number}</div>}
+                        {a.arrival_date && <div><span style={{ color: 'var(--fg-muted)' }}>Llegada:</span> {a.arrival_date} {a.arrival_time}</div>}
+                        {a.destination_address && <div style={{ gridColumn: '1 / -1' }}><span style={{ color: 'var(--fg-muted)' }}>Destino:</span> {a.destination_address}</div>}
+                        {a.package_name && <div><span style={{ color: 'var(--fg-muted)' }}>Paquete:</span> {a.package_name}</div>}
+                      </div>
+                      {a.observations && <div style={{ marginTop: 10, fontSize: 13, color: 'var(--fg-muted)', fontStyle: 'italic' }}>Notas: {a.observations}</div>}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </>
       )}
@@ -426,10 +644,30 @@ export default function DriverPage() {
 }
 
 function Input({ label, value, onChange, type = 'text' }: { label: string; value: string; onChange: (v: string) => void; type?: string }) {
+  const [focused, setFocused] = useState(false)
   return (
     <div>
-      <label style={{ fontSize: 11, color: 'var(--fg-muted)', display: 'block', marginBottom: 4 }}>{label}</label>
-      <input type={type} value={value} onChange={e => onChange(e.target.value)} className="input" />
+      <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--fg-secondary)', display: 'block', marginBottom: 6 }}>{label}</label>
+      <input
+        type={type}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        style={{
+          width: '100%',
+          padding: '10px 14px',
+          background: 'var(--bg)',
+          border: `1px solid ${focused ? 'var(--accent-gold)' : 'var(--border)'}`,
+          borderRadius: 8,
+          color: 'var(--fg)',
+          fontFamily: 'var(--font-sans)',
+          fontSize: 13.5,
+          outline: 'none',
+          transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+          boxShadow: focused ? '0 0 0 3px rgba(212, 168, 75, 0.12)' : 'none',
+        }}
+      />
     </div>
   )
 }
