@@ -55,7 +55,7 @@ export default function DriverSignUpPage() {
             fontSize: '15px', color: 'var(--text-muted)', maxWidth: '280px',
             lineHeight: 1.6, margin: '0 auto',
           }}>
-            Registrate para comenzar a recibir asignaciones y ganar con LocalPlug
+            Regístrate para comenzar a recibir asignaciones y ganar con LocalPlug
           </p>
 
           <div style={{
@@ -115,7 +115,7 @@ export default function DriverSignUpPage() {
               Crear cuenta de conductor
             </h2>
             <p style={{ fontSize: '14px', color: 'var(--text-muted)', margin: 0 }}>
-              Registrate para empezar a recibir asignaciones
+              Regístrate para empezar a recibir asignaciones
             </p>
           </div>
 
