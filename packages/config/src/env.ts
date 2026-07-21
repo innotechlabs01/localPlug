@@ -14,6 +14,7 @@ export interface KnownEnv {
   PADDLE_API_KEY?: string
   PADDLE_WEBHOOK_SECRET?: string
   NEXT_PUBLIC_PADDLE_CLIENT_TOKEN?: string
+  NEXT_PUBLIC_PADDLE_ENV?: string
   PADDLE_PRODUCT_ID?: string
   PADDLE_PRO_PRODUCT_ID?: string
   EVOLUTION_API_URL?: string

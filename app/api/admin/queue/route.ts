@@ -4,11 +4,14 @@ import { getQueueStats, requeueDeadMessages } from '@/lib/queue/message-queue'
 import { getCircuitStats, getAllCircuitStats } from '@/lib/resilience/circuit-breaker'
 import { logger } from '@/lib/logger'
 
-const AUTH_TOKEN = process.env.QUEUE_WORKER_TOKEN || process.env.CLERK_SECRET_KEY
+const AUTH_TOKEN = process.env.QUEUE_WORKER_TOKEN
 
 export async function POST(req: Request) {
+  if (!AUTH_TOKEN) {
+    return NextResponse.json({ error: 'QUEUE_WORKER_TOKEN not configured' }, { status: 500 })
+  }
   const auth = req.headers.get('authorization')
-  if (AUTH_TOKEN && auth !== `Bearer ${AUTH_TOKEN}`) {
+  if (auth !== `Bearer ${AUTH_TOKEN}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
