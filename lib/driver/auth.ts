@@ -97,7 +97,7 @@ export async function ensureDriverProfile(clerkId: string): Promise<DriverProfil
       created_at, updated_at
     ) VALUES (
       ?, ?, ?, NULL, 'Sin asignar', 'Sin asignar', 'standard',
-      'available', 5.0, 'Spanish', 'Standard', 0,
+      'inactive', 5.0, 'Spanish', 'Standard', 0,
       datetime('now'), datetime('now')
     )`,
     args: [clerkId, name, email],

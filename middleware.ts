@@ -30,6 +30,7 @@ const isPublicRoute = createRouteMatcher([
   '/api/trm',
   '/api/geocode',
   '/sign-in(.*)',
+  '/sign-up(.*)',
 ])
 
 const isAdminApiRoute = createRouteMatcher([
