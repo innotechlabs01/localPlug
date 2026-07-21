@@ -25,10 +25,10 @@ export interface DriverDashboardMetrics {
 export async function getDriverDashboardMetrics(driverId: number): Promise<DriverDashboardMetrics> {
   const db = getDb()
 
-  // Trip stats from driver_assignments
+  // Trip stats from assignments
   const tripStats = await db.execute({
     sql: `SELECT status, COUNT(*) AS cnt
-          FROM driver_assignments
+          FROM assignments
           WHERE driver_id = ?
           GROUP BY status`,
     args: [driverId],
@@ -46,7 +46,7 @@ export async function getDriverDashboardMetrics(driverId: number): Promise<Drive
   const earningsResult = await db.execute({
     sql: `SELECT
             COALESCE(SUM(o.package_price), 0) AS total_revenue
-          FROM driver_assignments da
+          FROM assignments da
           JOIN orders o ON da.order_id = o.id
           WHERE da.driver_id = ?
             AND da.status = 'completed'`,
@@ -69,7 +69,7 @@ export async function getDriverDashboardMetrics(driverId: number): Promise<Drive
   const recentResult = await db.execute({
     sql: `SELECT da.id, da.order_id, da.status, da.created_at,
                  o.customer_name
-          FROM driver_assignments da
+          FROM assignments da
           JOIN orders o ON da.order_id = o.id
           WHERE da.driver_id = ?
           ORDER BY da.created_at DESC
