@@ -3,6 +3,12 @@ import { clerkMiddleware, createRouteMatcher, clerkClient } from '@clerk/nextjs/
 import { applyRateLimit } from '@/lib/rate-limit'
 import { getDb } from '@/lib/db'
 
+const AUTHORIZED_PARTIES = [
+  process.env.NEXT_PUBLIC_SITE_URL,
+  'https://localplug.vercel.app',
+  'http://localhost:3000',
+].filter(Boolean) as string[]
+
 const isPublicRoute = createRouteMatcher([
   '/',
   '/booking',
@@ -78,7 +84,7 @@ export default clerkMiddleware(async (auth, req) => {
     !pathname.startsWith('/api/')
 
   if (isPortalPage && !isPublicRoute(req)) {
-    const { userId } = await auth()
+    const { userId } = await auth({ authorizedParties: AUTHORIZED_PARTIES })
     if (!userId) {
       const signInUrl = pathname.startsWith('/admin')
         ? '/sign-in/admin'
@@ -138,14 +144,14 @@ export default clerkMiddleware(async (auth, req) => {
   }
 
   if (isAdminApiRoute(req)) {
-    const { userId } = await auth()
+    const { userId } = await auth({ authorizedParties: AUTHORIZED_PARTIES })
     if (!userId) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
     return NextResponse.next()
   }
   if (!isPublicRoute(req)) {
-    await auth.protect()
+    await auth.protect({ authorizedParties: AUTHORIZED_PARTIES })
   }
 })
 

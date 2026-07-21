@@ -93,7 +93,7 @@ export async function POST(req: Request) {
             args: [clerkId, name, email, roleId],
           })
 
-          console.log(`[Clerk Webhook] Created user: ${name} (${email}) as ${incomingRole}`)
+          console.log(`[Clerk Webhook] Created user as ${incomingRole}`)
         } else {
           // Self-registered user — default to viewer
           const roles = await db.execute("SELECT id FROM roles WHERE name = 'viewer'")
@@ -110,7 +110,7 @@ export async function POST(req: Request) {
             await setClerkMetadata(clerkId, { role: 'viewer' })
           }
 
-          console.log(`[Clerk Webhook] Created user: ${name} (${email}) as viewer`)
+          console.log(`[Clerk Webhook] Created viewer user`)
         }
       } else {
         // Update existing user info
@@ -126,7 +126,7 @@ export async function POST(req: Request) {
         sql: `UPDATE users SET status = 'inactive', updated_at = datetime('now') WHERE clerk_id = ?`,
         args: [clerkId],
       })
-      console.log(`[Clerk Webhook] Deactivated user: ${clerkId}`)
+      console.log(`[Clerk Webhook] Deactivated user`)
     }
 
     return NextResponse.json({ success: true })

@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 
-const WEBHOOK_SECRET = process.env.N8N_WEBHOOK_SECRET || process.env.CLERK_WEBHOOK_SECRET
+const WEBHOOK_SECRET = process.env.N8N_WEBHOOK_SECRET
 
 export function verifyWebhookSecret(req: Request): boolean {
   if (!WEBHOOK_SECRET) {
-    console.warn('[Webhook] No webhook secret configured, allowing request')
-    return true
+    console.warn('[Webhook] No N8N_WEBHOOK_SECRET configured, denying request')
+    return false
   }
 
   const authHeader = req.headers.get('authorization') || ''
