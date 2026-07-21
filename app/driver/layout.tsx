@@ -199,6 +199,9 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
           <button
             onClick={toggleStatus}
             disabled={toggling}
+            role="switch"
+            aria-checked={driverStatus === 'available'}
+            aria-label={driverStatus === 'available' ? 'Desactivar sesión' : 'Activar sesión'}
             style={{
               display: 'flex',
               alignItems: 'center',
