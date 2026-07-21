@@ -29,6 +29,7 @@ const isPublicRoute = createRouteMatcher([
   '/api/plans',
   '/api/trm',
   '/api/geocode',
+  '/api/driver/register',
   '/sign-in(.*)',
 ])
 
