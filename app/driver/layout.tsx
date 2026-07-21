@@ -63,8 +63,9 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
 
   // Auto-create driver profile + fix role mismatch on first load
   useEffect(() => {
-    fetch('/api/driver/ensure').catch(() => {})
-    fetch('/api/driver/claim-role').catch(() => {})
+    fetch('/api/driver/ensure')
+      .then(() => fetch('/api/driver/claim-role'))
+      .catch(() => {})
   }, [])
 
   return (
