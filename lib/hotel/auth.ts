@@ -1,5 +1,23 @@
-import { auth } from '@clerk/nextjs/server'
+import { auth, clerkClient } from '@clerk/nextjs/server'
 import { getDb } from '@/lib/db'
+
+const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY || ''
+
+async function ensureClerkRole(clerkId: string, role: string) {
+  if (!CLERK_SECRET_KEY) return
+  try {
+    const client = await clerkClient()
+    const user = await client.users.getUser(clerkId)
+    if (user.publicMetadata?.role !== role) {
+      await client.users.updateUser(clerkId, {
+        publicMetadata: { ...user.publicMetadata, role },
+      })
+      console.log(`[Hotel Auth] Set Clerk role for ${clerkId}: ${role}`)
+    }
+  } catch {
+    // Non-critical
+  }
+}
 
 export interface HotelProfile {
   id: number
@@ -83,6 +101,9 @@ export async function ensureHotelProfile(clerkId: string): Promise<{ hotel: Hote
   if (!user.hotel_id) {
     throw new Error('HOTEL_NOT_FOUND')
   }
+
+  // Ensure Clerk metadata has hotel_manager role
+  ensureClerkRole(clerkId, 'hotel_manager')
 
   const hotelResult = await db.execute({
     sql: `SELECT h.* FROM hotels h WHERE h.id = ?`,
