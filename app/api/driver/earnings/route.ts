@@ -17,14 +17,14 @@ export async function GET() {
     // Get completed assignments with earnings
     const assignmentsResult = await db.execute({
       sql: `SELECT
-              da.id, da.order_id, da.status, da.pickup_date, da.pickup_time,
+              a.id, a.order_id, a.status, a.created_at AS pickup_date,
               o.customer_name, o.package_name, o.package_price, o.currency,
               o.destination_address, o.arrival_date, o.arrival_time,
               o.booking_reference, o.order_number
-            FROM driver_assignments da
-            JOIN orders o ON da.order_id = o.id
-            WHERE da.driver_id = ? AND da.status IN ('completed', 'accepted', 'confirmed_to_client')
-            ORDER BY da.created_at DESC
+            FROM assignments a
+            JOIN orders o ON a.order_id = o.id
+            WHERE a.driver_id = ? AND a.status IN ('completed', 'accepted', 'confirmed_to_client')
+            ORDER BY a.created_at DESC
             LIMIT 50`,
       args: [driverId],
     })
@@ -39,7 +39,7 @@ export async function GET() {
         order_id: row.order_id,
         status: row.status,
         date: row.pickup_date || row.arrival_date || '',
-        time: row.pickup_time || row.arrival_time || '',
+        time: row.arrival_time || '',
         customer_name: row.customer_name || 'Cliente',
         package_name: row.package_name || 'Servicio',
         destination: row.destination_address || 'Destino',
