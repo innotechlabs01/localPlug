@@ -3,7 +3,6 @@ import { SignIn } from '@clerk/nextjs'
 export default function HotelSignInPage() {
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-dark)' }}>
-      {/* Left panel — branding */}
       <div style={{
         display: 'none',
         flex: 1,
@@ -17,7 +16,6 @@ export default function HotelSignInPage() {
       }}
         className="sign-in-branding"
       >
-        {/* Decorative glow */}
         <div style={{
           position: 'absolute', top: '20%', left: '30%',
           width: '400px', height: '400px', borderRadius: '50%',
@@ -31,7 +29,6 @@ export default function HotelSignInPage() {
           filter: 'blur(80px)', pointerEvents: 'none',
         }} />
 
-        {/* Logo */}
         <div style={{
           position: 'relative', zIndex: 1, textAlign: 'center',
         }}>
@@ -71,7 +68,6 @@ export default function HotelSignInPage() {
             Gestiona tus reservaciones, habitaciones y servicios desde un solo lugar.
           </p>
 
-          {/* Feature pills */}
           <div style={{
             display: 'flex', flexWrap: 'wrap', gap: '8px',
             justifyContent: 'center', marginTop: '40px',
@@ -88,13 +84,11 @@ export default function HotelSignInPage() {
         </div>
       </div>
 
-      {/* Right panel — sign in form */}
       <div style={{
         flex: 1, display: 'flex', flexDirection: 'column',
         justifyContent: 'center', alignItems: 'center',
         padding: '40px 24px', position: 'relative',
       }}>
-        {/* Mobile logo (visible only on small screens) */}
         <div style={{
           display: 'flex', flexDirection: 'column', alignItems: 'center',
           marginBottom: '32px',
@@ -131,7 +125,6 @@ export default function HotelSignInPage() {
         </div>
 
         <div style={{ width: '100%', maxWidth: '400px' }}>
-          {/* Header */}
           <div style={{ marginBottom: '32px' }}>
             <h2 style={{
               fontSize: '22px', fontWeight: 700, color: 'var(--text-primary)',
@@ -144,8 +137,9 @@ export default function HotelSignInPage() {
             </p>
           </div>
 
-          {/* Clerk SignIn */}
           <SignIn
+            routing="path"
+            path="/sign-in/hotel"
             forceRedirectUrl="/hotel"
             appearance={{
               variables: {
@@ -249,7 +243,6 @@ export default function HotelSignInPage() {
             }}
           />
 
-          {/* Footer */}
           <div style={{
             marginTop: '40px', textAlign: 'center',
             paddingTop: '20px', borderTop: '1px solid var(--border)',
@@ -261,13 +254,11 @@ export default function HotelSignInPage() {
         </div>
       </div>
 
-      {/* Responsive styles */}
       <style>{`
         @media (min-width: 768px) {
           .sign-in-branding { display: flex !important; }
           .sign-in-mobile-logo { display: none !important; }
         }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
     </div>
   )
