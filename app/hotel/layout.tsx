@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useClerk } from '@clerk/nextjs'
 import { HotelDateFilterProvider, useHotelDateFilter } from '@/lib/hotel/date-filter-context'
+import { InactivityGuard } from '@/components/shared/InactivityGuard'
 
 interface NavLink {
   label: string
@@ -36,7 +37,7 @@ const navLinks: NavLink[] = [
   },
   {
     label: 'Habitaciones',
-    href: '/hotel?tab=rooms',
+    href: '/hotel/rooms',
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <path d="M3 21h18" /><path d="M3 7v14" /><path d="M21 7v14" />
@@ -47,7 +48,7 @@ const navLinks: NavLink[] = [
   },
   {
     label: 'Servicios',
-    href: '/hotel?tab=services',
+    href: '/hotel/services',
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="16" />
@@ -57,7 +58,7 @@ const navLinks: NavLink[] = [
   },
   {
     label: 'Perfil',
-    href: '/hotel?tab=profile',
+    href: '/hotel/profile',
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
@@ -146,36 +147,66 @@ function DateNav() {
   }
 
   return (
-    <div className="flex items-center justify-between px-4 lg:px-6 py-2" style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-card)' }}>
-      <div className="flex items-center gap-2">
-        <button onClick={goPrev} className="p-1.5 rounded-lg" style={{ color: 'var(--text-muted)' }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
+    <div style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      padding: '10px 24px', borderBottom: '1px solid var(--border)',
+      background: 'var(--bg-card)',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <button onClick={goPrev} style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '6px', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+          border: '1px solid var(--border)', background: 'var(--bg-elevated)',
+          color: 'var(--text-muted)', transition: 'all 200ms cubic-bezier(0.4,0,0.2,1)',
+        }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.color = 'var(--accent-gold)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-elevated)'; e.currentTarget.style.color = 'var(--text-muted)' }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
         <button
           onClick={() => { const d = new Date(); setDate(d) }}
-          className="px-3 py-1 rounded-lg text-xs font-medium"
-          style={{ background: 'var(--accent-gold)', color: 'var(--bg-dark)' }}
+          style={{
+            padding: '5px 14px', borderRadius: 'var(--radius-sm)', fontSize: '12px',
+            fontWeight: 600, cursor: 'pointer', border: 'none',
+            background: 'var(--accent-gold)', color: 'var(--bg-dark)',
+            transition: 'all 200ms cubic-bezier(0.4,0,0.2,1)', letterSpacing: '0.02em',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'var(--accent-gold-light)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'var(--accent-gold)' }}
         >
           Hoy
         </button>
-        <button onClick={goNext} className="p-1.5 rounded-lg" style={{ color: 'var(--text-muted)' }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+        <button onClick={goNext} style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '6px', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+          border: '1px solid var(--border)', background: 'var(--bg-elevated)',
+          color: 'var(--text-muted)', transition: 'all 200ms cubic-bezier(0.4,0,0.2,1)',
+        }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.color = 'var(--accent-gold)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-elevated)'; e.currentTarget.style.color = 'var(--text-muted)' }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
       </div>
-      <div className="text-center">
-        <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{formatLabel()}</div>
-        <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{formatSub()}</div>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>{formatLabel()}</div>
+        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '1px' }}>{formatSub()}</div>
       </div>
-      <div className="flex gap-1">
+      <div style={{ display: 'flex', gap: '4px' }}>
         {(['day', 'week', 'month', 'year'] as const).map(v => (
           <button
             key={v}
             onClick={() => setView(v)}
-            className="px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all"
             style={{
-              background: view === v ? 'rgba(200, 169, 98, 0.15)' : 'transparent',
+              padding: '5px 12px', borderRadius: 'var(--radius-sm)', fontSize: '11px',
+              fontWeight: 600, cursor: 'pointer', border: 'none',
+              background: view === v ? 'rgba(212,165,116,0.15)' : 'transparent',
               color: view === v ? 'var(--accent-gold)' : 'var(--text-muted)',
+              transition: 'all 200ms cubic-bezier(0.4,0,0.2,1)', letterSpacing: '0.03em',
             }}
+            onMouseEnter={e => { if (view !== v) { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = 'var(--text-secondary)' }}}
+            onMouseLeave={e => { if (view !== v) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--text-muted)' }}}
           >
             {v === 'day' ? 'Día' : v === 'week' ? 'Semana' : v === 'month' ? 'Mes' : 'Año'}
           </button>
@@ -185,85 +216,195 @@ function DateNav() {
   )
 }
 
-function HotelLayoutInner({ children }: { children: React.ReactNode }) {
+function SidebarContent({ onNavClick }: { onNavClick?: () => void }) {
   const { signOut } = useClerk()
   const pathname = usePathname()
+
+  const logoBox: React.CSSProperties = {
+    width: '36px', height: '36px', borderRadius: 'var(--radius-sm)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    fontSize: '14px', fontWeight: 700,
+    background: 'linear-gradient(135deg, var(--accent-gold), var(--accent-gold-dark))',
+    color: 'var(--bg-dark)',
+  }
+
+  const navLinkStyle = (isActive: boolean): React.CSSProperties => ({
+    display: 'flex', alignItems: 'center', gap: '12px',
+    padding: '10px 14px', borderRadius: 0,
+    fontSize: '13px', fontWeight: 500, cursor: 'pointer',
+    textDecoration: 'none',
+    background: isActive ? 'rgba(255,255,255,0.04)' : 'transparent',
+    color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+    borderLeft: isActive ? '3px solid var(--accent-gold)' : '3px solid transparent',
+    transition: 'all 150ms cubic-bezier(0.4,0,0.2,1)',
+    marginLeft: '-12px', marginRight: '-12px',
+    width: 'calc(100% + 24px)',
+  })
+
+  return (
+    <>
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: '12px',
+        padding: '20px', borderBottom: '1px solid var(--border)',
+      }}>
+        <div style={logoBox}>H</div>
+        <div>
+          <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>Hotel Portal</div>
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '1px' }}>LocalPlug</div>
+        </div>
+      </div>
+
+      <nav style={{ flex: 1, padding: '16px 12px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+        {navLinks.map((link) => {
+          const isActive = link.href === '/hotel' ? pathname === '/hotel' : pathname.startsWith(link.href.split('?')[0])
+          return (
+            <Link
+              key={link.href}
+              href={link.href}
+              onClick={onNavClick}
+              style={navLinkStyle(isActive)}
+              onMouseEnter={e => {
+                if (!isActive) {
+                  e.currentTarget.style.background = 'rgba(255,255,255,0.04)'
+                  e.currentTarget.style.color = 'var(--text-primary)'
+                }
+              }}
+              onMouseLeave={e => {
+                if (!isActive) {
+                  e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.color = 'var(--text-secondary)'
+                }
+              }}
+            >
+              {link.icon}
+              {link.label}
+            </Link>
+          )
+        })}
+      </nav>
+
+      <div style={{ padding: '12px', borderTop: '1px solid var(--border)' }}>
+        <button
+          onClick={() => signOut({ redirectUrl: '/sign-in/hotel' })}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '12px', width: '100%',
+            padding: '10px 14px', borderRadius: 'var(--radius-sm)',
+            fontSize: '13px', fontWeight: 500, cursor: 'pointer',
+            color: 'var(--text-muted)', border: 'none', background: 'transparent',
+            transition: 'all 200ms cubic-bezier(0.4,0,0.2,1)',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.color = 'var(--danger)'; e.currentTarget.style.background = 'rgba(248,113,113,0.08)' }}
+          onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent' }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+          Cerrar Sesión
+        </button>
+      </div>
+    </>
+  )
+}
+
+function HotelLayoutInner({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg-dark)' }}>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg-dark)' }}>
       {sidebarOpen && (
-        <div className="fixed inset-0 bg-black/60 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 40 }}
+          onClick={() => setSidebarOpen(false)}
+        />
       )}
 
       {/* Sidebar */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-50 w-[260px] flex flex-col transition-transform duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
-        style={{ background: 'var(--bg-card)', borderRight: '1px solid var(--border)' }}
+        style={{
+          position: 'fixed',
+          top: 0,
+          bottom: 0,
+          left: 0,
+          zIndex: 50,
+          width: 260,
+          display: 'flex',
+          flexDirection: 'column',
+          background: 'var(--bg-card)',
+          borderRight: '1px solid var(--border)',
+          transform: sidebarOpen ? 'translateX(0)' : undefined,
+          transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+        className="hotel-sidebar"
       >
-        <div className="flex items-center gap-3 px-5 py-5" style={{ borderBottom: '1px solid var(--border)' }}>
-          <div className="w-9 h-9 rounded-lg flex items-center justify-center text-sm font-bold" style={{ background: 'var(--accent-gold)', color: 'var(--bg-dark)' }}>H</div>
-          <div>
-            <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Hotel Portal</div>
-            <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>LocalPlug</div>
-          </div>
-        </div>
-
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          {navLinks.map((link) => {
-            const isActive = link.href === '/hotel' ? pathname === '/hotel' : pathname.startsWith(link.href.split('?')[0])
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setSidebarOpen(false)}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all"
-                style={{ background: isActive ? 'rgba(200, 169, 98, 0.12)' : 'transparent', color: isActive ? 'var(--accent-gold)' : 'var(--text-secondary)' }}
-              >
-                {link.icon}
-                {link.label}
-              </Link>
-            )
-          })}
-        </nav>
-
-        <div className="px-3 py-4" style={{ borderTop: '1px solid var(--border)' }}>
-          <button
-            onClick={() => signOut({ redirectUrl: '/sign-in/hotel' })}
-            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"
-            style={{ color: 'var(--text-muted)' }}
-            onMouseEnter={e => { e.currentTarget.style.color = 'var(--danger)'; e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)' }}
-            onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent' }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-              <polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
-            </svg>
-            Cerrar Sesión
-          </button>
-        </div>
+        <SidebarContent onNavClick={() => setSidebarOpen(false)} />
       </aside>
 
       {/* Main */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="flex items-center justify-between px-4 lg:px-6 py-3" style={{ background: 'var(--bg-card)', borderBottom: '1px solid var(--border)' }}>
-          <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 rounded-lg" style={{ color: 'var(--text-secondary)' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+        <header style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '12px 24px', background: 'var(--bg-card)', borderBottom: '1px solid var(--border)',
+        }}>
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="hotel-menu-btn"
+            style={{
+              padding: '8px', borderRadius: 'var(--radius-sm)',
+              color: 'var(--text-secondary)', cursor: 'pointer',
+              border: '1px solid var(--border)', background: 'var(--bg-elevated)',
+              transition: 'all 200ms cubic-bezier(0.4,0,0.2,1)',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface)'; e.currentTarget.style.color = 'var(--accent-gold)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-elevated)'; e.currentTarget.style.color = 'var(--text-secondary)' }}
+          >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
             </svg>
           </button>
-          <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Panel de Hotel</div>
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: 'var(--accent-gold)', color: 'var(--bg-dark)' }}>H</div>
+          <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>Panel de Hotel</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div           style={{
+              width: '32px', height: '32px', borderRadius: '50%',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '12px', fontWeight: 700,
+              background: 'linear-gradient(135deg, var(--accent-gold), var(--accent-gold-dark))',
+              color: 'var(--bg-dark)',
+            }}>H</div>
           </div>
         </header>
 
         <DateNav />
 
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
+        <main style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
           {children}
         </main>
       </div>
+
+      <InactivityGuard signOutRedirectUrl="/sign-in/hotel" />
+
+      <style>{`
+        @media (max-width: 1023px) {
+          .hotel-sidebar {
+            transform: translateX(-100%) !important;
+          }
+          .hotel-sidebar[data-open="true"] {
+            transform: translateX(0) !important;
+          }
+          .hotel-menu-btn { display: flex !important; }
+        }
+        @media (min-width: 1024px) {
+          .hotel-sidebar {
+            position: relative !important;
+            flex-shrink: 0 !important;
+            width: 260px !important;
+            z-index: auto !important;
+            transform: none !important;
+          }
+          .hotel-menu-btn { display: none !important; }
+        }
+        @keyframes spin { to { transform: rotate(360deg) } }
+      `}</style>
     </div>
   )
 }

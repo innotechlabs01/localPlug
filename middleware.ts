@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { clerkMiddleware, createRouteMatcher, clerkClient } from '@clerk/nextjs/server'
 import { applyRateLimit } from '@/lib/rate-limit'
+import { getDb } from '@/lib/db'
 
 const isPublicRoute = createRouteMatcher([
   '/',
@@ -100,8 +101,36 @@ export default clerkMiddleware(async (auth, req) => {
         if (!pathname.startsWith(expectedPortal)) {
           return NextResponse.redirect(new URL(expectedPortal, req.url))
         }
+      } else {
+        // No role in Clerk metadata — try to auto-detect from DB
+        try {
+          const db = getDb()
+          let detectedRole: string | null = null
+
+          if (pathname.startsWith('/driver')) {
+            const result = await db.execute({
+              sql: `SELECT id FROM drivers WHERE clerk_user_id = ? AND status = 'active'`,
+              args: [userId],
+            })
+            if (result.rows.length > 0) detectedRole = 'driver'
+          } else if (pathname.startsWith('/hotel')) {
+            const result = await db.execute({
+              sql: `SELECT id FROM hotel_managers WHERE clerk_user_id = ? AND status = 'active'`,
+              args: [userId],
+            })
+            if (result.rows.length > 0) detectedRole = 'hotel_manager'
+          }
+
+          if (detectedRole) {
+            // Fix Clerk metadata for future requests
+            client.users.updateUser(userId, {
+              publicMetadata: { ...clerkUser.publicMetadata, role: detectedRole },
+            }).catch(() => {})
+          }
+        } catch {
+          // DB check failed — let through
+        }
       }
-      // No role or unknown role: let through (API handlers reject via DB role check)
     } catch {
       // Clerk fetch failed — let through; API handlers will reject
     }

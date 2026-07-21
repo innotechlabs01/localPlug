@@ -27,76 +27,107 @@ const PAYMENT_MAP: Record<string, { label: string; bg: string; fg: string }> = {
 function Badge({ map, status }: { map: Record<string, { label: string; bg: string; fg: string }>; status: string }) {
   const b = map[status] || { label: status, bg: 'rgba(100,100,100,0.12)', fg: '#9ca3af' }
   return (
-    <span
-      className="inline-flex px-2 py-0.5 rounded-md text-[11px] font-medium"
-      style={{ background: b.bg, color: b.fg }}
-    >
+    <span style={{
+      display: 'inline-flex', padding: '3px 10px', borderRadius: 'var(--radius-sm)',
+      fontSize: '11px', fontWeight: 600, background: b.bg, color: b.fg,
+      letterSpacing: '0.02em',
+    }}>
       {b.label}
     </span>
   )
 }
 
+const thStyle: React.CSSProperties = {
+  padding: '12px 16px', fontSize: '11px', fontWeight: 600,
+  color: 'var(--text-muted)', textAlign: 'left',
+  textTransform: 'uppercase', letterSpacing: '0.05em',
+  borderBottom: '1px solid var(--border)', background: 'var(--bg-elevated)',
+}
+
+const tdStyle: React.CSSProperties = {
+  padding: '14px 16px', fontSize: '13px', color: 'var(--text-secondary)',
+  borderBottom: '1px solid var(--border)',
+}
+
 export default function ReservationTable({ reservations, onView }: Props) {
   if (reservations.length === 0) {
     return (
-      <div className="text-center py-16" style={{ color: 'var(--text-muted)' }}>
-        <svg className="mx-auto mb-3 opacity-30" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
-        </svg>
-        <p className="text-sm">No hay reservaciones</p>
+      <div style={{ textAlign: 'center', padding: '80px 0', color: 'var(--text-muted)' }}>
+        <div style={{
+          width: '56px', height: '56px', borderRadius: '50%', margin: '0 auto 16px',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'var(--bg-elevated)',
+        }}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.3 }}>
+            <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+          </svg>
+        </div>
+        <p style={{ fontSize: '14px', fontWeight: 500 }}>No hay reservaciones</p>
+        <p style={{ fontSize: '12px', marginTop: '4px', opacity: 0.6 }}>Las reservaciones aparecerán aquí cuando estén disponibles</p>
       </div>
     )
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+    <div style={{ overflowX: 'auto' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
-          <tr style={{ borderBottom: '1px solid var(--border)' }}>
+          <tr>
             {['Huésped', 'Paquete', 'Llegada', 'Vuelo', 'Estado', 'Pago', 'Acciones'].map(h => (
-              <th key={h} className="text-left py-3 px-3 text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{h}</th>
+              <th key={h} style={thStyle}>{h}</th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {reservations.map(r => (
+          {reservations.map((r, idx) => (
             <tr
               key={r.id}
               onClick={() => onView(r)}
-              className="cursor-pointer transition-colors"
-              style={{ borderBottom: '1px solid var(--border)' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-elevated)' }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+              style={{
+                cursor: 'pointer',
+                borderBottom: '1px solid var(--border)',
+                background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)',
+                transition: 'background 200ms cubic-bezier(0.4,0,0.2,1)',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-elevated)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)' }}
             >
-              <td className="py-3 px-3">
-                <div className="flex items-center gap-2">
-                  <div
-                    className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
-                    style={{ background: 'var(--accent-gold)', color: 'var(--bg-dark)' }}
-                  >
+              <td style={tdStyle}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{
+                    width: '32px', height: '32px', borderRadius: '50%',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '10px', fontWeight: 700, flexShrink: 0,
+                    background: 'linear-gradient(135deg, var(--accent-gold), var(--accent-gold-dark))',
+                    color: 'var(--bg-dark)', boxShadow: '0 2px 6px rgba(212,165,116,0.2)',
+                  }}>
                     {r.guest.firstName.charAt(0)}{r.guest.lastName.charAt(0)}
                   </div>
                   <div>
-                    <div className="font-medium" style={{ color: 'var(--text-primary)' }}>{r.guest.firstName} {r.guest.lastName}</div>
-                    <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{r.guest.country || ''}</div>
+                    <div style={{ fontWeight: 500, color: 'var(--text-primary)', fontSize: '13px' }}>{r.guest.firstName} {r.guest.lastName}</div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>{r.guest.country || ''}</div>
                   </div>
                 </div>
               </td>
-              <td className="py-3 px-3" style={{ color: 'var(--text-secondary)' }}>{r.service.name}</td>
-              <td className="py-3 px-3">
+              <td style={tdStyle}>{r.service.name}</td>
+              <td style={tdStyle}>
                 <div style={{ color: 'var(--text-primary)' }}>{r.arrivalDate}</div>
-                <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{r.arrivalTime?.substring(0, 5) || ''}</div>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>{r.arrivalTime?.substring(0, 5) || ''}</div>
               </td>
-              <td className="py-3 px-3 text-xs" style={{ color: 'var(--text-secondary)' }}>{r.flightInfo || '—'}</td>
-              <td className="py-3 px-3"><Badge map={STATUS_MAP} status={r.status} /></td>
-              <td className="py-3 px-3"><Badge map={PAYMENT_MAP} status={r.paymentStatus} /></td>
-              <td className="py-3 px-3">
+              <td style={{ ...tdStyle, fontSize: '12px' }}>{r.flightInfo || '—'}</td>
+              <td style={tdStyle}><Badge map={STATUS_MAP} status={r.status} /></td>
+              <td style={tdStyle}><Badge map={PAYMENT_MAP} status={r.paymentStatus} /></td>
+              <td style={tdStyle}>
                 <button
                   onClick={e => { e.stopPropagation(); onView(r) }}
-                  className="p-1.5 rounded-lg transition-colors"
-                  style={{ color: 'var(--text-muted)' }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--accent-gold)'; (e.currentTarget as HTMLElement).style.background = 'rgba(200,169,98,0.1)' }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--text-muted)'; (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+                  style={{
+                    padding: '6px', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                    color: 'var(--text-muted)', border: 'none', background: 'transparent',
+                    transition: 'all 200ms cubic-bezier(0.4,0,0.2,1)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.color = 'var(--accent-gold)'; e.currentTarget.style.background = 'rgba(212,165,116,0.1)' }}
+                  onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent' }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z" /><circle cx="12" cy="12" r="3" />

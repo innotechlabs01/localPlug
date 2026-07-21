@@ -28,7 +28,10 @@ const PAYMENT_MAP: Record<string, { label: string; bg: string; fg: string }> = {
 function Badge({ map, status }: { map: Record<string, { label: string; bg: string; fg: string }>; status: string }) {
   const b = map[status] || { label: status, bg: 'rgba(100,100,100,0.12)', fg: '#9ca3af' }
   return (
-    <span className="inline-flex px-2 py-0.5 rounded-md text-xs font-medium" style={{ background: b.bg, color: b.fg }}>
+    <span style={{
+      display: 'inline-flex', padding: '3px 10px', borderRadius: 'var(--radius-sm)',
+      fontSize: '12px', fontWeight: 600, background: b.bg, color: b.fg,
+    }}>
       {b.label}
     </span>
   )
@@ -37,10 +40,15 @@ function Badge({ map, status }: { map: Record<string, { label: string; bg: strin
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="text-[11px] font-medium mb-0.5" style={{ color: 'var(--text-muted)' }}>{label}</div>
-      <div className="text-sm" style={{ color: 'var(--text-primary)' }}>{children}</div>
+      <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
+      <div style={{ fontSize: '13px', color: 'var(--text-primary)' }}>{children}</div>
     </div>
   )
+}
+
+const sectionTitle: React.CSSProperties = {
+  fontSize: '11px', fontWeight: 700, textTransform: 'uppercase',
+  letterSpacing: '0.08em', color: 'var(--accent-gold)', marginBottom: '12px',
 }
 
 export default function ReservationDetailModal({ open, reservation: r, onClose }: Props) {
@@ -48,27 +56,56 @@ export default function ReservationDetailModal({ open, reservation: r, onClose }
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/60 z-[100]" onClick={onClose} />
-      <div className="fixed inset-0 z-[101] flex items-center justify-center p-4" onClick={e => e.stopPropagation()}>
-        <div
-          className="w-full max-w-lg rounded-2xl overflow-hidden max-h-[85vh] flex flex-col"
-          style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}
-        >
+      <div style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+        zIndex: 100, backdropFilter: 'blur(4px)',
+        animation: 'fadeIn 200ms cubic-bezier(0.4,0,0.2,1)',
+      }} onClick={onClose} />
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 101,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px',
+        animation: 'scaleIn 200ms cubic-bezier(0.4,0,0.2,1)',
+      }} onClick={e => e.stopPropagation()}>
+        <div style={{
+          width: '100%', maxWidth: '520px', borderRadius: 'var(--radius-md)',
+          overflow: 'hidden', maxHeight: '85vh', display: 'flex', flexDirection: 'column',
+          background: 'var(--bg-card)', border: '1px solid var(--border)',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+        }}>
           {/* Header */}
-          <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
-            <div className="flex items-center gap-3">
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold"
-                style={{ background: 'var(--accent-gold)', color: 'var(--bg-dark)' }}
-              >
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '20px 24px', borderBottom: '1px solid var(--border)',
+            position: 'relative', overflow: 'hidden',
+          }}>
+            <div style={{
+              position: 'absolute', top: 0, left: 0, right: 0, height: '3px',
+              background: 'linear-gradient(90deg, var(--accent-gold), var(--accent-gold-dark), transparent)',
+            }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{
+                width: '44px', height: '44px', borderRadius: '50%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '14px', fontWeight: 700,
+                background: 'linear-gradient(135deg, var(--accent-gold), var(--accent-gold-dark))',
+                color: 'var(--bg-dark)', boxShadow: '0 2px 8px rgba(212,165,116,0.3)',
+              }}>
                 {r.guest.firstName.charAt(0)}{r.guest.lastName.charAt(0)}
               </div>
               <div>
-                <div className="font-semibold" style={{ color: 'var(--text-primary)' }}>{r.guest.firstName} {r.guest.lastName}</div>
-                <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{r.bookingReference || r.orderNumber || ''}</div>
+                <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '15px', fontFamily: 'var(--font-display)' }}>{r.guest.firstName} {r.guest.lastName}</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>{r.bookingReference || r.orderNumber || ''}</div>
               </div>
             </div>
-            <button onClick={onClose} className="p-1.5 rounded-lg" style={{ color: 'var(--text-muted)' }}>
+            <button onClick={onClose} style={{
+              padding: '8px', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+              color: 'var(--text-muted)', border: 'none', background: 'transparent',
+              transition: 'all 200ms cubic-bezier(0.4,0,0.2,1)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+              onMouseEnter={e => { e.currentTarget.style.color = 'var(--danger)'; e.currentTarget.style.background = 'rgba(248,113,113,0.08)' }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent' }}
+            >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
               </svg>
@@ -76,11 +113,11 @@ export default function ReservationDetailModal({ open, reservation: r, onClose }
           </div>
 
           {/* Body */}
-          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+          <div style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
             {/* Guest */}
             <section>
-              <div className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--accent-gold)' }}>Huésped</div>
-              <div className="grid grid-cols-2 gap-3">
+              <div style={sectionTitle}>Huésped</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <Field label="Email">{r.guest.email || '—'}</Field>
                 <Field label="Teléfono">{r.guest.phone || '—'}</Field>
                 <Field label="País">{r.guest.country || '—'}</Field>
@@ -90,8 +127,8 @@ export default function ReservationDetailModal({ open, reservation: r, onClose }
 
             {/* Service */}
             <section>
-              <div className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--accent-gold)' }}>Servicio</div>
-              <div className="grid grid-cols-2 gap-3">
+              <div style={sectionTitle}>Servicio</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <Field label="Paquete">{r.service.name}</Field>
                 <Field label="Vuelo">{r.flightInfo || '—'}</Field>
                 <Field label="Llegada">{r.arrivalDate} {r.arrivalTime?.substring(0, 5) || ''}</Field>
@@ -103,10 +140,10 @@ export default function ReservationDetailModal({ open, reservation: r, onClose }
 
             {/* Payment */}
             <section>
-              <div className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--accent-gold)' }}>Pago</div>
-              <div className="grid grid-cols-2 gap-3">
+              <div style={sectionTitle}>Pago</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <Field label="Monto">
-                  <span className="font-bold" style={{ color: 'var(--accent-gold)' }}>${r.totalAmount.toLocaleString()}</span>
+                  <span style={{ fontWeight: 700, color: 'var(--accent-gold)', fontSize: '16px', fontFamily: 'var(--font-display)' }}>${r.totalAmount.toLocaleString()}</span>
                 </Field>
                 <Field label="Estado"><Badge map={PAYMENT_MAP} status={r.paymentStatus} /></Field>
                 <Field label="Método">{r.paymentMethod || '—'}</Field>
@@ -117,16 +154,24 @@ export default function ReservationDetailModal({ open, reservation: r, onClose }
             {/* Driver */}
             {r.driverAssigned && (
               <section>
-                <div className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--accent-gold)' }}>Conductor Asignado</div>
-                <div className="flex items-center gap-3 p-3 rounded-lg" style={{ background: 'var(--bg-elevated)' }}>
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'rgba(74,222,128,0.12)', color: '#4ade80' }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <div style={sectionTitle}>Conductor Asignado</div>
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '12px',
+                  padding: '14px 16px', borderRadius: 'var(--radius-sm)',
+                  background: 'var(--bg-elevated)', border: '1px solid var(--border)',
+                }}>
+                  <div style={{
+                    width: '36px', height: '36px', borderRadius: '50%',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    background: 'rgba(74,222,128,0.12)', color: '#4ade80', flexShrink: 0,
+                  }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
                     </svg>
                   </div>
                   <div>
-                    <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{r.driverAssigned.name}</div>
-                    <div className="text-xs" style={{ color: 'var(--text-muted)' }}>{r.driverAssigned.phone}</div>
+                    <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)' }}>{r.driverAssigned.name}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>{r.driverAssigned.phone}</div>
                   </div>
                 </div>
               </section>
@@ -135,8 +180,12 @@ export default function ReservationDetailModal({ open, reservation: r, onClose }
             {/* Notes */}
             {r.specialRequests && (
               <section>
-                <div className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--accent-gold)' }}>Notas</div>
-                <div className="text-sm p-3 rounded-lg" style={{ background: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>
+                <div style={sectionTitle}>Notas</div>
+                <div style={{
+                  fontSize: '13px', padding: '14px 16px', borderRadius: 'var(--radius-sm)',
+                  background: 'var(--bg-elevated)', color: 'var(--text-secondary)',
+                  border: '1px solid var(--border)', lineHeight: 1.6,
+                }}>
                   {r.specialRequests}
                 </div>
               </section>
@@ -144,6 +193,11 @@ export default function ReservationDetailModal({ open, reservation: r, onClose }
           </div>
         </div>
       </div>
+
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes scaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+      `}</style>
     </>
   )
 }

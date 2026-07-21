@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useClerk } from '@clerk/nextjs'
+import { InactivityGuard } from '@/components/shared/InactivityGuard'
 
 interface NavLink {
   label: string
@@ -60,51 +61,55 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
+  // Auto-fix role mismatch: if user has driver profile but wrong Clerk role
+  useEffect(() => {
+    fetch('/api/driver/claim-role').catch(() => {})
+  }, [])
+
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg-dark)' }}>
-      {/* Mobile overlay */}
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg-dark)' }}>
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/60 z-40 lg:hidden"
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 40 }}
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      {/* Sidebar */}
       <aside
-        className={`
-          fixed lg:static inset-y-0 left-0 z-50 w-[260px] flex flex-col
-          transition-transform duration-300 ease-in-out
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        `}
         style={{
+          position: 'fixed',
+          top: 0,
+          bottom: 0,
+          left: 0,
+          zIndex: 50,
+          width: 260,
+          display: 'flex',
+          flexDirection: 'column',
           background: 'var(--bg-card)',
           borderRight: '1px solid var(--border)',
+          transform: sidebarOpen ? 'translateX(0)' : undefined,
+          transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
+        className="driver-sidebar"
       >
-        {/* Logo */}
-        <div className="flex items-center gap-3 px-5 py-5" style={{ borderBottom: '1px solid var(--border)' }}>
-          <div
-            className="w-9 h-9 rounded-lg flex items-center justify-center"
-            style={{ background: 'rgba(34, 197, 94, 0.15)' }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--admin-accent)" strokeWidth="2">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '20px 20px', borderBottom: '1px solid var(--border)' }}>
+          <div style={{
+            width: 36, height: 36, borderRadius: 8,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'var(--accent-gold-soft, rgba(212, 168, 75, 0.15))',
+          }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-gold)" strokeWidth="2">
               <circle cx="12" cy="12" r="10" />
               <path d="M12 6v6l4 2" />
             </svg>
           </div>
           <div>
-            <div className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-              Driver Portal
-            </div>
-            <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-              LocalPlug
-            </div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.2 }}>Driver Portal</div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', letterSpacing: '0.3px' }}>LocalPlug</div>
           </div>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        <nav style={{ flex: 1, padding: '12px 8px', overflowY: 'auto' }}>
           {navLinks.map((link) => {
             const isActive = link.href === '/driver'
               ? pathname === '/driver'
@@ -114,27 +119,79 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
                 key={link.href}
                 href={link.href}
                 onClick={() => setSidebarOpen(false)}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all"
                 style={{
-                  background: isActive ? 'rgba(34, 197, 94, 0.12)' : 'transparent',
-                  color: isActive ? 'var(--admin-accent)' : 'var(--text-secondary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '10px 12px',
+                  borderRadius: 8,
+                  fontSize: 13.5,
+                  fontWeight: 500,
+                  color: isActive ? 'var(--accent-gold)' : 'var(--text-secondary)',
+                  background: isActive ? 'rgba(212, 168, 75, 0.12)' : 'transparent',
+                  textDecoration: 'none',
+                  transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+                  cursor: 'pointer',
+                  position: 'relative',
+                }}
+                onMouseEnter={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.background = 'var(--surface-hover, rgba(255,255,255,0.05))'
+                    e.currentTarget.style.color = 'var(--text-primary)'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.background = 'transparent'
+                    e.currentTarget.style.color = 'var(--text-secondary)'
+                  }
                 }}
               >
-                {link.icon}
+                {isActive && (
+                  <span style={{
+                    position: 'absolute',
+                    left: -8,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    width: 3,
+                    height: 20,
+                    background: 'var(--accent-gold)',
+                    borderRadius: '0 3px 3px 0',
+                  }} />
+                )}
+                <span style={{ opacity: isActive ? 1 : 0.7, display: 'flex' }}>{link.icon}</span>
                 {link.label}
               </Link>
             )
           })}
         </nav>
 
-        {/* Footer */}
-        <div className="px-3 py-4" style={{ borderTop: '1px solid var(--border)' }}>
+        <div style={{ padding: '12px 8px', borderTop: '1px solid var(--border)' }}>
           <button
             onClick={() => signOut({ redirectUrl: '/sign-in/driver' })}
-            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-colors"
-            style={{ color: 'var(--text-muted)' }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--danger)'; e.currentTarget.style.background = 'rgba(239, 68, 68, 0.08)' }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent' }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              width: '100%',
+              padding: '10px 12px',
+              borderRadius: 8,
+              fontSize: 13.5,
+              fontWeight: 500,
+              color: 'var(--text-muted)',
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = 'var(--danger)'
+              e.currentTarget.style.background = 'var(--danger-soft, rgba(239, 68, 80, 0.08))'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = 'var(--text-muted)'
+              e.currentTarget.style.background = 'transparent'
+            }}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -145,43 +202,83 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
         </div>
       </aside>
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top bar */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', marginLeft: 'var(--nav-width)' }}>
         <header
-          className="flex items-center justify-between px-4 lg:px-6 py-3"
-          style={{ background: 'var(--bg-card)', borderBottom: '1px solid var(--border)' }}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '0 24px',
+            height: 'var(--topbar-height)',
+            background: 'var(--bg-secondary)',
+            borderBottom: '1px solid var(--border)',
+            position: 'sticky',
+            top: 0,
+            zIndex: 50,
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+          }}
         >
           <button
             onClick={() => setSidebarOpen(true)}
-            className="lg:hidden p-2 rounded-lg"
-            style={{ color: 'var(--text-secondary)' }}
+            className="driver-mobile-menu-btn"
+            style={{
+              display: 'none',
+              width: 36, height: 36, padding: 0,
+              borderRadius: 8, border: 'none',
+              background: 'transparent',
+              color: 'var(--text-secondary)',
+              cursor: 'pointer',
+              alignItems: 'center', justifyContent: 'center',
+              transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+            }}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
             </svg>
           </button>
-          <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-            Panel de Conductor
-          </div>
-          <div className="flex items-center gap-3">
+          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--fg)' }}>Panel de Conductor</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div
-              className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold"
-              style={{ background: 'rgba(34, 197, 94, 0.15)', color: 'var(--admin-accent)' }}
+              style={{
+                width: 36, height: 36, borderRadius: '50%',
+                background: 'linear-gradient(135deg, var(--accent-gold), var(--accent-gold-dark, #b8956a))',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#fff', fontWeight: 600, fontSize: 13,
+                cursor: 'pointer',
+                transition: 'opacity 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.8' }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = '1' }}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" />
-                <path d="M12 6v6l4 2" />
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
               </svg>
             </div>
           </div>
         </header>
 
-        {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6">
+        <main style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
           {children}
         </main>
       </div>
+
+      <InactivityGuard signOutRedirectUrl="/sign-in/driver" />
+
+      <style>{`
+        @media (max-width: 1023px) {
+          .driver-sidebar {
+            transform: translateX(-100%) !important;
+          }
+          .driver-sidebar[data-open="true"] {
+            transform: translateX(0) !important;
+          }
+          .driver-mobile-menu-btn {
+            display: flex !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }
