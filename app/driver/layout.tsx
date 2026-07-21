@@ -60,13 +60,40 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
   const { signOut } = useClerk()
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [driverStatus, setDriverStatus] = useState<string>('inactive')
+  const [toggling, setToggling] = useState(false)
 
   // Auto-create driver profile + fix role mismatch on first load
   useEffect(() => {
     fetch('/api/driver/ensure')
       .then(() => fetch('/api/driver/claim-role'))
+      .then(() => fetch('/api/driver/profile'))
+      .then(r => r.json())
+      .then(data => {
+        if (data.driver?.status) setDriverStatus(data.driver.status)
+      })
       .catch(() => {})
   }, [])
+
+  const toggleStatus = async () => {
+    if (toggling) return
+    setToggling(true)
+    try {
+      const newStatus = driverStatus === 'available' ? 'inactive' : 'available'
+      const res = await fetch('/api/driver/status', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      })
+      if (res.ok) {
+        setDriverStatus(newStatus)
+      }
+    } catch {
+      // ignore
+    } finally {
+      setToggling(false)
+    }
+  }
 
   return (
     <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg-dark)' }}>
@@ -167,6 +194,44 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
             )
           })}
         </nav>
+
+        <div style={{ padding: '12px 8px 4px' }}>
+          <button
+            onClick={toggleStatus}
+            disabled={toggling}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              width: '100%',
+              padding: '10px 12px',
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 500,
+              color: driverStatus === 'available' ? '#4ade80' : 'var(--text-muted)',
+              background: driverStatus === 'available' ? 'rgba(74,222,128,0.1)' : 'transparent',
+              border: `1px solid ${driverStatus === 'available' ? 'rgba(74,222,128,0.2)' : 'var(--border)'}`,
+              cursor: toggling ? 'wait' : 'pointer',
+              transition: 'all 200ms ease',
+              opacity: toggling ? 0.6 : 1,
+            }}
+          >
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{
+                width: 8, height: 8, borderRadius: '50%',
+                background: driverStatus === 'available' ? '#4ade80' : 'var(--text-muted)',
+                boxShadow: driverStatus === 'available' ? '0 0 8px rgba(74,222,128,0.5)' : 'none',
+              }} />
+              {driverStatus === 'available' ? 'Activo' : 'Inactivo'}
+            </span>
+            <span style={{
+              fontSize: 11, color: 'var(--text-muted)',
+              transform: driverStatus === 'available' ? 'scaleX(1)' : 'scaleX(-1)',
+            }}>
+              {driverStatus === 'available' ? '● ONLINE' : '○ OFFLINE'}
+            </span>
+          </button>
+        </div>
 
         <div style={{ padding: '12px 8px', borderTop: '1px solid var(--border)' }}>
           <button
