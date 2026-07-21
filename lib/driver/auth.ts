@@ -1,6 +1,25 @@
 import { auth, clerkClient } from '@clerk/nextjs/server'
 import { getDb } from '@/lib/db'
 
+const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY || ''
+const CLERK_API_URL = 'https://api.clerk.com/v1'
+
+async function ensureClerkRole(clerkId: string, role: string) {
+  if (!CLERK_SECRET_KEY) return
+  try {
+    const client = await clerkClient()
+    const user = await client.users.getUser(clerkId)
+    if (user.publicMetadata?.role !== role) {
+      await client.users.updateUser(clerkId, {
+        publicMetadata: { ...user.publicMetadata, role },
+      })
+      console.log(`[Driver Auth] Set Clerk role for ${clerkId}: ${role}`)
+    }
+  } catch {
+    // Non-critical — role will be fixed by claim-role endpoint
+  }
+}
+
 export interface DriverProfile {
   id: number
   clerk_user_id: string
@@ -54,6 +73,8 @@ export async function ensureDriverProfile(clerkId: string): Promise<DriverProfil
   })
 
   if (existing.rows.length > 0) {
+    // Ensure Clerk metadata has driver role
+    ensureClerkRole(clerkId, 'driver')
     return existing.rows[0] as unknown as DriverProfile
   }
 
@@ -82,6 +103,8 @@ export async function ensureDriverProfile(clerkId: string): Promise<DriverProfil
       args: [clerkId, (byEmail.rows[0] as any).id],
     })
     console.log(`[Driver Auth] Linked existing driver (${email}) to Clerk user ${clerkId}`)
+    // Ensure Clerk metadata has driver role
+    ensureClerkRole(clerkId, 'driver')
     const linked = await db.execute({
       sql: `SELECT d.* FROM drivers d WHERE d.clerk_user_id = ?`,
       args: [clerkId],
@@ -105,6 +128,9 @@ export async function ensureDriverProfile(clerkId: string): Promise<DriverProfil
 
   const driverId = Number(result.lastInsertRowid)
   console.log(`[Driver Auth] Auto-created driver profile: ${name} (${email}) id=${driverId}`)
+
+  // Ensure Clerk metadata has driver role
+  ensureClerkRole(clerkId, 'driver')
 
   const newDriver = await db.execute({
     sql: `SELECT d.* FROM drivers d WHERE d.id = ?`,
