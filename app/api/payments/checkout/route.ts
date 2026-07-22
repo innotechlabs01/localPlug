@@ -29,7 +29,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Plan not found' }, { status: 404 })
     }
 
-    const plan = planResult.rows[0] as { id: number; name: string; slug: string; price_usd: number }
+    const plan = planResult.rows[0] as unknown as { id: number; name: string; slug: string; price_usd: number }
     const amountCents = Math.round(plan.price_usd * 100)
 
     const transaction = await createTransaction({
