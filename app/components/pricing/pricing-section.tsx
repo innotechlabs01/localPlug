@@ -68,7 +68,7 @@ export default function PricingSection() {
     import('@paddle/paddle-js').then(({ initializePaddle }) =>
       initializePaddle({
         token: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN!,
-        environment: process.env.NEXT_PUBLIC_PADDLE_ENV as 'sandbox' | 'production',
+        environment: process.env.NEXT_PUBLIC_PADDLE_ENV === 'production' ? 'production' : 'sandbox',
       }).then((p) => {
         if (p) paddleRef.current = p
       }),
