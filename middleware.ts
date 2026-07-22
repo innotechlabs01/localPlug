@@ -50,7 +50,8 @@ const isLookupRoute = createRouteMatcher(['/api/admin/lookup'])
 
 const BODY_MAX_SIZE = 1024 * 1024 // 1MB
 
-export default clerkMiddleware(async (auth, req) => {
+export default clerkMiddleware(
+  async (auth, req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, {
       status: 204,
@@ -84,7 +85,8 @@ export default clerkMiddleware(async (auth, req) => {
     !pathname.startsWith('/api/')
 
   if (isPortalPage && !isPublicRoute(req)) {
-    const { userId } = await auth({ authorizedParties: AUTHORIZED_PARTIES })
+    const authResult = await auth() as { userId: string | null }
+    const userId = authResult.userId
     if (!userId) {
       const signInUrl = pathname.startsWith('/admin')
         ? '/sign-in/admin'
@@ -144,15 +146,19 @@ export default clerkMiddleware(async (auth, req) => {
   }
 
   if (isAdminApiRoute(req)) {
-    const { userId } = await auth({ authorizedParties: AUTHORIZED_PARTIES })
+    const authResult = await auth() as { userId: string | null }
+    const userId = authResult.userId
     if (!userId) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
     return NextResponse.next()
   }
   if (!isPublicRoute(req)) {
-    await auth.protect({ authorizedParties: AUTHORIZED_PARTIES })
+    await auth.protect()
   }
+},
+{
+  authorizedParties: AUTHORIZED_PARTIES,
 })
 
 function corsHeaders(req: Request): Record<string, string> {
