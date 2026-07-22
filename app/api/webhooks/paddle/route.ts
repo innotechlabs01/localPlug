@@ -38,6 +38,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'invalid_signature' }, { status: 401 })
     }
 
+    console.log('[Paddle Webhook] Event received', {
+      event: event.eventType,
+      eventId: event.eventId,
+      timestamp: new Date().toISOString(),
+    })
+
     if (event.eventType !== 'transaction.completed') {
       return NextResponse.json({ received: true })
     }
@@ -116,7 +122,16 @@ export async function POST(req: Request) {
       args: [now, bookingReference],
     })
 
-    console.log('[Paddle Webhook] Payment completed and order confirmed', { bookingReference, transactionId })
+    console.log('[Paddle Webhook] Transaction completed', {
+      event: 'transaction.completed',
+      transactionId,
+      bookingReference,
+      totalAmount,
+      platformFeeCents,
+      hotelPayoutCents,
+      splitStatus,
+      timestamp: new Date().toISOString(),
+    })
 
     return NextResponse.json({ received: true })
   } catch (err) {
