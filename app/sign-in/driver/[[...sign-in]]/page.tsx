@@ -209,8 +209,6 @@ export default function DriverSignInPage() {
           />
 
           <div style={{
-
-          <div style={{
             marginTop: '40px', textAlign: 'center',
             paddingTop: '20px', borderTop: '1px solid var(--border)',
           }}>
