@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { clerkMiddleware, createRouteMatcher, clerkClient } from '@clerk/nextjs/server'
 import { applyRateLimit } from '@/lib/rate-limit'
-import { getDb } from '@/lib/db'
 
 const AUTHORIZED_PARTIES = [
   process.env.NEXT_PUBLIC_SITE_URL,
@@ -97,7 +96,7 @@ export default clerkMiddleware(
     try {
       const client = await clerkClient()
       const clerkUser = await client.users.getUser(userId)
-      const role = clerkUser.publicMetadata?.role as string | undefined
+      const role = clerkUser.privateMetadata?.role as string | undefined
 
       const portalForRole: Record<string, string> = {
         admin: '/admin',
@@ -111,34 +110,8 @@ export default clerkMiddleware(
           return NextResponse.redirect(new URL(expectedPortal, req.url))
         }
       } else {
-        // No role in Clerk metadata — try to auto-detect from DB
-        try {
-          const db = getDb()
-          let detectedRole: string | null = null
-
-          if (pathname.startsWith('/driver')) {
-            const result = await db.execute({
-              sql: `SELECT id FROM drivers WHERE clerk_user_id = ? AND status = 'active'`,
-              args: [userId],
-            })
-            if (result.rows.length > 0) detectedRole = 'driver'
-          } else if (pathname.startsWith('/hotel')) {
-            const result = await db.execute({
-              sql: `SELECT id FROM hotel_managers WHERE clerk_user_id = ? AND status = 'active'`,
-              args: [userId],
-            })
-            if (result.rows.length > 0) detectedRole = 'hotel_manager'
-          }
-
-          if (detectedRole) {
-            // Fix Clerk metadata for future requests
-            client.users.updateUser(userId, {
-              publicMetadata: { ...clerkUser.publicMetadata, role: detectedRole },
-            }).catch(() => {})
-          }
-        } catch {
-          // DB check failed — let through
-        }
+        // No role in Clerk privateMetadata — let the API handler reject access
+        return NextResponse.redirect(new URL('/admin', req.url))
       }
     } catch {
       // Clerk fetch failed — let through; API handlers will reject

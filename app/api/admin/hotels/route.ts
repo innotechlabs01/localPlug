@@ -123,7 +123,7 @@ export async function POST(req: Request) {
         firstName,
         lastName,
         password: manager_password,
-        publicMetadata: { role: 'hotel_manager' },
+        privateMetadata: { role: 'hotel_manager' },
       })
 
       // Create user in local DB linked to Clerk and hotel

@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
  * GET /api/driver/claim-role
  *
  * Fixes role mismatch: if a user has a driver profile in the DB
- * but their Clerk publicMetadata.role isn't 'driver', this endpoint
+ * but their Clerk privateMetadata.role isn't 'driver', this endpoint
  * corrects it. Called automatically by the driver layout on mount.
  */
 export async function GET() {
@@ -33,7 +33,7 @@ export async function GET() {
     // Check current Clerk role
     const client = await clerkClient()
     const clerkUser = await client.users.getUser(clerkId)
-    const currentRole = clerkUser.publicMetadata?.role as string | undefined
+    const currentRole = clerkUser.privateMetadata?.role as string | undefined
 
     if (currentRole === 'driver') {
       return NextResponse.json({ fixed: false, role: currentRole })
@@ -41,7 +41,7 @@ export async function GET() {
 
     // Fix: set role to 'driver'
     await client.users.updateUser(clerkId, {
-      publicMetadata: { ...clerkUser.publicMetadata, role: 'driver' },
+      privateMetadata: { ...clerkUser.privateMetadata, role: 'driver' },
     })
 
     console.log(`[Driver Claim] Fixed role for ${clerkId}: ${currentRole || 'none'} → driver`)

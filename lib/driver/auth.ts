@@ -9,9 +9,9 @@ async function ensureClerkRole(clerkId: string, role: string) {
   try {
     const client = await clerkClient()
     const user = await client.users.getUser(clerkId)
-    if (user.publicMetadata?.role !== role) {
+    if (user.privateMetadata?.role !== role) {
       await client.users.updateUser(clerkId, {
-        publicMetadata: { ...user.publicMetadata, role },
+        privateMetadata: { ...user.privateMetadata, role },
       })
       console.log(`[Driver Auth] Set Clerk role for ${clerkId}: ${role}`)
     }

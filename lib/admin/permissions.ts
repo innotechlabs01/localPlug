@@ -58,13 +58,13 @@ export async function getUserPermissions(clerkId: string): Promise<ModulePermiss
 
     console.log(`[Permissions] Auto-registered user ${clerkId} (${name}) as viewer`)
 
-    // Also set Clerk public_metadata so role is visible in Clerk Dashboard
+    // Also set Clerk private_metadata so role is visible in Clerk Dashboard
     const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY || ''
     if (CLERK_SECRET_KEY) {
       try {
         const client = await clerkClient()
         await client.users.updateUserMetadata(clerkId, {
-          publicMetadata: { role: 'viewer' },
+          privateMetadata: { role: 'viewer' },
         })
       } catch { /* non-critical */ }
     }
