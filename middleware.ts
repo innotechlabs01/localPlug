@@ -110,8 +110,8 @@ export default clerkMiddleware(
           return NextResponse.redirect(new URL(expectedPortal, req.url))
         }
       } else {
-        // No role in Clerk privateMetadata — let the API handler reject access
-        return NextResponse.redirect(new URL('/admin', req.url))
+        // No role in Clerk privateMetadata — redirect to sign-in to get proper role assigned
+        return NextResponse.redirect(new URL('/sign-in/admin', req.url))
       }
     } catch {
       // Clerk fetch failed — let through; API handlers will reject
