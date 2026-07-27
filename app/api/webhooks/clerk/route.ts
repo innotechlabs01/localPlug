@@ -16,7 +16,7 @@ async function setClerkMetadata(clerkId: string, metadata: Record<string, unknow
         'Authorization': `Bearer ${CLERK_SECRET_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ public_metadata: metadata }),
+      body: JSON.stringify({ private_metadata: metadata }),
     })
   } catch (e) {
     console.error('[Clerk Webhook] Failed to set metadata:', e)
@@ -31,6 +31,7 @@ type ClerkEvent = {
     first_name?: string | null
     last_name?: string | null
     public_metadata?: Record<string, unknown>
+    private_metadata?: Record<string, unknown>
     [key: string]: unknown
   }
 }
@@ -73,7 +74,7 @@ export async function POST(req: Request) {
 
       if (existing.rows.length === 0) {
         // Check if user already has a role in Clerk metadata (e.g. admin-created driver/manager)
-        const incomingRole = (evt.data.public_metadata?.role as string) || ''
+        const incomingRole = (evt.data.private_metadata?.role as string) || (evt.data.public_metadata?.role as string) || ''
 
         if (incomingRole && ['admin', 'hotel_manager', 'driver'].includes(incomingRole)) {
           // User was created by admin API with a specific role — preserve it
