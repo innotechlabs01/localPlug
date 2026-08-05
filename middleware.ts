@@ -78,6 +78,22 @@ export default clerkMiddleware(
     return NextResponse.next()
   }
 
+  // Redirect authenticated users from landing page to their portal dashboard
+  if (pathname === '/') {
+    const authResult = await auth() as { userId: string | null }
+    if (authResult.userId) {
+      try {
+        const client = await clerkClient()
+        const clerkUser = await client.users.getUser(authResult.userId)
+        const role = clerkUser.privateMetadata?.role as string | undefined
+        const portalMap: Record<string, string> = { admin: '/admin', hotel_manager: '/hotel', driver: '/driver' }
+        if (role && portalMap[role]) {
+          return NextResponse.redirect(new URL(portalMap[role], req.url))
+        }
+      } catch { /* fall through */ }
+    }
+  }
+
   // Strict role-based portal separation (page routes only, not /api/)
   const isPortalPage =
     (pathname.startsWith('/admin') || pathname.startsWith('/hotel') || pathname.startsWith('/driver')) &&
