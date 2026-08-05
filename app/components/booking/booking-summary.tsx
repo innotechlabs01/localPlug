@@ -1,6 +1,9 @@
 'use client'
 
 import { useI18n } from '@/lib/i18n'
+import { computeBookingTotals } from './lib/booking-totals'
+import { CONFIG_DEFAULTS } from './lib/config-defaults'
+import type { DestinationData } from './lib/types'
 
 interface BookingConfig {
   packages: Record<string, { name: string; price: number; features?: string[]; is_popular?: boolean }>
@@ -9,6 +12,9 @@ interface BookingConfig {
   taxRate: number
   currency: string
   advanceBookingDays: number
+  experiences?: Record<string, number>
+  trips?: Array<{ id: string; name: string; price_per_person_usd: number }>
+  trm?: number
 }
 
 interface BookingSummaryProps {
@@ -19,25 +25,47 @@ interface BookingSummaryProps {
   onConfirm: () => void
   isSubmitting: boolean
   config?: BookingConfig | null
+  destination?: DestinationData | null
+}
+
+function useTotals(packageId: string, needReturn: boolean, destination: DestinationData | null | undefined, config?: BookingConfig | null) {
+  const basePrice = config?.packages?.[packageId]?.price ?? 0
+  const returnCharge = needReturn ? (config?.returnTripCharge ?? CONFIG_DEFAULTS.returnTripCharge) : 0
+  const serviceFee = config?.serviceFee ?? CONFIG_DEFAULTS.serviceFee
+  const taxRate = config?.taxRate ?? CONFIG_DEFAULTS.taxRate
+  const tripPrices = config?.experiences ?? {}
+  const selectedTrips = destination?.additionalTrips ?? []
+  const numPeople = Math.max(1, Math.floor(destination?.numPeople || 1))
+  const tourPrices = selectedTrips.map((id) => tripPrices[id] ?? 0)
+  const totals = computeBookingTotals({ basePrice, returnCharge, tourPrices, numPeople, serviceFee, taxRate })
+  return { ...totals, selectedTrips, tripPrices, numPeople, packageName: '' }
 }
 
 export function BookingSummarySidebar({
   packageId,
   needReturn,
   config,
+  destination,
 }: {
   packageId: string
   needReturn: boolean
   config?: BookingConfig | null
+  destination?: DestinationData | null
 }) {
   const { t } = useI18n()
-  const basePrice = config?.packages?.[packageId]?.price ?? 0
-  const returnCharge = needReturn ? (config?.returnTripCharge ?? 48) : 0
-  const subtotal = basePrice + returnCharge
-  const serviceFee = config?.serviceFee ?? 5
-  const taxRate = config?.taxRate ?? 0.19
-  const iva = (subtotal - serviceFee) * taxRate
-  const total = subtotal + serviceFee + iva
+  const tripLabels = t.booking.steps.destination.trips
+  const {
+    basePrice,
+    serviceTotal,
+    returnCharge,
+    toursTotal,
+    serviceFee,
+    iva,
+    total,
+    selectedTrips,
+    tripPrices,
+    numPeople,
+  } = useTotals(packageId, needReturn, destination, config)
   const packageName = t.booking.steps.packages.packages?.[packageId as keyof typeof t.booking.steps.packages.packages]?.name || packageId
 
   return (
@@ -60,6 +88,15 @@ export function BookingSummarySidebar({
               <span className="font-medium text-white text-right min-w-[80px]">${basePrice.toFixed(2)}</span>
             </div>
 
+            {serviceTotal > 0 && (
+              <div className="flex justify-between items-start py-1.5 text-[13px]">
+                <span className="text-[var(--text-secondary)]">
+                  {t.booking.steps.payment.summaryService} <span className="text-[var(--text-muted)]">({numPeople} {t.booking.steps.payment.summaryPeople})</span>
+                </span>
+                <span className="font-medium text-[var(--accent-gold)] text-right min-w-[80px]">+${serviceTotal.toFixed(2)}</span>
+              </div>
+            )}
+
             {needReturn && (
               <div className="flex justify-between items-start py-1.5 text-[13px]">
                 <span className="text-[var(--text-secondary)]">
@@ -69,15 +106,42 @@ export function BookingSummarySidebar({
               </div>
             )}
 
+            {selectedTrips.length > 0 && (
+              <>
+                <div className="flex justify-between items-start py-1.5 text-[13px] text-[var(--text-secondary)]">
+                  <span>{t.booking.steps.payment.summaryExperiences}</span>
+                  <span className="text-white text-right min-w-[80px]">{numPeople} {t.booking.steps.payment.summaryPeople}</span>
+                </div>
+                {selectedTrips.map((id) => {
+                  const label = tripLabels?.[id as keyof typeof tripLabels] || id
+                  const unit = tripPrices[id] ?? 0
+                  return (
+                    <div key={id} className="flex justify-between items-start py-1.5 text-[12px]">
+                      <span className="text-[var(--text-secondary)]">
+                        {label} <span className="text-[var(--text-muted)]">(${unit.toFixed(2)} × {numPeople})</span>
+                      </span>
+                      <span className="font-medium text-white text-right min-w-[80px]">${(unit * numPeople).toFixed(2)}</span>
+                    </div>
+                  )
+                })}
+                {toursTotal > 0 && (
+                  <div className="flex justify-between items-start py-1.5 text-[13px]">
+                    <span className="text-[var(--text-secondary)]">{t.booking.steps.payment.summaryExperiences} total</span>
+                    <span className="font-medium text-[var(--accent-gold)] text-right min-w-[80px]">+${toursTotal.toFixed(2)}</span>
+                  </div>
+                )}
+              </>
+            )}
+
             <div className="h-px bg-[var(--border)] my-2" />
 
             <div className="flex justify-between items-start py-1.5 text-[13px]">
-              <span className="text-[var(--text-secondary)]">Service Fee</span>
+              <span className="text-[var(--text-secondary)]">{t.booking.steps.payment.serviceFee}</span>
               <span className="font-medium text-white text-right min-w-[80px]">${serviceFee.toFixed(2)}</span>
             </div>
 
             <div className="flex justify-between items-start py-1.5 text-[13px]">
-              <span className="text-[var(--text-secondary)]">IVA (19%)</span>
+              <span className="text-[var(--text-secondary)]">{t.booking.steps.payment.iva}</span>
               <span className="font-medium text-white text-right min-w-[80px]">
                 ${iva.toFixed(2)}
               </span>
@@ -93,7 +157,7 @@ export function BookingSummarySidebar({
                 <line x1="16" y1="17" x2="8" y2="17"/>
               </svg>
             </div>
-            Select a package to see your booking summary
+            {t.booking.steps.payment.selectPackageSummary}
           </div>
         )}
       </div>
@@ -102,15 +166,23 @@ export function BookingSummarySidebar({
         <>
           <div className="flex justify-between items-center px-5 py-4 border-t border-[var(--border)] bg-[rgba(255,255,255,0.02)]">
             <span className="text-[14px] font-semibold text-white">Total</span>
-            <span className="text-[24px] font-bold tracking-tight text-[var(--accent-gold)] transition-all duration-350">
+            <span className="text-[24px] font-bold tracking-tight text-[var(--accent-gold)] transition-all duration-300">
               ${total.toFixed(2)}
             </span>
           </div>
 
+          {config?.trm && (
+            <div className="px-5 py-2 border-t border-[var(--border)] bg-[rgba(255,255,255,0.02)]">
+              <span className="text-[11px] text-[var(--text-muted)]">
+                TRM: {Number(config.trm).toLocaleString('es-CO')} COP/USD · Total: ${(total * Number(config.trm)).toLocaleString('es-CO')} COP
+              </span>
+            </div>
+          )}
+
           <div className="flex items-center justify-center gap-3 px-5 pb-4 pt-1 text-[11px] text-[var(--text-muted)]">
-            <span>Free cancellation 24h</span>
+            <span>{t.booking.steps.payment.freeCancellation}</span>
             <span>·</span>
-            <span>Secure payment</span>
+            <span>{t.booking.steps.payment.securePayment}</span>
           </div>
         </>
       )}
@@ -126,13 +198,10 @@ export function MobileStickyBar({
   onConfirm,
   isSubmitting,
   config,
+  destination,
 }: BookingSummaryProps) {
   const { t } = useI18n()
-  const subtotal = packageId ? ((config?.packages?.[packageId]?.price ?? 0) + (needReturn ? (config?.returnTripCharge ?? 48) : 0)) : 0
-  const serviceFee = config?.serviceFee ?? 5
-  const taxRate = config?.taxRate ?? 0.19
-  const iva = (subtotal - serviceFee) * taxRate
-  const total = packageId ? (subtotal + serviceFee + iva) : 0
+  const { total } = useTotals(packageId, needReturn, destination, config)
   const isLastStep = currentStep === totalSteps - 1
 
   return (
@@ -141,7 +210,7 @@ export function MobileStickyBar({
         <button
           onClick={onConfirm}
           disabled={!packageId || isSubmitting}
-          className="w-full py-3.5 rounded-[var(--radius-sm)] bg-gradient-to-r from-[var(--accent-gold)] to-[var(--accent-gold-light)] text-[var(--bg-dark)] font-bold text-[15px] flex items-center justify-center gap-2 transition-all duration-250 hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(212,165,116,0.25)] active:translate-y-0 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-full py-3.5 rounded-[var(--radius-sm)] bg-gradient-to-r from-[var(--accent-gold)] to-[var(--accent-gold-light)] text-[var(--bg-dark)] font-bold text-[15px] flex items-center justify-center gap-2 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(212,165,116,0.25)] active:translate-y-0 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <polyline points="20 6 9 17 4 12"/>
@@ -157,7 +226,7 @@ export function MobileStickyBar({
         </div>
       ) : (
         <div className="text-center text-[13px] text-[var(--text-muted)]">
-          Select a package to continue
+          {t.booking.steps.payment.selectPackageContinue}
         </div>
       )}
     </div>

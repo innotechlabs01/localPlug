@@ -48,10 +48,8 @@ function FooterInner() {
           <nav aria-label="Company">
             <h4 className="text-sm font-semibold text-white mb-5">{t.footer.company}</h4>
             <ul className="space-y-3">
-              <li><a href="#" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors duration-200">{t.footer.aboutUs}</a></li>
-              <li><a href="#" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors duration-200">{t.footer.contactUs}</a></li>
-              <li><a href="#" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors duration-200">{t.footer.careers}</a></li>
-              <li><a href="#" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors duration-200">{t.footer.press}</a></li>
+              <li><a href="#services" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors duration-200">{t.footer.aboutUs}</a></li>
+              <li><a href="mailto:hello@medellinwithoutstress.com" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors duration-200">{t.footer.contactUs}</a></li>
             </ul>
           </nav>
 
@@ -94,6 +92,10 @@ function FooterInner() {
             </a>
           </div>
         </div>
+
+        <p className="text-[11px] text-[var(--text-muted)]/70 mt-6 text-center">
+          {t.footer.photoCredit}
+        </p>
       </div>
     </footer>
   )

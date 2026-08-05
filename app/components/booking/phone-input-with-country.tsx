@@ -172,7 +172,7 @@ export default function PhoneInputWithCountry({
             className="flex items-center gap-1.5 px-3 py-3 bg-[var(--surface)] border-r border-[var(--border)] rounded-l-[var(--radius-md)] text-body-md text-white shrink-0 hover:bg-[var(--border)] transition-colors min-w-[80px]"
           >
             <span className="text-lg leading-none">{selected.flag}</span>
-            <span className="text-body-sm text-[var(--text-secondary)]">+{selected.dialCode}</span>
+            <span className="text-sm text-[var(--text-secondary)]">+{selected.dialCode}</span>
             <svg
               width="10"
               height="6"
@@ -206,12 +206,12 @@ export default function PhoneInputWithCountry({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search country..."
-                className="w-full px-3 py-2 rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border)] text-body-sm text-white placeholder-[var(--text-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-gold)]/30"
+                className="w-full px-3 py-2 rounded-[var(--radius-sm)] bg-[var(--bg-elevated)] border border-[var(--border)] text-sm text-white placeholder-[var(--text-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-gold)]/30"
               />
             </div>
             <div className="overflow-y-auto max-h-48">
               {filtered.length === 0 ? (
-                <p className="px-3 py-4 text-body-sm text-[var(--text-muted)] text-center">
+                <p className="px-3 py-4 text-sm text-[var(--text-muted)] text-center">
                   No countries found
                 </p>
               ) : (
@@ -220,7 +220,7 @@ export default function PhoneInputWithCountry({
                     key={c.code}
                     type="button"
                     onClick={() => handleSelectCountry(c)}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-left text-body-sm transition-colors ${
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 text-left text-sm transition-colors ${
                       selected.code === c.code
                         ? 'bg-[var(--accent-gold)]/10 text-white'
                         : 'text-[var(--text-secondary)] hover:bg-[var(--surface)] hover:text-white'
@@ -237,7 +237,7 @@ export default function PhoneInputWithCountry({
         )}
       </div>
       {hint && (
-        <p className="text-body-sm text-[var(--text-muted)] mt-1">{hint}</p>
+        <p className="text-sm text-[var(--text-muted)] mt-1">{hint}</p>
       )}
     </div>
   )

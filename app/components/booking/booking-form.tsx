@@ -18,6 +18,7 @@ import { createPersistence } from './lib/persistence'
 import { useI18n } from '@/lib/i18n'
 import type { Booking, DestinationData } from './lib/types'
 import { logBookingEvent, logBookingError } from './lib/logger'
+import { CONFIG_DEFAULTS } from './lib/config-defaults'
 
 type Step = 0 | 1 | 2 | 3 | 4
 
@@ -102,12 +103,23 @@ function BookingFormInner() {
   const { t } = useI18n()
 
   interface BookingConfig {
-    packages: Record<string, { name: string; price: number; features?: string[]; is_popular?: boolean }>
+    packages: Record<string, {
+      name: string
+      price: number
+      price_per_person_usd?: number
+      features?: string[]
+      tours?: Array<{ id: number; name: string; description: string; price_per_person_usd: number }>
+      is_popular?: boolean
+    }>
     returnTripCharge: number
     serviceFee: number
     taxRate: number
     currency: string
     advanceBookingDays: number
+    experiences?: Record<string, number>
+    trips?: Array<{ id: string; name: string; price_per_person_usd: number }>
+    trm?: number
+    brandName?: string
   }
 
   const [bookingConfig, setBookingConfig] = useState<BookingConfig | null>(null)
@@ -146,6 +158,7 @@ function BookingFormInner() {
     address: '',
     wantsGuatape: false,
     additionalTrips: [],
+    numPeople: 1,
   })
   const [selectedPackage, setSelectedPackage] = useState('')
   const [bookingReference] = useState(() =>
@@ -166,7 +179,7 @@ function BookingFormInner() {
         if (!fieldsFilled) return false
         const today = new Date()
         const target = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-        target.setDate(target.getDate() + 10)
+        target.setDate(target.getDate() + (bookingConfig?.advanceBookingDays ?? CONFIG_DEFAULTS.advanceBookingDays))
         const minDateStr = target.toISOString().split('T')[0]
         return flightData.arrivalDate >= minDateStr
       }
@@ -284,12 +297,12 @@ function BookingFormInner() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-bg-dark flex flex-col">
+      <div className="min-h-dvh bg-bg-dark flex flex-col">
         <header className="bg-[var(--bg-card)] border-b border-[var(--border)]">
           <div className="mx-auto max-w-container px-4 md:px-12 py-4 flex items-center justify-between">
             <Link href="/" className="font-display text-2xl font-semibold text-white no-underline tracking-tight">
-              Medellín{' '}
-              <span className="text-[var(--accent-gold)]">Premium</span>
+              {bookingConfig?.brandName?.split(' ')[0] || 'Medellín'}{' '}
+              <span className="text-[var(--accent-gold)]">{bookingConfig?.brandName?.split(' ').slice(1).join(' ') || 'Premium'}</span>
             </Link>
             <Link
               href="/"
@@ -311,11 +324,11 @@ function BookingFormInner() {
 
   if (configError) {
     return (
-      <div className="min-h-screen bg-bg-dark flex flex-col">
+      <div className="min-h-dvh bg-bg-dark flex flex-col">
         <header className="bg-[var(--bg-card)] border-b border-[var(--border)]">
           <div className="mx-auto max-w-container px-4 md:px-12 py-4 flex items-center justify-between">
             <Link href="/" className="font-display text-2xl font-semibold text-white no-underline tracking-tight">
-              Medellín{' '}<span className="text-[var(--accent-gold)]">Premium</span>
+              {bookingConfig?.brandName?.split(' ')[0] || 'Medellín'}{' '}<span className="text-[var(--accent-gold)]">{bookingConfig?.brandName?.split(' ').slice(1).join(' ') || 'Premium'}</span>
             </Link>
           </div>
         </header>
@@ -336,12 +349,12 @@ function BookingFormInner() {
   }
 
   return (
-    <div className="min-h-screen bg-bg-dark flex flex-col">
+    <div className="min-h-dvh bg-bg-dark flex flex-col">
       <header className="bg-[var(--bg-card)] border-b border-[var(--border)]">
         <div className="mx-auto max-w-container px-4 md:px-12 py-4 flex items-center justify-between">
           <Link href="/" className="font-display text-2xl font-semibold text-white no-underline tracking-tight">
-            Medellín{' '}
-            <span className="text-[var(--accent-gold)]">Premium</span>
+            {bookingConfig?.brandName?.split(' ')[0] || 'Medellín'}{' '}
+            <span className="text-[var(--accent-gold)]">{bookingConfig?.brandName?.split(' ').slice(1).join(' ') || 'Premium'}</span>
           </Link>
           <div className="flex items-center gap-3">
             <LangToggle />
@@ -372,10 +385,10 @@ function BookingFormInner() {
                   const isCompleted = i < step
                   return (
                     <div key={s.label} className="flex items-center gap-3">
-                      <div className={`flex items-center gap-2.5 text-[12px] font-medium transition-colors duration-250 ${
+                      <div className={`flex items-center gap-2.5 text-[12px] font-medium transition-colors duration-200 ${
                         isActive ? 'text-[var(--accent-gold)]' : isCompleted ? 'text-[var(--success)]' : 'text-[var(--text-muted)]'
                       }`}>
-                        <span className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold border-[1.5px] transition-all duration-250 ${
+                        <span className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold border-[1.5px] transition-all duration-200 ${
                           isActive
                             ? 'bg-[rgba(212,165,116,0.12)] border-[var(--accent-gold)] text-[var(--accent-gold)]'
                             : isCompleted
@@ -391,7 +404,7 @@ function BookingFormInner() {
                         <span className="hidden lg:inline">{s.label}</span>
                       </div>
                       {i < stepDetails.length - 1 && (
-                        <div className={`w-6 h-px transition-colors duration-250 ${i < step ? 'bg-[var(--success)]' : 'bg-[var(--border)]'}`} />
+                        <div className={`w-6 h-px transition-colors duration-200 ${i < step ? 'bg-[var(--success)]' : 'bg-[var(--border)]'}`} />
                       )}
                     </div>
                   )
@@ -428,6 +441,7 @@ function BookingFormInner() {
                     onChange={setDestination}
                     customerNotes={customerNotes}
                     onCustomerNotesChange={setCustomerNotes}
+                    config={bookingConfig}
                   />
                 )}
                 {step === 3 && (
@@ -453,6 +467,7 @@ function BookingFormInner() {
                       showToast({ type: 'error', message })
                     }}
                     config={bookingConfig}
+                    destination={destination}
                   />
                 )}
 
@@ -505,6 +520,7 @@ function BookingFormInner() {
                 packageId={selectedPackage}
                 needReturn={flightData.needReturn}
                 config={bookingConfig}
+                destination={destination}
               />
             </aside>
           </div>
@@ -520,6 +536,7 @@ function BookingFormInner() {
           onConfirm={nextStep}
           isSubmitting={isSubmitting}
           config={bookingConfig}
+          destination={destination}
         />
       )}
 

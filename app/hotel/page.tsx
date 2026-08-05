@@ -130,11 +130,11 @@ export default function HotelPage() {
 
   const kpiData = [
     { label: 'Reservaciones hoy', value: stats.todayReservations, icon: (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>), color: 'var(--accent-gold)' },
-    { label: 'Check-ins', value: stats.todayCheckins, icon: (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/></svg>), color: 'var(--success)' },
-    { label: 'Check-outs', value: stats.todayCheckouts, icon: (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="15 17 10 12 15 7"/></svg>), color: 'var(--info)' },
-    { label: 'Ocupacion', value: `${stats.occupancy}%`, icon: (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>), color: '#a78bfa' },
-    { label: 'Ingresos periodo', value: `$${stats.periodRevenue.toLocaleString()}`, icon: (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>), color: 'var(--accent-gold)' },
-    { label: 'Servicios activos', value: stats.activeServices, icon: (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>), color: '#f59e0b' },
+    { label: 'Check-ins', value: stats.todayCheckins, icon: (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/></svg>), color: 'var(--accent-gold)' },
+    { label: 'Check-outs', value: stats.todayCheckouts, icon: (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="15 17 10 12 15 7"/></svg>), color: 'var(--accent-gold)' },
+    { label: 'Ocupación', value: `${stats.occupancy}%`, icon: (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>), color: 'var(--accent-gold)' },
+    { label: 'Ingresos del periodo', value: `$${stats.periodRevenue.toLocaleString()}`, icon: (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>), color: 'var(--accent-gold)' },
+    { label: 'Servicios activos', value: stats.activeServices, icon: (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>), color: 'var(--accent-gold)' },
   ]
 
   return (
@@ -159,9 +159,9 @@ export default function HotelPage() {
         {kpiData.map(k => (
           <div key={k.label} style={{ ...cardStyle, padding: '20px', position: 'relative' }}>
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '3px', background: k.color }} />
-            <div style={{ width: '36px', height: '36px', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${k.color}15`, color: k.color, marginBottom: '12px' }}>{k.icon}</div>
+            <div style={{ width: '36px', height: '36px', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(212,165,116,0.12)', color: k.color, marginBottom: '12px' }}>{k.icon}</div>
             <div style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-muted)', marginBottom: '4px' }}>{k.label}</div>
-            <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>{k.value}</div>
+            <div style={{ fontSize: '24px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-sans)', fontVariantNumeric: 'tabular-nums' }}>{k.value}</div>
           </div>
         ))}
       </div>
@@ -187,7 +187,7 @@ export default function HotelPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
-                  <th style={tableHeaderStyle}>Huesped</th>
+                  <th style={tableHeaderStyle}>Huésped</th>
                   <th style={tableHeaderStyle}>Paquete</th>
                   <th style={tableHeaderStyle}>Llegada</th>
                   <th style={tableHeaderStyle}>Estado</th>
@@ -245,7 +245,7 @@ export default function HotelPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
-                <th style={tableHeaderStyle}>Habitacion</th>
+                <th style={tableHeaderStyle}>Habitación</th>
                 <th style={tableHeaderStyle}>Capacidad</th>
                 <th style={tableHeaderStyle}>Precio/Noche</th>
                 <th style={tableHeaderStyle}>Desayuno</th>

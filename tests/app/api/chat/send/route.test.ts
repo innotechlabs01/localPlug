@@ -17,6 +17,11 @@ vi.mock('@/lib/n8n/client', () => ({
   triggerFraudDetection: (...args: any[]) => mockTriggerFraudDetection(...args),
 }))
 
+const mockGenerateOpenAIResponse = vi.fn()
+vi.mock('@/lib/services/openai-service', () => ({
+  generateOpenAIResponse: (...args: any[]) => mockGenerateOpenAIResponse(...args),
+}))
+
 const mockGenerateOllamaResponse = vi.fn()
 vi.mock('@/lib/services/ollama-service', () => ({
   generateOllamaResponse: (...args: any[]) => mockGenerateOllamaResponse(...args),
@@ -34,7 +39,7 @@ vi.mock('@/lib/i18n/server', () => ({
 }))
 
 beforeEach(() => {
-  vi.clearAllMocks()
+  vi.resetAllMocks()
 })
 
 afterEach(() => {
@@ -137,6 +142,11 @@ describe('POST /api/chat/send', () => {
       error: 'n8n timeout',
     })
 
+    mockGenerateOpenAIResponse.mockResolvedValue({
+      message: '',
+      confidence: 0,
+    })
+
     mockGenerateOllamaResponse.mockResolvedValue({
       message: 'Ollama response here',
       confidence: 0.85,
@@ -155,6 +165,122 @@ describe('POST /api/chat/send', () => {
     expect(json.response.content).toBe('Ollama response here')
   })
 
+  it('falls back to OpenAI when n8n fails', async () => {
+    mockExecute
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ user_name: 'John', user_email: 'john@test.com', user_country: 'US', booking_reference: null }] })
+      .mockResolvedValueOnce({ rows: [{ sender_type: 'user', content: 'Hello' }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rowsAffected: 1 })
+      .mockResolvedValueOnce({ rowsAffected: 1 })
+      .mockResolvedValueOnce({ rowsAffected: 1 })
+      .mockResolvedValueOnce({ rowsAffected: 1 })
+      .mockResolvedValueOnce({ rowsAffected: 1 })
+      .mockResolvedValueOnce({ rowsAffected: 1 })
+
+    mockTriggerAiChatMessage.mockResolvedValue({
+      success: false,
+      error: 'n8n timeout',
+    })
+
+    mockGenerateOpenAIResponse.mockResolvedValue({
+      message: 'OpenAI response here',
+      confidence: 0.9,
+    })
+
+    const req = mockRequest({
+      conversationId: 1,
+      message: 'Hello',
+      userIdentifier: 'user123',
+    })
+
+    const res = await POST(req)
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.source).toBe('openai')
+    expect(json.response.content).toBe('OpenAI response here')
+  })
+
+  it('falls back to Ollama when both n8n and OpenAI fail', async () => {
+    mockExecute
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ user_name: 'John', user_email: 'john@test.com', user_country: 'US', booking_reference: null }] })
+      .mockResolvedValueOnce({ rows: [{ sender_type: 'user', content: 'Hello' }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rowsAffected: 1 })
+      .mockResolvedValueOnce({ rowsAffected: 1 })
+      .mockResolvedValueOnce({ rowsAffected: 1 })
+      .mockResolvedValueOnce({ rowsAffected: 1 })
+      .mockResolvedValueOnce({ rowsAffected: 1 })
+      .mockResolvedValueOnce({ rowsAffected: 1 })
+
+    mockTriggerAiChatMessage.mockResolvedValue({
+      success: false,
+      error: 'n8n timeout',
+    })
+
+    mockGenerateOpenAIResponse.mockResolvedValue({
+      message: '',
+      confidence: 0,
+    })
+
+    mockGenerateOllamaResponse.mockResolvedValue({
+      message: 'Ollama fallback response',
+      confidence: 0.85,
+    })
+
+    const req = mockRequest({
+      conversationId: 1,
+      message: 'Hello',
+      userIdentifier: 'user123',
+    })
+
+    const res = await POST(req)
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.source).toBe('ollama')
+    expect(json.response.content).toBe('Ollama fallback response')
+  })
+
+  it('returns fallback when n8n, OpenAI, and Ollama all fail', async () => {
+    mockExecute
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [{ user_name: 'John', user_email: 'john@test.com', user_country: 'US', booking_reference: null }] })
+      .mockResolvedValueOnce({ rows: [{ sender_type: 'user', content: 'Hello' }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rowsAffected: 1 })
+      .mockResolvedValueOnce({ rowsAffected: 1 })
+      .mockResolvedValueOnce({ rowsAffected: 1 })
+      .mockResolvedValueOnce({ rowsAffected: 1 })
+      .mockResolvedValueOnce({ rowsAffected: 1 })
+
+    mockTriggerAiChatMessage.mockResolvedValue({
+      success: false,
+      error: 'n8n timeout',
+    })
+
+    mockGenerateOpenAIResponse.mockResolvedValue({
+      message: '',
+      confidence: 0,
+    })
+
+    mockGenerateOllamaResponse.mockResolvedValue({
+      message: '',
+      confidence: 0,
+    })
+
+    const req = mockRequest({
+      conversationId: 1,
+      message: 'Hello',
+      userIdentifier: 'user123',
+    })
+
+    const res = await POST(req)
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.source).toBe('fallback')
+  })
+
   it('returns fallback when both n8n and Ollama fail', async () => {
     mockExecute
       .mockResolvedValueOnce({ rows: [] })
@@ -164,10 +290,17 @@ describe('POST /api/chat/send', () => {
       .mockResolvedValueOnce({ rowsAffected: 1 })
       .mockResolvedValueOnce({ rowsAffected: 1 })
       .mockResolvedValueOnce({ rowsAffected: 1 })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rowsAffected: 1 })
 
     mockTriggerAiChatMessage.mockResolvedValue({
       success: false,
       error: 'n8n timeout',
+    })
+
+    mockGenerateOpenAIResponse.mockResolvedValue({
+      message: '',
+      confidence: 0,
     })
 
     mockGenerateOllamaResponse.mockResolvedValue({

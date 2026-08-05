@@ -28,7 +28,6 @@ if [ ! -f "$MARKER_FILE" ]; then
       n8n import:workflow --input="$f" 2>&1 || echo "  Import skipped/failed for $name"
     fi
   done
-  # Give n8n a moment to process the import
   sleep 3
   # Activate all workflows that were just imported
   echo "Activating workflows..."

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getDriverFromSession } from '@/lib/driver/auth'
 import { getDb } from '@/lib/db'
+import { getDriverBaseTripCompensation, getDriverParkingReimbursement } from '@/lib/settings'
 
 export const dynamic = 'force-dynamic'
 
@@ -42,17 +43,25 @@ export async function GET() {
     })
     const active = Number(activeResult.rows[0].active) || 0
 
-    // Earnings (sum of completed order prices * commission rate)
-    const commissionRate = Number(result.driver.commission_rate) || 30
+    // Per-order compensation: base trip fee + toll, plus parking reimbursement when flagged
+    const [base, reinf] = await Promise.all([
+      getDriverBaseTripCompensation(),
+      getDriverParkingReimbursement(),
+    ])
+
+    // Earnings per-order: completed trips earn base, +reinf when parking proof is approved
     const earningsResult = await db.execute({
-      sql: `SELECT COALESCE(SUM(o.package_price), 0) as total_revenue
+      sql: `SELECT
+              COUNT(*) as completed_count,
+              COALESCE(SUM(CASE WHEN o.airport_parking = 1 AND o.parking_proof_status = 'approved' THEN 1 ELSE 0 END), 0) as paid_parking_count
             FROM assignments a
             JOIN orders o ON a.order_id = o.id
             WHERE a.driver_id = ? AND a.status = 'completed'`,
       args: [driverId],
     })
-    const totalRevenue = Number(earningsResult.rows[0].total_revenue) || 0
-    const earnings = Math.round(totalRevenue * (commissionRate / 100))
+    const completedAssignments = Number(earningsResult.rows[0]?.completed_count || 0)
+    const paidParkingAssignments = Number(earningsResult.rows[0]?.paid_parking_count || 0)
+    const earnings = Math.round((completedAssignments * base + paidParkingAssignments * reinf) * 100) / 100
 
     // Acceptance rate
     const totalDecisions = completed + Number((await db.execute({
@@ -80,8 +89,10 @@ export async function GET() {
         pending,
         active,
         earnings,
+        commissionRate: Number(result.driver.commission_rate) || 30,
+        tripCompensation: base,
+        completedTrips: completedAssignments,
         acceptanceRate,
-        commissionRate,
       },
       packageBreakdown: packageBreakdown.rows,
     })

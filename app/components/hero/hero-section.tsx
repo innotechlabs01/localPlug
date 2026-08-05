@@ -9,7 +9,7 @@ const FERIA_COUNTDOWN_DAYS = 18
 
 function FeriaBanner() {
   return (
-    <div className="relative z-20 bg-gradient-to-r from-[#e94560] via-[#ff6b6b] to-[#e94560] py-2.5 px-4 text-center">
+    <div className="relative z-20 bg-gradient-to-r from-[var(--accent-gold-dark)] via-[var(--accent-orange)] to-[var(--accent-gold-dark)] py-2.5 px-4 text-center">
       <div className="flex items-center justify-center gap-3 flex-wrap">
         <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-white">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -19,7 +19,10 @@ function FeriaBanner() {
         </span>
         <span className="text-white/80">|</span>
         <span className="text-sm font-semibold text-white">
-          🌸 Feria de las Flores {FERIA_DATES}
+          <svg className="inline -mt-0.5 mr-1.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l2.8 2.8M16.2 16.2L19 19M19 5l-2.8 2.8M7.8 16.2L5 19"/>
+          </svg>
+          Feria de las Flores {FERIA_DATES}
         </span>
         <span className="text-white/80">|</span>
         <a href="#feria" className="text-xs font-bold uppercase tracking-wider text-white underline underline-offset-2 hover:text-white/80 transition-colors">
@@ -47,9 +50,9 @@ function TrustIndicator({ icon, title, description }: { icon: React.ReactNode; t
 function HeroInner() {
   const { t } = useI18n()
   return (
-    <>
+    <div className="pt-16">
       <FeriaBanner />
-      <section className="relative min-h-screen flex items-center overflow-hidden bg-gradient-to-b from-[var(--bg-dark)] to-[#0d1512]">
+      <section className="relative min-h-dvh flex items-center overflow-hidden bg-gradient-to-b from-[var(--bg-dark)] to-[#0f0f0f]">
       {/* Background image — Medellín skyline at sunset */}
       <div className="absolute inset-0 z-0">
         <Image
@@ -86,7 +89,7 @@ function HeroInner() {
           </div>
 
           {/* Headline */}
-          <h1 className="font-display text-[clamp(42px,6.5vw,72px)] font-semibold leading-[1.08] tracking-tight text-white mb-6 animate-fade-in-up" style={{ animationDelay: '0.1s', animationFillMode: 'both' }}>
+          <h1 className="font-display text-[clamp(42px,6.5vw,72px)] font-medium leading-[1.08] tracking-tight text-white mb-6 text-balance animate-fade-in-up" style={{ animationDelay: '0.1s', animationFillMode: 'both' }}>
             {t.hero.title}{' '}
             <em className="not-italic bg-gradient-to-r from-[var(--accent-gold-light)] via-[var(--accent-gold)] to-[var(--accent-gold-dark)] bg-clip-text text-transparent">
               {t.hero.emphasis}
@@ -123,7 +126,7 @@ function HeroInner() {
       </div>
 
       {/* Floating card - desktop only */}
-      <div className="absolute right-[5%] top-1/2 -translate-y-1/2 z-5 max-w-[480px] hidden lg:block animate-fade-in-up" style={{ animationDelay: '0.5s', animationFillMode: 'both' }}>
+      <div className="absolute right-[5%] top-1/2 -translate-y-1/2 z-10 max-w-[480px] hidden lg:block animate-fade-in-up" style={{ animationDelay: '0.5s', animationFillMode: 'both' }}>
         <div className="rounded-[var(--radius-xl)] overflow-hidden shadow-[0_24px_64px_rgba(0,0,0,0.5)] relative">
           <Image
             src="/images/hero-card.jpg"
@@ -139,7 +142,7 @@ function HeroInner() {
         </div>
       </div>
     </section>
-    </>
+    </div>
   )
 }
 

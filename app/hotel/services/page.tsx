@@ -191,7 +191,7 @@ export default function HotelServicesPage() {
         <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
           onClick={e => { if (e.target === e.currentTarget) { setShowForm(false); setEditing(null) } }}
         >
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '28px', width: '440px' }}>
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '28px', width: 'min(440px, calc(100vw - 32px))' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <h2 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-display)', margin: 0 }}>
                 {editing ? 'Editar Servicio' : 'Nuevo Servicio'}
@@ -205,8 +205,8 @@ export default function HotelServicesPage() {
                 <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Ej: Transporte al aeropuerto" style={inputStyle} />
               </div>
               <div>
-                <label style={labelStyle}>Descripcion</label>
-                <textarea rows={2} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Descripcion del servicio..." style={{ ...inputStyle, resize: 'vertical' as const }} />
+                <label style={labelStyle}>Descripción</label>
+                <textarea rows={2} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Descripción del servicio..." style={{ ...inputStyle, resize: 'vertical' as const }} />
               </div>
               <div>
                 <label style={labelStyle}>Precio base *</label>
@@ -214,7 +214,7 @@ export default function HotelServicesPage() {
               </div>
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-secondary)', cursor: 'pointer' }}>
                 <input type="checkbox" checked={form.commission_applies} onChange={e => setForm(f => ({ ...f, commission_applies: e.target.checked }))} style={{ accentColor: 'var(--accent-gold)' }} />
-                Aplica comision al administrador
+                Aplica comisión al administrador
               </label>
             </div>
 

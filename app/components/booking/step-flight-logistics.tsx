@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { createFlightValidation } from './lib/flight-validation'
 import { getToday } from '@/lib/date-utils'
+import { CONFIG_DEFAULTS } from './lib/config-defaults'
 
 interface FlightData {
   flightNumber: string
@@ -28,13 +29,13 @@ interface BookingConfig {
   taxRate: number
   currency: string
   advanceBookingDays: number
+  trips?: Array<{ id: string; name: string; price_per_person_usd: number }>
+  trm?: number
 }
 
-function getMinDate(): string {
-  const today = new Date(getToday() + 'T00:00:00')
-  today.setDate(today.getDate() + 10)
+function getMinDate(advanceDays: number = 10): string {
   return getToday().replace(/(\d{4})-(\d{2})-(\d{2})/, (_, y, m, d) => {
-    const date = new Date(Number(y), Number(m) - 1, Number(d) + 10)
+    const date = new Date(Number(y), Number(m) - 1, Number(d) + advanceDays)
     const yy = date.getFullYear()
     const mm = String(date.getMonth() + 1).padStart(2, '0')
     const dd = String(date.getDate()).padStart(2, '0')
@@ -60,7 +61,7 @@ export default function StepFlightLogistics({ data, onChange, config }: StepFlig
     onChange({ ...data, needReturn: !data.needReturn })
   }
 
-  const minDate = getMinDate()
+  const minDate = getMinDate(config?.advanceBookingDays ?? 10)
 
   useEffect(() => {
     if (data.needReturn && data.arrivalDate && data.returnDate && data.returnDate < data.arrivalDate) {
@@ -190,7 +191,7 @@ export default function StepFlightLogistics({ data, onChange, config }: StepFlig
           tabIndex={0}
           onClick={toggleReturn}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleReturn() }}}
-          className={`p-4 rounded-[var(--radius-md)] border cursor-pointer transition-all duration-250 ${
+          className={`p-4 rounded-[var(--radius-md)] border cursor-pointer transition-all duration-200 ${
             data.needReturn
               ? 'border-[var(--accent-gold)] bg-[rgba(212,165,116,0.08)]'
               : 'border-[var(--border)] bg-[var(--bg-elevated)] hover:border-[var(--border-light)]'
@@ -217,7 +218,7 @@ export default function StepFlightLogistics({ data, onChange, config }: StepFlig
               </p>
             </div>
             <span className="text-[14px] font-semibold text-[var(--accent-gold)] whitespace-nowrap shrink-0">
-              +${config?.returnTripCharge ?? 48} <span className="text-[12px] font-normal text-[var(--text-muted)]">USD</span>
+              +${config?.returnTripCharge ?? CONFIG_DEFAULTS.returnTripCharge} <span className="text-[12px] font-normal text-[var(--text-muted)]">USD</span>
             </span>
           </div>
         </div>

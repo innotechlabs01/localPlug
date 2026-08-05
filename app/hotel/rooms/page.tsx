@@ -136,7 +136,7 @@ export default function HotelRoomsPage() {
                 {total.available} disp.
               </span>
               <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#eab208', display: 'inline-block' }} />
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#facc15', display: 'inline-block' }} />
                 {total.occupied} ocup.
               </span>
               <span style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -220,10 +220,10 @@ export default function HotelRoomsPage() {
         <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
           onClick={e => { if (e.target === e.currentTarget) { setShowForm(false); setEditing(null) } }}
         >
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '28px', width: '480px', maxHeight: '85vh', overflowY: 'auto' }}>
+          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '28px', width: 'min(480px, calc(100vw - 32px))', maxHeight: '85vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
               <h2 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-display)', margin: 0 }}>
-                {editing ? 'Editar Habitacion' : 'Nueva Habitacion'}
+                {editing ? 'Editar Habitación' : 'Nueva Habitación'}
               </h2>
               <button onClick={() => { setShowForm(false); setEditing(null) }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '18px' }}>X</button>
             </div>
@@ -234,8 +234,8 @@ export default function HotelRoomsPage() {
                 <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Suite Presidencial" style={inputStyle} />
               </div>
               <div>
-                <label style={labelStyle}>Descripcion</label>
-                <textarea rows={2} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Descripcion de la habitacion..." style={{ ...inputStyle, resize: 'vertical' as const }} />
+                <label style={labelStyle}>Descripción</label>
+                <textarea rows={2} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Descripción de la habitación..." style={{ ...inputStyle, resize: 'vertical' as const }} />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
@@ -264,7 +264,7 @@ export default function HotelRoomsPage() {
             <div style={{ display: 'flex', gap: '12px', marginTop: '24px', justifyContent: 'flex-end' }}>
               <button onClick={() => { setShowForm(false); setEditing(null) }} style={btnGhost}>Cancelar</button>
               <button onClick={handleSave} disabled={saving || !form.name || !form.price_per_night} style={{ ...btnPrimary, opacity: saving || !form.name || !form.price_per_night ? 0.5 : 1 }}>
-                {saving ? 'Guardando...' : editing ? 'Actualizar' : 'Crear Habitacion'}
+                {saving ? 'Guardando...' : editing ? 'Actualizar' : 'Crear Habitación'}
               </button>
             </div>
           </div>

@@ -21,17 +21,17 @@ export default function Input({
     <div className="flex flex-col gap-1.5">
       <label
         htmlFor={inputId}
-        className="text-label-md text-slate-navy"
+        className="text-label-md text-[var(--text-primary)]"
       >
         {label}
         {props.required && <span className="text-red-500 ml-0.5">*</span>}
       </label>
       <input
         id={inputId}
-        className={`w-full px-3 py-3 border rounded text-body-md text-slate-navy bg-white placeholder:text-cool-slate-400 transition-all duration-200 outline-none ${
+        className={`w-full px-3 py-3 border rounded text-body-md text-[var(--text-primary)] bg-[var(--bg-elevated)] placeholder:text-[var(--text-muted)] transition-all duration-200 outline-none ${
           error
             ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
-            : 'border-cool-slate-300 focus:border-mountain-emerald focus:ring-2 focus:ring-mountain-emerald/20'
+            : 'border-[var(--border)] focus:border-[var(--accent-gold)] focus:ring-2 focus:ring-[var(--accent-gold)]/20'
         } ${className}`}
         onFocus={(e) => {
           setFocused(true)

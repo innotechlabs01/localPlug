@@ -26,6 +26,7 @@ export const tableCellStyle: React.CSSProperties = {
   fontSize: '13px',
   color: 'var(--text-secondary)',
   borderBottom: '1px solid var(--border)',
+  fontVariantNumeric: 'tabular-nums',
 }
 
 // ── Page header ──
@@ -115,7 +116,7 @@ export const btnGhost: React.CSSProperties = {
 // ── Status badge map ──
 export const ROOM_STATUS: Record<string, { bg: string; fg: string; label: string }> = {
   available: { bg: 'rgba(74,222,128,0.12)', fg: '#4ade80', label: 'Disponible' },
-  occupied: { bg: 'rgba(250,204,21,0.12)', fg: '#eab208', label: 'Ocupada' },
+  occupied: { bg: 'rgba(250,204,21,0.12)', fg: '#facc15', label: 'Ocupada' },
   maintenance: { bg: 'rgba(248,113,113,0.12)', fg: '#f87171', label: 'Mantenimiento' },
 }
 

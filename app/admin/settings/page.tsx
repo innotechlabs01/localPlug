@@ -9,6 +9,7 @@ const navItems = [
   { id: 'section-pricing', label: 'Package Pricing' },
   { id: 'section-fees', label: 'Fees & Taxes' },
   { id: 'section-commissions', label: 'Commissions' },
+  { id: 'section-driver-payments', label: 'Driver Payments' },
   { id: 'section-business-rules', label: 'Business Rules' },
   { id: 'section-timeouts', label: 'Operational Timeouts' },
   { id: 'section-experiences', label: 'Experience Pricing' },
@@ -283,6 +284,44 @@ export default function SettingsPage() {
           </div>
         </section>
 
+        {/* Section: Driver Payments (flat fee per trip + toll + airport parking) */}
+        <section className="settings-section" id="section-driver-payments">
+          <div className="settings-section-header">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 13l3-3v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l3-3m-8 5v6"/><circle cx="12" cy="10" r="3"/></svg>
+            <span className="settings-section-title">Driver Payments</span>
+            <span className="settings-section-desc">Configure the flat compensation paid per trip performed</span>
+          </div>
+          <div className="settings-section-body">
+            <div className="form-grid">
+              {[
+                { key: 'driver_trip_fee_usd', label: 'Trip Fee', sub: 'Fixed flat amount paid per trip performed', defaultVal: '40', prefix: '$', suffix: 'USD', step: '1' },
+                { key: 'driver_toll_usd', label: 'Toll Reimbursement', sub: 'Reimbursed per trip (e.g. Túnel de Oriente)', defaultVal: '6', prefix: '$', suffix: 'USD', step: '0.5' },
+                { key: 'driver_airport_parking_usd', label: 'Airport Parking Base', sub: 'Base parking cost when parked at the airport', defaultVal: '20', prefix: '$', suffix: 'USD', step: '0.5' },
+                { key: 'driver_airport_parking_pct', label: 'Airport Parking %', sub: 'Percentage of base parking cost reimbursed (e.g. 50 = 50%)', defaultVal: '50', prefix: '', suffix: '%', step: '5' },
+              ].map(item => (
+                <div key={item.key} className="input-group">
+                  <label className="input-label">
+                    {item.label}
+                    <small style={{ display: 'block', fontSize: 11, color: 'var(--fg-muted)', fontWeight: 400, marginTop: 2 }}>{item.sub}</small>
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {item.prefix ? <span style={{ color: 'var(--fg-muted)', fontSize: 14 }}>{item.prefix}</span> : null}
+                    <input className="input" type="number" min="0" step={item.step}
+                      value={settings[item.key] ?? item.defaultVal}
+                      onChange={(e) => setSettings(prev => ({ ...prev, [item.key]: e.target.value }))}
+                      style={{ width: 120 }}
+                    />
+                    {item.suffix ? <span style={{ color: 'var(--fg-muted)', fontSize: 12 }}>{item.suffix}</span> : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{ marginTop: 16, padding: 12, background: 'var(--surface)', borderRadius: 'var(--radius-sm)', fontSize: 12, color: 'var(--fg-secondary)' }}>
+              <strong>Per-trip compensation:</strong> ${Number(settings['driver_trip_fee_usd'] || 40).toFixed(2)} + ${Number(settings['driver_toll_usd'] || 6).toFixed(2)} toll + (${Number(settings['driver_airport_parking_usd'] || 20).toFixed(2)} × {Number(settings['driver_airport_parking_pct'] || 50).toFixed(0)}%) parking = <strong style={{ color: 'var(--accent-gold)' }}>${(Number(settings['driver_trip_fee_usd'] || 40) + Number(settings['driver_toll_usd'] || 6) + (Number(settings['driver_airport_parking_usd'] || 20) * Number(settings['driver_airport_parking_pct'] || 50) / 100)).toFixed(2)} USD / trip</strong>
+            </div>
+          </div>
+        </section>
+
         {/* Section: Business Rules */}
         <section className="settings-section" id="section-business-rules">
           <div className="settings-section-header">
@@ -367,6 +406,7 @@ export default function SettingsPage() {
                 { key: 'exp_comuna13_price', label: 'Comuna 13 Tour', sub: 'Guided neighborhood tour', defaultVal: '89' },
                 { key: 'exp_coffee_price', label: 'Coffee Tour', sub: 'Coffee farm experience', defaultVal: '119' },
                 { key: 'exp_paragliding_price', label: 'Paragliding', sub: 'Tandem flight', defaultVal: '79' },
+                { key: 'exp_santa_fe_price', label: 'Santa Fe de Antioquia', sub: 'Colonial town day trip', defaultVal: '89' },
                 { key: 'exp_nightlife_price', label: 'Nightlife Experience', sub: 'VIP club access', defaultVal: '249' },
                 { key: 'exp_vip_city_price', label: 'VIP City Experience', sub: 'Full concierge day', defaultVal: '399' },
               ].map(item => (

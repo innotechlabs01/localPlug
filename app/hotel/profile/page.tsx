@@ -77,7 +77,7 @@ export default function HotelProfilePage() {
       {/* Header */}
       <div>
         <h1 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-display)', margin: 0 }}>Perfil del Hotel</h1>
-        <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>Informacion general</p>
+        <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>Información general</p>
       </div>
 
       {/* Status card */}
@@ -86,7 +86,7 @@ export default function HotelProfilePage() {
           {hotel.status === 'active' ? (
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--success)" strokeWidth="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" /></svg>
           ) : (
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#eab208" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#facc15" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
           )}
         </div>
         <div style={{ flex: 1 }}>
@@ -94,7 +94,7 @@ export default function HotelProfilePage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
             <span style={badge(
               hotel.status === 'active' ? 'rgba(74,222,128,0.12)' : 'rgba(250,204,21,0.12)',
-              hotel.status === 'active' ? 'var(--success)' : '#eab208',
+              hotel.status === 'active' ? 'var(--success)' : '#facc15',
             )}>{hotel.status === 'active' ? 'Activo' : 'Inactivo'}</span>
             {renderStars(hotel.stars)}
           </div>
@@ -120,9 +120,9 @@ export default function HotelProfilePage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '20px' }}>
           <InfoField label="Nombre" value={hotel.name} />
           <InfoField label="Slug" value={hotel.slug} />
-          <InfoField label="Descripcion" value={hotel.description} />
-          <InfoField label="Direccion" value={hotel.address} />
-          <InfoField label="Telefono" value={hotel.phone} />
+          <InfoField label="Descripción" value={hotel.description} />
+          <InfoField label="Dirección" value={hotel.address} />
+          <InfoField label="Teléfono" value={hotel.phone} />
           <InfoField label="Email" value={hotel.email} />
           <InfoField label="Sitio web" value={hotel.website} />
           <div>
@@ -134,7 +134,7 @@ export default function HotelProfilePage() {
 
       {/* Commission card */}
       <div style={{ ...cardStyle, padding: '24px' }}>
-        <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--accent-gold)', fontFamily: 'var(--font-display)', marginBottom: '16px' }}>Comision</div>
+        <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--accent-gold)', fontFamily: 'var(--font-display)', marginBottom: '16px' }}>Comisión</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '16px', borderRadius: 'var(--radius-sm)', background: 'rgba(212,165,116,0.06)' }}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent-gold)" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" /></svg>
           <div>

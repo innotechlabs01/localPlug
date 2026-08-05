@@ -44,7 +44,7 @@ function AboutInner() {
             <span className="w-7 h-[2px] bg-[var(--accent-gold)] rounded" aria-hidden="true" />
             {t.about.tag}
           </div>
-          <h2 className="font-display text-[clamp(36px,5vw,52px)] font-semibold tracking-tight text-white mb-4">
+          <h2 className="font-display text-[clamp(36px,5vw,52px)] font-medium tracking-tight text-white mb-4 text-balance">
             {t.about.title}
           </h2>
           <p className="text-lg text-[var(--text-secondary)] max-w-[600px] mx-auto">

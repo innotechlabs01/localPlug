@@ -78,6 +78,22 @@ export default clerkMiddleware(
     return NextResponse.next()
   }
 
+  // Redirect authenticated users from landing page to their portal dashboard
+  if (pathname === '/') {
+    const authResult = await auth() as { userId: string | null }
+    if (authResult.userId) {
+      try {
+        const client = await clerkClient()
+        const clerkUser = await client.users.getUser(authResult.userId)
+        const role = clerkUser.privateMetadata?.role as string | undefined
+        const portalMap: Record<string, string> = { admin: '/admin', hotel_manager: '/hotel', driver: '/driver' }
+        if (role && portalMap[role]) {
+          return NextResponse.redirect(new URL(portalMap[role], req.url))
+        }
+      } catch { /* fall through */ }
+    }
+  }
+
   // Strict role-based portal separation (page routes only, not /api/)
   const isPortalPage =
     (pathname.startsWith('/admin') || pathname.startsWith('/hotel') || pathname.startsWith('/driver')) &&
@@ -109,24 +125,21 @@ export default clerkMiddleware(
         if (!pathname.startsWith(expectedPortal)) {
           return NextResponse.redirect(new URL(expectedPortal, req.url))
         }
-      } else {
-        // No role in Clerk privateMetadata — redirect to sign-in to get proper role assigned
-        return NextResponse.redirect(new URL('/sign-in/admin', req.url))
       }
+      // If no role or unrecognized role, let through — the portal layout
+      // will show "Access Restricted" if the user lacks permissions.
     } catch {
       // Clerk fetch failed — let through; API handlers will reject
     }
-  }
-
-  if (isAdminApiRoute(req)) {
+    return NextResponse.next()
+  } else if (isAdminApiRoute(req)) {
     const authResult = await auth() as { userId: string | null }
     const userId = authResult.userId
     if (!userId) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
     return NextResponse.next()
-  }
-  if (!isPublicRoute(req)) {
+  } else if (!isPublicRoute(req)) {
     await auth.protect()
   }
 },

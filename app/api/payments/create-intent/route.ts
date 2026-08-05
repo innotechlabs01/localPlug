@@ -25,7 +25,7 @@ export async function POST(req: Request) {
       arrivalTime?: string
       needReturn?: boolean
       plan_id?: number
-      tour_ids?: number[]
+      tour_ids?: Array<number | string>
       num_people?: number
     }
 
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
     let usedPackageId: string
 
     if (plan_id) {
-      const { total, plan } = await calculatePlanTotal(plan_id, tour_ids, num_people)
+      const { total, plan } = await calculatePlanTotal(plan_id, tour_ids.map(Number), num_people)
       totalAmountCents = Math.round(total * 100)
       packageName = plan.name as string
       usedPackageId = `plan-${plan_id}`
@@ -60,7 +60,7 @@ export async function POST(req: Request) {
           { status: 400 },
         )
       }
-      totalAmountCents = await getConfigPackageGrandTotalCents(packageId!, !!needReturn)
+      totalAmountCents = await getConfigPackageGrandTotalCents(packageId!, !!needReturn, tour_ids.map(String), num_people)
       packageName = await getConfigPackageName(packageId!)
       usedPackageId = packageId!
     }
@@ -92,6 +92,8 @@ export async function POST(req: Request) {
         booking_reference: bookingReference,
         package_id: usedPackageId,
         need_return: String(!!needReturn),
+        tour_ids: JSON.stringify(tour_ids),
+        num_people: String(num_people),
       },
       customer: { email: customerEmail, name: customerName },
     })

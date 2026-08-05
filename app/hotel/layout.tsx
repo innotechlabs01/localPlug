@@ -311,7 +311,7 @@ function HotelLayoutInner({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg-dark)' }}>
+    <div className="hotel-app" style={{ display: 'flex', height: '100dvh', overflow: 'hidden', background: 'var(--bg-dark)' }}>
       {sidebarOpen && (
         <div
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 40 }}
@@ -321,6 +321,7 @@ function HotelLayoutInner({ children }: { children: React.ReactNode }) {
 
       {/* Sidebar */}
       <aside
+        data-open={sidebarOpen}
         style={{
           position: 'fixed',
           top: 0,
@@ -376,7 +377,7 @@ function HotelLayoutInner({ children }: { children: React.ReactNode }) {
 
         <DateNav />
 
-        <main style={{ flex: 1, overflowY: 'auto', padding: '24px' }}>
+        <main style={{ flex: 1, overflowY: 'auto', padding: '24px', maxWidth: 1400, width: '100%', margin: '0 auto' }}>
           {children}
         </main>
       </div>

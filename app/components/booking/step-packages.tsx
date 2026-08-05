@@ -15,14 +15,8 @@ interface BookingConfig {
   taxRate: number
   currency: string
   advanceBookingDays: number
-}
-
-const packageIds = ['smooth-landing', 'first-24', 'full-insider'] as const
-
-const popularFlags: Record<string, boolean> = {
-  'smooth-landing': false,
-  'first-24': true,
-  'full-insider': false,
+  trips?: Array<{ id: string; name: string; price_per_person_usd: number }>
+  trm?: number
 }
 
 export default function StepPackages({
@@ -32,6 +26,7 @@ export default function StepPackages({
 }: StepPackagesProps) {
   const { t } = useI18n()
   const pkgT = t.booking.steps.packages
+  const currency = config?.currency?.toUpperCase() || 'USD'
 
   return (
     <div>
@@ -41,13 +36,13 @@ export default function StepPackages({
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
-        {packageIds.map((pkgId) => {
+        {Object.keys(config?.packages || {}).map((pkgId) => {
           const selected = value === pkgId
           const pkgConfig = config?.packages?.[pkgId]
           const pkgData = pkgT.packages[pkgId as keyof typeof pkgT.packages]
           const price = pkgConfig?.price ?? 0
           const features = pkgConfig?.features || pkgData.features || []
-          const isPopular = pkgConfig?.is_popular ?? popularFlags[pkgId] ?? false
+          const isPopular = pkgConfig?.is_popular ?? false
           const isElite = pkgId === 'full-insider'
 
           return (
@@ -55,7 +50,7 @@ export default function StepPackages({
               key={pkgId}
               type="button"
               onClick={() => onChange(pkgId)}
-              className={`relative flex flex-col gap-3.5 p-5 rounded-[var(--radius-lg)] border-[1.5px] cursor-pointer transition-all duration-250 ${
+              className={`relative flex flex-col gap-3.5 p-5 rounded-[var(--radius-lg)] border-[1.5px] cursor-pointer transition-all duration-200 ${
                 selected
                   ? 'border-[var(--accent-gold)] bg-[rgba(212,165,116,0.08)] shadow-[0_0_0_1px_rgba(212,165,116,0.25)]'
                   : 'border-[var(--border)] bg-[var(--bg-card)] hover:border-[var(--border-light)] hover:bg-[var(--bg-elevated)]'
@@ -73,12 +68,17 @@ export default function StepPackages({
               )}
 
               <div className="flex items-start justify-between">
-                <div>
+               <div>
                   <div className="text-[28px] font-bold tracking-[-0.03em] text-white leading-none mb-0.5">
-                    ${price} <span className="text-[14px] font-normal text-[var(--text-muted)]">USD</span>
+                    ${price} <span className="text-[14px] font-normal text-[var(--text-muted)]">{currency}</span>
                   </div>
-                  <div className="text-[15px] font-semibold text-white mt-1">{pkgData.name}</div>
-                </div>
+                  {config?.trm && (
+                    <div className="text-[11px] text-[var(--text-muted)]">
+                      {(price * Number(config.trm)).toLocaleString('es-CO')} COP
+                    </div>
+                  )}
+                  <div className="text-[15px] font-semibold text-white mt-1">{pkgData?.name || pkgId}</div>
+                 </div>
                 <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all duration-200 ${
                   selected
                     ? 'border-[var(--accent-gold)] bg-[var(--accent-gold)]'
