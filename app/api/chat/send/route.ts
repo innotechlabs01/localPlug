@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { triggerAiChatMessage, triggerFraudDetection } from '@/lib/n8n/client'
+import { generateOpenAIResponse } from '@/lib/services/openai-service'
 import { generateOllamaResponse } from '@/lib/services/ollama-service'
 import { t } from '@/lib/i18n/server'
 
@@ -272,9 +273,61 @@ export async function POST(request: Request) {
       })
     }
 
-    console.warn('[Chat Send] n8n webhook failed, trying Ollama fallback', {
+    console.warn('[Chat Send] n8n webhook failed, trying OpenAI fallback', {
       conversationId: convId,
       error: n8nResult.error,
+    })
+
+    const openaiResult = await generateOpenAIResponse({
+      message,
+      conversationHistory: history,
+      bookingInfo,
+      userCountry: conv?.user_country,
+    })
+
+    if (openaiResult.message) {
+      console.log('[Chat Send] OpenAI fallback response generated', { conversationId: convId, message: openaiResult.message.slice(0, 200) })
+
+      await db.execute({
+        sql: `INSERT INTO messages (conversation_id, sender_type, content, message_type, metadata)
+              VALUES (?, 'ai', ?, 'text', ?)`,
+        args: [convId, openaiResult.message, JSON.stringify({ confidence: openaiResult.confidence, source: 'openai' })],
+      })
+
+      await db.execute({
+        sql: `UPDATE conversations SET ai_confidence = ?, last_message_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`,
+        args: [openaiResult.confidence || 1.0, convId],
+      })
+
+      if (openaiResult.confidence < 0.5) {
+        await db.execute({
+          sql: `UPDATE conversations SET status = 'human_active', updated_at = datetime('now')
+                WHERE id = ? AND status = 'ai_active'`,
+          args: [convId],
+        })
+      }
+
+      await db.execute({
+        sql: `UPDATE conversations SET first_agent_response_at = datetime('now')
+              WHERE id = ? AND first_agent_response_at IS NULL`,
+        args: [convId],
+      })
+
+      return NextResponse.json({
+        success: true,
+        conversationId: convId,
+        response: {
+          sender: 'ai',
+          content: openaiResult.message,
+          type: 'text',
+        },
+        n8nTriggered: false,
+        source: 'openai',
+      })
+    }
+
+    console.warn('[Chat Send] OpenAI fallback also failed, trying Ollama fallback', {
+      conversationId: convId,
     })
 
     const ollamaResult = await generateOllamaResponse({

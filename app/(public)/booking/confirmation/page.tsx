@@ -12,7 +12,7 @@ export default function ConfirmationPage() {
   const reference = searchParams.get('ref') || ''
 
   return (
-    <main className="min-h-screen bg-bg-dark flex items-center justify-center px-4">
+    <main className="min-h-dvh bg-bg-dark flex items-center justify-center px-4">
       <div className="max-w-lg w-full bg-bg-card rounded-2xl p-8 text-center space-y-6">
         <div className="text-6xl">🎉</div>
         <h1 className="text-3xl font-display font-bold text-white">

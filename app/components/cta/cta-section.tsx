@@ -21,7 +21,7 @@ function CtaInner() {
       <div className="absolute bottom-20 right-[15%] w-48 h-48 rounded-full bg-[rgba(212,165,116,0.06)] blur-3xl pointer-events-none" aria-hidden="true" />
 
       <div ref={ref} className={`relative z-[1] mx-auto max-w-container px-4 md:px-12 reveal ${isVisible ? 'visible' : ''}`}>
-        <h2 className="font-display text-[clamp(36px,5vw,56px)] font-semibold tracking-tight text-white mb-5">
+        <h2 className="font-display text-[clamp(36px,5vw,56px)] font-medium tracking-tight text-white mb-5 text-balance">
           {t.cta.title}
         </h2>
         <p className="text-lg text-[var(--text-secondary)] max-w-[500px] mx-auto mb-10">

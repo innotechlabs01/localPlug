@@ -43,7 +43,7 @@ export async function POST(req: Request) {
     if (authError) return authError
 
     const body = await req.json()
-    const { name, slug, description, price_usd, is_popular, is_active, sort_order, features, tours } = body
+    const { name, slug, description, price_usd, price_per_person_usd, is_popular, is_active, sort_order, features, tours } = body
 
     if (!name) {
       return NextResponse.json({ error: 'Plan name is required' }, { status: 400 })
@@ -59,10 +59,10 @@ export async function POST(req: Request) {
     }
 
     const result = await db.execute({
-      sql: `INSERT INTO plans (name, slug, description, price_usd, is_popular, is_active, sort_order)
-            VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      sql: `INSERT INTO plans (name, slug, description, price_usd, price_per_person_usd, is_popular, is_active, sort_order)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
-        name, finalSlug, description || '', price_usd || 0,
+        name, finalSlug, description || '', price_usd || 0, price_per_person_usd || 0,
         is_popular ? 1 : 0, is_active !== false ? 1 : 0, sort_order || 0,
       ],
     })
@@ -101,7 +101,7 @@ export async function PUT(req: Request) {
     if (authError) return authError
 
     const body = await req.json()
-    const { id, name, slug, description, price_usd, is_popular, is_active, sort_order, features, tours } = body
+    const { id, name, slug, description, price_usd, price_per_person_usd, is_popular, is_active, sort_order, features, tours } = body
 
     if (!id) return NextResponse.json({ error: 'Plan ID is required' }, { status: 400 })
 
@@ -113,6 +113,7 @@ export async function PUT(req: Request) {
     if (slug !== undefined) { setClauses.push('slug = ?'); args.push(slug) }
     if (description !== undefined) { setClauses.push('description = ?'); args.push(description) }
     if (price_usd !== undefined) { setClauses.push('price_usd = ?'); args.push(price_usd) }
+    if (price_per_person_usd !== undefined) { setClauses.push('price_per_person_usd = ?'); args.push(price_per_person_usd) }
     if (is_popular !== undefined) { setClauses.push('is_popular = ?'); args.push(is_popular ? 1 : 0) }
     if (is_active !== undefined) { setClauses.push('is_active = ?'); args.push(is_active ? 1 : 0) }
     if (sort_order !== undefined) { setClauses.push('sort_order = ?'); args.push(sort_order) }

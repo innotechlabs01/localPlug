@@ -48,8 +48,21 @@ interface DestinationData {
   address: string
   wantsGuatape: boolean
   additionalTrips?: string[]
+  numPeople?: number
   selectedHotelId?: number
   selectedRoomId?: number
+}
+
+interface BookingConfig {
+  packages: Record<string, { name: string; price: number; features?: string[]; is_popular?: boolean }>
+  returnTripCharge: number
+  serviceFee: number
+  taxRate: number
+  currency: string
+  advanceBookingDays: number
+  experiences?: Record<string, number>
+  trips?: Array<{ id: string; name: string; price_per_person_usd: number }>
+  trm?: number
 }
 
 interface StepDestinationProps {
@@ -57,9 +70,10 @@ interface StepDestinationProps {
   onChange: (data: DestinationData) => void
   customerNotes?: string
   onCustomerNotesChange?: (notes: string) => void
+  config?: BookingConfig | null
 }
 
-export default function StepDestination({ data, onChange, customerNotes = '', onCustomerNotesChange }: StepDestinationProps) {
+export default function StepDestination({ data, onChange, customerNotes = '', onCustomerNotesChange, config }: StepDestinationProps) {
   const { t } = useI18n()
   const destT = t.booking.steps.destination
 
@@ -67,13 +81,18 @@ export default function StepDestination({ data, onChange, customerNotes = '', on
   const [hotelsLoading, setHotelsLoading] = useState(false)
   const [expandedHotel, setExpandedHotel] = useState<number | null>(null)
 
-  const AVAILABLE_TRIPS = [
-    { id: 'guatape', label: destT.trips.guatape },
-    { id: 'comuna13', label: destT.trips.comuna13 },
-    { id: 'coffee', label: destT.trips.coffee },
-    { id: 'santa-fe', label: destT.trips['santa-fe'] },
-    { id: 'paragliding', label: destT.trips.paragliding },
-  ]
+  const AVAILABLE_TRIPS = (config?.trips || []).map(trip => ({
+    id: trip.id,
+    label: destT.trips[trip.id as keyof typeof destT.trips] || trip.name,
+  }))
+
+  const tripPrices: Record<string, number> = {}
+  ;(config?.trips || []).forEach((trip: any) => {
+    tripPrices[trip.id] = Number(trip.price_per_person_usd) || 0
+  })
+  const numPeople = Math.max(1, Math.floor(data.numPeople || 1))
+  const selectedTrips = data.additionalTrips ?? []
+  const toursTotal = selectedTrips.reduce((sum, id) => sum + (tripPrices[id] ?? 0) * numPeople, 0)
 
   const togglePlace = (value: boolean) => {
     onChange({ ...data, hasPlace: value, address: value ? data.address : '' })
@@ -85,6 +104,11 @@ export default function StepDestination({ data, onChange, customerNotes = '', on
       ? current.filter((id) => id !== tripId)
       : [...current, tripId]
     onChange({ ...data, additionalTrips: next })
+  }
+
+  const setNumPeople = (value: number) => {
+    const clamped = Math.min(50, Math.max(1, Math.floor(value || 1)))
+    onChange({ ...data, numPeople: clamped })
   }
 
   const selectRoom = (hotelId: number, roomId: number) => {
@@ -317,7 +341,8 @@ export default function StepDestination({ data, onChange, customerNotes = '', on
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {AVAILABLE_TRIPS.map((trip) => {
-              const selected = (data.additionalTrips ?? []).includes(trip.id)
+              const selected = selectedTrips.includes(trip.id)
+              const price = tripPrices[trip.id]
               return (
                 <label
                   key={trip.id}
@@ -333,12 +358,59 @@ export default function StepDestination({ data, onChange, customerNotes = '', on
                     onChange={() => toggleTrip(trip.id)}
                     className="w-5 h-5 rounded border-[var(--border)] text-[var(--accent-gold)] focus:ring-[var(--accent-gold)]/20 focus:ring-2 shrink-0"
                   />
-                  <span className={`text-body-md ${selected ? 'text-[var(--accent-gold)] font-medium' : 'text-[var(--text-primary)]'}`}>
+                  <span className={`flex-1 text-body-md ${selected ? 'text-[var(--accent-gold)] font-medium' : 'text-[var(--text-primary)]'}`}>
                     {trip.label}
                   </span>
+                  {typeof price === 'number' && price > 0 && (
+                    <span className="text-[13px] font-semibold text-white shrink-0">
+                      ${price.toFixed(2)}
+                      <span className="text-[11px] font-normal text-[var(--text-muted)]"> {destT.perPerson}</span>
+                      {config?.trm && (
+                        <span className="text-[10px] font-normal text-[var(--text-muted)] ml-1">
+                          ({(price * Number(config.trm)).toLocaleString('es-CO')} COP)
+                        </span>
+                      )}
+                    </span>
+                  )}
                 </label>
               )
             })}
+          </div>
+        </div>
+
+        <div className="border-t border-[var(--border)] pt-6">
+          <p className="text-label-md text-[var(--text-primary)] mb-3">{destT.numPeople}</p>
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-elevated)] overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setNumPeople(numPeople - 1)}
+                className="w-11 h-11 flex items-center justify-center text-[var(--text-secondary)] hover:text-white hover:bg-[rgba(255,255,255,0.04)] transition-colors"
+                aria-label="Decrease travelers"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              </button>
+              <span className="w-12 text-center text-body-md font-semibold text-white">{numPeople}</span>
+              <button
+                type="button"
+                onClick={() => setNumPeople(numPeople + 1)}
+                className="w-11 h-11 flex items-center justify-center text-[var(--text-secondary)] hover:text-white hover:bg-[rgba(255,255,255,0.04)] transition-colors"
+                aria-label="Increase travelers"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              </button>
+            </div>
+            {selectedTrips.length > 0 && (
+              <div className="text-[13px] text-[var(--text-secondary)]">
+                {t.booking.steps.payment.summaryExperiences}:{' '}
+                <span className="font-semibold text-[var(--accent-gold)]">${toursTotal.toFixed(2)} USD</span>
+              </div>
+            )}
+            {selectedTrips.length === 0 && numPeople > 1 && (
+              <span className="text-[12px] text-[var(--text-secondary)]">
+                Service fee applies per traveler
+              </span>
+            )}
           </div>
         </div>
 

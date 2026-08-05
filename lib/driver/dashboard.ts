@@ -1,4 +1,5 @@
 import { getDb } from '@/lib/db'
+import { getDriverBaseTripCompensation, getDriverParkingReimbursement } from '@/lib/settings'
 
 export interface DriverDashboardMetrics {
   totalTrips: number
@@ -6,8 +7,9 @@ export interface DriverDashboardMetrics {
   activeTrips: number
   completedTrips: number
   cancelledTrips: number
-  totalEarnings: number
+   totalEarnings: number
   commissionRate: number
+  tripCompensation: number
   driverEarnings: number
   platformTake: number
   recentTrips: Array<{
@@ -42,10 +44,16 @@ export async function getDriverDashboardMetrics(driverId: number): Promise<Drive
     totalTrips += cnt
   }
 
-  // Earnings from completed trips
-  const earningsResult = await db.execute({
+  // Earnings from completed trips (per-order: base + parking reimbursement when approved)
+  const [base, reinf] = await Promise.all([
+    getDriverBaseTripCompensation(),
+    getDriverParkingReimbursement(),
+  ])
+
+  const compResult = await db.execute({
     sql: `SELECT
-            COALESCE(SUM(o.package_price), 0) AS total_revenue
+            COUNT(*) AS total,
+            COALESCE(SUM(CASE WHEN o.airport_parking = 1 AND o.parking_proof_status = 'approved' THEN 1 ELSE 0 END), 0) AS parked
           FROM assignments da
           JOIN orders o ON da.order_id = o.id
           WHERE da.driver_id = ?
@@ -53,17 +61,29 @@ export async function getDriverDashboardMetrics(driverId: number): Promise<Drive
     args: [driverId],
   })
 
-  const totalEarnings = Number(earningsResult.rows[0]?.total_revenue || 0)
+  const completedTrips = Number(compResult.rows[0]?.total || 0)
+  const parkedTrips = Number(compResult.rows[0]?.parked || 0)
+  const driverEarnings = Math.round((completedTrips * base + parkedTrips * reinf) * 100) / 100
 
-  // Driver's commission rate
+  // Gross revenue of completed trips (for platform-take display)
+  const grossResult = await db.execute({
+    sql: `SELECT COALESCE(SUM(o.package_price), 0) AS total_revenue
+          FROM assignments da
+          JOIN orders o ON da.order_id = o.id
+          WHERE da.driver_id = ? AND da.status = 'completed'`,
+    args: [driverId],
+  })
+  const totalEarnings = Number(grossResult.rows[0]?.total_revenue || 0)
+
+  // Driver's commission rate (legacy field, kept for display/back-compat)
   const driverResult = await db.execute({
     sql: `SELECT commission_rate FROM drivers WHERE id = ?`,
     args: [driverId],
   })
 
   const commissionRate = Number(driverResult.rows[0]?.commission_rate || 0.30)
-  const driverEarnings = totalEarnings * commissionRate
-  const platformTake = totalEarnings - driverEarnings
+  const tripCompensation = base
+  const platformTake = Math.round((totalEarnings - driverEarnings) * 100) / 100
 
   // Recent trips (last 5)
   const recentResult = await db.execute({
@@ -88,11 +108,12 @@ export async function getDriverDashboardMetrics(driverId: number): Promise<Drive
   return {
     totalTrips,
     pendingTrips: (tripMap['pending_acceptance'] || 0) + (tripMap['offered'] || 0),
-    activeTrips: (tripMap['accepted'] || 0) + (tripMap['confirmed'] || 0),
-    completedTrips: tripMap['completed'] || 0,
+    activeTrips: (tripMap['accepted'] || 0) + (tripMap['confirmed'] || 0) + (tripMap['en_route'] || 0),
+    completedTrips,
     cancelledTrips: (tripMap['cancelled'] || 0) + (tripMap['declined'] || 0),
     totalEarnings,
     commissionRate,
+    tripCompensation,
     driverEarnings,
     platformTake,
     recentTrips,

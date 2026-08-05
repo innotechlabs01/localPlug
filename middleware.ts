@@ -109,24 +109,21 @@ export default clerkMiddleware(
         if (!pathname.startsWith(expectedPortal)) {
           return NextResponse.redirect(new URL(expectedPortal, req.url))
         }
-      } else {
-        // No role in Clerk privateMetadata — redirect to sign-in to get proper role assigned
-        return NextResponse.redirect(new URL('/sign-in/admin', req.url))
       }
+      // If no role or unrecognized role, let through — the portal layout
+      // will show "Access Restricted" if the user lacks permissions.
     } catch {
       // Clerk fetch failed — let through; API handlers will reject
     }
-  }
-
-  if (isAdminApiRoute(req)) {
+    return NextResponse.next()
+  } else if (isAdminApiRoute(req)) {
     const authResult = await auth() as { userId: string | null }
     const userId = authResult.userId
     if (!userId) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 })
     }
     return NextResponse.next()
-  }
-  if (!isPublicRoute(req)) {
+  } else if (!isPublicRoute(req)) {
     await auth.protect()
   }
 },

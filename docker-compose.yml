@@ -16,9 +16,7 @@ services:
       - HOSTNAME=0.0.0.0
       - PORT=3000
       - TZ=America/Bogota
-      # Point to n8n in Docker network
       - N8N_BASE_URL=http://n8n:5678
-      # Point to Ollama in Docker network (fallback when n8n unavailable)
       - OLLAMA_BASE_URL=http://ollama:11434
     depends_on:
       n8n:
@@ -77,9 +75,7 @@ services:
       - N8N_USER_MANAGEMENT_DISABLED=true
       - N8N_METRICS=false
     entrypoint: ["/bin/sh", "/docker-entrypoint.sh"]
-    depends_on:
-      ollama:
-        condition: service_healthy
+    depends_on: {}
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5678/healthz"]
       interval: 30s

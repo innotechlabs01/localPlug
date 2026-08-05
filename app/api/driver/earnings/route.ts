@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getDriverFromSession } from '@/lib/driver/auth'
 import { getDb } from '@/lib/db'
+import { getDriverBaseTripCompensation, getDriverParkingReimbursement } from '@/lib/settings'
 
 export const dynamic = 'force-dynamic'
 
@@ -14,13 +15,18 @@ export async function GET() {
     const db = getDb()
     const driverId = result.driver.id
 
-    // Get completed assignments with earnings
+    const [base, reinf] = await Promise.all([
+      getDriverBaseTripCompensation(),
+      getDriverParkingReimbursement(),
+    ])
+
+    // Get completed/active assignments with earnings (per-order: base + parking reimbursement)
     const assignmentsResult = await db.execute({
       sql: `SELECT
               a.id, a.order_id, a.status, a.created_at AS pickup_date,
               o.customer_name, o.package_name, o.package_price, o.currency,
               o.destination_address, o.arrival_date, o.arrival_time,
-              o.booking_reference, o.order_number
+              o.booking_reference, o.order_number, o.airport_parking, o.parking_proof_status
             FROM assignments a
             JOIN orders o ON a.order_id = o.id
             WHERE a.driver_id = ? AND a.status IN ('completed', 'accepted', 'confirmed_to_client')
@@ -30,9 +36,10 @@ export async function GET() {
     })
 
     const assignments = (assignmentsResult.rows || []).map((row: any) => {
-      const commissionRate = result.driver.commission_rate || 0.30
       const packagePrice = Number(row.package_price) || 0
-      const earned = Math.round(packagePrice * commissionRate * 100) / 100
+      const isCompleted = row.status === 'completed'
+      const parked = Number(row.airport_parking) === 1 && row.parking_proof_status === 'approved'
+      const earned = isCompleted ? Math.round((parked ? base + reinf : base) * 100) / 100 : 0
 
       return {
         id: row.id,

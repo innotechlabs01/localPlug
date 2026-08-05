@@ -51,9 +51,11 @@ export async function POST(request: Request) {
     }
 
     // Use DB-backed async pricing instead of hardcoded values
+    const additionalTrips = Array.isArray(dest.additionalTrips) ? dest.additionalTrips : []
+    const numPeople = Math.max(1, Math.floor(Number(dest.numPeople) || 1))
     const [packageName, packageTotal] = await Promise.all([
       getPackageName(pkg),
-      getPackageTotal(pkg, needReturn),
+      getPackageTotal(pkg, needReturn, additionalTrips, numPeople),
     ])
 
     // Transport-only base price
@@ -99,8 +101,9 @@ export async function POST(request: Request) {
         flight_number, airline, arrival_date, arrival_time,
         destination_address, destination_has_place, additional_trips,
         traveler_profile, status, dispatch_status, payment_status,
-        hotel_id, room_id, num_nights, is_hotel_booking, hotel_commission_rate
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        hotel_id, room_id, num_nights, is_hotel_booking, hotel_commission_rate,
+        num_people
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         orderNumber,
         bookingRef,
@@ -121,7 +124,7 @@ export async function POST(request: Request) {
         flight.arrivalTime || null,
         dest.address || null,
         dest.hasPlace ? 1 : 0,
-        dest.additionalTrips ? JSON.stringify(dest.additionalTrips) : null,
+        additionalTrips.length > 0 ? JSON.stringify(additionalTrips) : null,
         body.profile || null,
         'new',
         'pending',
@@ -131,6 +134,7 @@ export async function POST(request: Request) {
         numNights,
         isHotelBooking,
         hotelCommissionRate,
+        numPeople,
       ],
     })
 

@@ -96,7 +96,7 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
   }
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg-dark)' }}>
+    <div className="driver-app" style={{ display: 'flex', height: '100dvh', overflow: 'hidden', background: 'var(--bg-dark)' }}>
       {sidebarOpen && (
         <div
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 40 }}
@@ -105,13 +105,14 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
       )}
 
       <aside
+        data-open={sidebarOpen}
         style={{
           position: 'fixed',
           top: 0,
           bottom: 0,
           left: 0,
           zIndex: 50,
-          width: 260,
+          width: 'var(--nav-width)',
           display: 'flex',
           flexDirection: 'column',
           background: 'var(--bg-card)',
@@ -329,7 +330,7 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
           </div>
         </header>
 
-        <main style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
+        <main style={{ flex: 1, overflowY: 'auto', padding: 24, maxWidth: 1400, width: '100%', margin: '0 auto' }}>
           {children}
         </main>
       </div>

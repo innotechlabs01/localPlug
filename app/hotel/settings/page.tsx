@@ -36,19 +36,24 @@ export default function HotelSettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [error, setError] = useState(false)
   const [form, setForm] = useState<Settings>({
     name: '', description: '', address: '', phone: '', email: '', website: '',
     bank_account: '', permits: '',
     theme: { primary: '#c8a962', background: '#0a0a0f', surface: '#1a1a2e', text: '#ffffff' },
   })
 
-  useEffect(() => {
+  const loadSettings = () => {
+    setLoading(true)
+    setError(false)
     fetch('/api/hotel/settings')
       .then(r => r.json())
       .then(data => { if (data.settings) setForm(data.settings) })
-      .catch(() => {})
+      .catch(() => setError(true))
       .finally(() => setLoading(false))
-  }, [])
+  }
+
+  useEffect(() => { loadSettings() }, [])
 
   const save = async () => {
     setSaving(true)
@@ -87,10 +92,22 @@ export default function HotelSettingsPage() {
     )
   }
 
+  if (error) {
+    return (
+      <div style={{ textAlign: 'center', padding: '120px 0' }}>
+        <div style={{ width: '48px', height: '48px', borderRadius: '50%', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(248,113,113,0.1)', color: 'var(--danger)' }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <p style={{ fontSize: '14px', color: 'var(--danger)', marginBottom: '16px' }}>No se pudieron cargar los ajustes</p>
+        <button onClick={loadSettings} style={btnPrimary}>Reintentar</button>
+      </div>
+    )
+  }
+
   return (
     <div style={{ maxWidth: '720px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <div>
-        <h1 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-display)', margin: 0 }}>Configuracion</h1>
+        <h1 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-display)', margin: 0 }}>Configuración</h1>
         <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>Personaliza tu hotel y apariencia del portal</p>
       </div>
 
@@ -101,14 +118,14 @@ export default function HotelSettingsPage() {
           <Field label="Nombre del Hotel">
             <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Hotel Estelar" style={inputStyle} onFocus={handleFocus} onBlur={handleBlur} />
           </Field>
-          <Field label="Descripcion">
-            <textarea rows={2} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Descripcion del hotel..." style={{ ...inputStyle, resize: 'vertical' as const }} onFocus={handleFocus} onBlur={handleBlur} />
+          <Field label="Descripción">
+            <textarea rows={2} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Descripción del hotel..." style={{ ...inputStyle, resize: 'vertical' as const }} onFocus={handleFocus} onBlur={handleBlur} />
           </Field>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <Field label="Direccion">
+            <Field label="Dirección">
               <input value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} placeholder="Calle 10 #5-20" style={inputStyle} onFocus={handleFocus} onBlur={handleBlur} />
             </Field>
-            <Field label="Telefono">
+            <Field label="Teléfono">
               <input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} placeholder="+57 4 123 4567" style={inputStyle} onFocus={handleFocus} onBlur={handleBlur} />
             </Field>
             <Field label="Email">
@@ -123,13 +140,13 @@ export default function HotelSettingsPage() {
 
       {/* Payment Section */}
       <section style={sectionCard}>
-        <div style={sectionTitle}>Metodo de Pago</div>
+        <div style={sectionTitle}>Método de Pago</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <Field label="Cuenta Bancaria">
-            <input value={form.bank_account} onChange={e => setForm(f => ({ ...f, bank_account: e.target.value }))} placeholder="Numero de cuenta para consignaciones" style={inputStyle} onFocus={handleFocus} onBlur={handleBlur} />
+            <input value={form.bank_account} onChange={e => setForm(f => ({ ...f, bank_account: e.target.value }))} placeholder="Número de cuenta para consignaciones" style={inputStyle} onFocus={handleFocus} onBlur={handleBlur} />
           </Field>
           <Field label="Permisos / Licencias">
-            <input value={form.permits} onChange={e => setForm(f => ({ ...f, permits: e.target.value }))} placeholder="Numero de registro turistico" style={inputStyle} onFocus={handleFocus} onBlur={handleBlur} />
+            <input value={form.permits} onChange={e => setForm(f => ({ ...f, permits: e.target.value }))} placeholder="Número de registro turístico" style={inputStyle} onFocus={handleFocus} onBlur={handleBlur} />
           </Field>
         </div>
       </section>

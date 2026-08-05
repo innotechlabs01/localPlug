@@ -130,12 +130,45 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
         ),
       },
       {
+        labelKey: 'parking',
+        href: '/admin/parking-proofs',
+        icon: (          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            <path d="M2 12h6"/>
+            <path d="M12 8v8"/>
+          </svg>
+        ),
+      },
+      {
         labelKey: 'plans',
         href: '/admin/plans',
         icon: (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
             <line x1="1" y1="10" x2="23" y2="10"/>
+          </svg>
+        ),
+      },
+      {
+        labelKey: 'trips',
+        href: '/admin/trips',
+        icon: (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+            <path d="M2 17l10 5 10-5"/>
+            <path d="M2 12l10 5 10-5"/>
+          </svg>
+        ),
+      },
+      {
+        labelKey: 'booking',
+        href: '/admin/booking',
+        icon: (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
           </svg>
         ),
       },
@@ -349,9 +382,9 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
 
   if (!isLoaded || permsLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen" style={{ background: 'var(--bg-dark)' }}>
-        <div className="text-center" style={{ color: 'var(--fg-muted)' }}>
-          <div className="animate-spin w-8 h-8 border-2 border-t-transparent rounded-full mx-auto mb-4" style={{ borderColor: 'var(--border)', borderTopColor: 'var(--accent)' }} />
+      <div className="flex items-center justify-center min-h-screen" style={{ background: '#0b0d14' }}>
+        <div className="text-center" style={{ color: '#9ca0b0' }}>
+          <div className="animate-spin w-8 h-8 border-2 border-t-transparent rounded-full mx-auto mb-4" style={{ borderColor: '#282b38', borderTopColor: '#10b981' }} />
           Loading...
         </div>
       </div>
@@ -397,6 +430,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
       '/admin/employees': t.admin.nav.employees as string,
       '/admin/analytics': t.admin.nav.analytics as string,
       '/admin/payments': t.admin.nav.payments as string,
+      '/admin/parking-proofs': t.admin.nav.parking as string,
       '/admin/agenda': 'Agenda',
       '/admin/cases': 'Cases',
       '/admin/roles': t.admin.nav.roles as string,

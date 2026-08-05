@@ -32,6 +32,7 @@ interface DriverStats {
   earnings: number
   acceptanceRate: number
   commissionRate: number
+  tripCompensation: number
 }
 
 interface Assignment {
@@ -451,11 +452,11 @@ export default function DriverPage() {
             }}>
               {[
                 { label: 'Viajes totales', value: stats.total, sub: null, color: 'var(--accent-gold)' },
-                { label: 'Completados', value: stats.completed, sub: `+${stats.completed}`, color: 'var(--accent)' },
-                { label: 'Pendientes', value: stats.pending, sub: `${stats.pending} activos`, color: 'var(--warning)' },
-                { label: 'Activos', value: stats.active, sub: 'En curso', color: 'var(--info)' },
-                { label: 'Ganancias', value: `$${stats.earnings?.toFixed?.(2) ?? stats.earnings}`, sub: `+${((stats.commissionRate ?? 0.30) * 100).toFixed(0)}% comisión`, color: 'var(--accent-gold)' },
-                { label: 'Aceptación %', value: `${stats.acceptanceRate ?? 0}%`, sub: 'Tasa de aceptación', color: 'var(--accent)' },
+                { label: 'Completados', value: stats.completed, sub: `+${stats.completed}`, color: 'var(--accent-gold)' },
+                { label: 'Pendientes', value: stats.pending, sub: `${stats.pending} activos`, color: 'var(--accent-gold)' },
+                { label: 'Activos', value: stats.active, sub: 'En curso', color: 'var(--accent-gold)' },
+                { label: 'Ganancias', value: `$${stats.earnings?.toFixed?.(2) ?? stats.earnings}`, sub: `+${(stats.tripCompensation ?? 0).toFixed(2)} USD / trayecto`, color: 'var(--accent-gold)' },
+                { label: 'Aceptación %', value: `${stats.acceptanceRate ?? 0}%`, sub: 'Tasa de aceptación', color: 'var(--accent-gold)' },
               ].map((kpi, i) => (
                 <div
                   key={i}
@@ -471,7 +472,7 @@ export default function DriverPage() {
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.borderColor = kpi.color
-                    e.currentTarget.style.boxShadow = `0 0 0 1px ${kpi.color}20`
+                    e.currentTarget.style.boxShadow = '0 0 0 1px rgba(212, 168, 75, 0.2)'
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.borderColor = 'var(--border)'
@@ -485,7 +486,7 @@ export default function DriverPage() {
                   <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--fg-muted)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 6 }}>
                     {kpi.label}
                   </div>
-                  <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--fg)', lineHeight: 1.1 }}>
+                  <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--fg)', lineHeight: 1.1, fontVariantNumeric: 'tabular-nums' }}>
                     {kpi.value}
                   </div>
                   {kpi.sub && (

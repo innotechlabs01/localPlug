@@ -156,7 +156,7 @@ export default function DriverSettingsPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh' }}>
+    <div style={{ minHeight: '100dvh' }}>
       {toast && (
         <div style={{
           position: 'fixed', top: 24, right: 24,

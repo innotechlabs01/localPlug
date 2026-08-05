@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
-import { getTrmRate, convertCopToUsd } from '@/lib/trm'
+import { getTrmRate } from '@/lib/trm'
 import { requirePermission } from '@/lib/admin/permissions'
-
-// Fixed driver payment per trip in COP
-const DRIVER_PAYMENT_COP = 150000
+import { getDriverBaseTripCompensation, getDriverParkingReimbursement } from '@/lib/settings'
 
 export async function GET() {
   const authError = await requirePermission('payments', 'view')
@@ -12,21 +10,20 @@ export async function GET() {
   const db = getDb()
   const trmRate = await getTrmRate()
 
-  const kpiQueries = await Promise.all([
-    db.execute("SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as total FROM payments WHERE status = 'completed'"),
-    db.execute("SELECT COUNT(*) as count FROM payments WHERE status = 'completed'"),
-    db.execute("SELECT COUNT(*) as count FROM payments WHERE status = 'failed'"),
-    db.execute("SELECT COUNT(*) as count FROM payments WHERE status = 'pending'"),
-    db.execute("SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as total FROM payments"),
-    db.execute("SELECT COUNT(*) as count, COALESCE(SUM(package_price), 0) as total FROM orders WHERE assigned_to IS NOT NULL"),
-  ])
+    const kpiQueries = await Promise.all([
+      db.execute("SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as total FROM payments WHERE status = 'completed'"),
+      db.execute("SELECT COUNT(*) as count FROM payments WHERE status = 'completed'"),
+      db.execute("SELECT COUNT(*) as count FROM payments WHERE status = 'failed'"),
+      db.execute("SELECT COUNT(*) as count FROM payments WHERE status = 'pending'"),
+      db.execute("SELECT COUNT(*) as count, COALESCE(SUM(amount), 0) as total FROM payments"),
+      db.execute("SELECT COUNT(*) as count FROM orders WHERE assigned_to IS NOT NULL"),
+    ])
 
   const completedAgg = kpiQueries[0].rows[0]
   const successfulCount = Number(kpiQueries[1].rows[0].count)
   const failedCount = Number(kpiQueries[2].rows[0].count)
   const pendingCount = Number(kpiQueries[3].rows[0].count)
   const totalAgg = kpiQueries[4].rows[0]
-  const driverPayoutsAgg = kpiQueries[5].rows[0]
 
   const totalRevenue = Number(completedAgg.total) / 100
   const successfulRate = (successfulCount + failedCount) > 0
@@ -35,7 +32,24 @@ export async function GET() {
   const failureRate = (successfulCount + failedCount) > 0
     ? ((failedCount / (successfulCount + failedCount)) * 100).toFixed(1)
     : '0'
-  const driverPayouts = Number(driverPayoutsAgg.total)
+
+  // Driver payouts: per-order base compensation + parking reimbursement (only for completed trips)
+  const [base, reinf] = await Promise.all([
+    getDriverBaseTripCompensation(),
+    getDriverParkingReimbursement(),
+  ])
+  const payoutAgg = await db.execute({
+    sql: `SELECT
+            COUNT(*) AS cnt,
+            COALESCE(SUM(CASE WHEN o.airport_parking = 1 AND o.parking_proof_status = 'approved' THEN 1 ELSE 0 END), 0) AS parked
+          FROM orders o
+          JOIN assignments a ON a.order_id = o.id
+          WHERE o.assigned_to IS NOT NULL AND a.status = 'completed'`,
+    args: [],
+  })
+  const completedAssigned = Number(payoutAgg.rows[0]?.cnt || 0)
+  const parkedAssigned = Number(payoutAgg.rows[0]?.parked || 0)
+  const driverPayouts = Math.round((completedAssigned * base + parkedAssigned * reinf) * 100) / 100
   const driverPayoutsPct = totalRevenue > 0 ? ((driverPayouts / totalRevenue) * 100).toFixed(0) : '0'
 
   const kpis = {
@@ -81,10 +95,10 @@ export async function GET() {
   const payoutsResult = await db.execute(
     `SELECT o.id, o.order_number, o.booking_reference, o.customer_name, o.package_name,
             o.package_price, o.currency, COALESCE(pay.status, o.payment_status) as payment_status,
-            o.assigned_to, o.created_at,
+            o.assigned_to, o.created_at, o.airport_parking, o.parking_proof_url, o.parking_proof_status, o.dispatch_status,
             d.name as driver_name, d.vehicle as driver_vehicle, d.plate as driver_plate,
             d.total_trips as driver_total_trips
-     FROM orders o
+      FROM orders o
      LEFT JOIN drivers d ON o.assigned_to = d.id
      LEFT JOIN payments pay ON o.booking_reference = pay.booking_reference
      WHERE o.assigned_to IS NOT NULL
@@ -93,8 +107,12 @@ export async function GET() {
   )
   const payouts = payoutsResult.rows.map(r => {
     const grossRevenue = Number(r.package_price)
-    const driverPaymentCOP = DRIVER_PAYMENT_COP
-    const driverPaymentUSD = convertCopToUsd(driverPaymentCOP, trmRate)
+    const isCompleted = r.dispatch_status === 'completed'
+    const parked = Number(r.airport_parking) === 1 && r.parking_proof_status === 'approved'
+    const driverPaymentUSD = isCompleted
+      ? Math.round((parked ? base + reinf : base) * 100) / 100
+      : 0
+    const driverPaymentCOP = Math.round(driverPaymentUSD * trmRate)
     return {
       id: Number(r.id),
       order_number: r.order_number as string,
@@ -110,6 +128,8 @@ export async function GET() {
       driver_total_trips: Number(r.driver_total_trips || 0),
       driver_payment_cop: driverPaymentCOP,
       driver_payment_usd: driverPaymentUSD,
+      parking_proof_url: (r.parking_proof_url as string) || null,
+      parking_proof_status: (r.parking_proof_status as string) || 'pending',
       gross_revenue: grossRevenue,
       created_at: r.created_at as string,
     }

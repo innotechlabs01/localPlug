@@ -39,7 +39,7 @@ function AnimatedStat({ value, label, suffix = '' }: { value: number; label: str
 
   return (
     <div ref={ref} className="px-4 py-2">
-      <div className="font-display text-[clamp(36px,5vw,52px)] font-semibold bg-gradient-to-br from-[var(--accent-gold-light)] to-[var(--accent-gold)] bg-clip-text text-transparent leading-none mb-2">
+      <div className="font-display text-[clamp(36px,5vw,52px)] font-medium bg-gradient-to-br from-[var(--accent-gold-light)] to-[var(--accent-gold)] bg-clip-text text-transparent leading-none mb-2">
         {formatNumber(displayValue)}{suffix}
       </div>
       <div className="text-sm text-[var(--text-secondary)]">

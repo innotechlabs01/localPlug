@@ -16,7 +16,7 @@ interface PlanTour {
 
 interface Plan {
   id: number; name: string; slug: string; description: string
-  price_usd: number; is_popular: number; is_active: number
+  price_usd: number; price_per_person_usd?: number; is_popular: number; is_active: number
   sort_order: number; created_at: string; updated_at: string
   features: PlanFeature[]; tours: PlanTour[]
 }
@@ -75,7 +75,7 @@ export default function PlansPage() {
   const openCreatePlan = () => {
     setEditPlan(null)
     setPlanForm({
-      name: '', description: '', price_usd: 0,
+      name: '', description: '', price_usd: 0, price_per_person_usd: 0,
       is_popular: false, is_active: true, sort_order: 0,
     })
     setPlanModal(true)
@@ -85,7 +85,8 @@ export default function PlansPage() {
     setEditPlan(p)
     setPlanForm({
       name: p.name, description: p.description || '',
-      price_usd: p.price_usd, is_popular: p.is_popular === 1,
+      price_usd: p.price_usd, price_per_person_usd: p.price_per_person_usd ?? 0,
+      is_popular: p.is_popular === 1,
       is_active: p.is_active === 1, sort_order: p.sort_order,
     })
     setPlanModal(true)
@@ -410,8 +411,9 @@ export default function PlansPage() {
                   </div>
                   <div className="info-grid mt-4">
                     {[
-                      ['Slug', selected.slug],
+                       ['Slug', selected.slug],
                       ['Price', `$${Number(selected.price_usd).toFixed(2)}`],
+                      ['Service / person', `$${Number(selected.price_per_person_usd || 0).toFixed(2)}`],
                       ['Sort Order', String(selected.sort_order)],
                       ['Features', `${selected.features?.length || 0}`],
                       ['Tours', `${selected.tours?.length || 0}`],
@@ -525,6 +527,10 @@ export default function PlansPage() {
             <ModalField label={t.admin.plans.priceUsd}>
               <input type="number" step="0.01" min="0" value={planForm.price_usd || 0}
                 onChange={e => setPlanForm(p => ({ ...p, price_usd: parseFloat(e.target.value) || 0 }))} placeholder="0.00" />
+            </ModalField>
+            <ModalField label={t.admin.plans.pricePerPersonUsd}>
+              <input type="number" step="0.01" min="0" value={planForm.price_per_person_usd || 0}
+                onChange={e => setPlanForm(p => ({ ...p, price_per_person_usd: parseFloat(e.target.value) || 0 }))} placeholder="0.00" />
             </ModalField>
             <ModalField label={t.admin.plans.sortOrder}>
               <input type="number" min="0" value={planForm.sort_order || 0}

@@ -2,6 +2,9 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useI18n } from '@/lib/i18n'
+import { computeBookingTotals } from './lib/booking-totals'
+import { CONFIG_DEFAULTS } from './lib/config-defaults'
+import type { DestinationData } from './lib/types'
 
 interface StepPaymentProps {
   bookingReference: string
@@ -15,15 +18,22 @@ interface StepPaymentProps {
   onPaymentSuccess: () => void
   onPaymentError: (message: string) => void
   config?: BookingConfig | null
+  destination?: DestinationData | null
 }
 
 interface BookingConfig {
-  packages: Record<string, { name: string; price: number; features?: string[]; is_popular?: boolean }>
+  packages: Record<string, { name: string; price: number; price_per_person_usd?: number; features?: string[]; tours?: Array<{ id: number; name: string; description: string; price_per_person_usd: number }>; is_popular?: boolean }>
   returnTripCharge: number
   serviceFee: number
   taxRate: number
   currency: string
   advanceBookingDays: number
+  trips?: Array<{ id: string; name: string; price_per_person_usd: number }>
+  trm?: number
+  experiences?: Record<string, number>
+  paymentPollInterval?: number
+  paymentMaxAttempts?: number
+  paymentTimeout?: number
 }
 
 interface FlightData {
@@ -46,6 +56,7 @@ export default function StepPayment({
   onPaymentSuccess,
   onPaymentError,
   config,
+  destination,
 }: StepPaymentProps) {
   const { t } = useI18n()
   const paymentT = t.booking.steps.payment
@@ -72,6 +83,8 @@ export default function StepPayment({
           arrivalDate: flightData.arrivalDate,
           arrivalTime: flightData.arrivalTime,
           needReturn: needReturn ?? flightData.needReturn ?? false,
+          tour_ids: destination?.additionalTrips ?? [],
+          num_people: Math.max(1, Math.floor(destination?.numPeople || 1)),
         }),
       })
 
@@ -94,7 +107,7 @@ export default function StepPayment({
       setError(t.booking.steps.payment.serviceUnreachable)
       setLoading(false)
     }
-  }, [bookingReference, packageId, customerEmail, customerName])
+  }, [bookingReference, packageId, customerEmail, customerName, destination])
 
   useEffect(() => {
     fetchTransaction()
@@ -102,7 +115,7 @@ export default function StepPayment({
 
   useEffect(() => {
     if (transactionId) return
-    const timer = setTimeout(() => setTimedOut(true), 60000)
+    const timer = setTimeout(() => setTimedOut(true), config?.paymentTimeout ?? CONFIG_DEFAULTS.paymentTimeout)
     return () => clearTimeout(timer)
   }, [transactionId])
 
@@ -116,7 +129,7 @@ export default function StepPayment({
 
   const pollPaymentStatus = useCallback(async () => {
     let attempts = 0
-    const maxAttempts = 45
+    const maxAttempts = config?.paymentMaxAttempts ?? CONFIG_DEFAULTS.paymentMaxAttempts
 
     pollingRef.current = setInterval(async () => {
       attempts++
@@ -150,7 +163,7 @@ export default function StepPayment({
           onPaymentError(t.booking.steps.payment.paymentTimedOut || 'Payment verification timed out. Please try again.')
         }
       }
-    }, 2000)
+    }, config?.paymentPollInterval ?? CONFIG_DEFAULTS.paymentPollInterval)
   }, [bookingReference, onPaymentSuccess, onPaymentError, t])
 
   const handlePay = async () => {
@@ -190,12 +203,17 @@ export default function StepPayment({
   const hasReturn = needReturn ?? flightData.needReturn ?? false
   const packageName = t.booking.steps.packages.packages[packageId as keyof typeof t.booking.steps.packages.packages]?.name || packageId
   const basePrice = config?.packages?.[packageId]?.price ?? 0
-  const returnCharge = hasReturn ? (config?.returnTripCharge ?? 48) : 0
-  const subtotal = basePrice + returnCharge
-  const serviceFee = config?.serviceFee ?? 5
-  const taxRate = config?.taxRate ?? 0.19
-  const iva = (subtotal - serviceFee) * taxRate
-  const totalPrice = subtotal + serviceFee + iva
+  const servicePrice = config?.packages?.[packageId]?.price_per_person_usd ?? 0
+  const returnCharge = hasReturn ? (config?.returnTripCharge ?? CONFIG_DEFAULTS.returnTripCharge) : 0
+  const serviceFee = config?.serviceFee ?? CONFIG_DEFAULTS.serviceFee
+  const taxRate = config?.taxRate ?? CONFIG_DEFAULTS.taxRate
+  const tripPrices = config?.experiences ?? {}
+  const selectedTrips = destination?.additionalTrips ?? []
+  const numPeople = Math.max(1, Math.floor(destination?.numPeople || 1))
+  const tourPrices = selectedTrips.map((id) => tripPrices[id] ?? 0)
+  const totals = computeBookingTotals({ basePrice, returnCharge, tourPrices, numPeople, serviceFee, taxRate })
+  const totalPrice = totals.total
+  const tripLabels = t.booking.steps.destination.trips
   const packageT = t.booking.steps.packages.packages[packageId as keyof typeof t.booking.steps.packages.packages]
 
   return (
@@ -221,6 +239,12 @@ export default function StepPayment({
               <span className="text-white font-medium">{packageT.name}</span>
             </div>
           )}
+          {totals.serviceTotal > 0 && (
+            <div className="flex justify-between py-2.5 text-[13px]">
+              <span className="text-[var(--text-secondary)]">{paymentT.summaryService} <span className="text-[var(--text-muted)]">({numPeople} {paymentT.summaryPeople})</span></span>
+              <span className="text-white font-medium">+{totals.serviceTotal.toFixed(2)} USD</span>
+            </div>
+          )}
           <div className="flex justify-between py-2.5 text-[13px]">
             <span className="text-[var(--text-secondary)]">{paymentT.summaryArrival || 'Arrival'}</span>
             <span className="text-white font-medium">{flightData.arrivalDate || '-'}</span>
@@ -236,13 +260,43 @@ export default function StepPayment({
           {hasReturn && (
             <div className="flex justify-between py-2.5 text-[13px]">
               <span className="text-[var(--text-secondary)]">{paymentT.summaryReturnTrip || 'Return Transport'}</span>
-              <span className="text-[var(--accent-gold)] font-medium">+${config?.returnTripCharge ?? 48}.00</span>
+              <span className="text-[var(--accent-gold)] font-medium">+${config?.returnTripCharge ?? CONFIG_DEFAULTS.returnTripCharge}.00</span>
+            </div>
+          )}
+          {selectedTrips.length > 0 && (
+            <div className="flex justify-between py-2.5 text-[13px]">
+              <span className="text-[var(--text-secondary)]">{paymentT.summaryExperiences}</span>
+              <span className="text-white font-medium">{numPeople} {paymentT.summaryPeople}</span>
+            </div>
+          )}
+          {selectedTrips.map((id) => {
+            const label = tripLabels?.[id as keyof typeof tripLabels] || id
+            const unit = tripPrices[id] ?? 0
+            return (
+              <div key={id} className="flex justify-between py-1.5 text-[12px]">
+                <span className="text-[var(--text-secondary)]">
+                  {label} <span className="text-[var(--text-muted)]">(${unit.toFixed(2)} × {numPeople})</span>
+                </span>
+                <span className="text-white font-medium">${(unit * numPeople).toFixed(2)}</span>
+              </div>
+            )
+          })}
+          {totals.toursTotal > 0 && (
+            <div className="flex justify-between py-2.5 text-[13px]">
+              <span className="text-[var(--text-secondary)]">{paymentT.summaryExperiences} total</span>
+              <span className="text-[var(--accent-gold)] font-medium">+${totals.toursTotal.toFixed(2)}</span>
             </div>
           )}
           <div className="flex justify-between py-3 mt-2 border-t border-[var(--border)] text-[15px] font-semibold">
             <span className="text-white">{paymentT.summaryTotal}</span>
             <span className="text-[var(--accent-gold)]">${Number(totalPrice).toFixed(2)} USD</span>
           </div>
+
+          {config?.trm && (
+            <div className="mt-2 text-[11px] text-[var(--text-muted)] text-right">
+              TRM: {Number(config.trm).toLocaleString('es-CO')} COP/USD · Total: ${(totalPrice * Number(config.trm)).toLocaleString('es-CO')} COP
+            </div>
+          )}
         </div>
       </div>
 
@@ -291,7 +345,7 @@ export default function StepPayment({
         <div>
           <button
             onClick={handlePay}
-            className="w-full py-4 rounded-xl bg-gradient-to-r from-mountain-emerald to-emerald-600 text-white text-label-md font-bold hover:from-mountain-emerald/90 hover:to-emerald-600/90 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_4px_14px_rgba(5,150,105,0.25)] hover:shadow-[0_6px_20px_rgba(5,150,105,0.35)]"
+            className="w-full py-4 rounded-xl bg-gradient-to-r from-[var(--accent-gold)] to-[var(--accent-gold-light)] text-[var(--bg-dark)] text-label-md font-bold hover:from-[var(--accent-gold-light)] hover:to-[var(--accent-gold)] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_4px_14px_rgba(212,165,116,0.25)] hover:shadow-[0_6px_20px_rgba(212,165,116,0.35)]"
           >
             {t.common.payAndConfirm}
           </button>
