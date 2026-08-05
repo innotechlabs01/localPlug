@@ -467,11 +467,17 @@ export async function getAllPublicConfig() {
       'vip-city': Number(getValue(cfg, KEYS.EXP_VIP_CITY)),
       'santa-fe': Number(getValue(cfg, KEYS.EXP_SANTA_FE)),
     },
-    trips: (await getTrips()).map((t: any) => ({
-      id: t.slug,
-      name: t.name,
-      price_per_person_usd: Number(t.price_per_person_usd),
-    })),
+    trips: await (async () => {
+      try {
+        return (await getTrips()).map((t: any) => ({
+          id: t.slug,
+          name: t.name,
+          price_per_person_usd: Number(t.price_per_person_usd),
+        }))
+      } catch {
+        return []
+      }
+    })(),
     trm: Number(getValue(cfg, KEYS.TRM_FALLBACK)),
   }
 }
