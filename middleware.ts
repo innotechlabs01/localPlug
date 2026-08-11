@@ -6,6 +6,9 @@ const AUTHORIZED_PARTIES = [
   process.env.NEXT_PUBLIC_SITE_URL,
   'https://localplug.vercel.app',
   'http://localhost:3000',
+  process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : undefined,
+  process.env.VERCEL_BRANCH_URL ? `https://${process.env.VERCEL_BRANCH_URL}` : undefined,
+  process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
 ].filter(Boolean) as string[]
 
 const isPublicRoute = createRouteMatcher([
@@ -153,6 +156,8 @@ function corsHeaders(req: Request): Record<string, string> {
     process.env.NEXT_PUBLIC_SITE_URL,
     'https://localplug.vercel.app',
     'http://localhost:3000',
+    process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : undefined,
+    process.env.VERCEL_BRANCH_URL ? `https://${process.env.VERCEL_BRANCH_URL}` : undefined,
   ].filter(Boolean) as string[]
 
   const isAllowed = allowedOrigins.some(o => origin.startsWith(o))
