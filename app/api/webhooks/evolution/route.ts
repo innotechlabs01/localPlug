@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
-import { triggerAiChatMessage } from '@/lib/n8n/client'
+import { sendWhatsAppDirect, sendOrQueueWhatsApp } from '@/lib/n8n/client'
+import { generateOllamaResponse } from '@/lib/services/ollama-service'
 import { timingSafeEqual } from '@/lib/string-utils'
 
 interface EvolutionEvent {
@@ -149,19 +150,115 @@ export async function POST(req: Request) {
           args: [convId, phone, text, JSON.stringify({ source: 'whatsapp', instance, messageId })],
         })
 
-        // Trigger n8n AI processing (only if conversation is ai_active)
+        // Process with AI and respond via Evolution API (only if conversation is ai_active)
         const convStatus = await db.execute({
-          sql: `SELECT status FROM conversations WHERE id = ?`,
+          sql: `SELECT status, user_name, booking_reference FROM conversations WHERE id = ?`,
           args: [convId],
         })
 
         if (convStatus.rows[0]?.status === 'ai_active') {
-          await triggerAiChatMessage({
-            conversationId: convId,
-            message: text,
-            userIdentifier: phone,
-            userName: msg.pushName || undefined,
+          // Fetch conversation history for AI context
+          const historyRows = await db.execute({
+            sql: `SELECT sender_type, content FROM messages
+                  WHERE conversation_id = ? ORDER BY created_at ASC LIMIT 10`,
+            args: [convId],
           })
+          const history = (historyRows.rows as unknown as Array<{ sender_type: string; content: string }>).map(m => ({
+            role: m.sender_type === 'user' ? 'user' : 'assistant',
+            content: m.content,
+          }))
+
+          // Fetch booking info if available
+          const conv = convStatus.rows[0] as { user_name?: string; booking_reference?: string }
+          let bookingInfo: Record<string, unknown> | null = null
+          if (conv?.booking_reference) {
+            const bookingRows = await db.execute({
+              sql: `SELECT order_number, customer_name, package_name, airline, flight_number,
+                           arrival_date, arrival_time, destination_address, status
+                    FROM orders WHERE booking_reference = ? LIMIT 1`,
+              args: [conv.booking_reference],
+            })
+            if (bookingRows.rows.length > 0) {
+              const b = bookingRows.rows[0] as Record<string, unknown>
+              bookingInfo = {
+                reference: b.booking_reference || conv.booking_reference,
+                packageName: b.package_name,
+                airline: b.airline,
+                flight: b.flight_number,
+                arrivalDate: b.arrival_date,
+                arrivalTime: b.arrival_time,
+                destination: b.destination_address,
+                status: b.status,
+              }
+            }
+          }
+
+          // Generate AI response using Ollama
+          const aiResult = await generateOllamaResponse({
+            message: text,
+            conversationHistory: history,
+            bookingInfo,
+          })
+
+          if (aiResult.message) {
+            // Check for escalation (low confidence means escalation detected in openai-service)
+            const isEscalation = aiResult.confidence < 0.5
+
+            if (isEscalation) {
+              // Set conversation to human_active
+              await db.execute({
+                sql: `UPDATE conversations SET status = 'human_active', updated_at = datetime('now')
+                      WHERE id = ? AND status = 'ai_active'`,
+                args: [convId],
+              })
+
+              // Send escalation message to user
+              const escalationMsg = 'Un agente se pondrá en contacto contigo en breve. ⏳'
+              await sendWhatsAppDirect({
+                number: phone,
+                message: escalationMsg,
+              })
+
+              // Store escalation message
+              await db.execute({
+                sql: `INSERT INTO messages (conversation_id, sender_type, content, message_type, metadata)
+                      VALUES (?, 'system', ?, 'escalation', ?)`,
+                args: [convId, escalationMsg, JSON.stringify({ source: 'whatsapp-escalation', confidence: aiResult.confidence })],
+              })
+            } else {
+              // Send normal AI response via Evolution API
+              await sendWhatsAppDirect({
+                number: phone,
+                message: aiResult.message,
+              })
+
+              // Store AI response
+              await db.execute({
+                sql: `INSERT INTO messages (conversation_id, sender_type, content, message_type, metadata)
+                      VALUES (?, 'ai', ?, 'text', ?)`,
+                args: [convId, aiResult.message, JSON.stringify({ confidence: aiResult.confidence, source: 'whatsapp-ai' })],
+              })
+
+              // Update AI confidence
+              await db.execute({
+                sql: `UPDATE conversations SET ai_confidence = ?, last_message_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`,
+                args: [aiResult.confidence, convId],
+              })
+            }
+          } else {
+            // AI failed, send fallback message
+            const fallbackMsg = 'Gracias por tu mensaje. Un agente se pondrá en contacto contigo pronto. 🙏'
+            await sendWhatsAppDirect({
+              number: phone,
+              message: fallbackMsg,
+            })
+
+            await db.execute({
+              sql: `INSERT INTO messages (conversation_id, sender_type, content, message_type)
+                    VALUES (?, 'system', ?, 'text')`,
+              args: [convId, fallbackMsg],
+            })
+          }
         }
 
         break

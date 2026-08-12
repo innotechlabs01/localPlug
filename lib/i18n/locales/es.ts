@@ -1465,7 +1465,9 @@ export default {
      thanks: '¡Gracias por tu opinión!',
      thanksTitle: 'Gracias por chatear',
      thanksMessage: 'Esperamos haber podido ayudarte hoy.',
-     startNewChat: 'Iniciar Nuevo Chat',
+      startNewChat: 'Iniciar Nuevo Chat',
+      // WhatsApp
+      whatsappTooltip: 'Chatear por WhatsApp',
    },
   chat: {
     blockedTopic: 'Lo siento, no puedo ayudarte con ese tema. Mi área de soporte es para preguntas sobre tu reserva, pagos y servicios de concierge. ¿Hay algo relacionado con tu reserva en lo que pueda ayudarte?',

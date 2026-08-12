@@ -1466,7 +1466,9 @@ export default {
      thanks: 'Thank you for your feedback!',
      thanksTitle: 'Thanks for chatting!',
      thanksMessage: 'We hope we were able to help you today.',
-     startNewChat: 'Start New Chat',
+      startNewChat: 'Start New Chat',
+      // WhatsApp
+      whatsappTooltip: 'Chat on WhatsApp',
    },
   chat: {
     blockedTopic: "I'm sorry, I can't help you with that topic. My support area is for questions about your booking, payments, and concierge services. Is there anything related to your reservation I can help you with?",
