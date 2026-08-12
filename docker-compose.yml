@@ -69,7 +69,7 @@ services:
       - WEBHOOK_URL=http://localplug:3000
       - NODE_ENV=production
       - TZ=America/Bogota
-      - OLLAMA_MODEL=llama3.1:8b
+      - OLLAMA_MODEL=kimi-k2.7-code:cloud
       - EXECUTIONS_DATA_PRUNE=true
       - EXECUTIONS_DATA_MAX_AGE=168
       - N8N_USER_MANAGEMENT_DISABLED=true
@@ -104,10 +104,64 @@ services:
     networks:
       - localplug-network
 
+  evolution-api:
+    image: evoapicloud/evolution-api:v2.3.7
+    container_name: localplug-evolution
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - SERVER_URL=https://api-message.innotechlabssas.lat
+      - SERVER_PORT=8080
+      - SERVER_TYPE=http
+      - AUTHENTICATION_API_KEY=evo_k1_localplug_2026_secure_key_here
+      - AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true
+      - AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCE=true
+      - DATABASE_ENABLED=true
+      - DATABASE_PROVIDER=postgresql
+      - DATABASE_CONNECTION_URI=postgresql://postgres:postgres@supabase_db_cf-re-app:5432/evolution
+      - DATABASE_SAVE_DATA_INSTANCE=true
+      - DATABASE_SAVE_DATA_NEW_MESSAGE=true
+      - CACHE_REDIS_ENABLED=true
+      - CACHE_REDIS_URI=redis://redis:6379
+      - CACHE_REDIS_SAVE_INSTANCES=true
+      - CONFIG_SESSION_PHONE_CLIENT=LocalPlug Business
+      - CONFIG_SESSION_PHONE_VERSION=2.3000.1028355510
+      - CONFIG_SESSION_PHONE_NAME=Chrome
+      - LOG_LEVEL=SHELL,WEBHOOK,WEBHOOK_BY_EVENTS,EVENTS,ERROR
+      - TZ=America/Bogota
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/manager"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - localplug-network
+      - supabase_network_cf-re-app
+      - evolution-redis-net
+
+  evolution-redis:
+    image: redis:7-alpine
+    container_name: localplug-evolution-redis
+    restart: unless-stopped
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - evolution-redis-net
+
 volumes:
   ollama-data:
   n8n-data:
 
 networks:
   localplug-network:
+    driver: bridge
+  supabase_network_cf-re-app:
+    external: true
+  evolution-redis-net:
     driver: bridge
