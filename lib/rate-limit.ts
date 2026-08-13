@@ -1,4 +1,6 @@
 import { getRateLimitConfig } from '@/lib/config'
+import { getDb } from '@/lib/db'
+import { logger } from '@/lib/logger'
 
 let _maxRequests = 20
 let _windowMs = 60_000
@@ -105,7 +107,7 @@ if (typeof setInterval !== 'undefined') {
   setInterval(cleanupExpired, CLEANUP_INTERVAL)
 }
 
-function extractIp(req: Request): string {
+export function extractIp(req: Request): string {
   const forwarded = req.headers.get('x-forwarded-for')
   return forwarded?.split(',')[0]?.trim() || '127.0.0.1'
 }
@@ -119,6 +121,130 @@ export interface RateLimitResult {
   remaining: number
   resetAt: number
 }
+
+// ─── IP Ban Escalation ──────────────────────────────────────────────
+
+interface BanEscalation {
+  violations: number
+  banMinutes: number
+}
+
+const BAN_ESCALATION: BanEscalation[] = [
+  { violations: 10, banMinutes: 120 },  // 10+ violations → 2 hour ban
+  { violations: 5, banMinutes: 30 },    // 5+ violations → 30 min ban
+  { violations: 3, banMinutes: 5 },     // 3+ violations → 5 min ban
+]
+
+/**
+ * Check if an IP is currently banned in the database.
+ * Returns null if allowed, or a Response (403) if banned.
+ */
+export async function checkIpBanned(ip: string): Promise<Response | null> {
+  try {
+    const db = getDb()
+    const result = await db.execute({
+      sql: `SELECT id, expires_at, violation_count FROM ip_bans
+            WHERE ip = ? AND unbanned = 0 AND expires_at > datetime('now')
+            ORDER BY expires_at DESC LIMIT 1`,
+      args: [ip],
+    })
+
+    if (result.rows.length > 0) {
+      const row = result.rows[0] as unknown as { expires_at: string; violation_count: number }
+      const expiresAt = new Date(row.expires_at + 'Z')
+      const retryAfter = Math.ceil((expiresAt.getTime() - Date.now()) / 1000)
+
+      logger.warn('[RateLimit] IP banned', {
+        ip,
+        violations: row.violation_count,
+        expiresAt: row.expires_at,
+        retryAfter,
+      })
+
+      return new Response(
+        JSON.stringify({
+          error: 'ip_banned',
+          message: 'Your IP has been temporarily banned due to repeated violations.',
+          retryAfter,
+        }),
+        {
+          status: 403,
+          headers: {
+            'Content-Type': 'application/json',
+            'Retry-After': String(Math.max(1, retryAfter)),
+          },
+        },
+      )
+    }
+  } catch (err) {
+    // DB unavailable — fail open (allow request)
+    logger.error('[RateLimit] Failed to check IP ban', err instanceof Error ? err : undefined)
+  }
+  return null
+}
+
+/**
+ * Record a rate limit violation for an IP.
+ * Escalates ban duration based on violation count.
+ */
+export async function recordViolation(ip: string, path: string): Promise<void> {
+  try {
+    const db = getDb()
+
+    // Count violations in the last hour
+    const countResult = await db.execute({
+      sql: `SELECT COUNT(*) as cnt FROM ip_bans
+            WHERE ip = ? AND banned_at > datetime('now', '-1 hour')`,
+      args: [ip],
+    })
+    const recentViolations = (countResult.rows[0] as unknown as { cnt: number }).cnt + 1
+
+    // Determine ban duration based on escalation tiers
+    let banMinutes = 5 // default
+    for (const tier of BAN_ESCALATION) {
+      if (recentViolations >= tier.violations) {
+        banMinutes = tier.banMinutes
+        break
+      }
+    }
+
+    // Upsert: if IP already has an active unexpired ban, increment count and extend
+    const existing = await db.execute({
+      sql: `SELECT id FROM ip_bans
+            WHERE ip = ? AND unbanned = 0 AND expires_at > datetime('now')
+            ORDER BY expires_at DESC LIMIT 1`,
+      args: [ip],
+    })
+
+    if (existing.rows.length > 0) {
+      const banId = (existing.rows[0] as unknown as { id: number }).id
+      await db.execute({
+        sql: `UPDATE ip_bans
+              SET violation_count = violation_count + 1,
+                  expires_at = datetime('now', '+${banMinutes} minutes')
+              WHERE id = ?`,
+        args: [banId],
+      })
+    } else {
+      await db.execute({
+        sql: `INSERT INTO ip_bans (ip, reason, violation_count, expires_at)
+              VALUES (?, 'rate_limit_violations', 1, datetime('now', '+${banMinutes} minutes'))`,
+        args: [ip],
+      })
+    }
+
+    logger.warn('[RateLimit] Violation recorded', {
+      ip,
+      path,
+      recentViolations,
+      banMinutes,
+    })
+  } catch (err) {
+    logger.error('[RateLimit] Failed to record violation', err instanceof Error ? err : undefined)
+  }
+}
+
+// ─── Rate Limit Check ───────────────────────────────────────────────
 
 export async function checkRateLimit(
   reqOrIp: Request | string,
@@ -179,6 +305,19 @@ export async function rateLimitMiddleware(
     : await checkRateLimit(req, { maxRequests: opts?.maxRequests })
 
   if (!result.allowed) {
+    const path = new URL(req.url).pathname
+    // Record violation for IP-based rate limiting (escalating bans)
+    if (!userId) {
+      recordViolation(ip, path).catch(() => {})
+    }
+
+    logger.warn('[RateLimit] Blocked', {
+      ip,
+      userId,
+      path,
+      remaining: result.remaining,
+    })
+
     return new Response(
       JSON.stringify({ error: 'too_many_requests', message: 'Too many requests. Please try again later.' }),
       {

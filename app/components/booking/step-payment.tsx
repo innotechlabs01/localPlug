@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { computeBookingTotals } from './lib/booking-totals'
 import { CONFIG_DEFAULTS } from './lib/config-defaults'
@@ -31,9 +31,6 @@ interface BookingConfig {
   trips?: Array<{ id: string; name: string; price_per_person_usd: number }>
   trm?: number
   experiences?: Record<string, number>
-  paymentPollInterval?: number
-  paymentMaxAttempts?: number
-  paymentTimeout?: number
 }
 
 interface FlightData {
@@ -60,16 +57,15 @@ export default function StepPayment({
 }: StepPaymentProps) {
   const { t } = useI18n()
   const paymentT = t.booking.steps.payment
-  const [transactionId, setTransactionId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [timedOut, setTimedOut] = useState(false)
-  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const [phase, setPhase] = useState<'loading' | 'ready' | 'paying' | 'polling' | 'done'>('loading')
+  const [phase, setPhase] = useState<'ready' | 'redirecting'>('ready')
 
-  const fetchTransaction = useCallback(async () => {
+  const handlePay = useCallback(async () => {
+    setPhase('redirecting')
+    setError(null)
+
     try {
-      const res = await fetch('/api/payments/create-intent', {
+      const res = await fetch('/api/checkout/polar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -78,13 +74,16 @@ export default function StepPayment({
           customerEmail,
           customerName,
           customerPhone,
+          needReturn: needReturn ?? flightData.needReturn ?? false,
+          tour_ids: destination?.additionalTrips ?? [],
+          num_people: Math.max(1, Math.floor(destination?.numPeople || 1)),
           flightNumber: flightData.flightNumber,
           airline: flightData.airline,
           arrivalDate: flightData.arrivalDate,
           arrivalTime: flightData.arrivalTime,
-          needReturn: needReturn ?? flightData.needReturn ?? false,
-          tour_ids: destination?.additionalTrips ?? [],
-          num_people: Math.max(1, Math.floor(destination?.numPeople || 1)),
+          destinationAddress,
+          returnDate: (destination as unknown as Record<string, string>)?.returnDate || '',
+          returnTime: (destination as unknown as Record<string, string>)?.returnTime || '',
         }),
       })
 
@@ -96,109 +95,21 @@ export default function StepPayment({
         } else {
           setError(data.message || t.booking.steps.payment.couldNotInitiate)
         }
-        setLoading(false)
+        setPhase('ready')
         return
       }
 
-      setTransactionId(data.transactionId)
-      setLoading(false)
-      setPhase('ready')
+      if (data.checkoutUrl) {
+        window.location.href = data.checkoutUrl
+      } else {
+        setError('No checkout URL received')
+        setPhase('ready')
+      }
     } catch {
       setError(t.booking.steps.payment.serviceUnreachable)
-      setLoading(false)
-    }
-  }, [bookingReference, packageId, customerEmail, customerName, destination])
-
-  useEffect(() => {
-    fetchTransaction()
-  }, [fetchTransaction])
-
-  useEffect(() => {
-    if (transactionId) return
-    const timer = setTimeout(() => setTimedOut(true), config?.paymentTimeout ?? CONFIG_DEFAULTS.paymentTimeout)
-    return () => clearTimeout(timer)
-  }, [transactionId])
-
-  useEffect(() => {
-    return () => {
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current)
-      }
-    }
-  }, [])
-
-  const pollPaymentStatus = useCallback(async () => {
-    let attempts = 0
-    const maxAttempts = config?.paymentMaxAttempts ?? CONFIG_DEFAULTS.paymentMaxAttempts
-
-    pollingRef.current = setInterval(async () => {
-      attempts++
-      try {
-        const res = await fetch(`/api/payments/status?bookingRef=${encodeURIComponent(bookingReference)}`)
-        const data = await res.json()
-
-        if (data.status === 'completed') {
-          if (pollingRef.current) clearInterval(pollingRef.current)
-          setPhase('done')
-          onPaymentSuccess()
-          return
-        }
-
-        if (data.status === 'failed') {
-          if (pollingRef.current) clearInterval(pollingRef.current)
-          setPhase('ready')
-          onPaymentError(t.common.paymentFailed)
-          return
-        }
-
-        if (attempts >= maxAttempts) {
-          if (pollingRef.current) clearInterval(pollingRef.current)
-          setPhase('ready')
-          onPaymentError(t.booking.steps.payment.paymentTimedOut || 'Payment verification timed out. Please try again.')
-        }
-      } catch {
-        if (attempts >= maxAttempts) {
-          if (pollingRef.current) clearInterval(pollingRef.current)
-          setPhase('ready')
-          onPaymentError(t.booking.steps.payment.paymentTimedOut || 'Payment verification timed out. Please try again.')
-        }
-      }
-    }, config?.paymentPollInterval ?? CONFIG_DEFAULTS.paymentPollInterval)
-  }, [bookingReference, onPaymentSuccess, onPaymentError, t])
-
-  const handlePay = async () => {
-    if (!transactionId) return
-
-    setPhase('paying')
-
-    try {
-      const paddleModule = await import('@paddle/paddle-js')
-      const paddle = await paddleModule.initializePaddle({
-        token: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN || '',
-        environment: process.env.NEXT_PUBLIC_PADDLE_ENV === 'production' ? 'production' : 'sandbox',
-      })
-
-      await paddle!.Checkout.open({
-        transactionId,
-        settings: {
-          displayMode: 'overlay',
-          successUrl: window.location.href,
-        },
-      })
-
-      setPhase('polling')
-      pollPaymentStatus()
-    } catch (err) {
-      const message = err instanceof Error ? err.message : t.common.paymentFailed
       setPhase('ready')
-      onPaymentError(message)
     }
-  }
-
-  const handleError = (message: string) => {
-    setError(message)
-    onPaymentError(message)
-  }
+  }, [bookingReference, packageId, customerEmail, customerName, customerPhone, needReturn, flightData, destination, t])
 
   const hasReturn = needReturn ?? flightData.needReturn ?? false
   const packageName = t.booking.steps.packages.packages[packageId as keyof typeof t.booking.steps.packages.packages]?.name || packageId
@@ -311,7 +222,7 @@ export default function StepPayment({
             <p className="text-body-md text-[#f87171] font-medium">{error}</p>
             <button
               type="button"
-              onClick={() => { setError(null); setLoading(true); setTransactionId(null); fetchTransaction() }}
+              onClick={() => { setError(null); setPhase('ready') }}
               className="text-body-md text-[var(--accent-gold)] underline mt-1 hover:text-[var(--accent-gold-light)]"
             >
               {paymentT.tryAgain}
@@ -320,28 +231,7 @@ export default function StepPayment({
         </div>
       )}
 
-      {loading && (
-        <div className="flex items-center gap-3 py-8 text-[var(--text-secondary)]">
-          <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-          </svg>
-          <span className="text-body-md">{paymentT.preparingForm}</span>
-        </div>
-      )}
-
-      {timedOut && !transactionId && !error && (
-        <div className="py-8 text-center">
-          <p className="text-body-md text-[var(--text-secondary)] mb-2">
-            {paymentT.paymentTakingLong}
-          </p>
-          <p className="text-body-md text-[var(--text-muted)]">
-            {paymentT.paymentSaved}
-          </p>
-        </div>
-      )}
-
-      {phase === 'ready' && transactionId && (
+      {phase === 'ready' && (
         <div>
           <button
             onClick={handlePay}
@@ -352,15 +242,13 @@ export default function StepPayment({
         </div>
       )}
 
-      {(phase === 'paying' || phase === 'polling') && (
+      {phase === 'redirecting' && (
         <div className="flex items-center gap-3 mt-4 text-[var(--text-secondary)]" aria-live="polite">
           <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
-          <span className="text-body-md">
-            {phase === 'paying' ? paymentT.preparingForm : paymentT.paymentReceived}
-          </span>
+          <span className="text-body-md">{paymentT.preparingForm}</span>
         </div>
       )}
     </div>

@@ -38,8 +38,9 @@
   "dependencies": {
     "@clerk/nextjs": "^7.4.1",
     "@libsql/client": "^0.10.0",
-    "@paddle/paddle-js": "^1.6.4",
-    "@paddle/paddle-node-sdk": "^3.8.0",
+    "@polar-sh/checkout": "^0.4.1",
+    "@polar-sh/nextjs": "^0.9.6",
+    "@polar-sh/sdk": "1.0.0-alpha.16",
     "@vercel/blob": "^2.6.1",
     "drizzle-orm": "^0.33.0",
     "embla-carousel-react": "^8.6.0",
