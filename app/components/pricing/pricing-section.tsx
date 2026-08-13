@@ -1,11 +1,10 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import Button from '@/app/components/ui/button'
 import { useI18n } from '@/lib/i18n'
 import { useScrollReveal } from '@/app/hooks/use-scroll-reveal'
-import type { Paddle } from '@paddle/paddle-js'
 
 interface Plan {
   id: number
@@ -28,8 +27,6 @@ export default function PricingSection() {
   const [plans, setPlans] = useState<Plan[]>([])
   const [trmRate, setTrmRate] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
-  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null)
-  const paddleRef = useRef<Paddle | null>(null)
   const { ref: headerRef, isVisible: headerVisible } = useScrollReveal()
   const { ref: gridRef, isVisible: gridVisible } = useScrollReveal({ threshold: 0.1 })
 
@@ -56,66 +53,9 @@ export default function PricingSection() {
     fetchData()
   }, [])
 
-  useEffect(() => {
-    if (
-      paddleRef.current ||
-      !process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN ||
-      !process.env.NEXT_PUBLIC_PADDLE_ENV
-    ) {
-      return
-    }
-
-    import('@paddle/paddle-js').then(({ initializePaddle }) =>
-      initializePaddle({
-        token: process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN!,
-        environment: process.env.NEXT_PUBLIC_PADDLE_ENV === 'production' ? 'production' : 'sandbox',
-      }).then((p) => {
-        if (p) paddleRef.current = p
-      }),
-    )
-  }, [])
-
   const handleCheckout = useCallback(
     async (plan: Plan) => {
-      if (!paddleRef.current) {
-        window.location.href = `/booking?plan=${plan.slug}`
-        return
-      }
-
-      setCheckoutLoading(plan.slug)
-      try {
-        const bookingReference = crypto.randomUUID()
-        const res = await fetch('/api/payments/checkout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            planSlug: plan.slug,
-            customerEmail: '',
-            customerName: '',
-            bookingReference,
-          }),
-        })
-
-        if (!res.ok) {
-          const err = await res.json()
-          throw new Error(err.error || 'Failed to create checkout')
-        }
-
-        const { transactionId } = await res.json()
-
-        paddleRef.current.Checkout.open({
-          transactionId,
-          settings: {
-            displayMode: 'overlay',
-            successUrl: `${window.location.origin}/booking/confirmation?ref=${bookingReference}`,
-          },
-        })
-      } catch (err) {
-        console.error('Checkout error:', err)
-        window.location.href = `/booking?plan=${plan.slug}`
-      } finally {
-        setCheckoutLoading(null)
-      }
+      window.location.href = `/booking?plan=${plan.slug}`
     },
     [],
   )
@@ -229,22 +169,11 @@ export default function PricingSection() {
                     </div>
                   )}
 
-                  {paddleRef.current ? (
-                    <Button
-                      variant={isPopular ? 'primary' : 'secondary'}
-                      className="w-full"
-                      disabled={checkoutLoading === plan.slug}
-                      onClick={() => handleCheckout(plan)}
-                    >
-                      {checkoutLoading === plan.slug ? 'Processing...' : t.pricing.selectPlan}
+                  <Link href={`/booking?plan=${plan.slug}`} className="block">
+                    <Button variant={isPopular ? 'primary' : 'secondary'} className="w-full">
+                      {t.pricing.selectPlan}
                     </Button>
-                  ) : (
-                    <Link href={`/booking?plan=${plan.slug}`} className="block">
-                      <Button variant={isPopular ? 'primary' : 'secondary'} className="w-full">
-                        {t.pricing.selectPlan}
-                      </Button>
-                    </Link>
-                  )}
+                  </Link>
                 </article>
               )
             })}

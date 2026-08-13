@@ -54,6 +54,13 @@ export default function ConfirmationPage() {
         >
           {t.booking.confirmation.bookAnother}
         </Link>
+
+        <p className="text-white/40 text-xs">
+          {t.booking.confirmation.feedbackPrompt}{' '}
+          <Link href="/feedback" className="text-accent hover:text-accent-light underline underline-offset-2 transition-colors">
+            {t.booking.confirmation.feedbackLink}
+          </Link>
+        </p>
       </div>
     </main>
   )

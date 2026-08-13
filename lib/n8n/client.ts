@@ -219,6 +219,49 @@ export async function triggerDeliveryCompleted(data: {
 }
 
 /**
+ * Trigger n8n workflow for feedback request after service completion.
+ * Sends a WhatsApp message with a link to the feedback form.
+ */
+export async function triggerFeedbackRequest(data: {
+  bookingReference: string
+  customerName: string
+  customerPhone?: string
+  bookingId?: string
+}): Promise<N8nResponse> {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+  const feedbackUrl = data.bookingId
+    ? `${siteUrl}/feedback?bookingId=${data.bookingId}`
+    : `${siteUrl}/feedback`
+
+  const phone = data.customerPhone
+  if (phone) {
+    const isSpanish = /[áéíóúñ¿¡]/.test(data.customerName) ||
+      data.customerName.toLowerCase().includes('maría') ||
+      data.customerName.toLowerCase().includes('josé')
+
+    const message = isSpanish
+      ? `🙏 ¡Hola ${data.customerName}!\n\nGracias por viajar con LocalPlug. Tu opinión nos ayuda a mejorar.\n\n¿Cómo fue tu experiencia? Cuéntanos en 1 minuto:\n\n${feedbackUrl}\n\n¡Gracias por tu tiempo! ❤️`
+      : `🙏 Hello ${data.customerName}!\n\nThank you for traveling with LocalPlug. Your feedback helps us improve.\n\nHow was your experience? Tell us in 1 minute:\n\n${feedbackUrl}\n\nThank you for your time! ❤️`
+
+    await sendOrQueueWhatsApp({ number: phone, message })
+  }
+
+  return sendN8nWebhook('feedback-request', {
+    type: 'feedback_request',
+    booking: {
+      bookingReference: data.bookingReference,
+      customerName: data.customerName,
+      customerPhone: data.customerPhone,
+      bookingId: data.bookingId,
+    },
+    feedbackUrl,
+    evolutionApi: {
+      instanceName: process.env.EVOLUTION_INSTANCE_NAME,
+    },
+  })
+}
+
+/**
  * Trigger n8n workflow for AI chat message
  */
 export async function triggerAiChatMessage(conversationData: {

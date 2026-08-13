@@ -10,9 +10,8 @@ const REQUEUE_INTERVAL = 12 // requeue dead messages every 12 cron runs (~1 hour
 function verifyAuth(req: Request): boolean {
   if (req.headers.get('x-vercel-cron') === '1') return true
 
-  const { searchParams } = new URL(req.url)
   const token = process.env.CRON_SECRET
-  if (token && searchParams.get('secret') === token) return true
+  if (token && req.headers.get('x-cron-secret') === token) return true
 
   return false
 }

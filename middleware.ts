@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { clerkMiddleware, createRouteMatcher, clerkClient } from '@clerk/nextjs/server'
-import { applyRateLimit } from '@/lib/rate-limit'
+import { applyRateLimit, checkIpBanned, extractIp } from '@/lib/rate-limit'
 
 const AUTHORIZED_PARTIES = [
   process.env.NEXT_PUBLIC_SITE_URL,
@@ -22,6 +22,7 @@ const isPublicRoute = createRouteMatcher([
   '/api/flights/validate',
   '/api/bookings/search',
   '/api/webhooks/(.*)',
+  '/api/checkout/(.*)',
   '/api/admin/lookup',
   '/api/chat/start',
   '/api/chat/send',
@@ -63,6 +64,11 @@ export default clerkMiddleware(
 
   const { pathname } = new URL(req.url)
   if (pathname.startsWith('/api/')) {
+    // Check IP ban first (escalating bans from repeated violations)
+    const ip = extractIp(req)
+    const banResponse = await checkIpBanned(ip)
+    if (banResponse) return banResponse
+
     const rateLimitRes = await applyRateLimit(req)
     if (rateLimitRes) return rateLimitRes
 

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { timingSafeEqual } from '@/lib/string-utils'
 
 const WEBHOOK_SECRET = process.env.N8N_WEBHOOK_SECRET
 
@@ -13,7 +14,7 @@ export function verifyWebhookSecret(req: Request): boolean {
 
   const secretHeader = req.headers.get('x-webhook-secret') || ''
 
-  return token === WEBHOOK_SECRET || secretHeader === WEBHOOK_SECRET
+  return timingSafeEqual(token, WEBHOOK_SECRET) || timingSafeEqual(secretHeader, WEBHOOK_SECRET)
 }
 
 export function requireWebhookAuth(req: Request): NextResponse | null {
