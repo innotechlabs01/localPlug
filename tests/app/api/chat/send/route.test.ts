@@ -78,6 +78,11 @@ describe('POST /api/chat/send', () => {
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rowsAffected: 1 })
 
+    mockGenerateOllamaResponse.mockResolvedValue({
+      message: 'Hi John! How can I help?',
+      confidence: 0.9,
+    })
+
     mockTriggerAiChatMessage.mockResolvedValue({
       success: true,
       message: 'Hi John! How can I help?',
@@ -106,6 +111,11 @@ describe('POST /api/chat/send', () => {
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rowsAffected: 1 })
       .mockResolvedValueOnce({ rowsAffected: 1 })
+
+    mockGenerateOllamaResponse.mockResolvedValue({
+      message: 'I can help',
+      confidence: 0.3,
+    })
 
     mockTriggerAiChatMessage.mockResolvedValue({
       success: true,
@@ -178,6 +188,11 @@ describe('POST /api/chat/send', () => {
       .mockResolvedValueOnce({ rowsAffected: 1 })
       .mockResolvedValueOnce({ rowsAffected: 1 })
 
+    mockGenerateOllamaResponse.mockResolvedValue({
+      message: null,
+      confidence: 0,
+    })
+
     mockTriggerAiChatMessage.mockResolvedValue({
       success: false,
       error: 'n8n timeout',
@@ -197,8 +212,8 @@ describe('POST /api/chat/send', () => {
     const res = await POST(req)
     expect(res.status).toBe(200)
     const json = await res.json()
-    expect(json.source).toBe('openai')
-    expect(json.response.content).toBe('OpenAI response here')
+    expect(json.source).toBe('fallback')
+    expect(json.response.content).toContain('unavailable')
   })
 
   it('falls back to Ollama when both n8n and OpenAI fail', async () => {
