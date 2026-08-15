@@ -1,5 +1,6 @@
+const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1'
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || ''
-const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o'
+const OPENAI_MODEL = process.env.OPENAI_MODEL || 'meta/llama-3.1-8b-instruct'
 
 interface OpenAIResponse {
   message: string
@@ -48,7 +49,7 @@ export async function generateOpenAIResponse(params: {
 
     messages.push({ role: 'user', content: message })
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -58,7 +59,7 @@ export async function generateOpenAIResponse(params: {
         model: OPENAI_MODEL,
         messages,
         temperature: 0.7,
-        max_tokens: 500,
+        max_tokens: 300,
       }),
     })
 

@@ -21,6 +21,8 @@ export interface KnownEnv {
   EVOLUTION_API_KEY?: string
   EVOLUTION_WEBHOOK_SECRET?: string
   OPENAI_API_KEY?: string
+  OPENAI_BASE_URL?: string
+  OPENAI_MODEL?: string
 }
 
 export function getEnvVar(name: keyof KnownEnv | string): string | undefined {
@@ -53,6 +55,8 @@ const WARN_ENV_VARS: string[] = [
   'EVOLUTION_API_KEY',
   'EVOLUTION_WEBHOOK_SECRET',
   'OPENAI_API_KEY',
+  'OPENAI_BASE_URL',
+  'OPENAI_MODEL',
 ]
 
 let _envValidated = false

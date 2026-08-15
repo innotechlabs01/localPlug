@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { sendWhatsAppDirect, sendOrQueueWhatsApp } from '@/lib/n8n/client'
+import { generateOpenAIResponse } from '@/lib/services/openai-service'
 import { generateOllamaResponse } from '@/lib/services/ollama-service'
 import { timingSafeEqual } from '@/lib/string-utils'
 
@@ -193,12 +194,17 @@ export async function POST(req: Request) {
             }
           }
 
-          // Generate AI response using Ollama
-          const aiResult = await generateOllamaResponse({
+          // Generate AI response — NVIDIA NIM cloud first (fast, free tier), Ollama local fallback
+          const aiContext = {
             message: text,
             conversationHistory: history,
             bookingInfo,
-          })
+          }
+          let aiResult = await generateOpenAIResponse(aiContext)
+          if (!aiResult.message) {
+            console.warn('[Evolution Webhook] NVIDIA NIM unavailable, trying Ollama fallback')
+            aiResult = await generateOllamaResponse(aiContext)
+          }
 
           if (aiResult.message) {
             // Check for escalation (low confidence means escalation detected in openai-service)
