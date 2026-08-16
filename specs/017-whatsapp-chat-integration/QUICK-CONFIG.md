@@ -95,8 +95,9 @@ Expected response: `{"success":true,"processed":"test"}`
 ### AI not responding
 
 1. Check Vercel logs for errors
-2. Verify `OPENAI_API_KEY` is set correctly
-3. Check conversation status in database (must be `ai_active`)
+2. Verify `OPENAI_API_KEY` (NVIDIA NIM key) and `OPENAI_BASE_URL=https://integrate.api.nvidia.com/v1` are set correctly
+3. If NVIDIA rate-limited (429), the app falls back to `OLLAMA_BASE_URL` automatically
+4. Check conversation status in database (must be `ai_active`)
 
 ### Admin messages not reaching WhatsApp
 
@@ -119,5 +120,10 @@ Expected response: `{"success":true,"processed":"test"}`
 | `EVOLUTION_INSTANCE_NAME` | Vercel | WhatsApp instance name |
 | `EVOLUTION_WEBHOOK_SECRET` | Vercel | Webhook signature secret |
 | `NEXT_PUBLIC_WHATSAPP_NUMBER` | Vercel | Business number for wa.me link |
+| `OPENAI_API_KEY` | Vercel | NVIDIA NIM API key (primary AI provider) |
+| `OPENAI_BASE_URL` | Vercel | `https://integrate.api.nvidia.com/v1` |
+| `OPENAI_MODEL` | Vercel | NVIDIA free model (e.g. `meta/llama-3.1-8b-instruct`) |
+| `OLLAMA_BASE_URL` | Vercel | Local Ollama fallback (e.g. `http://<server-ip>:11434`) |
+| `OLLAMA_MODEL` | Vercel | Ollama fallback model (e.g. `llama3.1:8b`) |
 | `WEBHOOK_GLOBAL_URL` | EasyPanel | Webhook destination URL |
 | `WEBHOOK_GLOBAL_HEADERS` | EasyPanel | Webhook authentication headers |

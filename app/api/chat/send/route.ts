@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { triggerAiChatMessage, triggerFraudDetection, sendWhatsAppDirect } from '@/lib/n8n/client'
+import { generateOpenAIResponse } from '@/lib/services/openai-service'
 import { generateOllamaResponse } from '@/lib/services/ollama-service'
 import { t } from '@/lib/i18n/server'
 
@@ -227,31 +228,40 @@ export async function POST(request: Request) {
       }
     }
 
-    // AI Response Chain: Ollama → n8n → Fallback
-    // 1. Try Ollama first (primary AI provider)
-    const ollamaResult = await generateOllamaResponse({
+    // AI Response Chain: NVIDIA NIM → Ollama → n8n → Fallback
+    // 1. Try NVIDIA NIM cloud first (primary AI provider)
+    const aiContext = {
       message,
       conversationHistory: history,
       bookingInfo,
       userCountry: conv?.user_country,
-    })
+    }
 
-    if (ollamaResult.message) {
-      console.log('[Chat Send] Ollama response generated', { conversationId: convId, message: ollamaResult.message.slice(0, 200) })
+    let aiSource: 'openai' | 'ollama' = 'openai'
+    let aiResult = await generateOpenAIResponse(aiContext)
+
+    if (!aiResult.message) {
+      console.warn('[Chat Send] NVIDIA NIM empty, trying Ollama fallback', { conversationId: convId })
+      aiSource = 'ollama'
+      aiResult = await generateOllamaResponse(aiContext)
+    }
+
+    if (aiResult.message) {
+      console.log(`[Chat Send] ${aiSource === 'openai' ? 'NVIDIA' : 'Ollama'} response generated`, { conversationId: convId, message: aiResult.message.slice(0, 200) })
 
       await db.execute({
         sql: `INSERT INTO messages (conversation_id, sender_type, content, message_type, metadata)
               VALUES (?, 'ai', ?, 'text', ?)`,
-        args: [convId, ollamaResult.message, JSON.stringify({ confidence: ollamaResult.confidence, source: 'ollama' })],
+        args: [convId, aiResult.message, JSON.stringify({ confidence: aiResult.confidence, source: aiSource })],
       })
 
       await db.execute({
         sql: `UPDATE conversations SET ai_confidence = ?, last_message_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`,
-        args: [ollamaResult.confidence, convId],
+        args: [aiResult.confidence, convId],
       })
 
       // Check for escalation (low confidence means escalation detected)
-      if (ollamaResult.confidence < 0.5) {
+      if (aiResult.confidence < 0.5) {
         await db.execute({
           sql: `UPDATE conversations SET status = 'human_active', updated_at = datetime('now')
                 WHERE id = ? AND status = 'ai_active'`,
@@ -270,15 +280,15 @@ export async function POST(request: Request) {
         conversationId: convId,
         response: {
           sender: 'ai',
-          content: ollamaResult.message,
+          content: aiResult.message,
           type: 'text',
         },
-        source: 'ollama',
+        source: aiSource,
       })
     }
 
-    // 2. Fallback to n8n if Ollama fails
-    console.warn('[Chat Send] Ollama failed, trying n8n fallback', {
+    // 2. Fallback to n8n if both AI providers fail
+    console.warn('[Chat Send] NVIDIA/Ollama failed, trying n8n fallback', {
       conversationId: convId,
     })
 

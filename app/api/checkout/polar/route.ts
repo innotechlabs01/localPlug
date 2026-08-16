@@ -90,6 +90,28 @@ export async function POST(req: Request) {
 
     const polar = getPolarClient()
 
+    const metadata: Record<string, string | number | boolean> = {
+      booking_reference: bookingReference,
+      package_id: packageId,
+      package_name: packageName,
+      customer_name: customerName,
+      customer_email: customerEmail,
+      need_return: String(!!needReturn),
+      tour_ids: JSON.stringify(tour_ids),
+      num_people: String(num_people),
+    }
+    for (const [key, value] of Object.entries({
+      flight_number: body.flightNumber,
+      airline: body.airline,
+      arrival_date: body.arrivalDate,
+      arrival_time: body.arrivalTime,
+      destination_address: body.destinationAddress,
+      return_date: body.returnDate,
+      return_time: body.returnTime,
+    })) {
+      if (value) metadata[key] = value
+    }
+
     const checkout = await polar.checkouts.create({
       products: [productId],
       prices: {
@@ -104,23 +126,7 @@ export async function POST(req: Request) {
       customer_email: customerEmail,
       customer_name: customerName,
       success_url: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/booking/confirmation?ref=${bookingReference}`,
-      metadata: {
-        booking_reference: bookingReference,
-        package_id: packageId,
-        package_name: packageName,
-        customer_name: customerName,
-        customer_email: customerEmail,
-        need_return: String(!!needReturn),
-        tour_ids: JSON.stringify(tour_ids),
-        num_people: String(num_people),
-        flight_number: body.flightNumber || '',
-        airline: body.airline || '',
-        arrival_date: body.arrivalDate || '',
-        arrival_time: body.arrivalTime || '',
-        destination_address: body.destinationAddress || '',
-        return_date: body.returnDate || '',
-        return_time: body.returnTime || '',
-      },
+      metadata,
       embed_origin: process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000',
     })
 
