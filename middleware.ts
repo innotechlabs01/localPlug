@@ -4,7 +4,7 @@ import { applyRateLimit, checkIpBanned, extractIp } from '@/lib/rate-limit'
 
 const AUTHORIZED_PARTIES = [
   process.env.NEXT_PUBLIC_SITE_URL,
-  'https://localplug.vercel.app',
+  'https://local-plug.vercel.app',
   'http://localhost:3000',
   process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : undefined,
   process.env.VERCEL_BRANCH_URL ? `https://${process.env.VERCEL_BRANCH_URL}` : undefined,
@@ -160,7 +160,7 @@ function corsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get('origin') || ''
   const allowedOrigins = [
     process.env.NEXT_PUBLIC_SITE_URL,
-    'https://localplug.vercel.app',
+    'https://local-plug.vercel.app',
     'http://localhost:3000',
     process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : undefined,
     process.env.VERCEL_BRANCH_URL ? `https://${process.env.VERCEL_BRANCH_URL}` : undefined,
