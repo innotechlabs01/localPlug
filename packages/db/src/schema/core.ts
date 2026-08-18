@@ -95,3 +95,22 @@ export const userRoles = sqliteTable(
     roleIdIdx: index('user_roles_role_id_idx').on(t.roleId),
   }),
 )
+
+// ──────────────────────────────────────────────
+// CONSENT RECORDS (Ley 1581 de 2012 compliance)
+// ──────────────────────────────────────────────
+export const consentRecords = sqliteTable('consent_records', {
+  id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
+  bookingReference: text('booking_reference').notNull(),
+  customerEmail: text('customer_email').notNull(),
+  termsAccepted: integer('terms_accepted', { mode: 'boolean' }).notNull().default(false),
+  privacyAccepted: integer('privacy_accepted', { mode: 'boolean' }).notNull().default(false),
+  refundAccepted: integer('refund_accepted', { mode: 'boolean' }).notNull().default(false),
+  termsVersion: text('terms_version'),
+  privacyVersion: text('privacy_version'),
+  refundVersion: text('refund_version'),
+  acceptedAt: text('accepted_at').notNull(),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  createdAt: text('created_at').default(sql`datetime('now')`),
+})

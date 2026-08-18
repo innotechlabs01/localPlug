@@ -140,6 +140,32 @@ export async function POST(request: Request) {
 
     console.log('[Booking] Order created:', orderNumber)
 
+    // Save consent records (Ley 1581 de 2012 compliance)
+    if (body.consents) {
+      try {
+        const consent = body.consents
+        await db.execute({
+          sql: `INSERT INTO consent_records (booking_reference, customer_email, terms_accepted, privacy_accepted, refund_accepted, terms_version, privacy_version, refund_version, accepted_at, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          args: [
+            bookingRef,
+            customer.email || '',
+            consent.terms ? 1 : 0,
+            consent.privacy ? 1 : 0,
+            consent.refund ? 1 : 0,
+            consent.termsVersion || '1.0',
+            consent.termsVersion || '1.0',
+            consent.termsVersion || '1.0',
+            consent.acceptedAt || new Date().toISOString(),
+            request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || '',
+            request.headers.get('user-agent') || '',
+          ],
+        })
+      } catch (consentErr) {
+        console.error('[Booking] Failed to save consent record:', consentErr)
+        // Non-critical — don't block booking
+      }
+    }
+
     // Check if payment was already completed (webhook may have fired before POST /api/booking)
     const paymentCheck = await db.execute({
       sql: `SELECT status FROM payments WHERE booking_reference = ? AND status = 'completed'`,

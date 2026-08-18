@@ -345,6 +345,9 @@ export default {
         privacyLink: 'Política de Privacidad',
         refundLink: 'Política de Reembolso',
         mustAccept: 'Debes aceptar los términos para continuar',
+        acceptTermsLabel: 'Acepta cada política para continuar:',
+        acceptPrivacy: 'Acepto la',
+        acceptRefund: 'Acepto la',
       },
     },
     toast: {

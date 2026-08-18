@@ -345,6 +345,9 @@ export default {
         privacyLink: 'Privacy Policy',
         refundLink: 'Refund Policy',
         mustAccept: 'You must accept the terms to continue',
+        acceptTermsLabel: 'Please accept each policy to continue:',
+        acceptPrivacy: 'I accept the',
+        acceptRefund: 'I accept the',
       },
     },
     toast: {
