@@ -76,7 +76,7 @@ function FooterInner() {
           </div>
 
           <nav aria-label="Legal">
-            <h4 className="text-sm font-semibold text-white mb-5">{t.footer.terms}</h4>
+            <h4 className="text-sm font-semibold text-white mb-5">{t.footer.legal}</h4>
             <ul className="space-y-3">
               <li><a href="/terms" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors duration-200">{t.footer.terms}</a></li>
               <li><a href="/privacy" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors duration-200">{t.footer.privacy}</a></li>

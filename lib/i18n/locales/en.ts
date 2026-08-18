@@ -400,6 +400,7 @@ export default {
     safety: 'Safety',
     fleet: 'Fleet',
     terms: 'Terms of Service',
+    legal: 'Legal',
     privacy: 'Privacy Policy',
     refundPolicy: 'Refund Policy',
     address: 'El Poblado, Medellín Antioquia, Colombia',
