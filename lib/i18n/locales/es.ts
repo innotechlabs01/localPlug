@@ -407,6 +407,13 @@ export default {
       nightlifeVIP: 'VIP Vida Nocturna',
     },
   },
+  legal: {
+    termsTitle: 'Términos de Servicio',
+    privacyTitle: 'Política de Privacidad',
+    refundTitle: 'Política de Reembolso',
+    lastUpdated: 'Última actualización: 18 de agosto de 2026',
+    effectiveDate: 'Fecha de vigencia: 18 de agosto de 2026',
+  },
   admin: {
     nav: {
       dashboard: 'Panel',

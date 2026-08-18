@@ -408,6 +408,13 @@ export default {
       nightlifeVIP: 'Nightlife VIP',
     },
   },
+  legal: {
+    termsTitle: 'Terms of Service',
+    privacyTitle: 'Privacy Policy',
+    refundTitle: 'Refund Policy',
+    lastUpdated: 'Last updated: August 18, 2026',
+    effectiveDate: 'Effective date: August 18, 2026',
+  },
   admin: {
     nav: {
       dashboard: 'Dashboard',
