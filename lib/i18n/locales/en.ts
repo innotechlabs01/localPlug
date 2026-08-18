@@ -400,6 +400,8 @@ export default {
     safety: 'Safety',
     fleet: 'Fleet',
     terms: 'Terms of Service',
+    privacy: 'Privacy Policy',
+    refundPolicy: 'Refund Policy',
     address: 'El Poblado, Medellín Antioquia, Colombia',
     links: {
       airportTransfer: 'Airport Transfer',
