@@ -5,17 +5,19 @@ import Header from '@/app/components/layout/header'
 import Footer from '@/app/components/layout/footer'
 import { useI18n } from '@/lib/i18n'
 
+type LegalTranslationKey = 'termsTitle' | 'privacyTitle' | 'refundTitle' | 'lastUpdated' | 'effectiveDate'
+
 interface LegalPageProps {
-  titleKey: string
-  lastUpdatedKey: string
+  titleKey: LegalTranslationKey
+  lastUpdatedKey: LegalTranslationKey
   children: ReactNode
 }
 
 export default function LegalPage({ titleKey, lastUpdatedKey, children }: LegalPageProps) {
   const { t } = useI18n()
 
-  const title = t.legal[titleKey as keyof typeof t.legal] || titleKey
-  const lastUpdated = t.legal[lastUpdatedKey as keyof typeof t.legal] || lastUpdatedKey
+  const title = t.legal[titleKey] || titleKey
+  const lastUpdated = t.legal[lastUpdatedKey] || lastUpdatedKey
 
   return (
     <div className="min-h-screen bg-[var(--bg-dark)]">
@@ -30,7 +32,7 @@ export default function LegalPage({ titleKey, lastUpdatedKey, children }: LegalP
               {lastUpdated}
             </p>
 
-            <div className="prose-legal text-[var(--text-secondary)] leading-relaxed space-y-6">
+            <div className="text-[var(--text-secondary)] text-[15px] leading-relaxed space-y-6 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:text-[var(--text-primary)] [&_h2]:mb-3 [&_p]:mb-4 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:space-y-2">
               {children}
             </div>
           </div>
