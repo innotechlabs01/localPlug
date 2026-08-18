@@ -242,8 +242,7 @@ export default function StepPayment({
           />
           <span className="text-[13px] text-[var(--text-secondary)] leading-relaxed">
             {paymentT.acceptTerms}{' '}
-            <a href="/terms" target="_blank" className="text-[var(--accent-gold)] underline hover:text-[var(--accent-gold-light)]">{paymentT.termsLink}</a>{' '}
-            {paymentT.and}{' '}
+            <a href="/terms" target="_blank" className="text-[var(--accent-gold)] underline hover:text-[var(--accent-gold-light)]">{paymentT.termsLink}</a>,{' '}
             <a href="/privacy" target="_blank" className="text-[var(--accent-gold)] underline hover:text-[var(--accent-gold-light)]">{paymentT.privacyLink}</a>{' '}
             {paymentT.and}{' '}
             <a href="/refund-policy" target="_blank" className="text-[var(--accent-gold)] underline hover:text-[var(--accent-gold-light)]">{paymentT.refundLink}</a>

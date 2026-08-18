@@ -42,12 +42,11 @@ export default function TermsPage() {
       <section>
         <h2>4. Cancellation &amp; Refund Policy</h2>
         <p>
-          Cancellation policies vary by service and are communicated at the time of booking.
-          Generally, cancellations made within 24 hours of the scheduled service may be eligible for
-          a full refund. Cancellations made between 24 and 72 hours prior may receive a partial
-          refund. Cancellations made less than 24 hours before the scheduled service are not
-          eligible for a refund. Refunds are processed to the original payment method within 5–10
-          business days.
+          Free cancellation is available up to 48 hours before the scheduled arrival date.
+          Cancellations within 48 hours of arrival are subject to a full charge. Refunds for
+          services not rendered due to our fault will be processed in full. See our{' '}
+          <a href="/refund-policy" className="text-[var(--accent-gold)] underline hover:text-[var(--accent-gold-light)]">Refund Policy</a>{' '}
+          page for complete details.
         </p>
       </section>
 

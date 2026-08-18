@@ -2,16 +2,16 @@ import type { Metadata } from 'next'
 import LegalPage from '@/app/components/legal/legal-page'
 
 export const metadata: Metadata = {
-  title: 'Refund & Cancelation Policy | Medellín Premium',
+  title: 'Refund & Cancellation Policy | Medellín Premium',
 }
 
 export default function RefundPolicyPage() {
   return (
     <LegalPage titleKey="refundTitle" lastUpdatedKey="lastUpdated">
       <section>
-        <h2>1. Free Cancelation</h2>
+        <h2>1. Free Cancellation</h2>
         <p>
-          You may cancel your booking free of charge up to 72 hours before the scheduled service.
+          You may cancel your booking free of charge up to 48 hours before the scheduled arrival date.
           In this case, you will receive a full refund to your original payment method within 5–10
           business days. To cancel, contact our support team via WhatsApp or email with your
           booking reference number.
@@ -19,12 +19,12 @@ export default function RefundPolicyPage() {
       </section>
 
       <section>
-        <h2>2. Late Cancelation (Within 48 Hours)</h2>
+        <h2>2. Late Cancellation (Within 48 Hours)</h2>
         <p>
-          Cancelations made between 48 and 24 hours before the scheduled service are subject to a
-          50% cancellation fee. The remaining 50% will be refunded to your original payment method
-          within 5–10 business days. Cancelations made less than 24 hours before the scheduled
-          service are not eligible for a refund unless covered by another section of this policy.
+          Cancellations made within 48 hours of the scheduled arrival are subject to a full charge.
+          This is because our team and transportation partners are already dispatched and coordinated
+          for your arrival. No refund will be issued for cancellations made within this window unless
+          covered by another section of this policy.
         </p>
       </section>
 
@@ -96,7 +96,7 @@ export default function RefundPolicyPage() {
       <section>
         <h2>9. Contact</h2>
         <p>
-          For any questions about this Refund &amp; Cancelation Policy or to request a refund,
+          For any questions about this Refund &amp; Cancellation Policy or to request a refund,
           please contact us through our official communication channels. Our support team is
           available to assist you and will respond to refund requests as quickly as possible.
         </p>
