@@ -339,6 +339,12 @@ export default {
         securePayment: 'Pago seguro',
         selectPackageSummary: 'Selecciona un paquete para ver tu reserva',
         selectPackageContinue: 'Selecciona un paquete para continuar',
+        acceptTerms: 'Acepto los',
+        termsLink: 'Términos de Servicio',
+        and: 'y la',
+        privacyLink: 'Política de Privacidad',
+        refundLink: 'Política de Reembolso',
+        mustAccept: 'Debes aceptar los términos para continuar',
       },
     },
     toast: {

@@ -339,7 +339,12 @@ export default {
         securePayment: 'Secure payment',
         selectPackageSummary: 'Select a package to see your booking summary',
         selectPackageContinue: 'Select a package to continue',
-
+        acceptTerms: 'I accept the',
+        termsLink: 'Terms of Service',
+        and: 'and',
+        privacyLink: 'Privacy Policy',
+        refundLink: 'Refund Policy',
+        mustAccept: 'You must accept the terms to continue',
       },
     },
     toast: {

@@ -59,6 +59,7 @@ export default function StepPayment({
   const paymentT = t.booking.steps.payment
   const [error, setError] = useState<string | null>(null)
   const [phase, setPhase] = useState<'ready' | 'redirecting'>('ready')
+  const [termsAccepted, setTermsAccepted] = useState(false)
 
   const handlePay = useCallback(async () => {
     setPhase('redirecting')
@@ -231,10 +232,33 @@ export default function StepPayment({
         </div>
       )}
 
+      <div className="mb-6">
+        <label className="flex items-start gap-3 cursor-pointer group">
+          <input
+            type="checkbox"
+            checked={termsAccepted}
+            onChange={(e) => setTermsAccepted(e.target.checked)}
+            className="mt-1 h-4 w-4 rounded border-[var(--border)] bg-[var(--bg-card)] text-[var(--accent-gold)] focus:ring-[var(--accent-gold)] focus:ring-offset-0"
+          />
+          <span className="text-[13px] text-[var(--text-secondary)] leading-relaxed">
+            {paymentT.acceptTerms}{' '}
+            <a href="/terms" target="_blank" className="text-[var(--accent-gold)] underline hover:text-[var(--accent-gold-light)]">{paymentT.termsLink}</a>{' '}
+            {paymentT.and}{' '}
+            <a href="/privacy" target="_blank" className="text-[var(--accent-gold)] underline hover:text-[var(--accent-gold-light)]">{paymentT.privacyLink}</a>{' '}
+            {paymentT.and}{' '}
+            <a href="/refund-policy" target="_blank" className="text-[var(--accent-gold)] underline hover:text-[var(--accent-gold-light)]">{paymentT.refundLink}</a>
+          </span>
+        </label>
+        {!termsAccepted && (
+          <p className="text-[12px] text-[var(--text-muted)] mt-2 ml-7">{paymentT.mustAccept}</p>
+        )}
+      </div>
+
       {phase === 'ready' && (
         <div>
           <button
             onClick={handlePay}
+            disabled={!termsAccepted}
             className="w-full py-4 rounded-xl bg-gradient-to-r from-[var(--accent-gold)] to-[var(--accent-gold-light)] text-[var(--bg-dark)] text-label-md font-bold hover:from-[var(--accent-gold-light)] hover:to-[var(--accent-gold)] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_4px_14px_rgba(212,165,116,0.25)] hover:shadow-[0_6px_20px_rgba(212,165,116,0.35)]"
           >
             {t.common.payAndConfirm}
