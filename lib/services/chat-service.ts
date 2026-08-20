@@ -1,18 +1,7 @@
 import { getDb } from '@/lib/db';
 import { Conversation } from '../conversation';
 import { incrementAgentLoad, decrementAgentLoad } from './agent-service';
-
-// Simple logging function - in a real application, you would use a proper logging library
-function log(level: 'info' | 'warn' | 'error', message: string, meta?: any): void {
-  const timestamp = new Date().toISOString();
-  const logEntry = {
-    timestamp,
-    level,
-    message,
-    ...(meta || {})
-  };
-  console.log(JSON.stringify(logEntry));
-}
+import { logger } from '@/lib/logger';
 
 /**
  * Allows an administrator to take over a conversation from AI.
@@ -24,10 +13,10 @@ function log(level: 'info' | 'warn' | 'error', message: string, meta?: any): voi
  * @returns The updated conversation
  */
 export async function takeOverConversation(conversationId: number, agentId: number, reason?: string): Promise<Conversation | null> {
-  log('info', 'Admin taking over conversation', { 
+  logger.info('Admin taking over conversation', {
     conversationId,
     agentId,
-    reason 
+    reason,
   });
 
   // Update the conversation status to human_active and assign the agent
@@ -44,9 +33,9 @@ export async function takeOverConversation(conversationId: number, agentId: numb
   });
 
   if (result.rowsAffected === 0) {
-    log('warn', 'Failed to take over conversation - not found or not in ai_active status', { 
+    logger.warn('Failed to take over conversation - not found or not in ai_active status', {
       conversationId,
-      agentId 
+      agentId,
     });
     return null;
   }
@@ -58,8 +47,8 @@ export async function takeOverConversation(conversationId: number, agentId: numb
   });
 
   if (convResult.rows.length === 0) {
-    log('error', 'Conversation not found after takeover', { 
-      conversationId 
+    logger.error('Conversation not found after takeover', undefined, {
+      conversationId,
     });
     return null;
   }
@@ -68,10 +57,10 @@ export async function takeOverConversation(conversationId: number, agentId: numb
 
   await incrementAgentLoad(agentId)
 
-  log('info', 'Successfully taken over conversation', { 
+  logger.info('Successfully taken over conversation', {
     conversationId,
     agentId,
-    newStatus: conversation.status 
+    newStatus: conversation.status,
   });
 
   return conversation;
@@ -87,10 +76,10 @@ export async function takeOverConversation(conversationId: number, agentId: numb
  * @returns The updated conversation
  */
 export async function releaseToAIMode(conversationId: number, agentId: number, closedBy?: string): Promise<Conversation | null> {
-  log('info', 'Admin releasing conversation to AI mode', { 
+  logger.info('Admin releasing conversation to AI mode', {
     conversationId,
     agentId,
-    closedBy 
+    closedBy,
   });
 
   const db = getDb()
@@ -117,10 +106,10 @@ export async function releaseToAIMode(conversationId: number, agentId: number, c
   });
 
   if (result.rowsAffected === 0) {
-    log('warn', 'Failed to release conversation to AI mode - not found, not assigned to this agent, or not in human_active status', { 
+    logger.warn('Failed to release conversation to AI mode - not found, not assigned to this agent, or not in human_active status', {
       conversationId,
       agentId,
-      closedBy 
+      closedBy,
     });
     return null;
   }
@@ -135,19 +124,19 @@ export async function releaseToAIMode(conversationId: number, agentId: number, c
   });
 
   if (convResult.rows.length === 0) {
-    log('error', 'Conversation not found after release to AI mode', { 
-      conversationId 
+    logger.error('Conversation not found after release to AI mode', undefined, {
+      conversationId,
     });
     return null;
   }
 
   const conversation = convResult.rows[0] as unknown as Conversation;
 
-  log('info', 'Successfully released conversation to AI mode', { 
+  logger.info('Successfully released conversation to AI mode', {
     conversationId,
     agentId,
     closedBy,
-    newStatus: conversation.status 
+    newStatus: conversation.status,
   });
 
   return conversation;
@@ -185,7 +174,7 @@ export async function closeConversation(conversationId: number, closedBy: string
   })
 
   if (result.rowsAffected === 0) {
-    log('warn', 'Failed to close conversation - not found', { conversationId })
+    logger.warn('Failed to close conversation - not found', { conversationId })
     return null
   }
 
@@ -208,7 +197,7 @@ export async function closeConversation(conversationId: number, closedBy: string
 
   const conversation = convResult.rows[0] as unknown as Conversation
 
-  log('info', 'Successfully closed conversation', {
+  logger.info('Successfully closed conversation', {
     conversationId,
     closedBy,
     newStatus: conversation.status,

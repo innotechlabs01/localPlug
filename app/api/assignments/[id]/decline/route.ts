@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { requireWebhookAuth } from '@/lib/webhook-auth'
 import { getDriverFromSession } from '@/lib/driver/auth'
+import { sendOrQueueWhatsApp } from '@/lib/n8n/client'
+import { logger } from '@/lib/logger'
 
 export async function POST(
   req: Request,
@@ -69,6 +71,26 @@ export async function POST(
       sql: "UPDATE orders SET dispatch_status = 'pending', assigned_to = NULL, assigned_at = NULL, updated_at = ? WHERE id = ?",
       args: [now, assignment.order_id],
     })
+
+    // Notify customer that driver declined — we're finding a new one
+    try {
+      const orderResult = await db.execute({
+        sql: 'SELECT customer_phone, customer_name, booking_reference FROM orders WHERE id = ?',
+        args: [assignment.order_id],
+      })
+      const order = orderResult.rows[0] as { customer_phone?: string; customer_name?: string; booking_reference?: string } | undefined
+      if (order?.customer_phone) {
+        const isSpanish = /[áéíóúñ¿¡]/.test(order.customer_name || '')
+        const msg = isSpanish
+          ? `⚠️ Hola ${order.customer_name || 'viajero'}, tu conductor declinó la asignación. Estamos buscando una alternativa para tu reserva #${(order.booking_reference || '').slice(0, 8).toUpperCase()}. Te notificaremos pronto.`
+          : `⚠️ Hello ${order.customer_name || 'traveler'}, your driver declined the assignment. We're finding an alternative for your booking #${(order.booking_reference || '').slice(0, 8).toUpperCase()}. We'll notify you soon.`
+        sendOrQueueWhatsApp({ number: order.customer_phone, message: msg }).catch(err =>
+          logger.error('[Assignment Decline] WhatsApp notification failed', err instanceof Error ? err : undefined)
+        )
+      }
+    } catch (err) {
+      logger.error('[Assignment Decline] Failed to send notification', err instanceof Error ? err : undefined)
+    }
 
     return NextResponse.json({
       success: true,

@@ -3,6 +3,7 @@ import { Webhooks } from '@polar-sh/nextjs'
 import { getDb } from '@/lib/db'
 import { getPlatformFeePercent } from '@/lib/config'
 import { logger } from '@/lib/logger'
+import { triggerPaymentConfirmation } from '@/lib/n8n/client'
 
 export const POST = Webhooks({
   webhookSecret: process.env.POLAR_WEBHOOK_SECRET || '',
@@ -11,15 +12,47 @@ export const POST = Webhooks({
       const order = payload.data as Record<string, unknown>
       const metadata = order.metadata as Record<string, string> | undefined
       const bookingReference = metadata?.booking_reference
+      const webhookEventId = order.id as string
 
       if (!bookingReference) {
-        logger.warn('[Polar Webhook] order.paid missing booking_reference', { orderId: order.id as string })
+        logger.warn('[Polar Webhook] order.paid missing booking_reference', { orderId: webhookEventId })
         return
       }
 
       const db = getDb()
+
+      // Deduplication: skip if this webhook event was already processed
+      if (webhookEventId) {
+        const existingEvent = await db.execute({
+          sql: `SELECT 1 FROM payments WHERE paddle_webhook_event_id = ? AND status = 'completed' LIMIT 1`,
+          args: [webhookEventId],
+        })
+        if (existingEvent.rows.length > 0) {
+          logger.info('[Polar Webhook] Duplicate event, skipping', { webhookEventId, bookingReference })
+          return
+        }
+      }
+
       const now = new Date().toISOString()
       const totalAmount = (order.amount as number) || 0
+
+      // Amount validation: compare webhook amount with stored amount
+      const storedPayment = await db.execute({
+        sql: `SELECT amount FROM payments WHERE booking_reference = ? LIMIT 1`,
+        args: [bookingReference],
+      })
+      if (storedPayment.rows.length > 0) {
+        const storedAmount = Number(storedPayment.rows[0].amount)
+        if (storedAmount > 0 && totalAmount !== storedAmount) {
+          logger.error('[Polar Webhook] Amount mismatch — possible tampering', undefined, {
+            webhookAmount: totalAmount,
+            storedAmount,
+            bookingReference,
+            webhookEventId,
+          })
+          // Still process but log the discrepancy — a real fix requires investigation
+        }
+      }
 
       const feeRate = await getPlatformFeePercent()
 
@@ -121,6 +154,27 @@ export const POST = Webhooks({
         platformFeeCents,
         hotelPayoutCents,
       })
+
+      // Send WhatsApp confirmation to customer
+      const customerName = metadata.customer_name || ((order.customer as Record<string, unknown>)?.name as string) || ''
+      const customerEmail = metadata.customer_email || ((order.customer as Record<string, unknown>)?.email as string) || ''
+      const customerPhone = metadata.customer_phone as string || ''
+      const packageName = metadata.package_name || ''
+
+      if (customerPhone) {
+        triggerPaymentConfirmation({
+          bookingReference,
+          customerName,
+          customerEmail,
+          customerPhone,
+          packageName,
+          amount: totalAmount,
+          flightNumber: metadata.flight_number || '',
+          airline: metadata.airline || '',
+          arrivalDate: metadata.arrival_date || '',
+          arrivalTime: metadata.arrival_time || '',
+        }).catch(err => logger.error('[Polar Webhook] WhatsApp notification failed', err instanceof Error ? err : undefined))
+      }
     } catch (err) {
       logger.error('[Polar Webhook] order.paid failed', err instanceof Error ? err : undefined)
     }

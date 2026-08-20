@@ -2,12 +2,11 @@ import { describe, it, expect } from 'vitest'
 import { computeBookingTotals } from '../lib/booking-totals'
 
 describe('computeBookingTotals', () => {
-  it('computes base total matching legacy formula when there are no tours', () => {
+  it('computes base total when there are no tours', () => {
     const result = computeBookingTotals({
       basePrice: 159,
       returnCharge: 48,
-      tourPrices: [],
-      numPeople: 1,
+      tours: [],
       serviceFee: 5,
       taxRate: 0.19,
     })
@@ -22,8 +21,7 @@ describe('computeBookingTotals', () => {
     const result = computeBookingTotals({
       basePrice: 89,
       returnCharge: 48,
-      tourPrices: [149, 89],
-      numPeople: 3,
+      tours: [{ price: 149, numPeople: 3 }, { price: 89, numPeople: 3 }],
       serviceFee: 5,
       taxRate: 0.19,
     })
@@ -33,43 +31,41 @@ describe('computeBookingTotals', () => {
     expect(result.total).toBeCloseTo(result.subtotal + 5 + (result.subtotal - 5) * 0.19, 5)
   })
 
-  it('clamps invalid or zero number of people to 1', () => {
+  it('handles empty tours array', () => {
     const result = computeBookingTotals({
       basePrice: 159,
       returnCharge: 0,
-      tourPrices: [100],
-      numPeople: 0,
+      tours: [],
       serviceFee: 5,
       taxRate: 0.19,
     })
-    expect(result.toursTotal).toBe(100)
+    expect(result.toursTotal).toBe(0)
+    expect(result.subtotal).toBe(159)
   })
 
-  it('adds service price multiplied by number of people', () => {
+  it('adds service fee flat (not per person)', () => {
     const result = computeBookingTotals({
       basePrice: 159,
-      servicePrice: 30,
+      serviceFeeFlat: 30,
       returnCharge: 48,
-      tourPrices: [],
-      numPeople: 3,
+      tours: [],
       serviceFee: 5,
       taxRate: 0.19,
     })
-    expect(result.serviceTotal).toBe(90)
-    expect(result.subtotal).toBe(159 + 90 + 48)
+    expect(result.serviceFeeFlat).toBe(30)
+    expect(result.subtotal).toBe(159 + 30 + 48)
     expect(result.total).toBeCloseTo(result.subtotal + 5 + (result.subtotal - 5) * 0.19, 5)
   })
 
-  it('defaults service total to 0 when servicePrice is omitted or zero', () => {
+  it('defaults service fee flat to 0 when omitted', () => {
     const result = computeBookingTotals({
       basePrice: 89,
       returnCharge: 0,
-      tourPrices: [],
-      numPeople: 2,
+      tours: [],
       serviceFee: 5,
       taxRate: 0.19,
     })
-    expect(result.serviceTotal).toBe(0)
+    expect(result.serviceFeeFlat).toBe(0)
     expect(result.subtotal).toBe(89)
   })
 })

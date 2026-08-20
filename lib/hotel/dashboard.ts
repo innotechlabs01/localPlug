@@ -91,7 +91,8 @@ export async function getHotelDashboardMetrics(hotelId: number): Promise<HotelDa
     args: [hotelId],
   })
   const commissionRate = Number(hotelResult.rows[0]?.commission_rate || 0)
-  const commissionEarned = totalRevenue * commissionRate
+  // Platform fee: total * rate / (1 + rate) — consistent with webhook formula
+  const commissionEarned = Math.round((totalRevenue * commissionRate / (1 + commissionRate)) * 100) / 100
 
   // Recent reservations (last 5)
   const recentResult = await db.execute({
@@ -119,7 +120,7 @@ export async function getHotelDashboardMetrics(hotelId: number): Promise<HotelDa
     cancelledReservations: resMap['cancelled'] || 0,
     totalRooms,
     availableRooms: roomMap['available'] || 0,
-    bookedRooms: roomMap['booked'] || 0,
+    bookedRooms: roomMap['occupied'] || 0,
     totalServices,
     activeServices,
     totalRevenue,

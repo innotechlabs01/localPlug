@@ -20,11 +20,17 @@ export async function GET(req: Request) {
 
     let sql = `SELECT o.*, d.name as driver_name, d.vehicle as driver_vehicle,
                COALESCE(p.status, o.payment_status) as payment_status
-               FROM orders o
-               LEFT JOIN drivers d ON o.assigned_to = d.id
-               LEFT JOIN payments p ON o.booking_reference = p.booking_reference
-               WHERE 1=1`
+                FROM orders o
+                LEFT JOIN drivers d ON o.assigned_to = d.id
+                LEFT JOIN payments p ON o.booking_reference = p.booking_reference
+                WHERE 1=1`
     const args: (string | number)[] = []
+
+    if (tab === 'cancelled') {
+      sql += " AND o.status = 'cancelled'"
+    } else {
+      sql += " AND (o.status IS NULL OR o.status != 'cancelled')"
+    }
 
     if (tab === 'pending') {
       sql += ' AND o.dispatch_status = ?'
@@ -67,10 +73,11 @@ export async function GET(req: Request) {
 
     const countsResult = await db.execute(`
       SELECT
-        (SELECT COUNT(*) FROM orders WHERE dispatch_status = 'pending' OR dispatch_status IS NULL) as pending,
-        (SELECT COUNT(*) FROM orders WHERE dispatch_status = 'assigned') as assigned,
-        (SELECT COUNT(*) FROM orders WHERE dispatch_status = 'enroute') as enroute,
-        (SELECT COUNT(*) FROM orders WHERE dispatch_status = 'pickedup') as pickedup
+        (SELECT COUNT(*) FROM orders WHERE (dispatch_status = 'pending' OR dispatch_status IS NULL) AND (status IS NULL OR status != 'cancelled')) as pending,
+        (SELECT COUNT(*) FROM orders WHERE dispatch_status = 'assigned' AND (status IS NULL OR status != 'cancelled')) as assigned,
+        (SELECT COUNT(*) FROM orders WHERE dispatch_status = 'enroute' AND (status IS NULL OR status != 'cancelled')) as enroute,
+        (SELECT COUNT(*) FROM orders WHERE dispatch_status = 'pickedup' AND (status IS NULL OR status != 'cancelled')) as pickedup,
+        (SELECT COUNT(*) FROM orders WHERE status = 'cancelled') as cancelled
     `)
 
     const counts = countsResult.rows[0] as unknown as { pending: number; assigned: number; enroute: number; pickedup: number }
@@ -243,9 +250,41 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: 'orderId and status required' }, { status: 400 })
     }
 
-    const validStatuses = ['pending', 'assigned', 'enroute', 'pickedup', 'completed']
+    const validStatuses = ['pending', 'assigned', 'enroute', 'pickedup', 'completed', 'cancelled']
     if (!validStatuses.includes(status)) {
       return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
+    }
+
+    if (status === 'cancelled') {
+      const orderRow = await db.execute({
+        sql: 'SELECT room_id, is_hotel_booking, hotel_id FROM orders WHERE id = ?',
+        args: [orderId],
+      })
+      const roomId = orderRow.rows[0]?.room_id as number | null
+      const isHotelBooking = Number(orderRow.rows[0]?.is_hotel_booking) === 1
+
+      await db.execute({
+        sql: `UPDATE orders SET status = 'cancelled', dispatch_status = 'cancelled', updated_at = datetime('now') WHERE id = ?`,
+        args: [orderId],
+      })
+
+      if (isHotelBooking && roomId) {
+        await db.execute({
+          sql: `UPDATE rooms SET status = 'available', available_from = datetime('now'), current_order_id = NULL, updated_at = datetime('now') WHERE id = ?`,
+          args: [roomId],
+        })
+        await db.execute({
+          sql: `UPDATE room_bookings SET status = 'cancelled', updated_at = datetime('now') WHERE order_id = ?`,
+          args: [orderId],
+        })
+      }
+
+      await db.execute({
+        sql: "UPDATE assignments SET status = 'cancelled', cancelled_at = datetime('now'), block_until = NULL, updated_at = datetime('now') WHERE order_id = ? AND status IN ('pending_acceptance', 'accepted', 'confirmed_to_client', 'en_route')",
+        args: [orderId],
+      })
+
+      return NextResponse.json({ success: true, action: 'status_updated', newStatus: status })
     }
 
     await db.execute({

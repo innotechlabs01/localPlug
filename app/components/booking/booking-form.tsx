@@ -105,10 +105,11 @@ function BookingFormInner() {
   interface BookingConfig {
     packages: Record<string, {
       name: string
-      price: number
-      price_per_person_usd?: number
+      base_price_usd?: number
+      price?: number
+      service_fee_flat?: number
       features?: string[]
-      tours?: Array<{ id: number; name: string; description: string; price_per_person_usd: number }>
+      tours?: Array<{ id: number; name: string; description: string; price_per_person_usd: number; vehicle_type: string; duration_hours: number }>
       is_popular?: boolean
     }>
     returnTripCharge: number
@@ -116,8 +117,6 @@ function BookingFormInner() {
     taxRate: number
     currency: string
     advanceBookingDays: number
-    experiences?: Record<string, number>
-    trips?: Array<{ id: string; name: string; price_per_person_usd: number }>
     trm?: number
     brandName?: string
   }

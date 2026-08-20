@@ -1,31 +1,15 @@
+import { detectEscalation, type AiResponse } from './ai-utils'
+
 const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1'
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || ''
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'meta/llama-3.1-8b-instruct'
-
-interface OpenAIResponse {
-  message: string
-  confidence: number
-}
-
-const ESCALATION_KEYWORDS = [
-  'hablar con alguien', 'hablar con una persona', 'hablar con un agente', 'hablar con un humano',
-  'hablar con soporte', 'ayuda humana', 'queja', 'problema', 'reclamo', 'reembolso',
-  'cancelar', 'cancelación', 'refund', 'cancel', 'cancellation',
-  'talk to someone', 'talk to a person', 'talk to an agent', 'talk to a human',
-  'talk to support', 'human help', 'complaint', 'problem', 'issue',
-]
-
-function detectEscalation(text: string): boolean {
-  const lower = text.toLowerCase()
-  return ESCALATION_KEYWORDS.some(k => lower.includes(k))
-}
 
 export async function generateOpenAIResponse(params: {
   message: string
   conversationHistory?: Array<{ role: string; content: string }>
   bookingInfo?: Record<string, unknown> | null
   userCountry?: string
-}): Promise<OpenAIResponse> {
+}): Promise<AiResponse> {
   try {
     const { message, conversationHistory, bookingInfo } = params
 

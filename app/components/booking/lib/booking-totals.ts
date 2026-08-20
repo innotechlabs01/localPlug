@@ -1,16 +1,20 @@
+export interface TourSelection {
+  price: number
+  numPeople: number
+}
+
 export interface BookingTotalsInput {
   basePrice: number
-  servicePrice?: number
+  serviceFeeFlat?: number
   returnCharge: number
-  tourPrices: number[]
-  numPeople: number
+  tours?: TourSelection[]
   serviceFee: number
   taxRate: number
 }
 
 export interface BookingTotals {
   basePrice: number
-  serviceTotal: number
+  serviceFeeFlat: number
   returnCharge: number
   toursTotal: number
   subtotal: number
@@ -21,21 +25,18 @@ export interface BookingTotals {
 
 export function computeBookingTotals({
   basePrice,
-  servicePrice = 0,
+  serviceFeeFlat = 0,
   returnCharge,
-  tourPrices = [],
-  numPeople = 1,
+  tours = [],
   serviceFee,
   taxRate,
 }: BookingTotalsInput): BookingTotals {
-  const people = Math.max(1, Math.floor(numPeople || 1))
-  const serviceTotal = (servicePrice || 0) * people
-  const toursTotal = tourPrices.reduce((sum, price) => sum + price * people, 0)
-  const subtotal = basePrice + serviceTotal + returnCharge + toursTotal
+  const toursTotal = tours.reduce((sum, t) => sum + t.price * t.numPeople, 0)
+  const subtotal = basePrice + serviceFeeFlat + returnCharge + toursTotal
   const iva = (subtotal - serviceFee) * taxRate
   return {
     basePrice,
-    serviceTotal,
+    serviceFeeFlat,
     returnCharge,
     toursTotal,
     subtotal,

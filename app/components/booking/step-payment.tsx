@@ -23,7 +23,16 @@ interface StepPaymentProps {
 }
 
 interface BookingConfig {
-  packages: Record<string, { name: string; price: number; price_per_person_usd?: number; features?: string[]; tours?: Array<{ id: number; name: string; description: string; price_per_person_usd: number }>; is_popular?: boolean }>
+  packages: Record<string, {
+    name: string
+    base_price_usd?: number
+    price?: number
+    service_fee_flat?: number
+    price_per_person_usd?: number
+    features?: string[]
+    tours?: Array<{ id: number; name: string; description: string; price_per_person_usd: number; vehicle_type?: string; duration_hours?: number }>
+    is_popular?: boolean
+  }>
   returnTripCharge: number
   serviceFee: number
   taxRate: number
@@ -124,16 +133,25 @@ export default function StepPayment({
 
   const hasReturn = needReturn ?? flightData.needReturn ?? false
   const packageName = t.booking.steps.packages.packages[packageId as keyof typeof t.booking.steps.packages.packages]?.name || packageId
-  const basePrice = config?.packages?.[packageId]?.price ?? 0
-  const servicePrice = config?.packages?.[packageId]?.price_per_person_usd ?? 0
+  const basePrice = config?.packages?.[packageId]?.base_price_usd ?? config?.packages?.[packageId]?.price ?? 0
+  const serviceFeeFlat = config?.packages?.[packageId]?.service_fee_flat ?? 0
   const returnCharge = hasReturn ? (config?.returnTripCharge ?? CONFIG_DEFAULTS.returnTripCharge) : 0
   const serviceFee = config?.serviceFee ?? CONFIG_DEFAULTS.serviceFee
   const taxRate = config?.taxRate ?? CONFIG_DEFAULTS.taxRate
-  const tripPrices = config?.experiences ?? {}
+  const packageTours = config?.packages?.[packageId]?.tours ?? []
   const selectedTrips = destination?.additionalTrips ?? []
   const numPeople = Math.max(1, Math.floor(destination?.numPeople || 1))
-  const tourPrices = selectedTrips.map((id) => tripPrices[id] ?? 0)
-  const totals = computeBookingTotals({ basePrice, returnCharge, tourPrices, numPeople, serviceFee, taxRate })
+
+  // Build tours array from selected trips using admin-configured prices
+  const tours = selectedTrips.map((tripId: string) => {
+    const tour = packageTours.find((t: any) => String(t.id) === tripId || t.name === tripId)
+    return {
+      price: tour?.price_per_person_usd ?? 0,
+      numPeople,
+    }
+  })
+
+  const totals = computeBookingTotals({ basePrice, serviceFeeFlat, returnCharge, tours, serviceFee, taxRate })
   const totalPrice = totals.total
   const tripLabels = t.booking.steps.destination.trips
   const packageT = t.booking.steps.packages.packages[packageId as keyof typeof t.booking.steps.packages.packages]
@@ -161,10 +179,10 @@ export default function StepPayment({
               <span className="text-white font-medium">{packageT.name}</span>
             </div>
           )}
-          {totals.serviceTotal > 0 && (
+          {totals.serviceFeeFlat > 0 && (
             <div className="flex justify-between py-2.5 text-[13px]">
-              <span className="text-[var(--text-secondary)]">{paymentT.summaryService} <span className="text-[var(--text-muted)]">({numPeople} {paymentT.summaryPeople})</span></span>
-              <span className="text-white font-medium">+{totals.serviceTotal.toFixed(2)} USD</span>
+              <span className="text-[var(--text-secondary)]">{paymentT.summaryService || 'Service'}</span>
+              <span className="text-white font-medium">+${totals.serviceFeeFlat.toFixed(2)}</span>
             </div>
           )}
           <div className="flex justify-between py-2.5 text-[13px]">
@@ -187,19 +205,20 @@ export default function StepPayment({
           )}
           {selectedTrips.length > 0 && (
             <div className="flex justify-between py-2.5 text-[13px]">
-              <span className="text-[var(--text-secondary)]">{paymentT.summaryExperiences}</span>
-              <span className="text-white font-medium">{numPeople} {paymentT.summaryPeople}</span>
+              <span className="text-[var(--text-secondary)]">{paymentT.summaryExperiences || 'Tours'}</span>
+              <span className="text-white font-medium">{selectedTrips.length} {selectedTrips.length === 1 ? 'tour' : 'tours'}</span>
             </div>
           )}
-          {selectedTrips.map((id) => {
-            const label = tripLabels?.[id as keyof typeof tripLabels] || id
-            const unit = tripPrices[id] ?? 0
+          {tours.map((tour, idx) => {
+            const tripId = selectedTrips[idx]
+            const tourConfig = packageTours.find((t: any) => String(t.id) === tripId || t.name === tripId)
+            const label = tourConfig?.name || tripId
             return (
-              <div key={id} className="flex justify-between py-1.5 text-[12px]">
+              <div key={idx} className="flex justify-between py-1.5 text-[12px]">
                 <span className="text-[var(--text-secondary)]">
-                  {label} <span className="text-[var(--text-muted)]">(${unit.toFixed(2)} × {numPeople})</span>
+                  {label} <span className="text-[var(--text-muted)]">(${tour.price.toFixed(2)} × {tour.numPeople})</span>
                 </span>
-                <span className="text-white font-medium">${(unit * numPeople).toFixed(2)}</span>
+                <span className="text-white font-medium">${(tour.price * tour.numPeople).toFixed(2)}</span>
               </div>
             )
           })}

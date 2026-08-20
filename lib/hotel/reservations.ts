@@ -1,6 +1,15 @@
 import { getDb } from '@/lib/db'
 import type { Reservation } from '@/lib/reservations-types'
 
+// Map DB statuses to frontend statuses
+const STATUS_MAP: Record<string, string> = {
+  'new': 'pending',
+  'accepted': 'confirmed',
+  'checked_in': 'in_progress',
+  'completed': 'completed',
+  'cancelled': 'cancelled',
+}
+
 /**
  * Fetch reservations (orders) scoped to a specific hotel.
  */
@@ -54,7 +63,7 @@ export async function getHotelReservations(hotelId: number): Promise<Reservation
     flightInfo: row.flight_number && row.airline
       ? `${row.airline}${row.flight_number} — Arriving ${row.arrival_time}`
       : row.flight_number || 'Not provided',
-    status: row.status || 'pending',
+    status: STATUS_MAP[row.status as string] || row.status || 'pending',
     paymentStatus: row.payment_status || 'pending',
     totalAmount: row.package_price || 0,
     specialRequests: row.customer_notes || '',

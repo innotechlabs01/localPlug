@@ -23,7 +23,16 @@ interface StepFlightLogisticsProps {
 }
 
 interface BookingConfig {
-  packages: Record<string, { name: string; price: number; features?: string[]; is_popular?: boolean }>
+  packages: Record<string, {
+    name: string
+    base_price_usd?: number
+    price?: number
+    service_fee_flat?: number
+    price_per_person_usd?: number
+    features?: string[]
+    tours?: Array<{ id: number; name: string; price_per_person_usd: number; vehicle_type?: string; duration_hours?: number }>
+    is_popular?: boolean
+  }>
   returnTripCharge: number
   serviceFee: number
   taxRate: number

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
-import { triggerAiChatMessage, triggerFraudDetection, sendWhatsAppDirect } from '@/lib/n8n/client'
+import { triggerAiChatMessage, triggerFraudDetection, sendOrQueueWhatsApp } from '@/lib/n8n/client'
 import { generateOpenAIResponse } from '@/lib/services/openai-service'
 import { generateOllamaResponse } from '@/lib/services/ollama-service'
 import { t } from '@/lib/i18n/server'
@@ -105,7 +105,7 @@ export async function POST(request: Request) {
       const channelData = convChannel.rows[0] as { channel?: string; user_phone?: string } | undefined
 
       if (channelData?.channel === 'whatsapp' && channelData?.user_phone) {
-        const whatsappResult = await sendWhatsAppDirect({
+        const whatsappResult = await sendOrQueueWhatsApp({
           number: channelData.user_phone,
           message: message,
         })

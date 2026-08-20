@@ -163,9 +163,9 @@ export default function AdminDashboard() {
   const todayBookings = useMemo(() => bookings.filter(b => getLocalDatePart(b.created_at) === today), [bookings, today])
   const pending = useMemo(() => todayBookings.filter(b => !b.driver), [todayBookings])
   const assigned = useMemo(() => todayBookings.filter(b => b.driver), [todayBookings])
-  const totalRevenue = useMemo(() => todayBookings.reduce((s, b) => s + (b.total || 0), 0), [todayBookings])
+  const totalRevenue = useMemo(() => todayBookings.filter(b => b.status !== 'cancelled').reduce((s, b) => s + (b.total || 0), 0), [todayBookings])
   const returnCount = useMemo(() => todayBookings.filter(b => b.returnTransport).length, [todayBookings])
-  const onlineDrivers = useMemo(() => drivers.filter(d => d.status === 'online'), [drivers])
+  const onlineDrivers = useMemo(() => drivers.filter(d => d.status === 'available'), [drivers])
 
   const filteredBookings = useMemo(() => {
     let list = todayBookings
@@ -511,9 +511,9 @@ export default function AdminDashboard() {
             </div>
             <div className="card-body" style={{ padding: '12px 16px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {[...onlineDrivers, ...drivers.filter(d => d.status !== 'online')].map(driver => {
-                  const dotClass = driver.status === 'online' ? 'online' : driver.status === 'away' ? 'away' : 'offline'
-                  const badge = driver.status === 'online'
+                {[...onlineDrivers, ...drivers.filter(d => d.status !== 'available')].map(driver => {
+                  const dotClass = driver.status === 'available' ? 'online' : driver.status === 'away' ? 'away' : 'offline'
+                  const badge = driver.status === 'available'
                     ? <span className="badge badge-accent" style={{ fontSize: 9 }}>Available</span>
                     : driver.status === 'away'
                       ? <span className="badge badge-warning" style={{ fontSize: 9 }}>Away</span>
@@ -773,7 +773,7 @@ export default function AdminDashboard() {
                   <option
                     key={driver.name}
                     value={driver.name}
-                    disabled={driver.status !== 'online'}
+                    disabled={driver.status !== 'available'}
                   >
                     {driver.name} · {driver.vehicle} ({driver.plate})
                   </option>

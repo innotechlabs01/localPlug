@@ -1,5 +1,5 @@
 import { getDb } from '@/lib/db'
-import { ensurePlansSchema, ensureTripsSchema } from './migrate-plans'
+import { ensurePackagesSchema, ensurePlansSchema, ensureTripsSchema } from './migrate-plans'
 
 let _migrated = false
 
@@ -187,6 +187,7 @@ export async function ensureSchema(): Promise<void> {
 
   console.log('[Schema] Auto-migration complete')
 
+  await ensurePackagesSchema()
   await ensurePlansSchema()
   await ensureTripsSchema()
 

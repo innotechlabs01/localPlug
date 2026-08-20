@@ -94,6 +94,7 @@ export async function GET(req: Request) {
       FROM orders o
       LEFT JOIN drivers d ON o.assigned_to = d.id
       LEFT JOIN payments p ON o.booking_reference = p.booking_reference
+      WHERE (o.status IS NULL OR o.status != 'cancelled')
       ORDER BY o.arrival_date DESC, o.arrival_time DESC
     `)
 

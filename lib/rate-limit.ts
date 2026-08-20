@@ -112,8 +112,11 @@ export function extractIp(req: Request): string {
   return forwarded?.split(',')[0]?.trim() || '127.0.0.1'
 }
 
-function extractUserId(req: Request): string | null {
-  return req.headers.get('x-clerk-user-id') || null
+function extractUserId(_req: Request): string | null {
+  // Do NOT read x-clerk-user-id from request headers — it's spoofable.
+  // The authenticated userId is resolved by Clerk middleware and passed via auth().
+  // Rate limiting by userId should use the Clerk-authenticated identity, not a client header.
+  return null
 }
 
 export interface RateLimitResult {
@@ -221,15 +224,15 @@ export async function recordViolation(ip: string, path: string): Promise<void> {
       await db.execute({
         sql: `UPDATE ip_bans
               SET violation_count = violation_count + 1,
-                  expires_at = datetime('now', '+${banMinutes} minutes')
+                  expires_at = datetime('now', '+' || ? || ' minutes')
               WHERE id = ?`,
-        args: [banId],
+        args: [String(banMinutes), banId],
       })
     } else {
       await db.execute({
         sql: `INSERT INTO ip_bans (ip, reason, violation_count, expires_at)
-              VALUES (?, 'rate_limit_violations', 1, datetime('now', '+${banMinutes} minutes'))`,
-        args: [ip],
+              VALUES (?, 'rate_limit_violations', 1, datetime('now', '+' || ? || ' minutes'))`,
+        args: [ip, String(banMinutes)],
       })
     }
 
