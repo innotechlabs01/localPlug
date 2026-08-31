@@ -309,8 +309,12 @@ export default function DispatchPage() {
                   <div className="dp-request-meta">
                     {order.flight_number && <span className="dp-request-flight">{order.flight_number}</span>}
                     <span>{order.airline || ''}</span>
-                    {order.package_name && <><span>·</span><span>{order.package_name}</span></>}
-                    {order.destination_address && <><span>·</span><span>{order.destination_address}</span></>}
+{order.package_name && <><span>·</span><span>{order.package_name}</span></>}
+                       {order.customer_phone && <><span>·</span><span>{order.customer_phone}</span></>}
+                       {order.customer_country && <><span>·</span><span>{order.customer_country}</span></>}
+                       {order.totalAmount !== undefined && <><span>·</span><span>${order.totalAmount.toFixed(2)}</span></>}
+                       {order.transactionId && <><span>·</span><span>Txn {order.transactionId}</span></>}
+                       {order.destination_address && <><span>·</span><span>{order.destination_address}</span></>}
                   </div>
                 </div>
                 <div className="dp-request-right">
@@ -414,6 +418,10 @@ export default function DispatchPage() {
                         <div className="dp-info-item"><span className="dp-info-label">Return</span><span className="dp-info-value mono">{selectedOrder.return_date} {selectedOrder.return_time || ''}</span></div>
                       )}
                       <div className="dp-info-item" style={{ gridColumn: 'span 2' }}><span className="dp-info-label">Destination</span><span className="dp-info-value">{selectedOrder.destination_address || '—'}</span></div>
+                      {selectedOrder.totalAmount !== undefined && <div className="dp-info-item"><span className="dp-info-label">Amount</span><span className="dp-info-value">${selectedOrder.totalAmount.toFixed(2)}</span></div>}
+                      {selectedOrder.transactionId && <div className="dp-info-item"><span className="dp-info-label">Transaction ID</span><span className="dp-info-value">{selectedOrder.transactionId}</span></div>}
+                      {selectedOrder.additionalTrips && selectedOrder.additionalTrips.length > 0 && <div className="dp-info-item" style={{ gridColumn: 'span 2' }}><span className="dp-info-label">Additional Trips</span><span className="dp-info-value">{selectedOrder.additionalTrips.join(', ')}</span></div>}
+                      {selectedOrder.numPeople && <div className="dp-info-item"><span className="dp-info-label">People</span><span className="dp-info-value">{selectedOrder.numPeople}</span></div>}
                     </div>
                   </div>
                 </div>
