@@ -279,13 +279,19 @@ export default function DispatchPage() {
             </div>
           </div>
 
-          <div className="dp-filter-tabs">
-            {(['all', 'pending', 'assigned', 'enroute', 'vip'] as const).map(f => (
-              <button key={f} className={`dp-filter-tab ${tab === f ? 'active' : ''}`} onClick={() => setTab(f)}>
-                {f === 'all' ? (d.all || 'All') : f === 'pending' ? (d.pending || 'Pending') : f === 'assigned' ? (d.assigned || 'Assigned') : f === 'enroute' ? (d.enroute || 'En Route') : (d.vIP || 'VIP')}
-              </button>
-            ))}
-          </div>
+<div className="dp-filter-tabs">
+                      {(['all', 'pending', 'assigned', 'enroute', 'pickedup', 'completed', 'vip'] as const).map(f => (
+                        <button key={f} className={`dp-filter-tab ${tab === f ? 'active' : ''}`} onClick={() => setTab(f)}>
+                          {f === 'all' ? (d.all || 'All')
+                            : f === 'pending' ? (d.pending || 'Pending')
+                            : f === 'assigned' ? (d.assigned || 'Assigned')
+                            : f === 'enroute' ? (d.enroute || 'En Route')
+                            : f === 'pickedup' ? (d.pickedup || 'Picked Up')
+                            : f === 'completed' ? (d.completed || 'Completed')
+                            : (d.vIP || 'VIP')}
+                        </button>
+                      ))}
+                    </div>
 
           <div className="dp-request-list">
             {filteredOrders.length === 0 ? (
