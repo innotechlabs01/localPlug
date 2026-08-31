@@ -48,8 +48,8 @@ export default function ReservationTable({ reservations, onViewReservation }: Re
           <th>{labels.arrival || 'Arrival'}</th>
           <th>{labels.flight || 'Flight'}</th>
           <th>{labels.status || 'Status'}</th>
-          <th>{labels.amount || 'Amount'}</th>
-                <th>{labels.transactionId || 'Txn ID'}</th>
+          <th>{(labels as any).amount || 'Amount'}</th>
+                <th>{(labels as any).transactionId || 'Txn ID'}</th>
                 <th>{labels.payment || 'Payment'}</th>
           <th style={{ width: 80 }}>Actions</th>
         </tr>
