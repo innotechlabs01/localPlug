@@ -52,6 +52,11 @@ interface Order {
   priority: string | null; status: string; dispatch_status: string | null
   assigned_to: number | null; driver_name: string | null; driver_vehicle: string | null
   payment_status: string | null; customer_notes: string | null; created_at: string
+  // Extended fields for billing and extra trips
+  totalAmount?: number;
+  transactionId?: string;
+  additionalTrips?: string[];
+  numPeople?: number;
 }
 
 interface DispatchData {
