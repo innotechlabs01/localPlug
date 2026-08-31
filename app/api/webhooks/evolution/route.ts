@@ -220,7 +220,7 @@ export async function POST(req: Request) {
 
               // Send escalation message to user
               const escalationMsg = 'Un agente se pondrá en contacto contigo en breve. ⏳'
-              await sendWhatsAppDirect({
+              await sendOrQueueWhatsApp({
                 number: phone,
                 message: escalationMsg,
               })
@@ -233,7 +233,7 @@ export async function POST(req: Request) {
               })
             } else {
               // Send normal AI response via Evolution API
-              await sendWhatsAppDirect({
+              await sendOrQueueWhatsApp({
                 number: phone,
                 message: aiResult.message,
               })
@@ -254,7 +254,7 @@ export async function POST(req: Request) {
           } else {
             // AI failed, send fallback message
             const fallbackMsg = 'Gracias por tu mensaje. Un agente se pondrá en contacto contigo pronto. 🙏'
-            await sendWhatsAppDirect({
+            await sendOrQueueWhatsApp({
               number: phone,
               message: fallbackMsg,
             })

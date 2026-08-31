@@ -5,244 +5,249 @@ import { useI18n } from '@/lib/i18n'
 import { adminFetch } from '@/lib/admin/admin-fetch'
 import { useToast } from '@/lib/admin/toast-context'
 
-interface PlanFeature {
-  id: number; plan_id: number; text: string; sort_order: number
+interface PackageTour {
+  id: number
+  package_id: number
+  name: string
+  description: string
+  price_per_person_usd: number
+  vehicle_type: string
+  duration_hours: number
+  max_people: number
+  is_active: boolean
+  sort_order: number
 }
 
-interface PlanTour {
-  id: number; plan_id: number; name: string; description: string
-  price_per_person_usd: number; is_active: number; sort_order: number
-}
-
-interface Plan {
-  id: number; name: string; slug: string; description: string
-  price_usd: number; price_per_person_usd?: number; is_popular: number; is_active: number
-  sort_order: number; created_at: string; updated_at: string
-  features: PlanFeature[]; tours: PlanTour[]
+interface Package {
+  id: number
+  slug: string
+  name: string
+  description: string
+  base_price_usd: number
+  service_fee_flat: number
+  includes_pickup: boolean
+  includes_sim: boolean
+  includes_accompaniment: boolean
+  accompaniment_hours: number
+  accompaniment_type: string | null
+  includes_round_trip: boolean
+  includes_concierge: boolean
+  is_popular: boolean
+  is_active: boolean
+  sort_order: number
+  features: Array<{ id: number; text: string; sort_order: number }>
+  tours: PackageTour[]
 }
 
 export default function PlansPage() {
   const { t } = useI18n()
   const { showToast } = useToast()
 
-  const [plans, setPlans] = useState<Plan[]>([])
+  const [packages, setPackages] = useState<Package[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [tab, setTab] = useState<'features' | 'tours'>('features')
 
-  // Plan modal
-  const [planModal, setPlanModal] = useState(false)
-  const [editPlan, setEditPlan] = useState<Plan | null>(null)
-  const [planForm, setPlanForm] = useState<Record<string, any>>({})
+  // Package modal
+  const [pkgModal, setPkgModal] = useState(false)
+  const [editPkg, setEditPkg] = useState<Package | null>(null)
+  const [pkgForm, setPkgForm] = useState<Record<string, any>>({})
 
   // Feature modal
   const [featureModal, setFeatureModal] = useState(false)
-  const [editFeature, setEditFeature] = useState<PlanFeature | null>(null)
-  const [featureForm, setFeatureForm] = useState<Record<string, any>>({})
+  const [editFeature, setEditFeature] = useState<{ id?: number; text: string } | null>(null)
+  const [featureText, setFeatureText] = useState('')
 
   // Tour modal
   const [tourModal, setTourModal] = useState(false)
-  const [editTour, setEditTour] = useState<PlanTour | null>(null)
+  const [editTour, setEditTour] = useState<PackageTour | null>(null)
   const [tourForm, setTourForm] = useState<Record<string, any>>({})
 
-  const fetchPlans = useCallback(async () => {
+  const fetchPackages = useCallback(async () => {
     try {
-      const res = await adminFetch('/api/admin/plans')
+      const res = await adminFetch('/api/admin/packages')
       if (res.ok) {
         const data = await res.json()
-        setPlans(data.plans || [])
+        setPackages(data.packages || [])
       }
-    } catch (e) { console.error('Failed to fetch plans', e) }
+    } catch (e) { console.error('Failed to fetch packages', e) }
     setLoading(false)
   }, [])
 
-  useEffect(() => { fetchPlans() }, [fetchPlans])
+  useEffect(() => { fetchPackages() }, [fetchPackages])
 
-  const selected = plans.find(p => p.id === selectedId)
+  const selected = packages.find(p => p.id === selectedId)
 
   const stats = {
-    total: plans.length,
-    active: plans.filter(p => p.is_active === 1).length,
-    popular: plans.filter(p => p.is_popular === 1).length,
-    totalFeatures: plans.reduce((s, p) => s + (p.features?.length || 0), 0),
-    totalTours: plans.reduce((s, p) => s + (p.tours?.length || 0), 0),
-    avgPrice: plans.length
-      ? Math.round(plans.reduce((s, p) => s + Number(p.price_usd || 0), 0) / plans.length)
+    total: packages.length,
+    active: packages.filter(p => p.is_active).length,
+    popular: packages.filter(p => p.is_popular).length,
+    totalFeatures: packages.reduce((s, p) => s + (p.features?.length || 0), 0),
+    totalTours: packages.reduce((s, p) => s + (p.tours?.length || 0), 0),
+    avgPrice: packages.length
+      ? Math.round(packages.reduce((s, p) => s + Number(p.base_price_usd || 0), 0) / packages.length)
       : 0,
   }
 
-  // ───── Plan CRUD ─────
-  const openCreatePlan = () => {
-    setEditPlan(null)
-    setPlanForm({
-      name: '', description: '', price_usd: 0, price_per_person_usd: 0,
-      is_popular: false, is_active: true, sort_order: 0,
+  // ───── Package CRUD ─────
+  const openCreatePkg = () => {
+    setEditPkg(null)
+    setPkgForm({
+      name: '', description: '', base_price_usd: 0, service_fee_flat: 0,
+      includes_pickup: true, includes_sim: false, includes_accompaniment: false,
+      accompaniment_hours: 0, accompaniment_type: '',
+      includes_round_trip: false, includes_concierge: false,
+      is_popular: false, is_active: true, sort_order: packages.length,
     })
-    setPlanModal(true)
+    setPkgModal(true)
   }
 
-  const openEditPlan = (p: Plan) => {
-    setEditPlan(p)
-    setPlanForm({
+  const openEditPkg = (p: Package) => {
+    setEditPkg(p)
+    setPkgForm({
       name: p.name, description: p.description || '',
-      price_usd: p.price_usd, price_per_person_usd: p.price_per_person_usd ?? 0,
-      is_popular: p.is_popular === 1,
-      is_active: p.is_active === 1, sort_order: p.sort_order,
+      base_price_usd: p.base_price_usd, service_fee_flat: p.service_fee_flat,
+      includes_pickup: p.includes_pickup, includes_sim: p.includes_sim,
+      includes_accompaniment: p.includes_accompaniment, accompaniment_hours: p.accompaniment_hours,
+      accompaniment_type: p.accompaniment_type || '',
+      includes_round_trip: p.includes_round_trip, includes_concierge: p.includes_concierge,
+      is_popular: p.is_popular, is_active: p.is_active, sort_order: p.sort_order,
     })
-    setPlanModal(true)
+    setPkgModal(true)
   }
 
-  const savePlan = async () => {
+  const savePkg = async () => {
     try {
-      const method = editPlan ? 'PUT' : 'POST'
-      const body = editPlan ? { id: editPlan.id, ...planForm } : planForm
-      const res = await adminFetch('/api/admin/plans', {
+      const method = editPkg ? 'PUT' : 'POST'
+      const body = editPkg
+        ? { id: editPkg.id, ...pkgForm, features: selected?.features || [], tours: selected?.tours?.map(t => ({
+            id: t.id, name: t.name, description: t.description, price_per_person_usd: t.price_per_person_usd,
+            vehicle_type: t.vehicle_type, duration_hours: t.duration_hours, max_people: t.max_people,
+            is_active: t.is_active,
+          })) || [] }
+        : pkgForm
+      const res = await adminFetch('/api/admin/packages', {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
       if (res.ok) {
-        showToast(editPlan ? t.admin.plans.editPlan + ' ✓' : t.admin.plans.addPlan + ' ✓')
-        setPlanModal(false)
-        fetchPlans()
+        showToast(editPkg ? 'Package updated ✓' : 'Package created ✓')
+        setPkgModal(false)
+        fetchPackages()
       } else {
         const err = await res.json()
-        showToast(err.error || 'Failed to save plan')
+        showToast(err.error || 'Failed to save package')
       }
-    } catch { showToast('Error saving plan') }
+    } catch { showToast('Error saving package') }
   }
 
-  const deletePlan = async (id: number) => {
-    if (!confirm(t.admin.plans.confirmDelete)) return
-    const res = await adminFetch(`/api/admin/plans?id=${id}`, { method: 'DELETE' })
+  const deletePkg = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this package?')) return
+    const res = await adminFetch(`/api/admin/packages?id=${id}`, { method: 'DELETE' })
     if (res.ok) {
-      showToast(t.admin.plans.delete + ' ✓')
+      showToast('Package deleted ✓')
       if (selectedId === id) setSelectedId(null)
-      fetchPlans()
+      fetchPackages()
     }
   }
 
   // ───── Reorder ─────
-  const movePlan = async (planId: number, direction: 'up' | 'down') => {
-    const sorted = [...plans].sort((a, b) => a.sort_order - b.sort_order)
-    const idx = sorted.findIndex(p => p.id === planId)
+  const movePkg = async (pkgId: number, direction: 'up' | 'down') => {
+    const sorted = [...packages].sort((a, b) => a.sort_order - b.sort_order)
+    const idx = sorted.findIndex(p => p.id === pkgId)
     if (idx < 0) return
     const swapIdx = direction === 'up' ? idx - 1 : idx + 1
     if (swapIdx < 0 || swapIdx >= sorted.length) return
     const temp = sorted[idx].sort_order
     sorted[idx] = { ...sorted[idx], sort_order: sorted[swapIdx].sort_order }
     sorted[swapIdx] = { ...sorted[swapIdx], sort_order: temp }
-    const orderedIds = sorted.map(p => p.id)
-    try {
-      const res = await adminFetch('/api/admin/plans/reorder', {
-        method: 'POST',
+    // Save each package with its new sort_order
+    for (const pkg of sorted) {
+      await adminFetch('/api/admin/packages', {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderedIds }),
+        body: JSON.stringify({ id: pkg.id, sort_order: pkg.sort_order, features: pkg.features, tours: pkg.tours }),
       })
-      if (res.ok) fetchPlans()
-    } catch { showToast('Error reordering') }
+    }
+    fetchPackages()
   }
 
-  // ───── Feature CRUD ─────
-  const openCreateFeature = () => {
-    if (!selectedId) return
-    setEditFeature(null)
-    setFeatureForm({ text: '' })
-    setFeatureModal(true)
-  }
-
-  const openEditFeature = (f: PlanFeature) => {
-    setEditFeature(f)
-    setFeatureForm({ text: f.text })
-    setFeatureModal(true)
-  }
+  // ───── Feature CRUD (via inline PUT) ─────
+  const openCreateFeature = () => { setEditFeature(null); setFeatureText(''); setFeatureModal(true) }
+  const openEditFeature = (f: { id?: number; text: string }) => { setEditFeature(f); setFeatureText(f.text); setFeatureModal(true) }
 
   const saveFeature = async () => {
-    if (!selectedId) return
-    try {
-      const method = editFeature ? 'PUT' : 'POST'
-      const body = editFeature
-        ? { id: editFeature.id, text: featureForm.text }
-        : { plan_id: selectedId, text: featureForm.text, sort_order: (selected?.features?.length || 0) + 1 }
-      const res = await adminFetch('/api/admin/plans/features', {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-      if (res.ok) {
-        showToast(editFeature ? 'Feature updated' : 'Feature added')
-        setFeatureModal(false)
-        fetchPlans()
-      } else {
-        const err = await res.json()
-        showToast(err.error || 'Failed to save feature')
-      }
-    } catch { showToast('Error saving feature') }
-  }
-
-  const deleteFeature = async (id: number) => {
-    const res = await adminFetch(`/api/admin/plans/features?id=${id}`, { method: 'DELETE' })
-    if (res.ok) {
-      showToast('Feature deleted')
-      fetchPlans()
+    if (!selected) return
+    const features = [...(selected.features || [])]
+    if (editFeature?.id) {
+      const idx = features.findIndex(f => f.id === editFeature.id)
+      if (idx >= 0) features[idx] = { ...features[idx], text: featureText }
+    } else {
+      features.push({ id: Date.now(), text: featureText, sort_order: features.length + 1 })
     }
+    const res = await adminFetch('/api/admin/packages', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: selected.id, features, tours: selected.tours }),
+    })
+    if (res.ok) { showToast(editFeature ? 'Feature updated' : 'Feature added'); setFeatureModal(false); fetchPackages() }
   }
 
-  // ───── Tour CRUD ─────
+  const deleteFeature = async (featureId: number) => {
+    if (!selected) return
+    const features = selected.features.filter(f => f.id !== featureId)
+    const res = await adminFetch('/api/admin/packages', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: selected.id, features, tours: selected.tours }),
+    })
+    if (res.ok) { showToast('Feature deleted'); fetchPackages() }
+  }
+
+  // ───── Tour CRUD (via inline PUT) ─────
   const openCreateTour = () => {
-    if (!selectedId) return
     setEditTour(null)
-    setTourForm({ name: '', description: '', price_per_person_usd: 0, is_active: true })
+    setTourForm({ name: '', description: '', price_per_person_usd: 0, vehicle_type: 'suv', duration_hours: 8, max_people: 10, is_active: true })
     setTourModal(true)
   }
 
-  const openEditTour = (t: PlanTour) => {
+  const openEditTour = (t: PackageTour) => {
     setEditTour(t)
-    setTourForm({
-      name: t.name, description: t.description || '',
-      price_per_person_usd: t.price_per_person_usd,
-      is_active: t.is_active === 1,
-    })
+    setTourForm({ name: t.name, description: t.description || '', price_per_person_usd: t.price_per_person_usd, vehicle_type: t.vehicle_type || 'suv', duration_hours: t.duration_hours || 8, max_people: t.max_people || 10, is_active: t.is_active })
     setTourModal(true)
   }
 
   const saveTour = async () => {
-    if (!selectedId) return
-    try {
-      const method = editTour ? 'PUT' : 'POST'
-      const body = editTour
-        ? { id: editTour.id, ...tourForm }
-        : { plan_id: selectedId, ...tourForm, sort_order: (selected?.tours?.length || 0) + 1 }
-      const res = await adminFetch('/api/admin/plans/tours', {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-      if (res.ok) {
-        showToast(editTour ? 'Tour updated' : 'Tour added')
-        setTourModal(false)
-        fetchPlans()
-      } else {
-        const err = await res.json()
-        showToast(err.error || 'Failed to save tour')
-      }
-    } catch { showToast('Error saving tour') }
+    if (!selected) return
+    const tours = [...(selected.tours || [])]
+    if (editTour) {
+      const idx = tours.findIndex(t => t.id === editTour.id)
+      if (idx >= 0) tours[idx] = { ...tours[idx], ...tourForm }
+    } else {
+      tours.push({ id: Date.now(), package_id: selected.id, ...tourForm, sort_order: tours.length + 1 } as PackageTour)
+    }
+    const res = await adminFetch('/api/admin/packages', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: selected.id, features: selected.features, tours }),
+    })
+    if (res.ok) { showToast(editTour ? 'Tour updated' : 'Tour added'); setTourModal(false); fetchPackages() }
   }
 
-  const deleteTour = async (id: number) => {
-    const res = await adminFetch(`/api/admin/plans/tours?id=${id}`, { method: 'DELETE' })
-    if (res.ok) {
-      showToast('Tour deleted')
-      fetchPlans()
-    }
+  const deleteTour = async (tourId: number) => {
+    if (!selected) return
+    const tours = selected.tours.filter(t => t.id !== tourId)
+    const res = await adminFetch('/api/admin/packages', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: selected.id, features: selected.features, tours }),
+    })
+    if (res.ok) { showToast('Tour deleted'); fetchPackages() }
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-[#646880]">Loading plans...</div>
-      </div>
-    )
+    return <div className="flex items-center justify-center h-64"><div className="text-[#646880]">Loading packages...</div></div>
   }
 
   return (
@@ -250,16 +255,14 @@ export default function PlansPage() {
       {/* ── HEADER ── */}
       <div className="drivers-hero">
         <div>
-          <h1 className="text-[24px] font-bold tracking-tighter text-fg">
-            {t.admin.plans.title}
-          </h1>
+          <h1 className="text-[24px] font-bold tracking-tighter text-fg">{t.admin.plans.title}</h1>
           <p className="mt-2 text-[13px] text-fg-muted max-w-[760px] leading-[1.55]">
             {t.admin.plans.subtitle}
           </p>
         </div>
         <div className="drivers-toolbar flex items-center gap-2.5 flex-wrap">
-          <button className="px-4 py-2 bg-accent text-white text-[13px] font-medium rounded-md hover:bg-[#059669] transition-all" onClick={openCreatePlan}>
-            + {t.admin.plans.addPlan}
+          <button className="px-4 py-2 bg-accent text-white text-[13px] font-medium rounded-md hover:bg-[#059669] transition-all" onClick={openCreatePkg}>
+            + Add Package
           </button>
         </div>
       </div>
@@ -267,12 +270,12 @@ export default function PlansPage() {
       {/* ── KPIs ── */}
       <div className="drivers-kpis grid-6">
         {[
-          ['Total Plans', String(stats.total), 'All plans', true],
-          ['Active', String(stats.active), 'Live plans', true],
+          ['Total', String(stats.total), 'Packages', true],
+          ['Active', String(stats.active), 'Live', true],
           ['Popular', String(stats.popular), 'Featured', false],
-          ['Avg Price', `$${stats.avgPrice}`, 'Per plan', false],
-          ['Features', String(stats.totalFeatures), 'Across plans', true],
-          ['Tours', String(stats.totalTours), 'Across plans', true],
+          ['Avg Price', `$${stats.avgPrice}`, 'Per package', false],
+          ['Features', String(stats.totalFeatures), 'Across packages', true],
+          ['Tours', String(stats.totalTours), 'Across packages', true],
         ].map(([label, value, sub, positive], idx) => (
           <div key={idx} className="stat-card">
             <div className="stat-label">{label}</div>
@@ -287,85 +290,47 @@ export default function PlansPage() {
         <div className="panel">
           <div className="panel-header">
             <div className="panel-title">
-              <span>{t.admin.plans.title}</span>
-              <span className="count">{plans.length} listed</span>
+              <span>Packages</span>
+              <span className="count">{packages.length} listed</span>
             </div>
           </div>
 
           <div className="driver-grid">
-            {plans.length === 0 ? (
-              <p className="text-fg-muted text-center py-12" style={{ gridColumn: '1/-1' }}>
-                {t.admin.plans.noPlans}. Click &ldquo;+ {t.admin.plans.addPlan}&rdquo; to create the first one.
-              </p>
-            ) : [...plans].sort((a, b) => a.sort_order - b.sort_order).map((p, idx) => (
-              <div
-                key={p.id}
-                className={`driver-card ${selectedId === p.id ? 'active' : ''}`}
-                onClick={() => { setSelectedId(p.id); setTab('features') }}
-              >
+            {packages.length === 0 ? (
+              <p className="text-fg-muted text-center py-12" style={{ gridColumn: '1/-1' }}>No packages yet. Click "+ Add Package" to create the first one.</p>
+            ) : [...packages].sort((a, b) => a.sort_order - b.sort_order).map((p, idx) => (
+              <div key={p.id} className={`driver-card ${selectedId === p.id ? 'active' : ''}`}
+                onClick={() => { setSelectedId(p.id); setTab('features') }}>
                 <div className="driver-head">
                   <div className="driver-person">
                     <div className="driver-avatar" style={{
-                      background: p.is_popular
-                        ? 'linear-gradient(135deg, #f59e0b, #f97316)'
-                        : 'linear-gradient(135deg, var(--accent), #059669)',
+                      background: p.is_popular ? 'linear-gradient(135deg, #f59e0b, #f97316)' : 'linear-gradient(135deg, var(--accent), #059669)',
                       fontSize: 18, fontWeight: 700,
-                    }}>
-                      {p.name.charAt(0)}
-                    </div>
+                    }}>{p.name.charAt(0)}</div>
                     <div>
                       <div className="driver-name">
                         {p.name}
-                        {p.is_popular === 1 && (
-                          <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#f59e0b] text-white">
-                            {t.admin.plans.popular}
-                          </span>
-                        )}
+                        {p.is_popular && <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#f59e0b] text-white">Popular</span>}
                       </div>
                       <div className="driver-meta">
-                        ${Number(p.price_usd).toFixed(2)} · {p.description?.slice(0, 40) || 'No description'}
+                        ${Number(p.base_price_usd).toFixed(0)} · {p.description?.slice(0, 40) || 'No description'}
                       </div>
                     </div>
                   </div>
-                  <span className={p.is_active === 1 ? 'badge badge-accent' : 'badge'}>
-                    {p.is_active === 1 ? t.admin.plans.active : t.admin.plans.inactive}
-                  </span>
+                  <span className={p.is_active ? 'badge badge-accent' : 'badge'}>{p.is_active ? 'Active' : 'Inactive'}</span>
                 </div>
 
                 <div className="driver-stats">
-                  <div className="driver-stat">
-                    <strong>{p.features?.length || 0}</strong>
-                    <span>{t.admin.plans.features}</span>
-                  </div>
-                  <div className="driver-stat">
-                    <strong>{p.tours?.length || 0}</strong>
-                    <span>{t.admin.plans.tours}</span>
-                  </div>
-                  <div className="driver-stat">
-                    <strong>${Number(p.price_usd).toFixed(0)}</strong>
-                    <span>Price</span>
-                  </div>
+                  <div className="driver-stat"><strong>{p.features?.length || 0}</strong><span>Features</span></div>
+                  <div className="driver-stat"><strong>{p.tours?.length || 0}</strong><span>Tours</span></div>
+                  <div className="driver-stat"><strong>${Number(p.base_price_usd).toFixed(0)}</strong><span>Price</span></div>
                 </div>
 
                 <div className="flex gap-1.5 flex-wrap mt-2">
-                  <button className="btn btn-sm btn-secondary" onClick={e => { e.stopPropagation(); openEditPlan(p) }}>
-                    Edit
-                  </button>
-                  <button className="btn btn-sm btn-secondary" onClick={e => { e.stopPropagation(); deletePlan(p.id) }} style={{ color: '#ef4444' }}>
-                    Delete
-                  </button>
-                  <button
-                    className="btn btn-sm btn-secondary"
-                    onClick={e => { e.stopPropagation(); movePlan(p.id, 'up') }}
-                    disabled={idx === 0}
-                    title="Move up"
-                  >↑</button>
-                  <button
-                    className="btn btn-sm btn-secondary"
-                    onClick={e => { e.stopPropagation(); movePlan(p.id, 'down') }}
-                    disabled={idx === plans.length - 1}
-                    title="Move down"
-                  >↓</button>
+                  <button className="btn btn-sm btn-secondary" onClick={e => { e.stopPropagation(); openEditPkg(p) }}>Edit</button>
+                  <button className="btn btn-sm btn-secondary" onClick={e => { e.stopPropagation(); deletePkg(p.id) }} style={{ color: '#ef4444' }}>Delete</button>
+                  <button className="btn btn-sm btn-secondary" onClick={e => { e.stopPropagation(); movePkg(p.id, 'up') }} disabled={idx === 0}>↑</button>
+                  <button className="btn btn-sm btn-secondary" onClick={e => { e.stopPropagation(); movePkg(p.id, 'down') }} disabled={idx === packages.length - 1}>↓</button>
                 </div>
               </div>
             ))}
@@ -374,55 +339,41 @@ export default function PlansPage() {
 
         {/* ── RIGHT: DETAIL PANEL ── */}
         <aside className="side-stack">
-          {/* Plan Info */}
           <div className="panel">
-            <div className="panel-header">
-              <span className="panel-title font-medium text-fg">Plan Details</span>
-            </div>
+            <div className="panel-header"><span className="panel-title font-medium text-fg">Package Details</span></div>
             <div className="panel-body p-4">
               {!selected ? (
-                <p className="text-fg-muted text-center py-8">Select a plan to manage</p>
+                <p className="text-fg-muted text-center py-8">Select a package to manage</p>
               ) : (
                 <div>
                   <div className="profile-top">
                     <div className="profile-photo" style={{
-                      background: selected.is_popular
-                        ? 'linear-gradient(135deg, #f59e0b, #f97316)'
-                        : 'linear-gradient(135deg, var(--accent), #059669)',
+                      background: selected.is_popular ? 'linear-gradient(135deg, #f59e0b, #f97316)' : 'linear-gradient(135deg, var(--accent), #059669)',
                       fontSize: 28, fontWeight: 700,
-                    }}>
-                      {selected.name.charAt(0)}
-                    </div>
+                    }}>{selected.name.charAt(0)}</div>
                     <div>
                       <h2 className="text-[18px] font-bold text-fg">{selected.name}</h2>
                       <div className="sub">{selected.description || 'No description'}</div>
                       <div className="flex gap-1.5 flex-wrap mt-2">
-                        <span className={selected.is_active === 1 ? 'badge badge-accent' : 'badge'}>
-                          {selected.is_active === 1 ? t.admin.plans.active : t.admin.plans.inactive}
-                        </span>
-                        {selected.is_popular === 1 && (
-                          <span className="badge" style={{ background: '#f59e0b', color: '#fff' }}>
-                            {t.admin.plans.popular}
-                          </span>
-                        )}
-                        <span className="badge badge-info">${Number(selected.price_usd).toFixed(2)}</span>
+                        <span className={selected.is_active ? 'badge badge-accent' : 'badge'}>{selected.is_active ? 'Active' : 'Inactive'}</span>
+                        {selected.is_popular && <span className="badge" style={{ background: '#f59e0b', color: '#fff' }}>Popular</span>}
+                        <span className="badge badge-info">${Number(selected.base_price_usd).toFixed(2)}</span>
                       </div>
                     </div>
                   </div>
                   <div className="info-grid mt-4">
                     {[
-                       ['Slug', selected.slug],
-                      ['Price', `$${Number(selected.price_usd).toFixed(2)}`],
-                      ['Service / person', `$${Number(selected.price_per_person_usd || 0).toFixed(2)}`],
-                      ['Sort Order', String(selected.sort_order)],
+                      ['Price', `$${Number(selected.base_price_usd).toFixed(2)}`],
+                      ['Service Fee (flat)', `$${Number(selected.service_fee_flat).toFixed(2)}`],
+                      ['Pickup', selected.includes_pickup ? '✓' : '—'],
+                      ['SIM', selected.includes_sim ? '✓' : '—'],
+                      ['Accompaniment', selected.includes_accompaniment ? `${selected.accompaniment_hours}h` : '—'],
+                      ['Round-trip', selected.includes_round_trip ? '✓' : '—'],
+                      ['Concierge', selected.includes_concierge ? '✓' : '—'],
                       ['Features', `${selected.features?.length || 0}`],
                       ['Tours', `${selected.tours?.length || 0}`],
-                      ['Created', selected.created_at?.split('T')[0] || '—'],
                     ].map(([label, value]) => (
-                      <div key={label} className="info-item">
-                        <label>{label}</label>
-                        <div>{value}</div>
-                      </div>
+                      <div key={label} className="info-item"><label>{label}</label><div>{value}</div></div>
                     ))}
                   </div>
                 </div>
@@ -430,48 +381,32 @@ export default function PlansPage() {
             </div>
           </div>
 
-          {/* Tabs */}
           {selected && (
             <div className="panel">
               <div className="panel-header" style={{ borderBottom: 'none', paddingBottom: 0 }}>
                 <div style={{ display: 'flex', gap: 4 }}>
-                  {([
-                    ['features', t.admin.plans.features],
-                    ['tours', t.admin.plans.tours],
-                  ] as const).map(([key, label]) => (
-                    <button
-                      key={key}
-                      onClick={() => setTab(key)}
-                      style={{
-                        padding: '8px 16px', borderRadius: '6px 6px 0 0',
-                        border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
-                        background: tab === key ? 'var(--surface)' : 'transparent',
-                        color: tab === key ? 'var(--fg)' : 'var(--fg-muted)',
-                        borderBottom: tab === key ? '2px solid var(--accent)' : '2px solid transparent',
-                      }}
-                    >
-                      {label}
-                    </button>
+                  {(['features', 'tours'] as const).map(([key, label]) => (
+                    <button key={key} onClick={() => setTab(key as 'features' | 'tours')} style={{
+                      padding: '8px 16px', borderRadius: '6px 6px 0 0', border: 'none', cursor: 'pointer',
+                      fontSize: 13, fontWeight: 600,
+                      background: tab === key ? 'var(--surface)' : 'transparent',
+                      color: tab === key ? 'var(--fg)' : 'var(--fg-muted)',
+                      borderBottom: tab === key ? '2px solid var(--accent)' : '2px solid transparent',
+                    }}>{label}</button>
                   ))}
                 </div>
                 <button className="btn btn-sm btn-secondary" onClick={tab === 'features' ? openCreateFeature : openCreateTour}>
-                  + {tab === 'features' ? t.admin.plans.addFeature : t.admin.plans.addTour}
+                  + {tab === 'features' ? 'Add Feature' : 'Add Tour'}
                 </button>
               </div>
 
               <div className="panel-body p-4">
-                {/* Features tab */}
                 {tab === 'features' && (
-                  !selected.features || selected.features.length === 0 ? (
-                    <p className="text-fg-muted text-center py-6">No features yet</p>
-                  ) : (
+                  !selected.features?.length ? <p className="text-fg-muted text-center py-6">No features yet</p> : (
                     <div className="flex flex-col gap-2">
                       {selected.features.sort((a, b) => a.sort_order - b.sort_order).map(f => (
                         <div key={f.id} className="flex items-center justify-between p-3 rounded-lg" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-                          <div>
-                            <div className="font-medium text-fg text-[14px]">{f.text}</div>
-                            <div className="text-fg-muted text-[12px]">Order: {f.sort_order}</div>
-                          </div>
+                          <div className="font-medium text-fg text-[14px]">{f.text}</div>
                           <div className="flex gap-1.5">
                             <button className="btn btn-sm btn-secondary" onClick={() => openEditFeature(f)}>Edit</button>
                             <button className="btn btn-sm btn-secondary" onClick={() => deleteFeature(f.id)} style={{ color: '#ef4444' }}>Del</button>
@@ -482,22 +417,17 @@ export default function PlansPage() {
                   )
                 )}
 
-                {/* Tours tab */}
                 {tab === 'tours' && (
-                  !selected.tours || selected.tours.length === 0 ? (
-                    <p className="text-fg-muted text-center py-6">No tours yet</p>
-                  ) : (
+                  !selected.tours?.length ? <p className="text-fg-muted text-center py-6">No tours yet</p> : (
                     <div className="flex flex-col gap-2">
                       {selected.tours.sort((a, b) => a.sort_order - b.sort_order).map(tour => (
                         <div key={tour.id} className="flex items-center justify-between p-3 rounded-lg" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
                           <div>
                             <div className="font-medium text-fg text-[14px]">{tour.name}</div>
                             <div className="text-fg-muted text-[12px]">
-                              ${Number(tour.price_per_person_usd).toFixed(2)}/person · {tour.is_active ? t.admin.plans.active : t.admin.plans.inactive}
+                              ${Number(tour.price_per_person_usd).toFixed(2)}/person · {tour.vehicle_type?.toUpperCase()} · {tour.duration_hours}h
                             </div>
-                            {tour.description && (
-                              <div className="text-fg-muted text-[11px] mt-1">{tour.description}</div>
-                            )}
+                            {tour.description && <div className="text-fg-muted text-[11px] mt-1">{tour.description}</div>}
                           </div>
                           <div className="flex gap-1.5">
                             <button className="btn btn-sm btn-secondary" onClick={() => openEditTour(tour)}>Edit</button>
@@ -514,85 +444,136 @@ export default function PlansPage() {
         </aside>
       </div>
 
-      {/* ── PLAN MODAL ── */}
-      {planModal && (
-        <Modal onClose={() => setPlanModal(false)} title={editPlan ? t.admin.plans.editPlan : t.admin.plans.addPlan}>
-          <ModalField label={t.admin.plans.planName}>
-            <input value={planForm.name || ''} onChange={e => setPlanForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Welcome Pack" />
+      {/* ── PACKAGE MODAL ── */}
+      {pkgModal && (
+        <Modal onClose={() => setPkgModal(false)} title={editPkg ? 'Edit Package' : 'Add Package'}>
+          <ModalField label="Package Name">
+            <input value={pkgForm.name || ''} onChange={e => setPkgForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Full Insider" />
           </ModalField>
-          <ModalField label={t.admin.plans.description}>
-            <textarea rows={3} value={planForm.description || ''} onChange={e => setPlanForm(p => ({ ...p, description: e.target.value }))} placeholder="Plan description..." />
+          <ModalField label="Description">
+            <textarea rows={2} value={pkgForm.description || ''} onChange={e => setPkgForm(p => ({ ...p, description: e.target.value }))} placeholder="Package description..." />
           </ModalField>
           <div className="grid grid-cols-2 gap-3">
-            <ModalField label={t.admin.plans.priceUsd}>
-              <input type="number" step="0.01" min="0" value={planForm.price_usd || 0}
-                onChange={e => setPlanForm(p => ({ ...p, price_usd: parseFloat(e.target.value) || 0 }))} placeholder="0.00" />
+            <ModalField label="Price (USD)">
+              <input type="number" step="0.01" min="0" value={pkgForm.base_price_usd || 0}
+                onChange={e => setPkgForm(p => ({ ...p, base_price_usd: parseFloat(e.target.value) || 0 }))} />
             </ModalField>
-            <ModalField label={t.admin.plans.pricePerPersonUsd}>
-              <input type="number" step="0.01" min="0" value={planForm.price_per_person_usd || 0}
-                onChange={e => setPlanForm(p => ({ ...p, price_per_person_usd: parseFloat(e.target.value) || 0 }))} placeholder="0.00" />
+            <ModalField label="Service Fee (flat)">
+              <input type="number" step="0.01" min="0" value={pkgForm.service_fee_flat || 0}
+                onChange={e => setPkgForm(p => ({ ...p, service_fee_flat: parseFloat(e.target.value) || 0 }))} />
             </ModalField>
-            <ModalField label={t.admin.plans.sortOrder}>
-              <input type="number" min="0" value={planForm.sort_order || 0}
-                onChange={e => setPlanForm(p => ({ ...p, sort_order: parseInt(e.target.value) || 0 }))} />
+          </div>
+
+          <div className="mt-4 mb-2 text-[11px] font-semibold text-fg-secondary uppercase tracking-wide">Services Included</div>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              ['includes_pickup', 'Airport Pickup'],
+              ['includes_sim', 'SIM/eSIM'],
+              ['includes_accompaniment', 'Accompaniment (Bilingual Fixer)'],
+              ['includes_round_trip', 'Round-trip Transfer'],
+              ['includes_concierge', '24/7 Concierge'],
+            ].map(([key, label]) => (
+              <label key={key} className="flex items-center gap-2 text-[13px] text-fg cursor-pointer">
+                <input type="checkbox" checked={!!pkgForm[key]} onChange={e => setPkgForm(p => ({ ...p, [key]: e.target.checked }))} className="accent-[var(--accent)]" />
+                {label}
+              </label>
+            ))}
+          </div>
+
+          {pkgForm.includes_accompaniment && (
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              <ModalField label="Accompaniment Hours">
+                <input type="number" min="0" value={pkgForm.accompaniment_hours || 0}
+                  onChange={e => setPkgForm(p => ({ ...p, accompaniment_hours: parseInt(e.target.value) || 0 }))} />
+              </ModalField>
+              <ModalField label="Type">
+                <select value={pkgForm.accompaniment_type || ''} onChange={e => setPkgForm(p => ({ ...p, accompaniment_type: e.target.value }))}>
+                  <option value="">None</option>
+                  <option value="bilingual_fixer">Bilingual Fixer</option>
+                </select>
+              </ModalField>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3 mt-3">
+            <ModalField label="Sort Order">
+              <input type="number" min="0" value={pkgForm.sort_order || 0}
+                onChange={e => setPkgForm(p => ({ ...p, sort_order: parseInt(e.target.value) || 0 }))} />
             </ModalField>
-            <ModalField label={t.admin.plans.isPopular}>
-              <select value={planForm.is_popular ? '1' : '0'} onChange={e => setPlanForm(p => ({ ...p, is_popular: e.target.value === '1' }))}>
-                <option value="1">Yes</option>
-                <option value="0">No</option>
-              </select>
-            </ModalField>
-            <ModalField label={t.admin.plans.isActive}>
-              <select value={planForm.is_active ? '1' : '0'} onChange={e => setPlanForm(p => ({ ...p, is_active: e.target.value === '1' }))}>
-                <option value="1">{t.admin.plans.active}</option>
-                <option value="0">{t.admin.plans.inactive}</option>
+            <ModalField label="Status">
+              <select value={pkgForm.is_active ? '1' : '0'} onChange={e => setPkgForm(p => ({ ...p, is_active: e.target.value === '1' }))}>
+                <option value="1">Active</option>
+                <option value="0">Inactive</option>
               </select>
             </ModalField>
           </div>
+
+          <div className="flex items-center gap-4 mt-3">
+            <label className="flex items-center gap-2 text-[13px] text-fg cursor-pointer">
+              <input type="checkbox" checked={!!pkgForm.is_popular} onChange={e => setPkgForm(p => ({ ...p, is_popular: e.target.checked }))} className="accent-[#f59e0b]" />
+              Mark as Popular
+            </label>
+          </div>
+
           <div className="flex justify-end gap-2 mt-6">
-            <button className="btn btn-secondary" onClick={() => setPlanModal(false)}>{t.admin.plans.cancel}</button>
-            <button className="btn btn-primary" onClick={savePlan}>{t.admin.plans.save}</button>
+            <button className="btn btn-secondary" onClick={() => setPkgModal(false)}>Cancel</button>
+            <button className="btn btn-primary" onClick={savePkg}>Save</button>
           </div>
         </Modal>
       )}
 
       {/* ── FEATURE MODAL ── */}
       {featureModal && (
-        <Modal onClose={() => setFeatureModal(false)} title={editFeature ? 'Edit Feature' : t.admin.plans.addFeature}>
-          <ModalField label={t.admin.plans.featureText}>
-            <input value={featureForm.text || ''} onChange={e => setFeatureForm(p => ({ ...p, text: e.target.value }))} placeholder="e.g. VIP Airport Pickup" />
+        <Modal onClose={() => setFeatureModal(false)} title={editFeature ? 'Edit Feature' : 'Add Feature'}>
+          <ModalField label="Feature Text">
+            <input value={featureText} onChange={e => setFeatureText(e.target.value)} placeholder="e.g. VIP Airport Pickup" />
           </ModalField>
           <div className="flex justify-end gap-2 mt-6">
-            <button className="btn btn-secondary" onClick={() => setFeatureModal(false)}>{t.admin.plans.cancel}</button>
-            <button className="btn btn-primary" onClick={saveFeature}>{t.admin.plans.save}</button>
+            <button className="btn btn-secondary" onClick={() => setFeatureModal(false)}>Cancel</button>
+            <button className="btn btn-primary" onClick={saveFeature}>Save</button>
           </div>
         </Modal>
       )}
 
       {/* ── TOUR MODAL ── */}
       {tourModal && (
-        <Modal onClose={() => setTourModal(false)} title={editTour ? 'Edit Tour' : t.admin.plans.addTour}>
-          <ModalField label={t.admin.plans.tourName}>
-            <input value={tourForm.name || ''} onChange={e => setTourForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. City Tour" />
+        <Modal onClose={() => setTourModal(false)} title={editTour ? 'Edit Tour' : 'Add Tour'}>
+          <ModalField label="Tour Name">
+            <input value={tourForm.name || ''} onChange={e => setTourForm(p => ({ ...p, name: e.target.value }))} placeholder="e.g. Guatapé Day Trip" />
           </ModalField>
-          <ModalField label={t.admin.plans.tourDescription}>
+          <ModalField label="Description">
             <textarea rows={2} value={tourForm.description || ''} onChange={e => setTourForm(p => ({ ...p, description: e.target.value }))} placeholder="Tour description..." />
           </ModalField>
           <div className="grid grid-cols-2 gap-3">
-            <ModalField label={t.admin.plans.pricePerPerson}>
+            <ModalField label="Price per person (USD)">
               <input type="number" step="0.01" min="0" value={tourForm.price_per_person_usd || 0}
-                onChange={e => setTourForm(p => ({ ...p, price_per_person_usd: parseFloat(e.target.value) || 0 }))} placeholder="0.00" />
+                onChange={e => setTourForm(p => ({ ...p, price_per_person_usd: parseFloat(e.target.value) || 0 }))} />
             </ModalField>
-            <ModalField label={t.admin.plans.isActive}>
-              <select value={tourForm.is_active ? '1' : '0'} onChange={e => setTourForm(p => ({ ...p, is_active: e.target.value === '1' }))}>
-                <option value="1">{t.admin.plans.active}</option>
-                <option value="0">{t.admin.plans.inactive}</option>
+            <ModalField label="Vehicle">
+              <select value={tourForm.vehicle_type || 'suv'} onChange={e => setTourForm(p => ({ ...p, vehicle_type: e.target.value }))}>
+                <option value="suv">SUV</option>
+                <option value="van">Van</option>
+                <option value="sedan">Sedan</option>
               </select>
             </ModalField>
+            <ModalField label="Duration (hours)">
+              <input type="number" min="1" value={tourForm.duration_hours || 8}
+                onChange={e => setTourForm(p => ({ ...p, duration_hours: parseInt(e.target.value) || 8 }))} />
+            </ModalField>
+            <ModalField label="Max people">
+              <input type="number" min="1" value={tourForm.max_people || 10}
+                onChange={e => setTourForm(p => ({ ...p, max_people: parseInt(e.target.value) || 10 }))} />
+            </ModalField>
+          </div>
+          <div className="flex items-center gap-4 mt-3">
+            <label className="flex items-center gap-2 text-[13px] text-fg cursor-pointer">
+              <input type="checkbox" checked={!!tourForm.is_active} onChange={e => setTourForm(p => ({ ...p, is_active: e.target.checked }))} className="accent-[var(--accent)]" />
+              Active
+            </label>
           </div>
           <div className="flex justify-end gap-2 mt-6">
-            <button className="btn btn-secondary" onClick={() => setTourModal(false)}>{t.admin.plans.cancel}</button>
-            <button className="btn btn-primary" onClick={saveTour}>{t.admin.plans.save}</button>
+            <button className="btn btn-secondary" onClick={() => setTourModal(false)}>Cancel</button>
+            <button className="btn btn-primary" onClick={saveTour}>Save</button>
           </div>
         </Modal>
       )}
@@ -603,20 +584,9 @@ export default function PlansPage() {
 // ── Reusable modal shell ──
 function Modal({ children, onClose, title }: { children: React.ReactNode; onClose: () => void; title: string }) {
   return (
-    <div style={{
-      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.62)',
-      display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-      padding: '80px 24px', zIndex: 500,
-    }} onClick={onClose}>
-      <div style={{
-        width: 'min(600px, 100%)', maxHeight: '80vh', overflow: 'auto',
-        borderRadius: 16, background: 'var(--bg)',
-        border: '1px solid var(--border)',
-      }} onClick={e => e.stopPropagation()}>
-        <div style={{
-          padding: '18px 20px', borderBottom: '1px solid var(--border)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.62)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '80px 24px', zIndex: 500 }} onClick={onClose}>
+      <div style={{ width: 'min(600px, 100%)', maxHeight: '80vh', overflow: 'auto', borderRadius: 16, background: 'var(--bg)', border: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
+        <div style={{ padding: '18px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h2 style={{ fontSize: 18, margin: 0, fontWeight: 700, color: 'var(--fg)' }}>{title}</h2>
           <button style={{ color: 'var(--fg-secondary)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 22 }} onClick={onClose}>&times;</button>
         </div>

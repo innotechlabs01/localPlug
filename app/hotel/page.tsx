@@ -70,14 +70,18 @@ export default function HotelPage() {
 
   const stats = useMemo(() => {
     const today = new Date().toISOString().split('T')[0]
-    const checkins = orders.filter(o => o.status === 'checked_in')
+    const occupiedRooms = rooms.filter(r => r.status === 'occupied').length
+    const availableRooms = rooms.filter(r => r.status === 'available').length
+    const maintenanceRooms = rooms.filter(r => r.status === 'maintenance').length
     return {
       todayReservations: orders.filter(o => o.arrival_date === today).length,
       todayCheckins: orders.filter(o => o.arrival_date === today && (o.status === 'checked_in' || o.status === 'accepted')).length,
       todayCheckouts: orders.filter(o => o.status === 'completed' && o.arrival_date === today).length,
-      occupiedRooms: checkins.length,
+      occupiedRooms,
+      availableRooms,
+      maintenanceRooms,
       totalRooms: rooms.length,
-      occupancy: rooms.length > 0 ? Math.round((checkins.length / rooms.length) * 100) : 0,
+      occupancy: rooms.length > 0 ? Math.round((occupiedRooms / rooms.length) * 100) : 0,
       periodRevenue: filteredOrders
         .filter(o => o.status === 'completed' || o.status === 'checked_in')
         .reduce((s, o) => s + (o.package_price || 0), 0),
@@ -102,6 +106,9 @@ export default function HotelPage() {
       case 'new': return { action: 'accept', label: 'Aceptar' }
       case 'accepted': return { action: 'check-in', label: 'Check-In' }
       case 'checked_in': return { action: 'check-out', label: 'Check-Out' }
+      case 'pending': return { action: 'accept', label: 'Aceptar' }
+      case 'confirmed': return { action: 'check-in', label: 'Check-In' }
+      case 'in_progress': return { action: 'check-out', label: 'Check-Out' }
       default: return null
     }
   }
@@ -220,12 +227,20 @@ export default function HotelPage() {
                       <td style={tableCellStyle}><span style={badge(b.bg, b.fg)}>{b.label}</span></td>
                       <td style={{ ...tableCellStyle, fontWeight: 600, color: 'var(--accent-gold)' }}>${o.package_price || 0}</td>
                       <td style={tableCellStyle}>
-                        {next && (
-                          <button onClick={() => handleOrderAction(o.id, next.action)} disabled={actionLoading === o.id}
-                            style={{ ...badge('rgba(212,165,116,0.1)', 'var(--accent-gold)'), cursor: 'pointer', border: '1px solid var(--accent-gold)', opacity: actionLoading === o.id ? 0.5 : 1 }}>
-                            {actionLoading === o.id ? '...' : next.label}
-                          </button>
-                        )}
+                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                          {next && (
+                            <button onClick={() => handleOrderAction(o.id, next.action)} disabled={actionLoading === o.id}
+                              style={{ ...badge('rgba(212,165,116,0.1)', 'var(--accent-gold)'), cursor: 'pointer', border: '1px solid var(--accent-gold)', opacity: actionLoading === o.id ? 0.5 : 1 }}>
+                              {actionLoading === o.id ? '...' : next.label}
+                            </button>
+                          )}
+                          {(o.status === 'new' || o.status === 'accepted' || o.status === 'pending' || o.status === 'confirmed') && (
+                            <button onClick={() => { if (confirm('¿Cancelar esta reserva?')) handleOrderAction(o.id, 'cancel') }} disabled={actionLoading === o.id}
+                              style={{ ...badge('rgba(248,113,113,0.1)', '#f87171'), cursor: 'pointer', border: '1px solid #f87171', fontSize: '11px', padding: '2px 8px', opacity: actionLoading === o.id ? 0.5 : 1 }}>
+                              Cancelar
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   )
@@ -263,12 +278,16 @@ export default function HotelPage() {
                   <td style={{ ...tableCellStyle, fontWeight: 600, color: 'var(--accent-gold)' }}>${r.price_per_night}</td>
                   <td style={tableCellStyle}>{r.breakfast_included ? 'Si' : 'No'}</td>
                   <td style={tableCellStyle}>
-                    <span style={badge(
-                      r.status === 'available' ? 'rgba(74,222,128,0.12)' : 'rgba(248,113,113,0.12)',
-                      r.status === 'available' ? 'var(--success)' : 'var(--danger)',
-                    )}>
-                      {r.status === 'available' ? 'Disponible' : 'No disponible'}
-                    </span>
+                    {(() => {
+                      const statusStyles: Record<string, { bg: string; fg: string; label: string }> = {
+                        available: { bg: 'rgba(74,222,128,0.12)', fg: 'var(--success)', label: 'Disponible' },
+                        occupied: { bg: 'rgba(251,191,36,0.12)', fg: '#fbbf24', label: 'Ocupada' },
+                        maintenance: { bg: 'rgba(248,113,113,0.12)', fg: 'var(--danger)', label: 'Mantenimiento' },
+                        unavailable: { bg: 'rgba(248,113,113,0.12)', fg: 'var(--danger)', label: 'No disponible' },
+                      }
+                      const s = statusStyles[r.status] || statusStyles.unavailable
+                      return <span style={badge(s.bg, s.fg)}>{s.label}</span>
+                    })()}
                   </td>
                 </tr>
               ))}

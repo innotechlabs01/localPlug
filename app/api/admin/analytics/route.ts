@@ -24,13 +24,13 @@ export async function GET(req: Request) {
   }
 
   const [ordersAgg, paymentsAgg, driverAgg, monthlyRev, driverRanking, countries, monthlyBookings, servicePopularity] = await Promise.all([
-    db.execute(`SELECT COUNT(*) as total, COUNT(DISTINCT o.customer_email) as unique_customers FROM orders o`),
+    db.execute(`SELECT COUNT(*) as total, COUNT(DISTINCT o.customer_email) as unique_customers FROM orders o WHERE o.status != 'cancelled'`),
     db.execute(`SELECT COUNT(*) as total, COALESCE(SUM(p.amount), 0) as total_revenue, COALESCE(AVG(p.amount), 0) as avg_value FROM payments p WHERE p.status = 'completed' ${paymentsFilter}`),
     db.execute(`SELECT COUNT(*) as total_drivers FROM drivers`),
     db.execute(`SELECT strftime('%Y-%m', p.created_at) as month, COALESCE(SUM(p.amount), 0) as revenue FROM payments p WHERE p.status = 'completed' ${paymentsFilter} GROUP BY month ORDER BY month`),
     db.execute(`SELECT d.id, d.name, d.rating, d.total_trips, d.vip_compatible, COUNT(o.id) as active_trips FROM drivers d LEFT JOIN orders o ON d.id = o.assigned_to AND o.status NOT IN ('cancelled') ${ordersFilter} GROUP BY d.id ORDER BY d.total_trips DESC LIMIT 10`),
-    db.execute(`SELECT o.customer_country, COUNT(*) as count FROM orders o WHERE o.customer_country IS NOT NULL AND o.customer_country != '' GROUP BY o.customer_country ORDER BY count DESC`),
-    db.execute(`SELECT strftime('%Y-%m', o.created_at) as month, COUNT(*) as bookings FROM orders o GROUP BY month ORDER BY month`),
+    db.execute(`SELECT o.customer_country, COUNT(*) as count FROM orders o WHERE o.customer_country IS NOT NULL AND o.customer_country != '' AND o.status != 'cancelled' GROUP BY o.customer_country ORDER BY count DESC`),
+    db.execute(`SELECT strftime('%Y-%m', o.created_at) as month, COUNT(*) as bookings FROM orders o WHERE o.status != 'cancelled' GROUP BY month ORDER BY month`),
     db.execute(`SELECT o.package_name, COUNT(*) as count, COALESCE(SUM(o.package_price), 0) as revenue FROM orders o WHERE o.status != 'cancelled' GROUP BY o.package_name ORDER BY count DESC LIMIT 10`),
   ])
 

@@ -9,7 +9,16 @@ interface StepPackagesProps {
 }
 
 interface BookingConfig {
-  packages: Record<string, { name: string; price: number; features?: string[]; is_popular?: boolean }>
+  packages: Record<string, {
+    name: string
+    base_price_usd?: number
+    price?: number
+    service_fee_flat?: number
+    price_per_person_usd?: number
+    features?: string[]
+    tours?: Array<{ id: number; name: string; description?: string; price_per_person_usd: number; vehicle_type?: string; duration_hours?: number }>
+    is_popular?: boolean
+  }>
   returnTripCharge: number
   serviceFee: number
   taxRate: number
@@ -40,7 +49,7 @@ export default function StepPackages({
           const selected = value === pkgId
           const pkgConfig = config?.packages?.[pkgId]
           const pkgData = pkgT.packages[pkgId as keyof typeof pkgT.packages]
-          const price = pkgConfig?.price ?? 0
+          const price = pkgConfig?.base_price_usd ?? pkgConfig?.price ?? 0
           const features = pkgConfig?.features || pkgData.features || []
           const isPopular = pkgConfig?.is_popular ?? false
           const isElite = pkgId === 'full-insider'

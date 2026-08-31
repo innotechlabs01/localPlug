@@ -26,13 +26,36 @@ export async function GET(req: Request) {
     const hotelsResult = await db.execute({ sql: hotelSql, args: hotelArgs })
     const hotels = hotelsResult.rows || []
 
-    // Get available rooms for each hotel
+    // Get available rooms for each hotel (exclude rooms with overlapping bookings)
+    const checkIn = searchParams.get('checkIn') || searchParams.get('arrivalDate') || null
+    const checkOut = searchParams.get('checkOut') || searchParams.get('returnDate') || null
+
     const hotelsWithRooms = await Promise.all(
       hotels.map(async (hotel: any) => {
-        const roomsResult = await db.execute({
-          sql: `SELECT * FROM rooms WHERE hotel_id = ? AND status = 'available' ORDER BY price_per_night ASC`,
-          args: [hotel.id],
-        })
+        let roomsResult
+        if (checkIn && checkOut) {
+          try {
+            roomsResult = await db.execute({
+              sql: `SELECT * FROM rooms WHERE hotel_id = ? AND status != 'maintenance'
+                    AND NOT EXISTS (
+                      SELECT 1 FROM room_bookings rb
+                      WHERE rb.room_id = rooms.id AND rb.status IN ('confirmed', 'checked_in')
+                      AND rb.check_in < ? AND rb.check_out > ?
+                    ) ORDER BY price_per_night ASC`,
+              args: [hotel.id, checkOut, checkIn],
+            })
+          } catch {
+            roomsResult = await db.execute({
+              sql: `SELECT * FROM rooms WHERE hotel_id = ? AND status = 'available' ORDER BY price_per_night ASC`,
+              args: [hotel.id],
+            })
+          }
+        } else {
+          roomsResult = await db.execute({
+            sql: `SELECT * FROM rooms WHERE hotel_id = ? AND status = 'available' ORDER BY price_per_night ASC`,
+            args: [hotel.id],
+          })
+        }
         const commissionRate = Number(hotel.commission_rate) || 0
 
         const rooms = (roomsResult.rows || []).map((room: any) => {

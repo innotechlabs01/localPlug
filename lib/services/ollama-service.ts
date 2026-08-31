@@ -1,3 +1,5 @@
+import { detectEscalation, type AiResponse } from './ai-utils'
+
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || 'http://localhost:11434'
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3.1:8b'
 
@@ -19,30 +21,12 @@ Reglas:
 INSTRUCCIÓN CRÍTICA - ESCALACIÓN:
 Si el usuario expresa explícitamente querer hablar con un humano (ej: "hablar con alguien", "hablar con un agente", "hablar con una persona", "talk to someone", "talk to a human", "talk to an agent"), debes responder con un mensaje que confirme que un agente lo contactará y NUNCA debes inventar respuestas. Responde con: "Un agente se pondrá en contacto contigo en breve. ⏳" (o su equivalente en el idioma del usuario).`
 
-interface OllamaResponse {
-  message: string
-  confidence: number
-}
-
-const ESCALATION_KEYWORDS = [
-  'hablar con alguien', 'hablar con una persona', 'hablar con un agente', 'hablar con un humano',
-  'hablar con soporte', 'ayuda humana', 'queja', 'problema', 'reclamo', 'reembolso',
-  'cancelar', 'cancelación', 'refund', 'cancel', 'cancellation',
-  'talk to someone', 'talk to a person', 'talk to an agent', 'talk to a human',
-  'talk to support', 'human help', 'complaint', 'problem', 'issue',
-]
-
-function detectEscalation(text: string): boolean {
-  const lower = text.toLowerCase()
-  return ESCALATION_KEYWORDS.some(k => lower.includes(k))
-}
-
 export async function generateOllamaResponse(params: {
   message: string
   conversationHistory?: Array<{ role: string; content: string }>
   bookingInfo?: Record<string, unknown> | null
   userCountry?: string
-}): Promise<OllamaResponse> {
+}): Promise<AiResponse> {
   try {
     const { message, conversationHistory, bookingInfo } = params
 

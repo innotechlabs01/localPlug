@@ -138,6 +138,20 @@ const PKG_KEY_MAP: Record<string, string> = {
 }
 
 export async function getPackagePrice(packageId: string): Promise<number> {
+  // Try new packages table first
+  try {
+    const db = getDb()
+    const result = await db.execute({
+      sql: 'SELECT base_price_usd FROM packages WHERE slug = ? AND is_active = 1',
+      args: [packageId],
+    })
+    if (result.rows.length > 0) {
+      return Number(result.rows[0].base_price_usd) || 0
+    }
+  } catch {
+    // packages table may not exist yet
+  }
+  // Fallback to legacy plans table
   try {
     const db = getDb()
     const result = await db.execute({
@@ -157,6 +171,20 @@ export async function getPackagePrice(packageId: string): Promise<number> {
 }
 
 export async function getPlanServiceFee(packageId: string): Promise<number> {
+  // Try new packages table first (service_fee_flat is flat, not per-person)
+  try {
+    const db = getDb()
+    const result = await db.execute({
+      sql: 'SELECT service_fee_flat FROM packages WHERE slug = ? AND is_active = 1',
+      args: [packageId],
+    })
+    if (result.rows.length > 0) {
+      return Number(result.rows[0].service_fee_flat) || 0
+    }
+  } catch {
+    // packages table may not exist yet
+  }
+  // Fallback to legacy plans table
   try {
     const db = getDb()
     const result = await db.execute({
@@ -191,11 +219,10 @@ export async function getPackageTotal(
   tourIds: string[] = [],
   numPeople = 1,
 ): Promise<number> {
-  const people = Math.max(1, Math.floor(numPeople || 1))
   const price = await getPackagePrice(packageId)
-  const serviceFee = await getPlanServiceFee(packageId)
+  const serviceFeeFlat = await getPlanServiceFee(packageId) // flat fee, NOT per-person
   const returnCharge = needReturn ? await getReturnTripCharge() : 0
-  return price + serviceFee * people + returnCharge + (await getToursTotal(tourIds, people))
+  return price + serviceFeeFlat + returnCharge + (await getToursTotal(tourIds, numPeople))
 }
 
 export async function getPackageTotalCents(packageId: string, needReturn: boolean): Promise<number> {
@@ -234,6 +261,32 @@ export async function getPackageGrandTotalCents(
 }
 
 export async function getPackageName(packageId: string): Promise<string> {
+  // Try new packages table first
+  try {
+    const db = getDb()
+    const result = await db.execute({
+      sql: 'SELECT name FROM packages WHERE slug = ? AND is_active = 1',
+      args: [packageId],
+    })
+    if (result.rows.length > 0) {
+      return result.rows[0].name as string || packageId
+    }
+  } catch {
+    // packages table may not exist yet
+  }
+  // Fallback to legacy plans table
+  try {
+    const db = getDb()
+    const result = await db.execute({
+      sql: 'SELECT name FROM plans WHERE slug = ? AND is_active = 1',
+      args: [packageId],
+    })
+    if (result.rows.length > 0) {
+      return result.rows[0].name as string || packageId
+    }
+  } catch {
+    // Fall through
+  }
   const cfg = await loadConfig()
   return cfg.get(`pkg_${packageId.replace(/-/g, '_')}_name`) || packageId
 }
@@ -355,6 +408,33 @@ export async function getInactivityTimeout(): Promise<number> {
 }
 
 export async function getExperiencePrice(expId: string): Promise<number> {
+  // Try new tours table first
+  try {
+    const db = getDb()
+    const result = await db.execute({
+      sql: 'SELECT price_per_person_usd FROM tours WHERE id = ? AND is_active = 1',
+      args: [parseInt(expId) || 0],
+    })
+    if (result.rows.length > 0) {
+      return Number(result.rows[0].price_per_person_usd) || 0
+    }
+  } catch {
+    // tours table may not exist yet
+  }
+  // Fallback to slug-based lookup in tours table
+  try {
+    const db = getDb()
+    const result = await db.execute({
+      sql: 'SELECT price_per_person_usd FROM tours WHERE name LIKE ? AND is_active = 1 LIMIT 1',
+      args: [`%${expId}%`],
+    })
+    if (result.rows.length > 0) {
+      return Number(result.rows[0].price_per_person_usd) || 0
+    }
+  } catch {
+    // tours table may not exist yet
+  }
+  // Final fallback to hardcoded settings
   const cfg = await loadConfig()
   const keyMap: Record<string, string> = {
     comuna13: KEYS.EXP_COMUNA13,
@@ -392,63 +472,119 @@ export async function getPlatformFeeFixed(): Promise<number> {
 export async function getAllPublicConfig() {
   const cfg = await loadConfig()
 
-  // Load plans from DB
-  let plans: Record<string, {
+  // Load packages from new schema
+  let packages: Record<string, {
     name: string
-    price: number
-    price_per_person_usd: number
+    base_price_usd: number
+    service_fee_flat: number
+    includes_pickup: boolean
+    includes_sim: boolean
+    includes_accompaniment: boolean
+    includes_round_trip: boolean
+    includes_concierge: boolean
     features: string[]
-    tours: Array<{ id: number; name: string; description: string; price_per_person_usd: number }>
+    tours: Array<{ id: number; name: string; description: string; price_per_person_usd: number; vehicle_type: string; duration_hours: number }>
     is_popular: boolean
   }> = {}
+
   try {
     const db = getDb()
-    const plansResult = await db.execute('SELECT id, name, slug, price_usd, price_per_person_usd, is_popular FROM plans WHERE is_active = 1 ORDER BY sort_order ASC')
-    const featuresResult = await db.execute('SELECT plan_id, text FROM plan_features ORDER BY sort_order ASC')
-    const toursResult = await db.execute('SELECT id, plan_id, name, description, price_per_person_usd FROM plan_tours WHERE is_active = 1 ORDER BY sort_order ASC')
+    const packagesResult = await db.execute('SELECT * FROM packages WHERE is_active = 1 ORDER BY sort_order ASC')
 
-    const featuresByPlan: Record<number, string[]> = {}
-    for (const row of featuresResult.rows) {
-      const pid = row.plan_id as number
-      if (!featuresByPlan[pid]) featuresByPlan[pid] = []
-      featuresByPlan[pid].push(row.text as string)
-    }
+    for (const pkg of packagesResult.rows) {
+      const pid = pkg.id as number
+      const slug = pkg.slug as string
 
-    const toursByPlan: Record<number, Array<{ id: number; name: string; description: string; price_per_person_usd: number }>> = {}
-    for (const row of toursResult.rows) {
-      const pid = row.plan_id as number
-      if (!toursByPlan[pid]) toursByPlan[pid] = []
-      toursByPlan[pid].push({
-        id: row.id as number,
-        name: row.name as string,
-        description: (row.description as string) || '',
-        price_per_person_usd: Number(row.price_per_person_usd) || 0,
+      const featuresResult = await db.execute({
+        sql: 'SELECT text FROM package_features WHERE package_id = ? ORDER BY sort_order',
+        args: [pid],
       })
-    }
 
-    for (const row of plansResult.rows) {
-      plans[row.slug as string] = {
-        name: row.name as string,
-        price: Number(row.price_usd),
-        price_per_person_usd: Number(row.price_per_person_usd) || 0,
-        features: featuresByPlan[row.id as number] || [],
-        tours: toursByPlan[row.id as number] || [],
-        is_popular: Boolean(row.is_popular),
+      const toursResult = await db.execute({
+        sql: 'SELECT id, name, description, price_per_person_usd, vehicle_type, duration_hours FROM tours WHERE package_id = ? AND is_active = 1 ORDER BY sort_order',
+        args: [pid],
+      })
+
+      packages[slug] = {
+        name: pkg.name as string,
+        base_price_usd: Number(pkg.base_price_usd),
+        service_fee_flat: Number(pkg.service_fee_flat) || 0,
+        includes_pickup: Boolean(pkg.includes_pickup),
+        includes_sim: Boolean(pkg.includes_sim),
+        includes_accompaniment: Boolean(pkg.includes_accompaniment),
+        includes_round_trip: Boolean(pkg.includes_round_trip),
+        includes_concierge: Boolean(pkg.includes_concierge),
+        features: featuresResult.rows.map((f: any) => f.text as string),
+        tours: toursResult.rows.map((t: any) => ({
+          id: t.id as number,
+          name: t.name as string,
+          description: (t.description as string) || '',
+          price_per_person_usd: Number(t.price_per_person_usd) || 0,
+          vehicle_type: t.vehicle_type as string || 'suv',
+          duration_hours: Number(t.duration_hours) || 8,
+        })),
+        is_popular: Boolean(pkg.is_popular),
       }
     }
   } catch {
-    // Fallback to settings if DB fails
-    plans = {
-      'smooth-landing': { name: 'The Welcome Pack', price: Number(getValue(cfg, KEYS.PKG_SMOOTH_LANDING)), price_per_person_usd: 0, features: [], tours: [], is_popular: false },
-      'first-24': { name: 'The 24h Insider', price: Number(getValue(cfg, KEYS.PKG_FIRST_24)), price_per_person_usd: 30, features: [], tours: [], is_popular: true },
-      'full-insider': { name: 'The Medellin Freedom Pass', price: Number(getValue(cfg, KEYS.PKG_FULL_INSIDER)), price_per_person_usd: 40, features: [], tours: [], is_popular: false },
+    // Fallback to legacy plans table if packages table doesn't exist
+    try {
+      const db = getDb()
+      const plansResult = await db.execute('SELECT id, name, slug, price_usd, price_per_person_usd, is_popular FROM plans WHERE is_active = 1 ORDER BY sort_order ASC')
+      const featuresResult = await db.execute('SELECT plan_id, text FROM plan_features ORDER BY sort_order ASC')
+      const toursResult = await db.execute('SELECT id, plan_id, name, description, price_per_person_usd FROM plan_tours WHERE is_active = 1 ORDER BY sort_order ASC')
+
+      const featuresByPlan: Record<number, string[]> = {}
+      for (const row of featuresResult.rows) {
+        const pid = row.plan_id as number
+        if (!featuresByPlan[pid]) featuresByPlan[pid] = []
+        featuresByPlan[pid].push(row.text as string)
+      }
+
+      const toursByPlan: Record<number, Array<{ id: number; name: string; description: string; price_per_person_usd: number; vehicle_type: string; duration_hours: number }>> = {}
+      for (const row of toursResult.rows) {
+        const pid = row.plan_id as number
+        if (!toursByPlan[pid]) toursByPlan[pid] = []
+        toursByPlan[pid].push({
+          id: row.id as number,
+          name: row.name as string,
+          description: (row.description as string) || '',
+          price_per_person_usd: Number(row.price_per_person_usd) || 0,
+          vehicle_type: 'suv',
+          duration_hours: 8,
+        })
+      }
+
+      for (const row of plansResult.rows) {
+        const slug = row.slug as string
+        packages[slug] = {
+          name: row.name as string,
+          base_price_usd: Number(row.price_usd),
+          service_fee_flat: slug === 'first-24' ? 30 : 0,
+          includes_pickup: true,
+          includes_sim: slug === 'smooth-landing',
+          includes_accompaniment: slug === 'first-24',
+          includes_round_trip: slug === 'full-insider',
+          includes_concierge: slug === 'full-insider',
+          features: featuresByPlan[row.id as number] || [],
+          tours: toursByPlan[row.id as number] || [],
+          is_popular: Boolean(row.is_popular),
+        }
+      }
+    } catch {
+      // Final fallback to hardcoded values
+      packages = {
+        'smooth-landing': { name: 'Smooth Landing', base_price_usd: 89, service_fee_flat: 0, includes_pickup: true, includes_sim: true, includes_accompaniment: false, includes_round_trip: false, includes_concierge: false, features: [], tours: [], is_popular: false },
+        'first-24': { name: 'First 24', base_price_usd: 159, service_fee_flat: 30, includes_pickup: true, includes_sim: true, includes_accompaniment: true, includes_round_trip: false, includes_concierge: false, features: [], tours: [], is_popular: true },
+        'full-insider': { name: 'Full Insider', base_price_usd: 269, service_fee_flat: 0, includes_pickup: true, includes_sim: true, includes_accompaniment: false, includes_round_trip: true, includes_concierge: true, features: [], tours: [], is_popular: false },
+      }
     }
   }
 
   return {
     platformFeePercent: Number(getValue(cfg, KEYS.PLATFORM_FEE_PCT)),
     platformFeeFixed: Number(getValue(cfg, KEYS.PLATFORM_FEE_FIXED)),
-    packages: plans,
+    packages,
     returnTripCharge: Number(getValue(cfg, KEYS.RETURN_TRIP_CHARGE)),
     serviceFee: Number(getValue(cfg, KEYS.SERVICE_FEE_FLAT)),
     taxRate: Number(getValue(cfg, KEYS.TAX_RATE_IVA)),
@@ -458,26 +594,6 @@ export async function getAllPublicConfig() {
     paymentPollInterval: Number(getValue(cfg, KEYS.PAYMENT_POLL_INTERVAL)),
     paymentMaxAttempts: Number(getValue(cfg, KEYS.PAYMENT_POLL_MAX)),
     paymentTimeout: Number(getValue(cfg, KEYS.PAYMENT_TIMEOUT)),
-    experiences: {
-      comuna13: Number(getValue(cfg, KEYS.EXP_COMUNA13)),
-      guatape: Number(getValue(cfg, KEYS.EXP_GUATAPE)),
-      coffee: Number(getValue(cfg, KEYS.EXP_COFFEE)),
-      paragliding: Number(getValue(cfg, KEYS.EXP_PARAGLIDING)),
-      nightlife: Number(getValue(cfg, KEYS.EXP_NIGHTLIFE)),
-      'vip-city': Number(getValue(cfg, KEYS.EXP_VIP_CITY)),
-      'santa-fe': Number(getValue(cfg, KEYS.EXP_SANTA_FE)),
-    },
-    trips: await (async () => {
-      try {
-        return (await getTrips()).map((t: any) => ({
-          id: t.slug,
-          name: t.name,
-          price_per_person_usd: Number(t.price_per_person_usd),
-        }))
-      } catch {
-        return []
-      }
-    })(),
     trm: Number(getValue(cfg, KEYS.TRM_FALLBACK)),
   }
 }

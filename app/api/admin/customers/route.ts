@@ -41,7 +41,7 @@ async function syncCustomersFromOrders(db: any) {
   for (const row of (orders.rows || [])) {
     const tripStats = await db.execute({
       sql: `SELECT COUNT(*) as trips, SUM(package_price) as ltv, MAX(created_at) as last_trip, MIN(created_at) as first_trip
-            FROM orders WHERE customer_email = ?`,
+            FROM orders WHERE customer_email = ? AND status != 'cancelled'`,
       args: [row.customer_email],
     })
     const s = tripStats.rows?.[0] || {}

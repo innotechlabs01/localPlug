@@ -54,14 +54,20 @@ interface DestinationData {
 }
 
 interface BookingConfig {
-  packages: Record<string, { name: string; price: number; features?: string[]; is_popular?: boolean }>
+  packages: Record<string, {
+    name: string
+    base_price_usd?: number
+    price?: number
+    service_fee_flat?: number
+    features?: string[]
+    tours?: Array<{ id: number; name: string; price_per_person_usd: number; vehicle_type: string; duration_hours: number }>
+    is_popular?: boolean
+  }>
   returnTripCharge: number
   serviceFee: number
   taxRate: number
   currency: string
   advanceBookingDays: number
-  experiences?: Record<string, number>
-  trips?: Array<{ id: string; name: string; price_per_person_usd: number }>
   trm?: number
 }
 
@@ -81,18 +87,22 @@ export default function StepDestination({ data, onChange, customerNotes = '', on
   const [hotelsLoading, setHotelsLoading] = useState(false)
   const [expandedHotel, setExpandedHotel] = useState<number | null>(null)
 
-  const AVAILABLE_TRIPS = (config?.trips || []).map(trip => ({
-    id: trip.id,
+  // Tours come from packages (only full-insider has tours)
+  const allTours = Object.values(config?.packages || {}).flatMap((pkg: any) => pkg.tours || [])
+  // Deduplicate by id
+  const uniqueTours = Array.from(new Map(allTours.map((t: any) => [String(t.id), t])).values()) as any[]
+  const AVAILABLE_TRIPS = uniqueTours.map((trip: any) => ({
+    id: String(trip.id),
     label: destT.trips[trip.id as keyof typeof destT.trips] || trip.name,
   }))
 
   const tripPrices: Record<string, number> = {}
-  ;(config?.trips || []).forEach((trip: any) => {
-    tripPrices[trip.id] = Number(trip.price_per_person_usd) || 0
+  uniqueTours.forEach((trip: any) => {
+    tripPrices[String(trip.id)] = Number(trip.price_per_person_usd) || 0
   })
   const numPeople = Math.max(1, Math.floor(data.numPeople || 1))
   const selectedTrips = data.additionalTrips ?? []
-  const toursTotal = selectedTrips.reduce((sum, id) => sum + (tripPrices[id] ?? 0) * numPeople, 0)
+  const toursTotal = selectedTrips.reduce((sum: number, id: string) => sum + (tripPrices[id] ?? 0) * numPeople, 0)
 
   const togglePlace = (value: boolean) => {
     onChange({ ...data, hasPlace: value, address: value ? data.address : '' })
@@ -340,7 +350,7 @@ export default function StepDestination({ data, onChange, customerNotes = '', on
             {destT.additionalTrips}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {AVAILABLE_TRIPS.map((trip) => {
+            {AVAILABLE_TRIPS.map((trip: any) => {
               const selected = selectedTrips.includes(trip.id)
               const price = tripPrices[trip.id]
               return (

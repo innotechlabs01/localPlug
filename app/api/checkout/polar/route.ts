@@ -96,6 +96,7 @@ export async function POST(req: Request) {
       package_name: packageName,
       customer_name: customerName,
       customer_email: customerEmail,
+      customer_phone: customerPhone || '',
       need_return: String(!!needReturn),
       tour_ids: JSON.stringify(tour_ids),
       num_people: String(num_people),
@@ -155,10 +156,9 @@ export async function POST(req: Request) {
       amount: totalAmountCents,
     })
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Internal error'
-    console.error('[Polar Checkout]', message)
+    console.error('[Polar Checkout]', err instanceof Error ? err.message : 'Unknown error')
     return NextResponse.json(
-      { error: 'server_error', message },
+      { error: 'server_error', message: 'Unable to initiate payment. Please try again.' },
       { status: 500 },
     )
   }

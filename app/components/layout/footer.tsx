@@ -8,7 +8,7 @@ function FooterInner() {
   return (
     <footer className="bg-[var(--bg-card)] border-t border-[var(--border)]">
       <div className="mx-auto max-w-container px-4 md:px-12 py-20">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-[60px] mb-[60px]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-[60px] mb-[60px]">
           <div className="lg:col-span-1">
             <h3 className="font-display text-2xl font-semibold text-white mb-4">
               Medellín{' '}
@@ -74,6 +74,15 @@ function FooterInner() {
               </li>
             </ul>
           </div>
+
+          <nav aria-label="Legal">
+            <h4 className="text-sm font-semibold text-white mb-5">{t.footer.legal}</h4>
+            <ul className="space-y-3">
+              <li><a href="/terms" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors duration-200">{t.footer.terms}</a></li>
+              <li><a href="/privacy" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors duration-200">{t.footer.privacy}</a></li>
+              <li><a href="/refund-policy" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors duration-200">{t.footer.refundPolicy}</a></li>
+            </ul>
+          </nav>
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-between pt-8 border-t border-[var(--border)]">

@@ -3,7 +3,7 @@ import { headers } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 
-const CLERK_WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET || ''
+const CLERK_WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET
 const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY || ''
 const CLERK_API_URL = 'https://api.clerk.com/v1'
 
@@ -38,6 +38,11 @@ type ClerkEvent = {
 
 export async function POST(req: Request) {
   try {
+    if (!CLERK_WEBHOOK_SECRET) {
+      console.error('[Clerk Webhook] CLERK_WEBHOOK_SECRET is not configured — rejecting all webhooks')
+      return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 })
+    }
+
     const headerPayload = await headers()
     const svixId = headerPayload.get('svix-id')
     const svixTimestamp = headerPayload.get('svix-timestamp')
