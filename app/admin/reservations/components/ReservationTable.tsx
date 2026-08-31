@@ -48,7 +48,9 @@ export default function ReservationTable({ reservations, onViewReservation }: Re
           <th>{labels.arrival || 'Arrival'}</th>
           <th>{labels.flight || 'Flight'}</th>
           <th>{labels.status || 'Status'}</th>
-          <th>{labels.payment || 'Payment'}</th>
+          <th>{(labels as any).amount || 'Amount'}</th>
+                <th>{(labels as any).transactionId || 'Txn ID'}</th>
+                <th>{labels.payment || 'Payment'}</th>
           <th style={{ width: 80 }}>Actions</th>
         </tr>
       </thead>
@@ -70,12 +72,14 @@ export default function ReservationTable({ reservations, onViewReservation }: Re
             <td>{r.service.name}</td>
             <td style={{ fontFamily: 'var(--font-mono)' }}>{formatDate(r.arrivalDate)} {r.arrivalTime?.substring(0, 5) || ''}</td>
             <td style={{ fontFamily: 'var(--font-mono)' }}>{r.flightInfo || '—'}</td>
-            <td>
-              <span className={`status-badge ${getStatusBadgeClass(r.status)}`}>{getStatusText(r.status)}</span>
-            </td>
-            <td>
-              <span className={`payment-badge ${getPaymentBadgeClass(r.paymentStatus)}`}>{getPaymentText(r.paymentStatus)}</span>
-            </td>
+<td>
+  <span className={`status-badge ${getStatusBadgeClass(r.status)}`}>{getStatusText(r.status)}</span>
+</td>
+<td>{r.totalAmount !== undefined ? `$${r.totalAmount.toFixed(2)}` : '—'}</td>
+<td>{r.transactionId || '—'}</td>
+<td>
+  <span className={`payment-badge ${getPaymentBadgeClass(r.paymentStatus)}`}>{getPaymentText(r.paymentStatus)}</span>
+</td>
             <td>
               <div className="action-btn-group">
                 <button className="action-btn view" onClick={e => { e.stopPropagation(); onViewReservation(r) }} title="View details">

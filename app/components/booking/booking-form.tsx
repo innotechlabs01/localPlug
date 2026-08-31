@@ -167,32 +167,33 @@ function BookingFormInner() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { showToast, dismissToast } = useToast()
 
-  const canProceed = () => {
-    switch (step) {
-      case 0: {
-        const fieldsFilled =
-          !!flightData.flightNumber.trim() &&
-          !!flightData.airline.trim() &&
-          !!flightData.arrivalDate &&
-          !!flightData.arrivalTime
-        if (!fieldsFilled) return false
-        const today = new Date()
-        const target = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-        target.setDate(target.getDate() + (bookingConfig?.advanceBookingDays ?? CONFIG_DEFAULTS.advanceBookingDays))
-        const minDateStr = target.toISOString().split('T')[0]
-        return flightData.arrivalDate >= minDateStr
-      }
-      case 1:
-        return !!profile && !!customerEmail.trim() && !!customerName.trim() && !!customerPhone.trim()
-      case 2:
-        if (destination.hasPlace) {
-          return !!destination.address.trim()
+    const canProceed = () => {
+      switch (step) {
+        case 0: {
+          const fieldsFilled =
+            !!flightData.flightNumber.trim() &&
+            !!flightData.airline.trim() &&
+            !!flightData.arrivalDate &&
+            !!flightData.arrivalTime
+          if (!fieldsFilled) return false
+          const today = new Date()
+          const target = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+          target.setDate(target.getDate() + (bookingConfig?.advanceBookingDays ?? CONFIG_DEFAULTS.advanceBookingDays))
+          const minDateStr = target.toISOString().split('T')[0]
+          return flightData.arrivalDate >= minDateStr
         }
-        return true
-      case 3:
-        return !!selectedPackage
+        case 1:
+          return !!profile && !!customerEmail.trim() && !!customerName.trim() && !!customerPhone.trim()
+        case 2:
+          if (destination.hasPlace) {
+            return !!destination.address.trim()
+          }
+          return true
+        case 3:
+          // Allow proceeding if a package is selected OR if the user has added external trips (additionalTrips) and specified number of people.
+          return !!selectedPackage || (Array.isArray(destination.additionalTrips) && destination.additionalTrips.length > 0) || (destination.numPeople && destination.numPeople > 1)
+      }
     }
-  }
 
   const nextStep = () => {
     if (step < TOTAL_STEPS - 1) setStep((step + 1) as Step)

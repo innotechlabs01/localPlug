@@ -177,10 +177,10 @@ export async function PUT(req: Request) {
 
     const assignmentId = Number(assignmentResult.lastInsertRowid)
 
-    await db.execute({
-      sql: "UPDATE orders SET dispatch_status = 'pending_acceptance', updated_at = datetime('now') WHERE id = ?",
-      args: [orderId],
-    })
+await db.execute({
+        sql: "UPDATE orders SET dispatch_status = 'assigned', updated_at = datetime('now') WHERE id = ?",
+        args: [orderId],
+      })
 
     try {
       triggerDriverNewAssignment({
