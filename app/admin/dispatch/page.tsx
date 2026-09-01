@@ -612,7 +612,7 @@ export default function DispatchPage() {
                     <div className="assign-confirm-row"><span className="label">{d.pickup || 'Pickup'}</span><span className="value">{selectedOrder?.arrival_time?.substring(0, 5) || '--:--'}</span></div>
                   </div>
                 </div>
-                <div className="dp-modal-footer" style={{ justifyContent: 'center' }}>
+                <div className="dp-modal-footer dp-modal-footer-center">
                   <button onClick={() => setModalOpen(false)} style={{ padding: '8px 16px', borderRadius: T.radiusSm, border: `1px solid ${T.border}`, background: 'transparent', color: T.fg, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>{d.cancel || 'Cancel'}</button>
                   <button onClick={() => selectedOrder && selectedDriver && doAssign(selectedOrder.id, selectedDriver.id)} style={{ padding: '8px 16px', borderRadius: T.radiusSm, border: 'none', background: T.accent, color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>{d.confirm || 'Confirm Assignment'}</button>
                 </div>
