@@ -87,45 +87,14 @@ export default function StepDestination({ data, onChange, customerNotes = '', on
   const [hotelsLoading, setHotelsLoading] = useState(false)
   const [expandedHotel, setExpandedHotel] = useState<number | null>(null)
 
-  // Tours come from packages (only full-insider has tours)
-  const allTours = Object.values(config?.packages || {}).flatMap((pkg: any) => pkg.tours || [])
-  // Deduplicate by id
-  const uniqueTours = Array.from(new Map(allTours.map((t: any) => [String(t.id), t])).values()) as any[]
-  const AVAILABLE_TRIPS = uniqueTours.map((trip: any) => ({
-    id: String(trip.id),
-    label: destT.trips[trip.id as keyof typeof destT.trips] || trip.name,
-  }))
-
-  const tripPrices: Record<string, number> = {}
-  uniqueTours.forEach((trip: any) => {
-    tripPrices[String(trip.id)] = Number(trip.price_per_person_usd) || 0
-  })
-  const numPeople = Math.max(1, Math.floor(data.numPeople || 1))
-  const selectedTrips = data.additionalTrips ?? []
-  const toursTotal = selectedTrips.reduce((sum: number, id: string) => sum + (tripPrices[id] ?? 0) * numPeople, 0)
-
   const togglePlace = (value: boolean) => {
     onChange({ ...data, hasPlace: value, address: value ? data.address : '' })
-  }
-
-  const toggleTrip = (tripId: string) => {
-    const current = data.additionalTrips ?? []
-    const next = current.includes(tripId)
-      ? current.filter((id) => id !== tripId)
-      : [...current, tripId]
-    onChange({ ...data, additionalTrips: next })
-  }
-
-  const setNumPeople = (value: number) => {
-    const clamped = Math.min(50, Math.max(1, Math.floor(value || 1)))
-    onChange({ ...data, numPeople: clamped })
   }
 
   const selectRoom = (hotelId: number, roomId: number) => {
     onChange({ ...data, selectedHotelId: hotelId, selectedRoomId: roomId })
   }
 
-  // Fetch hotels when user selects "I need suggestions"
   useEffect(() => {
     if (!data.hasPlace && hotels.length === 0 && !hotelsLoading) {
       setHotelsLoading(true)
@@ -133,7 +102,6 @@ export default function StepDestination({ data, onChange, customerNotes = '', on
         .then(r => r.json())
         .then(d => {
           if (d.hotels) {
-            // Parse amenities from JSON string for each room
             const parsed = d.hotels.map((h: any) => ({
               ...h,
               rooms: (h.rooms || []).map((r: any) => ({
@@ -246,7 +214,6 @@ export default function StepDestination({ data, onChange, customerNotes = '', on
                       key={hotel.id}
                       className={`rounded-[var(--radius-md)] border ${selected ? 'border-[var(--accent-gold)] bg-[rgba(212,165,116,0.06)]' : 'border-[var(--border)] bg-[var(--bg-elevated)]'} transition-all`}
                     >
-                      {/* Hotel header */}
                       <button
                         type="button"
                         onClick={() => setExpandedHotel(isExpanded ? null : hotel.id)}
@@ -274,7 +241,6 @@ export default function StepDestination({ data, onChange, customerNotes = '', on
                         </svg>
                       </button>
 
-                      {/* Expanded rooms */}
                       {isExpanded && (
                         <div className="px-4 pb-4 border-t border-[var(--border)]">
                           {hotel.rooms.length === 0 ? (
@@ -344,85 +310,6 @@ export default function StepDestination({ data, onChange, customerNotes = '', on
             )}
           </div>
         )}
-
-        <div className="border-t border-[var(--border)] pt-6">
-          <p className="text-label-md text-[var(--text-primary)] mb-4">
-            {destT.additionalTrips}
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {AVAILABLE_TRIPS.map((trip: any) => {
-              const selected = selectedTrips.includes(trip.id)
-              const price = tripPrices[trip.id]
-              return (
-                <label
-                  key={trip.id}
-                  className={`flex items-center gap-3 p-3.5 rounded-[var(--radius-md)] border-2 cursor-pointer transition-all duration-200 ${
-                    selected
-                      ? 'border-[var(--accent-gold)] bg-[rgba(212,165,116,0.08)]'
-                      : 'border-[var(--border)] bg-[var(--bg-elevated)] hover:border-[var(--border-light)]'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selected}
-                    onChange={() => toggleTrip(trip.id)}
-                    className="w-5 h-5 rounded border-[var(--border)] text-[var(--accent-gold)] focus:ring-[var(--accent-gold)]/20 focus:ring-2 shrink-0"
-                  />
-                  <span className={`flex-1 text-body-md ${selected ? 'text-[var(--accent-gold)] font-medium' : 'text-[var(--text-primary)]'}`}>
-                    {trip.label}
-                  </span>
-                  {typeof price === 'number' && price > 0 && (
-                    <span className="text-[13px] font-semibold text-white shrink-0">
-                      ${price.toFixed(2)}
-                      <span className="text-[11px] font-normal text-[var(--text-muted)]"> {destT.perPerson}</span>
-                      {config?.trm && (
-                        <span className="text-[10px] font-normal text-[var(--text-muted)] ml-1">
-                          ({(price * Number(config.trm)).toLocaleString('es-CO')} COP)
-                        </span>
-                      )}
-                    </span>
-                  )}
-                </label>
-              )
-            })}
-          </div>
-        </div>
-
-        <div className="border-t border-[var(--border)] pt-6">
-          <p className="text-label-md text-[var(--text-primary)] mb-3">{destT.numPeople}</p>
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--bg-elevated)] overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setNumPeople(numPeople - 1)}
-                className="w-11 h-11 flex items-center justify-center text-[var(--text-secondary)] hover:text-white hover:bg-[rgba(255,255,255,0.04)] transition-colors"
-                aria-label="Decrease travelers"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              </button>
-              <span className="w-12 text-center text-body-md font-semibold text-white">{numPeople}</span>
-              <button
-                type="button"
-                onClick={() => setNumPeople(numPeople + 1)}
-                className="w-11 h-11 flex items-center justify-center text-[var(--text-secondary)] hover:text-white hover:bg-[rgba(255,255,255,0.04)] transition-colors"
-                aria-label="Increase travelers"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              </button>
-            </div>
-            {selectedTrips.length > 0 && (
-              <div className="text-[13px] text-[var(--text-secondary)]">
-                {t.booking.steps.payment.summaryExperiences}:{' '}
-                <span className="font-semibold text-[var(--accent-gold)]">${toursTotal.toFixed(2)} USD</span>
-              </div>
-            )}
-            {selectedTrips.length === 0 && numPeople > 1 && (
-              <span className="text-[12px] text-[var(--text-secondary)]">
-                Service fee applies per traveler
-              </span>
-            )}
-          </div>
-        </div>
 
         {onCustomerNotesChange && (
           <div className="mt-6">

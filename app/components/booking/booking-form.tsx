@@ -189,9 +189,9 @@ function BookingFormInner() {
             return !!destination.address.trim()
           }
           return true
-        case 3:
-          // Allow proceeding if a package is selected OR if the user has added external trips (additionalTrips) and specified number of people.
-          return !!selectedPackage || (Array.isArray(destination.additionalTrips) && destination.additionalTrips.length > 0) || (destination.numPeople && destination.numPeople > 1)
+         case 3:
+          // Must select a package and specify at least 1 traveler.
+          return !!selectedPackage && (destination.numPeople && destination.numPeople >= 1)
       }
     }
 
@@ -444,13 +444,15 @@ function BookingFormInner() {
                     config={bookingConfig}
                   />
                 )}
-                {step === 3 && (
-                  <StepPackages
-                    value={selectedPackage}
-                    onChange={setSelectedPackage}
-                    config={bookingConfig}
-                  />
-                )}
+                 {step === 3 && (
+                   <StepPackages
+                     value={selectedPackage}
+                     onChange={setSelectedPackage}
+                     destination={destination}
+                     onDestinationChange={setDestination}
+                     config={bookingConfig}
+                   />
+                 )}
 
                 {step === 4 && (
                   <StepPayment
