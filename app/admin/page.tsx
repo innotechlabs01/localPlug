@@ -224,7 +224,7 @@ export default function AdminDashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           action: 'assign', 
-          orderId: parseInt(assignedBookingRef.replace('ORD-', '') || assignedBookingRef),
+          orderId: Number(assignedBookingRef.replace(/^ORD-/, '').match(/\d+/)?.[0] ?? 0),
           driverId: driverObj?.id
         })
       })
