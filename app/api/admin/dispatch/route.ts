@@ -35,9 +35,10 @@ export async function GET(req: Request) {
     if (tab === 'pending') {
       sql += ' AND o.dispatch_status = ?'
       args.push('pending')
-    } else if (tab === 'assigned') {
-      sql += ' AND o.dispatch_status = ?'
-      args.push('assigned')
+} else if (tab === 'assigned') {
+       // include both 'assigned' and 'pending_acceptance' as assigned for UI
+       sql += ' AND o.dispatch_status IN (?, ?)'
+       args.push('assigned', 'pending_acceptance')
     } else if (tab === 'enroute') {
       sql += ' AND o.dispatch_status = ?'
       args.push('enroute')
@@ -74,7 +75,7 @@ export async function GET(req: Request) {
     const countsResult = await db.execute(`
       SELECT
         (SELECT COUNT(*) FROM orders WHERE (dispatch_status = 'pending' OR dispatch_status IS NULL) AND (status IS NULL OR status != 'cancelled')) as pending,
-        (SELECT COUNT(*) FROM orders WHERE dispatch_status = 'assigned' AND (status IS NULL OR status != 'cancelled')) as assigned,
+        (SELECT COUNT(*) FROM orders WHERE dispatch_status IN ('assigned','pending_acceptance') AND (status IS NULL OR status != 'cancelled')) as assigned,
         (SELECT COUNT(*) FROM orders WHERE dispatch_status = 'enroute' AND (status IS NULL OR status != 'cancelled')) as enroute,
         (SELECT COUNT(*) FROM orders WHERE dispatch_status = 'pickedup' AND (status IS NULL OR status != 'cancelled')) as pickedup,
         (SELECT COUNT(*) FROM orders WHERE status = 'cancelled') as cancelled
@@ -206,7 +207,16 @@ await db.execute({
       console.error('[Dispatch] Failed to prepare n8n trigger:', n8nErr)
     }
 
-    return NextResponse.json({ success: true, action: 'assigned', assignmentId, status: 'pending_acceptance' })
+    await db.execute({
+        sql: "UPDATE orders SET assigned_to = ?, dispatch_status = 'assigned', assigned_at = datetime('now'), updated_at = datetime('now') WHERE id = ?",
+        args: [driverId, orderId],
+      })
+      await db.execute({
+        sql: "UPDATE drivers SET status = 'busy', updated_at = datetime('now') WHERE id = ?",
+        args: [driverId],
+      })
+      
+      return NextResponse.json({ success: true, action: 'assigned', assignmentId, status: 'assigned' })
   }
 
   if (action === 'unassign') {

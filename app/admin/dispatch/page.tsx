@@ -56,7 +56,7 @@ interface Order {
   totalAmount?: number;
   transactionId?: string;
   additionalTrips?: string[];
-  numPeople?: number;
+  num_people?: number;
 }
 
 interface DispatchData {
@@ -76,7 +76,7 @@ const T = {
 }
 
 const dispatchStatuses = ['pending', 'assigned', 'enroute', 'pickedup', 'completed'] as const
-const STATUS_LABELS: Record<string, string> = { pending: 'Pending', assigned: 'Assigned', enroute: 'En Route', pickedup: 'Picked Up', completed: 'Completed' }
+const STATUS_LABELS: Record<string, string> = { pending: 'Pending', assigned: 'Assigned', pending_acceptance: 'Awaiting Acceptance', enroute: 'En Route', pickedup: 'Picked Up', completed: 'Completed' }
 
 const COUNTRY_FLAGS: Record<string, string> = {
   'Argentina': '🇦🇷', 'USA': '🇺🇸', 'United States': '🇺🇸', 'Spain': '🇪🇸', 'Mexico': '🇲🇽',
@@ -227,6 +227,7 @@ export default function DispatchPage() {
   const getDispatchStatusClass = (status: string | null) => {
     const s = status || 'pending'
     if (s === 'assigned') return 'assigned'
+    if (s === 'pending_acceptance') return 'assigned'
     if (s === 'enroute') return 'enroute'
     if (s === 'pickedup') return 'pickedup'
     if (s === 'completed') return 'completed'
@@ -409,6 +410,7 @@ export default function DispatchPage() {
                       <div className="dp-info-item"><span className="dp-info-label">Phone</span><span className="dp-info-value mono">{selectedOrder.customer_phone || '—'}</span></div>
                       <div className="dp-info-item"><span className="dp-info-label">Email</span><span className="dp-info-value mono">{selectedOrder.customer_email || '—'}</span></div>
                       <div className="dp-info-item"><span className="dp-info-label">VIP Level</span><span className="dp-info-value">{isVip(selectedOrder) ? 'VIP — Premium' : 'Standard'}</span></div>
+                      {selectedOrder.num_people && <div className="dp-info-item"><span className="dp-info-label">Number of Occupants</span><span className="dp-info-value">{selectedOrder.num_people}</span></div>}
                     </div>
                   </div>
                 </div>
@@ -432,7 +434,7 @@ export default function DispatchPage() {
                       {selectedOrder.totalAmount !== undefined && <div className="dp-info-item"><span className="dp-info-label">Amount</span><span className="dp-info-value">${selectedOrder.totalAmount.toFixed(2)}</span></div>}
                       {selectedOrder.transactionId && <div className="dp-info-item"><span className="dp-info-label">Transaction ID</span><span className="dp-info-value">{selectedOrder.transactionId}</span></div>}
                       {selectedOrder.additionalTrips && selectedOrder.additionalTrips.length > 0 && <div className="dp-info-item" style={{ gridColumn: 'span 2' }}><span className="dp-info-label">Additional Trips</span><span className="dp-info-value">{selectedOrder.additionalTrips.join(', ')}</span></div>}
-                      {selectedOrder.numPeople && <div className="dp-info-item"><span className="dp-info-label">People</span><span className="dp-info-value">{selectedOrder.numPeople}</span></div>}
+                      {selectedOrder.num_people && <div className="dp-info-item"><span className="dp-info-label">People</span><span className="dp-info-value">{selectedOrder.num_people}</span></div>}
                     </div>
                   </div>
                 </div>
