@@ -3,11 +3,32 @@
 import Image from 'next/image'
 import HeroCta from './hero-cta'
 import { useI18n } from '@/lib/i18n'
+import { useState, useEffect } from 'react'
 
-const FERIA_DATES = 'Aug 1 – 10, 2026'
-const FERIA_COUNTDOWN_DAYS = 18
+interface HeroBannerEvent {
+  id: number
+  slug: string
+  title: string
+  tag: string | null
+  cta_text: string | null
+  cta_href: string | null
+}
 
 function FeriaBanner() {
+  const [event, setEvent] = useState<HeroBannerEvent | null | undefined>(undefined)
+
+  useEffect(() => {
+    fetch('/api/events', { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => setEvent(data?.hero_banner ?? null))
+      .catch(() => setEvent(null))
+  }, [])
+
+  // Loading state: render nothing to avoid a flash of the old event
+  if (event === undefined) return null
+  // No active hero banner event: hide the banner entirely
+  if (!event) return null
+
   return (
     <div className="relative z-20 bg-gradient-to-r from-[var(--accent-gold-dark)] via-[var(--accent-orange)] to-[var(--accent-gold-dark)] py-2.5 px-4 text-center">
       <div className="flex items-center justify-center gap-3 flex-wrap">
@@ -15,19 +36,23 @@ function FeriaBanner() {
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M12 6v6l4 2"/>
           </svg>
-          {FERIA_COUNTDOWN_DAYS} days away
+          {event.title}
         </span>
         <span className="text-white/80">|</span>
         <span className="text-sm font-semibold text-white">
           <svg className="inline -mt-0.5 mr-1.5" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l2.8 2.8M16.2 16.2L19 19M19 5l-2.8 2.8M7.8 16.2L5 19"/>
           </svg>
-          Feria de las Flores {FERIA_DATES}
+          {event.tag || event.title}
         </span>
-        <span className="text-white/80">|</span>
-        <a href="#feria" className="text-xs font-bold uppercase tracking-wider text-white underline underline-offset-2 hover:text-white/80 transition-colors">
-          Book Now →
-        </a>
+        {event.cta_text && (
+          <>
+            <span className="text-white/80">|</span>
+            <a href={event.cta_href || '#promo'} className="text-xs font-bold uppercase tracking-wider text-white underline underline-offset-2 hover:text-white/80 transition-colors">
+              {event.cta_text} →
+            </a>
+          </>
+        )}
       </div>
     </div>
   )

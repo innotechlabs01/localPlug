@@ -16,6 +16,28 @@ export const settings = sqliteTable('settings', {
 })
 
 // ──────────────────────────────────────────────
+// PROMO EVENTS / DYNAMIC BANNERS
+// ──────────────────────────────────────────────
+export const promoEvents = sqliteTable('promo_events', {
+  id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
+  slug: text('slug').notNull().unique(),
+  title: text('title').notNull(),
+  tag: text('tag'),
+  description: text('description'),
+  highlights: text('highlights', { mode: 'json' }),
+  ctaText: text('cta_text'),
+  ctaHref: text('cta_href').default('/booking'),
+  image: text('image'),
+  placement: text('placement', { enum: ['hero_banner', 'section'] }).default('section'),
+  active: integer('active', { mode: 'boolean' }).default(true),
+  startDate: text('start_date'),
+  endDate: text('end_date'),
+  sortOrder: integer('sort_order', { mode: 'number' }).default(0),
+  createdAt: text('created_at').default(sql`datetime('now')`),
+  updatedAt: text('updated_at').default(sql`datetime('now')`),
+})
+
+// ──────────────────────────────────────────────
 // RBAC / PERMISSIONS
 // ──────────────────────────────────────────────
 export const roles = sqliteTable('roles', {

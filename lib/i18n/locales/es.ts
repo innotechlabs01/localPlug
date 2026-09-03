@@ -479,6 +479,7 @@ export default {
       payments: 'Pagos',
       parking: 'Pruebas de parqueo',
       hotels: 'Hoteles',
+      events: 'Eventos',
        plans: 'Planes',
        trips: 'Viajes',
        booking: 'Booking',
