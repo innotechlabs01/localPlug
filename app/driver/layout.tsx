@@ -75,6 +75,20 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
       .catch(() => {})
   }, [])
 
+  // Register PWA service worker (driver portal)
+  useEffect(() => {
+    if ('serviceWorker' in navigator && typeof window !== 'undefined') {
+      navigator.serviceWorker.register('/sw.js', { scope: '/driver' }).catch(() => {})
+    }
+    // Ensure the manifest link exists for installability
+    if (!document.querySelector('link[rel="manifest"]')) {
+      const link = document.createElement('link')
+      link.rel = 'manifest'
+      link.href = '/manifest.webmanifest'
+      document.head.appendChild(link)
+    }
+  }, [])
+
   const toggleStatus = async () => {
     if (toggling) return
     setToggling(true)

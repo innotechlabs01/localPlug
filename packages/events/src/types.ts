@@ -21,7 +21,9 @@ export const EventType = {
   ASSIGNMENT_CREATED: 'assignment.created',
   ASSIGNMENT_ACCEPTED: 'assignment.accepted',
   ASSIGNMENT_REJECTED: 'assignment.rejected',
+  ASSIGNMENT_DECLINED: 'assignment.declined',
   TRIP_STARTED: 'trip.started',
+  TRIP_PICKED_UP: 'trip.picked_up',
   TRIP_COMPLETED: 'trip.completed',
   PAYMENT_SUCCEEDED: 'payment.succeeded',
   PAYMENT_FAILED: 'payment.failed',
@@ -31,6 +33,10 @@ export const EventType = {
   VEHICLE_REGISTERED: 'vehicle.registered',
   EXPERIENCE_BOOKED: 'experience.booked',
   RATING_SUBMITTED: 'rating.submitted',
+  HOTEL_RESERVATION_ACCEPTED: 'hotel.reservation.accepted',
+  HOTEL_RESERVATION_DECLINED: 'hotel.reservation.declined',
+  HOTEL_CHECKED_IN: 'hotel.reservation.checked_in',
+  HOTEL_CHECKED_OUT: 'hotel.reservation.checked_out',
 
   // Integration Events
   WHATSAPP_MESSAGE_RECEIVED: 'whatsapp.message.received',

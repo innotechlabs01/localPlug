@@ -30,6 +30,8 @@ const STATUS_STYLES: Record<string, { label: string; bg: string; fg: string }> =
   offered: { label: 'Ofrecida', bg: 'rgba(96,165,250,0.12)', fg: '#60a5fa' },
   accepted: { label: 'Aceptada', bg: 'rgba(74,222,128,0.12)', fg: '#4ade80' },
   confirmed_to_client: { label: 'Confirmada', bg: 'rgba(74,222,128,0.12)', fg: '#4ade80' },
+  en_route: { label: 'En camino', bg: 'rgba(96,165,250,0.12)', fg: '#60a5fa' },
+  in_progress: { label: 'Pasajero a bordo', bg: 'rgba(96,165,250,0.18)', fg: '#60a5fa' },
   completed: { label: 'Completada', bg: 'rgba(100,100,100,0.12)', fg: '#9ca3af' },
   cancelled: { label: 'Cancelada', bg: 'rgba(248,113,113,0.12)', fg: '#f87171' },
   declined: { label: 'Rechazada', bg: 'rgba(248,113,113,0.12)', fg: '#f87171' },
@@ -83,6 +85,27 @@ export default function DriverAssignmentsPage() {
     } finally { setActionLoading(null) }
   }
 
+  const handleTripStatus = async (assignmentId: number, status: 'en_route' | 'pickedup') => {
+    setActionLoading(assignmentId)
+    try {
+      const res = await fetch(`/api/driver/assignments/${assignmentId}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      })
+      if (res.ok) {
+        await fetchAssignments()
+      } else {
+        const data = await res.json().catch(() => ({}))
+        window.alert(data.error || 'No se pudo actualizar el estado del viaje.')
+      }
+    } catch {
+      window.alert('Error de red al actualizar el estado del viaje.')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
   const startComplete = (id: number) => {
     setCompletingId(id)
     setParkingAnswer(null)
@@ -132,13 +155,13 @@ export default function DriverAssignmentsPage() {
 
   const filtered = assignments.filter(a => {
     if (activeTab === 'pending') return ['pending', 'pending_acceptance', 'offered'].includes(a.status)
-    if (activeTab === 'active') return ['accepted', 'confirmed_to_client', 'en_route'].includes(a.status)
+    if (activeTab === 'active') return ['accepted', 'confirmed_to_client', 'en_route', 'in_progress'].includes(a.status)
     return ['completed', 'cancelled', 'declined', 'expired'].includes(a.status)
   })
 
   const counts = {
     pending: assignments.filter(a => ['pending', 'pending_acceptance', 'offered'].includes(a.status)).length,
-    active: assignments.filter(a => ['accepted', 'confirmed_to_client', 'en_route'].includes(a.status)).length,
+    active: assignments.filter(a => ['accepted', 'confirmed_to_client', 'en_route', 'in_progress'].includes(a.status)).length,
     history: assignments.filter(a => ['completed', 'cancelled', 'declined', 'expired'].includes(a.status)).length,
   }
 
@@ -374,7 +397,45 @@ export default function DriverAssignmentsPage() {
                         </button>
                       </>
                     )}
-                    {!canAccept && ['accepted', 'confirmed_to_client', 'en_route'].includes(a.status) && (
+                    {!canAccept && ['accepted', 'confirmed_to_client', 'en_route', 'in_progress'].includes(a.status) && (
+                      <>
+                        {['accepted', 'confirmed_to_client'].includes(a.status) && (
+                          <button
+                            onClick={() => handleTripStatus(a.id, 'en_route')}
+                            disabled={actionLoading === a.id}
+                            style={{
+                              padding: '6px 16px', borderRadius: 8,
+                              fontSize: 12, fontWeight: 500,
+                              background: 'rgba(96,165,250,0.12)', color: '#60a5fa',
+                              border: '1px solid rgba(96,165,250,0.25)',
+                              cursor: 'pointer',
+                              opacity: actionLoading === a.id ? 0.5 : 1,
+                              transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+                            }}
+                          >
+                            {actionLoading === a.id ? 'Procesando...' : 'En camino'}
+                          </button>
+                        )}
+                        {a.status === 'en_route' && (
+                          <button
+                            onClick={() => handleTripStatus(a.id, 'pickedup')}
+                            disabled={actionLoading === a.id}
+                            style={{
+                              padding: '6px 16px', borderRadius: 8,
+                              fontSize: 12, fontWeight: 500,
+                              background: 'rgba(74,222,128,0.12)', color: '#4ade80',
+                              border: '1px solid rgba(74,222,128,0.25)',
+                              cursor: 'pointer',
+                              opacity: actionLoading === a.id ? 0.5 : 1,
+                              transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
+                            }}
+                          >
+                            {actionLoading === a.id ? 'Procesando...' : 'Recogí al pasajero'}
+                          </button>
+                        )}
+                      </>
+                    )}
+                    {!canAccept && ['accepted', 'confirmed_to_client', 'en_route', 'in_progress'].includes(a.status) && (
                       <button
                         onClick={() => startComplete(a.id)}
                         disabled={actionLoading === a.id}

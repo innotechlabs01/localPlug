@@ -60,19 +60,37 @@ export default function DriverEarningsPage() {
 
       if (earningsRes.status === 'fulfilled' && earningsRes.value.ok) {
         const earningsData = await earningsRes.value.json()
-        setTrips(earningsData.trips || [])
-        setSummary(earningsData.summary || {
-          thisWeek: 0,
-          lastWeek: 0,
-          percentChange: 0,
-          totalTrips: 0
-        })
-        setBreakdown(earningsData.breakdown || {
-          baseFare: 0,
+        // Map API contract to page state: API returns recentTrips + summary{weeklyChange,thisWeekTrips}
+        const apiTrips: Array<{
+          id: number; date: string; time?: string; customer_name?: string; destination?: string
+          package_name?: string; order_number?: string; booking_reference?: string; amount?: number; earned?: number; status?: string
+        }> = earningsData.recentTrips || earningsData.trips || []
+        setTrips(apiTrips.map(t => ({
+          id: String(t.id),
+          date: t.date || '',
+          customerName: t.customer_name || 'Cliente',
+          pickup: t.package_name || t.destination || '',
+          destination: t.destination || '',
+          amount: Number(t.earned ?? t.amount) || 0,
+          status: t.status === 'completed' ? 'completed' : 'pending',
+        })))
+        setSummary(prev => ({
+          thisWeek: Number(earningsData.summary?.thisWeek ?? prev.thisWeek),
+          lastWeek: Number(earningsData.summary?.lastWeek ?? prev.lastWeek),
+          percentChange: Number(earningsData.summary?.weeklyChange ?? earningsData.summary?.percentChange ?? prev.percentChange),
+          totalTrips: Number(earningsData.summary?.thisWeekTrips ?? earningsData.summary?.totalTrips ?? prev.totalTrips),
+        }))
+        setBreakdown({
+          baseFare: Number(earningsData.summary?.thisWeek ?? 0),
           tips: 0,
-          bonuses: 0
+          bonuses: 0,
         })
-        setDailyEarnings(earningsData.dailyEarnings || [])
+        // API returns { date, amount }; page bar chart expects { day, amount }
+        const daily: Array<{ date: string; amount: number }> = earningsData.dailyEarnings || []
+        setDailyEarnings(daily.map(d => ({
+          day: new Date(d.date + 'T00:00:00').toLocaleDateString('es-MX', { weekday: 'short' }),
+          amount: Number(d.amount) || 0,
+        })))
       }
 
       if (metricsRes.status === 'fulfilled' && metricsRes.value.ok) {

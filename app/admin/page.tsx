@@ -5,6 +5,25 @@ import { useI18n } from '@/lib/i18n'
 import { adminFetch } from '@/lib/admin/admin-fetch'
 import { getToday, getLocalDatePart } from '@/lib/date-utils'
 
+interface IncomeSummary {
+  summary: {
+    totalRevenue: number
+    baseServices: number
+    returnTransport: number
+    hotelAccommodation: number
+    driverPayouts: number
+    driverPayoutsPct: string
+    platformTake: number
+    platformTakePct: string
+    successfulPayments: number
+    failedPayments: number
+    pendingPayments: number
+    successRate: string
+  }
+  monthlyRevenue: Array<{ month: string; revenue: number }>
+  payoutBreakdown: Array<{ driver_name: string; trips: number; payout: number }>
+}
+
 interface Booking {
   id: string
   ref: string
@@ -114,6 +133,14 @@ export default function AdminDashboard() {
   const [drivers, setDrivers] = useState<{ id: number; name: string; vehicle: string; plate: string; status: string }[]>([])
   const [loading, setLoading] = useState(true)
   const [configValues, setConfigValues] = useState({ returnTripCharge: 48, hotelRevenuePerNight: 85 })
+  const [income, setIncome] = useState<IncomeSummary | null>(null)
+
+  useEffect(() => {
+    adminFetch('/api/admin/income-summary', { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => setIncome(data))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     fetch('/api/config')
@@ -555,7 +582,7 @@ export default function AdminDashboard() {
           <div className="card" style={{ margin: 0 }}>
             <div className="card-header">
               <span className="card-title">{d.revenueBreakdown as string}</span>
-              <span className="badge badge-accent" style={{ fontSize: 10 }}>Today</span>
+              <span className="badge badge-accent" style={{ fontSize: 10 }}>Ingresos reales</span>
             </div>
             <div className="card-body" style={{ padding: '12px 16px' }}>
               <div className="rev-breakdown-list">
@@ -563,30 +590,72 @@ export default function AdminDashboard() {
                   <div className="rev-dot" style={{ background: 'var(--accent)' }} />
                   <span className="rev-label">{d.baseServices as string}</span>
                   <span className="rev-amount">
-                    ${(totalRevenue - (todayBookings.filter(b => b.returnTransport).reduce((s, b) => s + (b.returnFee || configValues.returnTripCharge), 0)) - (todayBookings.reduce((s, b) => s + (b.hotelSubtotal || (b.numNights || 0) * configValues.hotelRevenuePerNight), 0))).toLocaleString()}
+                    ${(income?.summary.baseServices ?? 0).toLocaleString()}
                   </span>
                 </div>
                 <div className="rev-item">
                   <div className="rev-dot" style={{ background: 'var(--info)' }} />
                   <span className="rev-label">{d.returnTransportRev as string}</span>
                   <span className="rev-amount">
-                    ${todayBookings.filter(b => b.returnTransport).reduce((s, b) => s + (b.returnFee || configValues.returnTripCharge), 0).toLocaleString()}
+                    ${(income?.summary.returnTransport ?? 0).toLocaleString()}
                   </span>
                 </div>
                 <div className="rev-item">
                   <div className="rev-dot" style={{ background: 'var(--gold)' }} />
                   <span className="rev-label">{d.hotelAccommodation as string}</span>
                   <span className="rev-amount">
-                    ${todayBookings.reduce((s, b) => s + (b.hotelSubtotal || (b.numNights || 0) * configValues.hotelRevenuePerNight), 0).toLocaleString()}
+                    ${(income?.summary.hotelAccommodation ?? 0).toLocaleString()}
+                  </span>
+                </div>
+                <div className="rev-item">
+                  <div className="rev-dot" style={{ background: 'var(--warning)' }} />
+                  <span className="rev-label">Payouts conductores</span>
+                  <span className="rev-amount">
+                    ${(income?.summary.driverPayouts ?? 0).toLocaleString()}{' '}
+                    <span style={{ fontSize: 11, opacity: 0.6 }}>({income?.summary.driverPayoutsPct ?? '0'}%)</span>
+                  </span>
+                </div>
+                <div className="rev-item">
+                  <div className="rev-dot" style={{ background: 'var(--accent)' }} />
+                  <span className="rev-label">Comisión de la plataforma</span>
+                  <span className="rev-amount">
+                    ${(income?.summary.platformTake ?? 0).toLocaleString()}{' '}
+                    <span style={{ fontSize: 11, opacity: 0.6 }}>({income?.summary.platformTakePct ?? '0'}%)</span>
                   </span>
                 </div>
                 <div className="rev-item" style={{ borderTop: '1px solid var(--border)', paddingTop: 10, marginTop: 4 }}>
                   <div className="rev-dot" style={{ background: 'var(--fg)' }} />
                   <span className="rev-label" style={{ fontWeight: 700 }}>{d.totalRevenueLabel as string}</span>
                   <span className="rev-amount" style={{ fontSize: 16, fontWeight: 700, color: 'var(--accent)' }}>
-                    ${totalRevenue.toLocaleString()}
+                    ${(income?.summary.totalRevenue ?? 0).toLocaleString()}
                   </span>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Income trend (last 6 months) */}
+          <div className="card" style={{ margin: 0 }}>
+            <div className="card-header">
+              <span className="card-title">Ingresos últimos 6 meses</span>
+            </div>
+            <div className="card-body" style={{ padding: '12px 16px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {(income?.monthlyRevenue ?? []).slice(-6).map(m => (
+                  <div key={m.month} className="flex-between">
+                    <span style={{ fontSize: 12, textTransform: 'capitalize' }}>
+                      {new Date(m.month + '-01').toLocaleDateString('es-MX', { month: 'short', year: '2-digit' })}
+                    </span>
+                    <span style={{ fontSize: 13, fontWeight: 600, fontFamily: 'var(--font-mono)' }}>
+                      ${m.revenue.toLocaleString()}
+                    </span>
+                  </div>
+                ))}
+                {(income?.monthlyRevenue ?? []).length === 0 && (
+                  <span style={{ fontSize: 12, color: 'var(--fg-muted)', textAlign: 'center', padding: '20px 0' }}>
+                    Sin datos de ingresos aún
+                  </span>
+                )}
               </div>
             </div>
           </div>
