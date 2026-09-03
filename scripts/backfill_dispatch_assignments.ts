@@ -1,11 +1,11 @@
-import { getDb } from '@/lib/db';
+import { createDatabase } from '../packages/db/src/factory.ts';
 
 /**
  * Backfill legacy orders (IDs 1,3,4) that are stuck in `pending_acceptance`
  * to proper `assigned` state and set the driver assignment.
  */
 export async function run() {
-  const db = getDb();
+  const db = createDatabase();
   await db.execute({
     sql: `UPDATE orders
             SET assigned_to = (

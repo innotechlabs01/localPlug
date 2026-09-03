@@ -33,6 +33,8 @@ export async function POST(req: Request) {
       customerEmail,
       customerName,
       customerPhone,
+      customerCountry,
+      customerNotes,
       needReturn,
       tour_ids = [],
       num_people = 1,
@@ -49,6 +51,8 @@ export async function POST(req: Request) {
       customerEmail: string
       customerName: string
       customerPhone?: string
+      customerCountry?: string
+      customerNotes?: string
       needReturn?: boolean
       tour_ids?: Array<number | string>
       num_people?: number
@@ -97,6 +101,8 @@ export async function POST(req: Request) {
       customer_name: customerName,
       customer_email: customerEmail,
       customer_phone: customerPhone || '',
+      customer_country: customerCountry || '',
+      customer_notes: customerNotes || '',
       need_return: String(!!needReturn),
       tour_ids: JSON.stringify(tour_ids),
       num_people: String(num_people),
