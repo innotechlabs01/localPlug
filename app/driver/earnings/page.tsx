@@ -18,6 +18,8 @@ interface EarningsSummary {
   lastWeek: number
   percentChange: number
   totalTrips: number
+  available: number
+  pending: number
 }
 
 interface EarningsBreakdown {
@@ -37,7 +39,9 @@ export default function DriverEarningsPage() {
     thisWeek: 0,
     lastWeek: 0,
     percentChange: 0,
-    totalTrips: 0
+    totalTrips: 0,
+    available: 0,
+    pending: 0,
   })
   const [breakdown, setBreakdown] = useState<EarningsBreakdown>({
     baseFare: 0,
@@ -47,6 +51,33 @@ export default function DriverEarningsPage() {
   const [dailyEarnings, setDailyEarnings] = useState<DailyEarnings[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [requesting, setRequesting] = useState(false)
+  const [requestMsg, setRequestMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [periods, setPeriods] = useState<string[]>([])
+  const [period, setPeriod] = useState<string>('')
+
+  const requestPayout = async () => {
+    setRequesting(true)
+    setRequestMsg(null)
+    try {
+      const res = await fetch('/api/driver/payout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && data.success) {
+        setRequestMsg({ ok: true, text: `Solicitud creada por ${formatCurrency(data.amount_usd ?? 0)}. Te consignaremos por transferencia.` })
+        setSummary(prev => ({ ...prev, available: 0, pending: prev.pending + prev.available }))
+      } else {
+        setRequestMsg({ ok: false, text: data.error || 'No se pudo crear la solicitud.' })
+      }
+    } catch (e) {
+      setRequestMsg({ ok: false, text: 'Error al solicitar el pago. Intenta de nuevo.' })
+    } finally {
+      setRequesting(false)
+    }
+  }
 
   const fetchEarnings = useCallback(async () => {
     try {
@@ -79,6 +110,8 @@ export default function DriverEarningsPage() {
           lastWeek: Number(earningsData.summary?.lastWeek ?? prev.lastWeek),
           percentChange: Number(earningsData.summary?.weeklyChange ?? earningsData.summary?.percentChange ?? prev.percentChange),
           totalTrips: Number(earningsData.summary?.thisWeekTrips ?? earningsData.summary?.totalTrips ?? prev.totalTrips),
+          available: Number(earningsData.summary?.available ?? prev.available),
+          pending: Number(earningsData.summary?.pending ?? prev.pending),
         }))
         setBreakdown({
           baseFare: Number(earningsData.summary?.thisWeek ?? 0),
@@ -105,6 +138,19 @@ export default function DriverEarningsPage() {
     } finally {
       setLoading(false)
     }
+  }, [])
+
+  // Load available periods for the statement selector (defaults to newest).
+  useEffect(() => {
+    fetch('/api/driver/payout/statement')
+      .then(r => (r.ok ? r.json() : null))
+      .then(d => {
+        if (d?.availablePeriods?.length) {
+          setPeriods(d.availablePeriods)
+          setPeriod(d.availablePeriods[0])
+        }
+      })
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -200,6 +246,74 @@ export default function DriverEarningsPage() {
         }}>Mis Ganancias</h1>
         <p style={{ margin: '4px 0 0', color: 'var(--text-secondary)', fontSize: 14 }}>Resumen de tu actividad</p>
       </header>
+
+      <section style={{
+        background: 'var(--bg-card)', borderRadius: 14, padding: 20, marginBottom: 20,
+        border: '1px solid var(--border)', boxShadow: 'var(--shadow-card)',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+          <div>
+            <span style={{ display: 'block', fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>Saldo disponible para cobrar</span>
+            <span style={{ fontSize: 30, fontWeight: 700, color: 'var(--accent-gold)', lineHeight: 1.1 }}>{formatCurrency(summary.available)}</span>
+            {summary.pending > 0 && (
+              <span style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>{formatCurrency(summary.pending)} en solicitudes / pagados</span>
+            )}
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <button
+              onClick={requestPayout}
+              disabled={requesting || summary.available <= 0}
+              style={{
+                background: 'var(--accent-gold)', color: 'var(--bg-dark)',
+                border: 'none', padding: '12px 22px', borderRadius: 14,
+                fontSize: 15, fontWeight: 600, cursor: summary.available > 0 ? 'pointer' : 'not-allowed',
+                opacity: summary.available > 0 ? 1 : 0.5,
+              }}
+            >
+              {requesting ? 'Solicitando...' : 'Solicitar pago'}
+            </button>
+            <a
+              href={`/api/driver/payout/statement?format=csv${period ? '&period=' + period : ''}`}
+              download
+              style={{ display: 'inline-block', marginTop: 8, fontSize: 13, fontWeight: 600, color: 'var(--accent-gold)', textDecoration: 'none', cursor: 'pointer', marginRight: 14 }}
+            >
+              ⬇ CSV
+            </a>
+            <a
+              href={`/api/driver/payout/statement?format=pdf${period ? '&period=' + period : ''}`}
+              download
+              style={{ display: 'inline-block', marginTop: 8, fontSize: 13, fontWeight: 600, color: 'var(--accent-gold)', textDecoration: 'none', cursor: 'pointer' }}
+            >
+              ⬇ PDF
+            </a>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>Se paga por semana por transferencia</div>
+            {periods.length > 0 && (
+              <div style={{ marginTop: 10 }}>
+                <label style={{ fontSize: 12, color: 'var(--text-muted)', marginRight: 8 }}>Periodo:</label>
+                <select
+                  value={period}
+                  onChange={e => setPeriod(e.target.value)}
+                  style={{
+                    padding: '6px 10px', borderRadius: 8, border: '1px solid var(--border)',
+                    background: 'var(--surface)', color: 'var(--text-primary)', fontSize: 13, cursor: 'pointer',
+                  }}
+                >
+                  {periods.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+        </div>
+        {requestMsg && (
+          <div style={{
+            marginTop: 12, padding: '10px 14px', borderRadius: 10, fontSize: 13,
+            background: requestMsg.ok ? 'rgba(74, 222, 128, 0.12)' : 'rgba(248, 113, 113, 0.12)',
+            color: requestMsg.ok ? '#4ade80' : '#f87171',
+          }}>
+            {requestMsg.text}
+          </div>
+        )}
+      </section>
 
       <section style={{
         background: 'var(--bg-card)',

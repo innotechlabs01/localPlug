@@ -4,6 +4,7 @@ import { requireWebhookAuth } from '@/lib/webhook-auth'
 import { getDriverFromSession } from '@/lib/driver/auth'
 import { sendOrQueueWhatsApp } from '@/lib/n8n/client'
 import { logger } from '@/lib/logger'
+import { emitEvent } from '@/lib/events-outbox'
 
 export async function POST(
   req: Request,
@@ -91,6 +92,15 @@ export async function POST(
     } catch (err) {
       logger.error('[Assignment Decline] Failed to send notification', err instanceof Error ? err : undefined)
     }
+
+    // Realtime outbox — driver declined; dispatch needs to re-assign.
+    emitEvent('assignments.declined', {
+      assignment_id: assignmentId,
+      order_id: assignment.order_id as number,
+      driver_id: assignment.driver_id as number,
+      reason: declineReason,
+      status: 'declined',
+    }, { correlationId: String(assignmentId) }).catch(() => {})
 
     return NextResponse.json({
       success: true,

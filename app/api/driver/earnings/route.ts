@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getDriverFromSession } from '@/lib/driver/auth'
 import { getDb } from '@/lib/db'
-import { getDriverBaseTripCompensation, getDriverParkingReimbursement } from '@/lib/settings'
+import { getDriverCategoryFare, getDriverPayable } from '@/lib/payout'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,12 +15,14 @@ export async function GET() {
     const db = getDb()
     const driverId = result.driver.id
 
-    const [base, reinf] = await Promise.all([
-      getDriverBaseTripCompensation(),
-      getDriverParkingReimbursement(),
+    // Driver earning = per-trip fare of their vehicle category (nothing more).
+    const [categoryFare, payable] = await Promise.all([
+      getDriverCategoryFare(driverId),
+      getDriverPayable(driverId),
     ])
+    const fare = categoryFare ?? 0
 
-    // Get completed/active assignments with earnings (per-order: base + parking reimbursement)
+    // Get completed/active assignments with earnings (per-order: category fare)
     const assignmentsResult = await db.execute({
       sql: `SELECT
               a.id, a.order_id, a.status, a.created_at AS pickup_date,
@@ -38,8 +40,7 @@ export async function GET() {
     const assignments = (assignmentsResult.rows || []).map((row: any) => {
       const packagePrice = Number(row.package_price) || 0
       const isCompleted = row.status === 'completed'
-      const parked = Number(row.airport_parking) === 1 && row.parking_proof_status === 'approved'
-      const earned = isCompleted ? Math.round((parked ? base + reinf : base) * 100) / 100 : 0
+      const earned = isCompleted ? Math.round(fare * 100) / 100 : 0
 
       return {
         id: row.id,
@@ -102,6 +103,8 @@ export async function GET() {
         weeklyChange,
         thisWeekTrips: thisWeekTrips.length,
         totalTrips: assignments.filter(a => a.status === 'completed').length,
+        available: payable.balance_usd,
+        pending: payable.pending_usd,
       },
       dailyEarnings,
       recentTrips: assignments.slice(0, 20),

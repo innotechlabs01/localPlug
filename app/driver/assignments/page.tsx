@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useEventStream } from '@/lib/use-event-stream'
 
 interface Assignment {
   id: number
@@ -73,6 +74,16 @@ export default function DriverAssignmentsPage() {
     const interval = setInterval(fetchAssignments, 15000)
     return () => clearInterval(interval)
   }, [fetchAssignments])
+
+  // Realtime push — new assignment or accept/decline/trip change refreshes immediately.
+  useEventStream({
+    'driver.assignment_offered': () => { fetchAssignments() },
+    'assignments.accepted': () => { fetchAssignments() },
+    'assignments.declined': () => { fetchAssignments() },
+    'driver.en_route': () => { fetchAssignments() },
+    'trip.pickedup': () => { fetchAssignments() },
+    'driver.trip_completed': () => { fetchAssignments() },
+  }, { pollMs: 8000 })
 
   const handleAction = async (assignmentId: number, action: 'accept' | 'decline') => {
     setActionLoading(assignmentId)

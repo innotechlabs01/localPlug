@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { getDriverFromSession } from '@/lib/driver/auth'
+import { accrueDriverPayout } from '@/lib/payout'
+import { emitEvent } from '@/lib/events-outbox'
 
 export const dynamic = 'force-dynamic'
 
@@ -81,6 +83,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       sql: `UPDATE drivers SET status = 'available', updated_at = datetime('now') WHERE id = ?`,
       args: [driverId],
     })
+
+    // Milestone: record driver payout liability (category fare snapshot).
+    await accrueDriverPayout(orderId, driverId).catch(err => {
+      console.error('[driver complete-trip] payout accrual failed:', err)
+    })
+
+    // Realtime outbox — trip completed.
+    emitEvent('driver.trip_completed', { order_id: orderId, driver_id: driverId }, { correlationId: String(orderId) }).catch(() => {})
+    // Realtime outbox — parking proof submitted (needs admin review).
+    if (airportParking) {
+      emitEvent('parking_proof.submitted', { order_id: orderId, driver_id: driverId, status: 'pending' }, { correlationId: String(orderId) }).catch(() => {})
+    }
 
     return NextResponse.json({ success: true, completed: true, airport_parking: airportParking })
   } catch (err) {

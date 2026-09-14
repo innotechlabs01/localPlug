@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { requirePermission } from '@/lib/admin/permissions'
-import { getDriverBaseTripCompensation, getDriverParkingReimbursement } from '@/lib/settings'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,26 +29,30 @@ export async function GET() {
     ? ((successfulPayments / (successfulPayments + failedPayments)) * 100).toFixed(1)
     : '0'
 
-  // Driver payouts (same model as payments API: base + parking reimbursement, completed only)
-  const [base, reinf] = await Promise.all([
-    getDriverBaseTripCompensation(),
-    getDriverParkingReimbursement(),
-  ])
-  const payoutAgg = await db.execute({
+  // Driver/hotel payouts — real liabilities from the payout ledger
+  const ledgerPayouts = await db.execute({
     sql: `SELECT
-            COUNT(*) AS cnt,
-            COALESCE(SUM(CASE WHEN o.airport_parking = 1 AND o.parking_proof_status = 'approved' THEN 1 ELSE 0 END), 0) AS parked
-          FROM orders o
-          JOIN assignments a ON a.order_id = o.id
-          WHERE o.assigned_to IS NOT NULL AND a.status = 'completed'`,
+            COALESCE(SUM(CASE WHEN payee_type = 'driver' THEN amount_usd ELSE 0 END), 0) AS driver,
+            COALESCE(SUM(CASE WHEN payee_type = 'hotel' THEN amount_usd ELSE 0 END), 0) AS hotel
+          FROM payout_ledger WHERE status != 'written_off'`,
     args: [],
   })
-  const completedAssigned = Number(payoutAgg.rows[0]?.cnt || 0)
-  const parkedAssigned = Number(payoutAgg.rows[0]?.parked || 0)
-  const driverPayouts = Math.round((completedAssigned * base + parkedAssigned * reinf) * 100) / 100
+  const driverPayouts = Math.round(Number(ledgerPayouts.rows[0]?.driver || 0) * 100) / 100
+  const hotelPayouts = Math.round(Number(ledgerPayouts.rows[0]?.hotel || 0) * 100) / 100
 
-  const platformTake = Math.round((totalRevenue - driverPayouts) * 100) / 100
+  // Refunds / disputes (write-offs and pre-milestone returns)
+  const refundsAgg = await db.execute({
+    sql: `SELECT COALESCE(SUM(amount_usd), 0) AS total FROM refunds_disputes`,
+    args: [],
+  })
+  const refundsTotal = Math.round(Number(refundsAgg.rows[0]?.total || 0) * 100) / 100
+
+  // Precise net platform margin: gross − driver − hotel − refunds.
+  const grossRevenue = totalRevenue
+  const platformTake = Math.round((grossRevenue - driverPayouts - hotelPayouts - refundsTotal) * 100) / 100
   const driverPayoutsPct = totalRevenue > 0 ? ((driverPayouts / totalRevenue) * 100).toFixed(1) : '0'
+  const hotelPayoutsPct = totalRevenue > 0 ? ((hotelPayouts / totalRevenue) * 100).toFixed(1) : '0'
+  const refundsPct = totalRevenue > 0 ? ((refundsTotal / totalRevenue) * 100).toFixed(1) : '0'
   const platformTakePct = totalRevenue > 0 ? ((platformTake / totalRevenue) * 100).toFixed(1) : '0'
 
   // Revenue by source from orders (whole-unit columns)
@@ -76,27 +79,37 @@ export async function GET() {
     revenue: Number(r.revenue),
   }))
 
-  // Per-driver payout breakdown
-  const payoutsResult = await db.execute(
-    `SELECT d.name AS driver_name, COUNT(*) AS trips,
-            COALESCE(SUM(CASE WHEN o.airport_parking = 1 AND o.parking_proof_status = 'approved' THEN 1 ELSE 0 END), 0) AS parked
-     FROM orders o
-     JOIN assignments a ON a.order_id = o.id
-     JOIN drivers d ON o.assigned_to = d.id
-     WHERE a.status = 'completed'
-     GROUP BY d.id, d.name
-     ORDER BY trips DESC`,
-  )
-  const payoutBreakdown = payoutsResult.rows.map(r => {
-    const trips = Number(r.trips || 0)
-    const parked = Number(r.parked || 0)
-    const payout = Math.round((trips * base + parked * reinf) * 100) / 100
-    return {
-      driver_name: r.driver_name as string,
-      trips,
-      payout,
-    }
+  // Per-driver payout breakdown from the ledger
+  const payoutsResult = await db.execute({
+    sql: `SELECT d.name AS driver_name, COUNT(pl.id) AS trips, COALESCE(SUM(pl.amount_usd), 0) AS payout
+          FROM payout_ledger pl
+          JOIN drivers d ON d.id = pl.payee_id
+          WHERE pl.payee_type = 'driver' AND pl.status != 'written_off'
+          GROUP BY d.id, d.name
+          ORDER BY payout DESC`,
+    args: [],
   })
+  const payoutBreakdown = payoutsResult.rows.map(r => ({
+    driver_name: r.driver_name as string,
+    trips: Number(r.trips || 0),
+    payout: Math.round(Number(r.payout || 0) * 100) / 100,
+  }))
+
+  // Per-hotel payout breakdown from the ledger
+  const hotelPayoutsResult = await db.execute({
+    sql: `SELECT h.name AS hotel_name, COUNT(pl.id) AS bookings, COALESCE(SUM(pl.amount_usd), 0) AS payout
+          FROM payout_ledger pl
+          JOIN hotels h ON h.id = pl.payee_id
+          WHERE pl.payee_type = 'hotel' AND pl.status != 'written_off'
+          GROUP BY h.id, h.name
+          ORDER BY payout DESC`,
+    args: [],
+  })
+  const hotelPayoutBreakdown = hotelPayoutsResult.rows.map(r => ({
+    hotel_name: r.hotel_name as string,
+    bookings: Number(r.bookings || 0),
+    payout: Math.round(Number(r.payout || 0) * 100) / 100,
+  }))
 
   // Service popularity (revenue by package)
   const services = await db.execute(
@@ -117,7 +130,11 @@ export async function GET() {
       returnTransport,
       hotelAccommodation,
       driverPayouts,
+      hotelPayouts,
+      refundsTotal,
       driverPayoutsPct,
+      hotelPayoutsPct,
+      refundsPct,
       platformTake,
       platformTakePct,
       successfulPayments,
@@ -127,6 +144,7 @@ export async function GET() {
     },
     monthlyRevenue,
     payoutBreakdown,
+    hotelPayoutBreakdown,
     servicePopularity,
   })
 }

@@ -62,6 +62,79 @@ y este proyecto sigue [Versionado Semántico](https://semver.org/).
   (selector de nombre / órdenes abiertas).
 - PR: https://github.com/innotechlabs01/localPlug/pull/31
 
+## [Sin release - Rama `feature/payout-ledger-realtime`] - 2026-09-04
+
+### Added / Agregado
+
+- **Sistema de pagos marketplace (split + liquidación)** — nuevo `payout_ledger`
+  (una línea por reserva + beneficiario, snapshot en el hito), `payout_requests`
+  (solicitudes de pago), `refunds_disputes` (registro de reembolsos/write-off) y
+  `vehicle_categories` (tarifas por categoría, dinámicas, administradas desde admin).
+- **Conductor paga semanal** — ganancia = tarifa de su categoría de vehículo
+  (snapshot al completar el viaje); **Hotel paga mensual** — comisión liberada en
+  `check-in`. Ambos cobran vía **solicitud de pago**; el admin consigna por
+  transferencia y confirma desde el panel.
+- **Panel admin "Liquidaciones y Tarifas"** (`/admin/settlements`) — CRUD de
+  categorías + tarifas, lista de solicitudes con liquidar/cancelar, y vista de
+  reembolsos con totales por resolución.
+- **Track en tiempo real (outbox + eventos)** — tabla `events_outbox` append-only,
+  `emitEvent`, `GET /api/events?since=` (cursor polling) + `GET /api/events/stream`
+  (SSE), y hook cliente `useEventStream`. ~21 eventos conectados en bookings,
+  pagos, reembolsos, driver (ofrecida/aceptada/rechazada/en ruta/recogida/completada/
+  disponibilidad), hotel (check-in/out/cancelación), chat (message/escalada/IA),
+  ratings, parking proofs y payouts. Push activo en admin completo, ia-chat, driver
+  home + assignments, hotel reservations, settlements, parking-proofs y ratings.
+- **Estado de cuenta descargable (CSV y PDF)** con selector de periodo para
+  conductor (semanal) y hotel (mensual) — líneas por reserva + totales por estado
+  (disponible/solicitado/pagado/write-off).
+- **Contabilidad precisa** — `platformTake` = ingreso bruto − payouts conductores
+  − payouts hoteles − refunds; KPIs de hoteles y reembolsos en el dashboard admin.
+- **Garantía de esquema en runtime** — las tablas de pagos/realtime se auto-crean
+  de forma idempotente al primer uso de la DB (sin depender del script de migración).
+
+### Changed / Cambiado
+
+- **Webhook Polar** — se eliminó el cálculo de split en `onOrderPaid` (el pasivo ya
+  nace en el hito); se agregó `onOrderRefunded` (pre-hito cancela servicios y
+  devuelve al cliente sin pasivo; post-hito genera write-off con registro).
+- **`driver/earnings` e `income-summary`** leen del ledger en vez de calcular
+  `base + parking` al vuelo.
+- **`app/driver/settings`** corregido — mapeo snake_case real del perfil +
+  selector de categoría de vehículo que muestra la tarifa de la carrera.
+- **`app/api/admin/payments`** — payouts de driver/hotel desde el ledger.
+
+### Fixed / Corregido
+
+- **[CRÍTICO] Build de producción roto** — `scripts/backfill_dispatch_assignments.ts`
+  importaba con extensión `.ts`, rompiendo `next build` (no se podía desplegar).
+  Ahora `pnpm build` compila completo.
+- **Race de esquema en DB fría** — `getDb()` ahora espera el ensure idempotente
+  antes de la primera operación (Proxy sobre `execute`/`batch`).
+- **Idempotencia del accrual** — índice único en `payout_ledger(booking, payee_type, payee_id)`
+  para evitar duplicados ante replays.
+- **`useEventStream`** — salta al tail en la primera conexión (no reproduce historial)
+  y omite el polling en pestañas ocultas.
+- **Crecimiento del outbox** — prune diario que conserva los 2000 eventos más recientes.
+- **Tests de chat rompiéndose** — se mockea `@/lib/events-outbox` como no-op.
+
+### Archivos modificados / Modified files
+
+- `lib/payout.ts`, `lib/payout-receipt.ts`, `lib/events-outbox.ts`, `lib/use-event-stream.ts`, `lib/db/ensure-runtime.ts`
+- `lib/db/migrations/040_payout_ledger.sql`, `041_payout_ledger_unique.sql`, `042_events_outbox.sql`
+- `app/api/webhooks/polar/route.ts`, `app/api/driver/assignments/[id]/complete`, `app/api/hotel/orders/[id]/action`
+- `app/api/admin/payouts`, `app/api/admin/vehicle-categories`, `app/api/admin/refunds`
+- `app/api/driver/payout*`, `app/api/hotel/payout*`, `app/api/events*`, `app/api/chat/*`, `app/api/ratings`
+- `app/admin/settlements`, `app/admin/page.tsx`, `app/admin/parking-proofs`, `app/admin/ia-chat`
+- `app/driver/*`, `app/hotel/*`, `app/components/ratings/*`
+- `docs/platform/02-architecture/event-driven.md`, `realtime.md`
+
+### Notas / Notes
+
+- `scripts/migrate.ts` no se puede re-correr en DB existente (migración 013 no
+  idempotente, pre-existente) — se usa `scripts/apply-payout-migration.ts`.
+- Migraciones `040/041/042` aplicadas a producción; además el ensure de runtime
+  las garantiza en cualquier entorno.
+
 ## Tipos de cambios / Change types
 
 - `Added` / `Agregado` — nueva funcionalidad

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useToast } from '@/lib/admin/toast-context'
+import { useEventStream } from '@/lib/use-event-stream'
 
 interface Proof {
   id: number
@@ -52,6 +53,11 @@ export default function AdminParkingProofsPage() {
     const interval = setInterval(fetchProofs, 30000)
     return () => clearInterval(interval)
   }, [fetchProofs])
+
+  // Realtime push — a driver just submitted a parking proof.
+  useEventStream({
+    'parking_proof.submitted': () => { fetchProofs() },
+  }, { pollMs: 8000 })
 
   const review = async (id: number, status: 'approved' | 'rejected') => {
     setActionLoading(id)

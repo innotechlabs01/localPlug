@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { timingSafeEqual } from '@/lib/string-utils'
+import { emitEvent } from '@/lib/events-outbox'
 
 interface N8nWebhookEvent {
   event: string
@@ -240,6 +241,8 @@ export async function POST(request: Request) {
              sql: `UPDATE conversations SET ai_confidence = ?, last_message_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`,
              args: [aiConf || 1.0, aiConvId],
            })
+
+           emitEvent('ai.response.generated', { conversation_id: aiConvId, content: aiMsg, source: 'n8n-whatsapp' }, { correlationId: String(aiConvId) }).catch(() => {})
  
            // If confidence is low, escalate the conversation
            if (aiConf && aiConf < 0.5) {
@@ -247,6 +250,7 @@ export async function POST(request: Request) {
             sql: `UPDATE conversations SET status = 'human_active', updated_at = datetime('now') WHERE id = ? AND status = 'ai_active'`,
                args: [aiConvId],
              })
+             emitEvent('conversation.escalated', { conversation_id: aiConvId, reason: 'low_ai_confidence' }, { correlationId: String(aiConvId) }).catch(() => {})
            }
          }
          break

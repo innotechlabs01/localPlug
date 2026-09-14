@@ -38,14 +38,16 @@ describe('admin income-summary API', () => {
 
   it('aggregates revenue and payouts', async () => {
     const mockExecute = vi.fn()
-      .mockResolvedValueOnce({ rows: [{ total: 1000 }] }) // completed sum
-      .mockResolvedValueOnce({ rows: [{ count: 2 }] })     // failed
-      .mockResolvedValueOnce({ rows: [{ count: 3 }] })     // pending
-      .mockResolvedValueOnce({ rows: [{ count: 10 }] })    // completed count
-      .mockResolvedValueOnce({ rows: [{ cnt: 4, parked: 1 }] }) // payout agg
+      .mockResolvedValueOnce({ rows: [{ total: 1000 }] })              // completed sum
+      .mockResolvedValueOnce({ rows: [{ count: 2 }] })                 // failed
+      .mockResolvedValueOnce({ rows: [{ count: 3 }] })                 // pending
+      .mockResolvedValueOnce({ rows: [{ count: 10 }] })                // completed count
+      .mockResolvedValueOnce({ rows: [{ driver: 105, hotel: 40 }] })   // ledger payouts
+      .mockResolvedValueOnce({ rows: [{ total: 10 }] })                // refunds
       .mockResolvedValueOnce({ rows: [{ base_services: 700, return_transport: 200, hotel: 100 }] })
       .mockResolvedValueOnce({ rows: [{ month: '2026-01', revenue: 500 }] })
-      .mockResolvedValueOnce({ rows: [{ driver_name: 'Carlos', trips: 2, parked: 0 }] })
+      .mockResolvedValueOnce({ rows: [{ driver_name: 'Carlos', trips: 2, payout: 80 }] })
+      .mockResolvedValueOnce({ rows: [{ hotel_name: 'Gran Hotel', bookings: 1, payout: 40 }] })
       .mockResolvedValueOnce({ rows: [{ name: 'Transfer', count: 5, revenue: 700 }] })
     vi.mocked(getDb).mockReturnValue({ execute: mockExecute } as any)
 
@@ -53,11 +55,14 @@ describe('admin income-summary API', () => {
     expect(res.status).toBe(200)
     const json = await res.json()
     expect(json.summary.totalRevenue).toBe(1000)
-    expect(json.summary.driverPayouts).toBe(105) // 4*25 + 1*5 = 105
-    expect(json.summary.platformTake).toBe(895)
+    expect(json.summary.driverPayouts).toBe(105) // from payout_ledger driver sum
+    expect(json.summary.hotelPayouts).toBe(40)   // from payout_ledger hotel sum
+    expect(json.summary.refundsTotal).toBe(10)   // from refunds_disputes
+    expect(json.summary.platformTake).toBe(845)  // 1000 - 105 - 40 - 10
     expect(json.summary.successRate).toBe('83.3')
     expect(json.monthlyRevenue[0].revenue).toBe(500)
-    expect(json.payoutBreakdown[0].payout).toBe(50) // 2*25 + 0 = 50
+    expect(json.payoutBreakdown[0].payout).toBe(80)        // ledger per-driver payout
+    expect(json.hotelPayoutBreakdown[0].payout).toBe(40)   // ledger per-hotel payout
   })
 
   it('returns 401 when unauthenticated', async () => {

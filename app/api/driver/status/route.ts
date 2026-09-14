@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { getDriverFromSession } from '@/lib/driver/auth'
+import { emitEvent } from '@/lib/events-outbox'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,6 +24,8 @@ export async function PUT(req: Request) {
       sql: `UPDATE drivers SET status = ?, updated_at = datetime('now') WHERE id = ?`,
       args: [status, result.driver.id],
     })
+
+    emitEvent('driver.availability_changed', { driver_id: result.driver.id, status }, { correlationId: String(result.driver.id) }).catch(() => {})
 
     console.log(`[Driver Status] ${result.driver.name} → ${status}`)
     return NextResponse.json({ success: true, status })

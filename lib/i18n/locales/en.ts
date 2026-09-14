@@ -477,6 +477,7 @@ export default {
       employees: 'Employees',
       analytics: 'Analytics',
       payments: 'Payments',
+      settlements: 'Settlements',
       parking: 'Parking proofs',
       hotels: 'Hotels',
       events: 'Events',

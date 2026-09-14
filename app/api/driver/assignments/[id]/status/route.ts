@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { getDriverFromSession } from '@/lib/driver/auth'
 import { recordMetric } from '@lp/events'
+import { emitEvent } from '@/lib/events-outbox'
 
 export const dynamic = 'force-dynamic'
 
@@ -103,6 +104,15 @@ export async function POST(
       from: currentStatus,
       to: nextStatus,
     })
+
+    // Realtime outbox — live trip stage transition.
+    emitEvent(nextStatus === 'pickedup' ? 'trip.pickedup' : 'driver.en_route', {
+      assignment_id: assignmentId,
+      order_id: orderId,
+      driver_id: driverId,
+      status: storedStatus,
+      from: currentStatus,
+    }, { correlationId: String(assignmentId) }).catch(() => {})
 
     return NextResponse.json({
       success: true,

@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server'
 import { Webhooks } from '@polar-sh/nextjs'
 import { getDb } from '@/lib/db'
-import { getPlatformFeePercent } from '@/lib/config'
 import { logger } from '@/lib/logger'
 import { triggerPaymentConfirmation } from '@/lib/n8n/client'
+import { processBookingRefund } from '@/lib/payout'
+import { emitEvent } from '@/lib/events-outbox'
 
 export const POST = Webhooks({
   webhookSecret: process.env.POLAR_WEBHOOK_SECRET || '',
@@ -57,45 +58,17 @@ export const POST = Webhooks({
         // Still process but log the discrepancy — a real fix requires investigation
       }
 
-      const feeRate = await getPlatformFeePercent()
-
-      let platformFeeCents = 0
-      let hotelPayoutCents = 0
-      let splitStatus = 'pending'
-
-      const orderCheck = await db.execute({
-        sql: `SELECT is_hotel_booking, hotel_commission_rate FROM orders WHERE booking_reference = ?`,
-        args: [bookingReference],
-      })
-      const isHotelBooking = orderCheck.rows.length > 0 && Number(orderCheck.rows[0].is_hotel_booking) === 1
-      const hotelCommissionRate = isHotelBooking ? (Number(orderCheck.rows[0].hotel_commission_rate) || 0.10) : 0
-
-      if (totalAmount && totalAmount > 0) {
-        if (isHotelBooking && hotelCommissionRate > 0) {
-          hotelPayoutCents = Math.round(totalAmount / (1 + hotelCommissionRate))
-          platformFeeCents = totalAmount - hotelPayoutCents
-        } else {
-          platformFeeCents = Math.round(totalAmount * feeRate)
-          hotelPayoutCents = 0
-        }
-        splitStatus = 'completed'
-      }
-
-      // Update payment status
+      // Update payment status. Splits (platform fee / hotel payout / driver fare)
+      // are NO LONGER computed here — payout liabilities accrue separately in the
+      // payout ledger at their milestone (driver on trip complete, hotel on check-in).
       await db.execute({
         sql: `UPDATE payments SET
           status = 'completed',
           paddle_webhook_event_id = ?,
-          platform_fee_cents = ?,
-          hotel_payout_cents = ?,
-          split_status = ?,
           updated_at = ?
         WHERE booking_reference = ? AND status = 'pending'`,
         args: [
           (order.id as string),
-          platformFeeCents,
-          hotelPayoutCents,
-          splitStatus,
           now,
           bookingReference,
         ],
@@ -189,9 +162,13 @@ export const POST = Webhooks({
         orderId: order.id as string,
         bookingReference,
         totalAmount,
-        platformFeeCents,
-        hotelPayoutCents,
       })
+
+      // Realtime outbox — payment completed.
+      emitEvent('payment.completed', {
+        booking_reference: bookingReference,
+        amount_usd: Math.round((totalAmount / 100) * 100) / 100,
+      }, { correlationId: bookingReference }).catch(() => {})
 
       // Send WhatsApp confirmation to customer
       const customerName = metadata.customer_name || ((order.customer as Record<string, unknown>)?.name as string) || ''
@@ -215,6 +192,80 @@ export const POST = Webhooks({
       }
     } catch (err) {
       logger.error('[Polar Webhook] order.paid failed', err instanceof Error ? err : undefined)
+    }
+  },
+  onOrderRefunded: async (payload) => {
+    try {
+      const order = payload.data as Record<string, unknown>
+      const metadata = (order.metadata as Record<string, string> | undefined) || {}
+      const bookingReference = metadata.booking_reference
+      const eventId = order.id as string
+      if (!bookingReference) {
+        logger.warn('[Polar Webhook] order.refunded missing booking_reference', { orderId: eventId })
+        return
+      }
+
+      // refundedAmount is in cents (like the order amount at checkout).
+      const refundedCents = Number((order.refundedAmount as number) || (order.refunded_amount as number) || 0)
+      const amountUsd = Math.round((refundedCents / 100) * 100) / 100
+
+      const outcome = await processBookingRefund({
+        bookingReference,
+        providerEventId: eventId,
+        amountUsd,
+      })
+      logger.info('[Polar Webhook] order.refunded processed', {
+        bookingReference,
+        resolution: outcome.resolution,
+        duplicate: outcome.duplicate,
+        amountUsd,
+      })
+
+      emitEvent('payment.refunded', {
+        booking_reference: bookingReference,
+        amount_usd: amountUsd,
+        resolution: outcome.resolution,
+      }, { correlationId: bookingReference }).catch(() => {})
+
+      // Pre-milestone → no liability exists; cancel associated services.
+      if (outcome.resolution === 'pre_milestone') {
+        const db = getDb()
+        const orderRow = await db.execute({
+          sql: `SELECT id FROM orders WHERE booking_reference = ?`,
+          args: [bookingReference],
+        })
+        const orderId = orderRow.rows[0]?.id as number | undefined
+        if (orderId) {
+          await db.execute({
+            sql: `UPDATE orders SET status = 'cancelled', payment_status = 'refunded', updated_at = datetime('now') WHERE id = ?`,
+            args: [orderId],
+          }).catch(() => {})
+          await db.execute({
+            sql: `UPDATE assignments SET status = 'cancelled', updated_at = datetime('now') WHERE order_id = ? AND status NOT IN ('completed')`,
+            args: [orderId],
+          }).catch(() => {})
+          // Free booked room(s) for this order
+          try {
+            const rbs = await db.execute({
+              sql: `SELECT room_id FROM room_bookings WHERE order_id = ? AND status IN ('confirmed', 'checked_in')`,
+              args: [orderId],
+            })
+            for (const rb of rbs.rows) {
+              const roomId = rb.room_id as number
+              await db.execute({
+                sql: `UPDATE rooms SET status = 'available', available_from = NULL, current_order_id = NULL, updated_at = datetime('now') WHERE id = ? AND current_order_id = ?`,
+                args: [roomId, orderId],
+              }).catch(() => {})
+            }
+            await db.execute({
+              sql: `UPDATE room_bookings SET status = 'cancelled', updated_at = datetime('now') WHERE order_id = ? AND status IN ('confirmed', 'checked_in')`,
+              args: [orderId],
+            }).catch(() => {})
+          } catch {}
+        }
+      }
+    } catch (err) {
+      logger.error('[Polar Webhook] order.refunded failed', err instanceof Error ? err : undefined)
     }
   },
   onPayload: async (payload) => {

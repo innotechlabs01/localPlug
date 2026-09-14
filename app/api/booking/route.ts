@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { getPackageName, getPackageTotal } from '@/lib/config'
 import { rateLimitMiddleware } from '@/lib/rate-limit'
+import { emitEvent } from '@/lib/events-outbox'
 import { z } from 'zod'
 
 const BookingSchema = z.object({
@@ -294,6 +295,16 @@ export async function POST(request: Request) {
       })
       console.log('[Booking] Order auto-confirmed from existing completed payment', { bookingReference: bookingRef })
     }
+
+    // Realtime outbox — notify admin/frontends a new booking landed.
+    await emitEvent('booking.created', {
+      booking_reference: bookingRef,
+      order_number: orderNumber,
+      customer_name: customer.name || '',
+      package_name: body.package || '',
+      status: 'confirmed',
+      created_at: new Date().toISOString(),
+    }, { correlationId: bookingRef }).catch(() => {})
 
     return NextResponse.json(
       { status: 'success', message: 'Booking confirmed. We will contact you via WhatsApp within 2 hours.', orderNumber },

@@ -13,6 +13,10 @@ interface IncomeSummary {
     hotelAccommodation: number
     driverPayouts: number
     driverPayoutsPct: string
+    hotelPayouts: number
+    hotelPayoutsPct: string
+    refundsTotal: number
+    refundsPct: string
     platformTake: number
     platformTakePct: string
     successfulPayments: number
@@ -613,6 +617,22 @@ export default function AdminDashboard() {
                   <span className="rev-amount">
                     ${(income?.summary.driverPayouts ?? 0).toLocaleString()}{' '}
                     <span style={{ fontSize: 11, opacity: 0.6 }}>({income?.summary.driverPayoutsPct ?? '0'}%)</span>
+                  </span>
+                </div>
+                <div className="rev-item">
+                  <div className="rev-dot" style={{ background: 'var(--info)' }} />
+                  <span className="rev-label">Payouts hoteles</span>
+                  <span className="rev-amount">
+                    ${(income?.summary.hotelPayouts ?? 0).toLocaleString()}{' '}
+                    <span style={{ fontSize: 11, opacity: 0.6 }}>({income?.summary.hotelPayoutsPct ?? '0'}%)</span>
+                  </span>
+                </div>
+                <div className="rev-item">
+                  <div className="rev-dot" style={{ background: 'var(--danger)' }} />
+                  <span className="rev-label">Reembolsos / disputas</span>
+                  <span className="rev-amount">
+                    -${(income?.summary.refundsTotal ?? 0).toLocaleString()}{' '}
+                    <span style={{ fontSize: 11, opacity: 0.6 }}>({income?.summary.refundsPct ?? '0'}%)</span>
                   </span>
                 </div>
                 <div className="rev-item">

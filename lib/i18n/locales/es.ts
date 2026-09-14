@@ -477,6 +477,7 @@ export default {
       employees: 'Empleados',
       analytics: 'Analíticas',
       payments: 'Pagos',
+      settlements: 'Liquidaciones',
       parking: 'Pruebas de parqueo',
       hotels: 'Hoteles',
       events: 'Eventos',

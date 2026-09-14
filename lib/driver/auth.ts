@@ -42,6 +42,7 @@ export interface DriverProfile {
   city: string | null
   vip_compatible: number
   total_trips: number
+  vehicle_category_id: number | null
 }
 
 export async function getDriverFromSession(): Promise<{ driver: DriverProfile; clerkId: string } | { error: string; status: number }> {

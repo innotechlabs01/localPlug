@@ -1,4 +1,4 @@
-import { createDatabase } from '../packages/db/src/factory.ts';
+import { createDatabase } from '../packages/db/src/factory';
 
 /**
  * Backfill legacy orders (IDs 1,3,4) that are stuck in `pending_acceptance`
