@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { createRating, getLatestRatings, ratingExistsForConversation, getFirstResponseTimeMs } from '@/lib/services/rating-service'
 import { filterComment } from '@/lib/moderation/comment-filter'
+import { emitEvent } from '@/lib/events-outbox'
 
 export async function GET() {
   try {
@@ -86,6 +87,8 @@ export async function POST(request: Request) {
       resolved: 1,
       first_response_time_ms: responseTimeMs,
     })
+
+    emitEvent('rating.submitted', { conversation_id, rating, customer_country: customer_country.trim() }, { correlationId: String(conversation_id) }).catch(() => {})
 
     return NextResponse.json({ success: true, rating: ratingRecord }, { status: 201 })
   } catch (error) {

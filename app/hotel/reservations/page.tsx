@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useEventStream } from '@/lib/use-event-stream'
 import { cardStyle, btnPrimary } from '@/lib/hotel/styles'
 import type { Reservation, ReservationStatus } from '@/lib/reservations-types'
 import ReservationKPIs from './components/ReservationKPIs'
@@ -37,6 +38,15 @@ export default function HotelReservationsPage() {
     const interval = setInterval(loadReservations, 30000)
     return () => clearInterval(interval)
   }, [loadReservations])
+
+  // Realtime push — a new booking or a check-in/out refreshes the list immediately.
+  useEventStream({
+    'booking.created': () => { loadReservations() },
+    'payment.completed': () => { loadReservations() },
+    'hotel.check-in': () => { loadReservations() },
+    'hotel.check-out': () => { loadReservations() },
+    'hotel.cancelled': () => { loadReservations() },
+  }, { pollMs: 8000 })
 
   const filtered = useMemo(() => {
     return reservations.filter(r => {

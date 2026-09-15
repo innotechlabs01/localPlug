@@ -3,6 +3,7 @@ import { getDb } from '@/lib/db'
 import { requirePermission } from '@/lib/admin/permissions'
 import { checkDriverAvailability, getEstimatedDurationMinutes } from '@/lib/dispatch/availability'
 import { triggerDriverNewAssignment } from '@/lib/n8n/client'
+import { emitEvent } from '@/lib/events-outbox'
 
 export async function POST(req: Request) {
   try {
@@ -114,6 +115,17 @@ export async function POST(req: Request) {
     } catch (n8nErr) {
       console.error('[Assignments] Failed to send n8n notification:', n8nErr)
     }
+
+    // Realtime outbox — a new assignment was offered to a driver.
+    emitEvent('driver.assignment_offered', {
+      assignment_id: assignmentId,
+      order_id: orderId,
+      booking_reference: order.booking_reference as string,
+      driver_id: driverId,
+      pickup_date: pickupDate,
+      pickup_time: pickupTime,
+      status: 'pending_acceptance',
+    }, { correlationId: String(assignmentId) }).catch(() => {})
 
     return NextResponse.json({
       success: true,

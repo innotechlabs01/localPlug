@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { requirePermission } from '@/lib/admin/permissions'
 import { auth } from '@clerk/nextjs/server'
+import { emitEvent } from '@/lib/events-outbox'
 
 export const dynamic = 'force-dynamic'
 
@@ -56,6 +57,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
             WHERE id = ?`,
       args: [status, reason, orderId],
     })
+
+    emitEvent('parking_proof.reviewed', { order_id: orderId, status }, { correlationId: String(orderId) }).catch(() => {})
 
     return NextResponse.json({ success: true, status, reviewed_by: reviewedBy ?? null })
   } catch (err) {

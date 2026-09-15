@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react'
+import { useEventStream } from '@/lib/use-event-stream'
 
 interface Rating {
   id: number
@@ -100,6 +101,11 @@ export default function RatingsProvider({ children }: { children: ReactNode }) {
       document.removeEventListener('visibilitychange', handleVisibility)
     }
   }, [fetchAll, fetchRatings, fetchStats])
+
+  // Realtime push — a new rating refreshes the board immediately.
+  useEventStream({
+    'rating.submitted': () => { fetchAll() },
+  }, { pollMs: 12000 })
 
   return (
     <RatingsContext.Provider value={{ ratings, stats, isLoading }}>

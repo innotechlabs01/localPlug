@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { RealtimeProvider } from '@/lib/admin/realtime-context'
-
+import { useEventStream } from '@/lib/use-event-stream'
 import { getTimeAgoI18n } from '@/lib/date-utils'
 
 interface Conversation {
@@ -185,6 +185,13 @@ export default function IaChatPage() {
 
     return () => clearInterval(pollConversations)
   }, [fetchConversations, fetchAgents])
+
+  // Realtime push — a new chat message/escalation/AI reply refreshes instantly.
+  useEventStream({
+    'message.sent': () => { fetchConversations() },
+    'conversation.escalated': () => { fetchConversations() },
+    'ai.response.generated': () => { fetchConversations() },
+  }, { pollMs: 7000 })
 
   // Refresh relative times every 60s
   const [, setTick] = useState(0)

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { getHotelFromSession } from '@/lib/hotel/auth'
+import { accrueHotelPayout } from '@/lib/payout'
+import { emitEvent } from '@/lib/events-outbox'
 
 export const dynamic = 'force-dynamic'
 
@@ -73,6 +75,13 @@ export async function POST(
         console.error('[hotel cancel] room cleanup failed:', roomErr)
       }
 
+      // Realtime outbox — reservation cancelled by the hotel.
+      emitEvent('hotel.cancelled', {
+        order_id: orderId,
+        hotel_id: result.hotel.id,
+        status: 'cancelled',
+      }, { correlationId: String(orderId) }).catch(() => {})
+
       return NextResponse.json({ success: true, orderId, action })
     }
 
@@ -122,6 +131,20 @@ export async function POST(
     } catch (roomErr) {
       console.error('[hotel action] room_bookings update failed:', roomErr)
     }
+
+    // Milestone: hotel payout accrues on check-in.
+    if (action === 'check-in') {
+      await accrueHotelPayout(Number(id), result.hotel.id).catch(err => {
+        console.error('[hotel action] payout accrual failed:', err)
+      })
+    }
+
+    // Realtime outbox — room/reservation state change.
+    emitEvent(`hotel.${action === 'cancelled' ? 'cancelled' : action}`, {
+      order_id: Number(id),
+      hotel_id: result.hotel.id,
+      status: newStatus,
+    }, { correlationId: String(id) }).catch(() => {})
 
     return NextResponse.json({ success: true, orderId: Number(id), action })
   } catch (err) {

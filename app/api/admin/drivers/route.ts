@@ -3,8 +3,9 @@ import { getDb, buildSafeUpdate } from '@/lib/db'
 import { requirePermission } from '@/lib/admin/permissions'
 import { clerkClient } from '@clerk/nextjs/server'
 import { triggerDriverCreated } from '@/lib/n8n/client'
+import { getVehicleCategory } from '@/lib/payout'
 
-const ALLOWED_DRIVER_COLUMNS = ['name', 'phone', 'email', 'vehicle', 'plate', 'category', 'status', 'rating', 'languages', 'experience_level', 'notes', 'license_expiry', 'soat_expiry', 'tech_inspection_expiry', 'insurance_expiry', 'year', 'capacity', 'emergency_contact', 'emergency_phone', 'city']
+const ALLOWED_DRIVER_COLUMNS = ['name', 'phone', 'email', 'vehicle', 'plate', 'category', 'vehicle_category_id', 'status', 'rating', 'languages', 'experience_level', 'notes', 'license_expiry', 'soat_expiry', 'tech_inspection_expiry', 'insurance_expiry', 'year', 'capacity', 'emergency_contact', 'emergency_phone', 'city']
 
 export async function GET() {
   try {
@@ -58,6 +59,7 @@ export async function POST(req: Request) {
     const body = await req.json()
     const {
       name, phone, email, vehicle, plate, category,
+      vehicle_category_id,
       languages, experience_level, notes,
       license_expiry, soat_expiry, tech_inspection_expiry, insurance_expiry,
       year, capacity, emergency_contact, emergency_phone, city,
@@ -72,16 +74,30 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'driver_email and driver_password required' }, { status: 400 })
     }
 
+    // Resolve vehicle category (keeps the legacy `category` name filter in sync)
+    let effectiveCategory = category || 'standard'
+    let effectiveCategoryId: number | null = null
+    if (body.vehicle_category_id !== undefined && body.vehicle_category_id !== null && body.vehicle_category_id !== '') {
+      const catId = Number(body.vehicle_category_id)
+      const cat = Number.isFinite(catId) ? await getVehicleCategory(catId) : null
+      if (cat) {
+        effectiveCategoryId = cat.id
+        effectiveCategory = cat.name
+      } else {
+        return NextResponse.json({ error: 'vehicle_category_id not found' }, { status: 400 })
+      }
+    }
+
     const db = getDb()
     const result = await db.execute({
       sql: `INSERT INTO drivers (
-        name, phone, email, vehicle, plate, category, status, rating,
+        name, phone, email, vehicle, plate, category, vehicle_category_id, status, rating,
         languages, experience_level, notes,
         license_expiry, soat_expiry, tech_inspection_expiry, insurance_expiry,
         year, capacity, emergency_contact, emergency_phone, city,
         created_at, updated_at
       ) VALUES (
-        ?, ?, ?, ?, ?, ?, 'available', 5.0,
+        ?, ?, ?, ?, ?, ?, ?, 'available', 5.0,
         ?, ?, ?,
         ?, ?, ?, ?,
         ?, ?, ?, ?, ?,
@@ -89,7 +105,7 @@ export async function POST(req: Request) {
       )`,
       args: [
         name, phone || null, email || null,
-        vehicle, plate, category || 'standard',
+        vehicle, plate, effectiveCategory, effectiveCategoryId,
         languages || 'Spanish', experience_level || 'Standard', notes || null,
         license_expiry || null, soat_expiry || null, tech_inspection_expiry || null, insurance_expiry || null,
         year || null, capacity || null, emergency_contact || null, emergency_phone || null, city || null,

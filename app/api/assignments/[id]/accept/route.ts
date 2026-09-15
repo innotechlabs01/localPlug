@@ -4,6 +4,7 @@ import { requireWebhookAuth } from '@/lib/webhook-auth'
 import { triggerClientDriverConfirmed } from '@/lib/n8n/client'
 import { getEstimatedDurationMinutes } from '@/lib/dispatch/availability'
 import { getDriverFromSession } from '@/lib/driver/auth'
+import { emitEvent } from '@/lib/events-outbox'
 
 export async function POST(
   req: Request,
@@ -115,6 +116,16 @@ export async function POST(
     } catch (n8nErr) {
       console.error('[Assignments] Failed to send client confirmation:', n8nErr)
     }
+
+    // Realtime outbox — driver accepted the assignment.
+    emitEvent('assignments.accepted', {
+      assignment_id: assignmentId,
+      order_id: assignment.order_id as number,
+      booking_reference: assignment.booking_reference as string,
+      driver_id: assignment.driver_id as number,
+      driver_name: assignment.driver_name as string,
+      status: 'accepted',
+    }, { correlationId: String(assignmentId) }).catch(() => {})
 
     return NextResponse.json({
       success: true,

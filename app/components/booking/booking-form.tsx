@@ -461,6 +461,8 @@ function BookingFormInner() {
                     customerEmail={customerEmail}
                     customerName={customerName}
                     customerPhone={customerPhone}
+                    customerCountry={customerCountry}
+                    customerNotes={customerNotes}
                     flightData={flightData}
                     destinationAddress={destination.address}
                     needReturn={flightData.needReturn}

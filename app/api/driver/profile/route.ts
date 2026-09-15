@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getDriverFromSession } from '@/lib/driver/auth'
 import { getDb } from '@/lib/db'
+import { getVehicleCategory } from '@/lib/payout'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,6 +28,7 @@ export async function PUT(req: Request) {
     const body = await req.json()
     const {
       name, phone, email, vehicle, plate, category,
+      vehicle_category_id,
       languages, experience_level, photo_url, notes,
       license_number, license_expiry, bank_account,
       city, vip_compatible, emergency_contact, emergency_phone,
@@ -37,9 +39,27 @@ export async function PUT(req: Request) {
     }
 
     const db = getDb()
+
+    // If a vehicle category is selected, keep `category` (legacy dispatch filter)
+    // in sync with its name so existing category-based dispatch still works.
+    let effectiveCategory = category || 'standard'
+    let effectiveCategoryId: number | null = null
+    if (body.vehicle_category_id !== undefined && body.vehicle_category_id !== null && body.vehicle_category_id !== '') {
+      const catId = Number(body.vehicle_category_id)
+      const cat = Number.isFinite(catId) ? await getVehicleCategory(catId) : null
+      if (cat) {
+        effectiveCategoryId = cat.id
+        effectiveCategory = cat.name
+      } else {
+        return NextResponse.json({ error: 'vehicle_category_id not found' }, { status: 400 })
+      }
+    } else if ((vehicle_category_id === null || vehicle_category_id === '')) {
+      effectiveCategoryId = null
+    }
+
     await db.execute({
       sql: `UPDATE drivers SET
-        name = ?, phone = ?, email = ?, vehicle = ?, plate = ?, category = ?,
+        name = ?, phone = ?, email = ?, vehicle = ?, plate = ?, category = ?, vehicle_category_id = ?,
         languages = ?, experience_level = ?, photo_url = ?, notes = ?,
         license_number = ?, license_expiry = ?, bank_account = ?,
         city = ?, vip_compatible = ?, emergency_contact = ?, emergency_phone = ?,
@@ -47,7 +67,7 @@ export async function PUT(req: Request) {
         WHERE id = ?`,
       args: [
         name, phone || null, email || null,
-        vehicle, plate, category || 'standard',
+        vehicle, plate, effectiveCategory, effectiveCategoryId,
         languages || 'Spanish', experience_level || 'Standard', photo_url || null, notes || null,
         license_number || null, license_expiry || null, bank_account || null,
         city || null, vip_compatible ? 1 : 0, emergency_contact || null, emergency_phone || null,

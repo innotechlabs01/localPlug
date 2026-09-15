@@ -10,16 +10,57 @@
 import { createDatabase, type DatabaseClient } from '@lp/db/factory'
 
 let _client: DatabaseClient | null = null
+let _ready: Promise<void> | null = null
 
 const DB_BUSY_RETRY_MAX = 3
 const DB_BUSY_RETRY_BASE_MS = 100
 
+/**
+ * Idempotent schema-ensure promise for the payout/realtime tables.
+ * Called lazily when the client is first created; gated so the very first
+ * `execute`/`batch` never races the DDL on a cold DB.
+ */
+function ensureReady(raw: DatabaseClient): Promise<void> {
+  if (!_ready) {
+    _ready = (async () => {
+      const { ensureRuntimeSchema } = await import('./db/ensure-runtime')
+      await ensureRuntimeSchema(raw)
+    })().catch(err => {
+      console.error('[runtime-schema] ensure failed:', err)
+    })
+  }
+  return _ready
+}
+
+/** Await schema readiness (idempotent; resolved after the first ensure). */
+export function dbReady(): Promise<void> {
+  if (!_client) throw new Error('dbReady() called before getDb()')
+  return _ready || Promise.resolve()
+}
+
 export function getDb(): DatabaseClient {
   if (!_client) {
-    _client = createDatabase()
+    const raw = createDatabase()
     if (typeof process !== 'undefined' && process.env.NODE_ENV !== 'test') {
       import('@lp/config').then(({ validateEnv }) => validateEnv()).catch(() => {})
+      ensureReady(raw)
     }
+    // Gate execute/batch behind the ensure so a cold DB never 500s on the first
+    // query (the schema DDL runs before any business statement).
+    _client = new Proxy(raw, {
+      get(target, prop, receiver) {
+        if (prop === 'execute' || prop === 'batch' || prop === 'close') {
+          const method = (target as unknown as Record<string, (...a: unknown[]) => unknown>)[prop as string]
+          if (typeof method !== 'function') return undefined
+          return async (...args: unknown[]): Promise<unknown> => {
+            await (_ready || Promise.resolve())
+            return (method as (...a: unknown[]) => Promise<unknown>).apply(target, args)
+          }
+        }
+        const value = Reflect.get(target, prop, receiver)
+        return typeof value === 'function' ? value.bind(target) : value
+      },
+    }) as unknown as DatabaseClient
   }
   return _client
 }

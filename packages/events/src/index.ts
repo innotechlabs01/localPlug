@@ -16,3 +16,7 @@ export type { OutboxEvent, OutboxStatus, OutboxRepository } from './outbox'
 export { InMemoryEventBus } from './bus'
 export { OutboxProcessor } from './processor'
 export type { OutboxProcessorConfig } from './processor'
+
+// Metrics recorder
+export { recordMetric, getMetricsBuffer, clearMetricsBuffer } from './record'
+export type { MetricSample } from './record'

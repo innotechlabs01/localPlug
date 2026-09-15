@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react'
+import { useEventStream } from '@/lib/use-event-stream'
 
 interface RealtimeOrder {
   id: number; order_number: string | null; customer_name: string | null
@@ -165,6 +166,27 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('focus', onFocus)
     }
   }, [fetchRealtime])
+
+  // Realtime push: relevant outbox events trigger an immediate refresh (the
+  // existing polling then reconciles). Fallback keeps it resilient if the
+  // outbox route fails.
+  useEventStream(
+    {
+      'booking.created': () => { fetchRealtime() },
+      'payment.completed': () => { fetchRealtime() },
+      'payment.refunded': () => { fetchRealtime() },
+      'driver.trip_completed': () => { fetchRealtime() },
+      'driver.en_route': () => { fetchRealtime() },
+      'trip.pickedup': () => { fetchRealtime() },
+      'assignments.accepted': () => { fetchRealtime() },
+      'assignments.declined': () => { fetchRealtime() },
+      'driver.availability_changed': () => { fetchRealtime() },
+      'hotel.check-in': () => { fetchRealtime() },
+      'hotel.check-out': () => { fetchRealtime() },
+      'hotel.cancelled': () => { fetchRealtime() },
+    },
+    { pollMs: 5000 },
+  )
 
   const markAsRead = useCallback((id: string) => {
     setNotifications(prev =>

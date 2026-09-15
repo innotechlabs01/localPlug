@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server'
 import { Webhooks } from '@polar-sh/nextjs'
 import { getDb } from '@/lib/db'
-import { getPlatformFeePercent } from '@/lib/config'
 import { logger } from '@/lib/logger'
 import { triggerPaymentConfirmation } from '@/lib/n8n/client'
+import { processBookingRefund } from '@/lib/payout'
+import { emitEvent } from '@/lib/events-outbox'
 
 export const POST = Webhooks({
   webhookSecret: process.env.POLAR_WEBHOOK_SECRET || '',
@@ -34,65 +35,40 @@ export const POST = Webhooks({
       }
 
       const now = new Date().toISOString()
-      const totalAmount = (order.amount as number) || 0
 
-      // Amount validation: compare webhook amount with stored amount
+      // Source of truth: the amount recorded at checkout time.
+      // The webhook payload can omit `amount` (observed in production), so never
+      // trust it alone — fall back to the stored payment amount.
       const storedPayment = await db.execute({
-        sql: `SELECT amount FROM payments WHERE booking_reference = ? LIMIT 1`,
+        sql: `SELECT amount, customer_phone FROM payments WHERE booking_reference = ? LIMIT 1`,
         args: [bookingReference],
       })
-      if (storedPayment.rows.length > 0) {
-        const storedAmount = Number(storedPayment.rows[0].amount)
-        if (storedAmount > 0 && totalAmount !== storedAmount) {
-          logger.error('[Polar Webhook] Amount mismatch — possible tampering', undefined, {
-            webhookAmount: totalAmount,
-            storedAmount,
-            bookingReference,
-            webhookEventId,
-          })
-          // Still process but log the discrepancy — a real fix requires investigation
-        }
+      const storedAmount = storedPayment.rows.length > 0 ? Number(storedPayment.rows[0].amount) : 0
+      const storedPhone = storedPayment.rows.length > 0 ? (storedPayment.rows[0].customer_phone as string || '') : ''
+      const payloadAmount = (order.amount as number) || 0
+      const totalAmount = storedAmount > 0 ? storedAmount : payloadAmount
+
+      if (storedAmount > 0 && payloadAmount && storedAmount !== payloadAmount) {
+        logger.error('[Polar Webhook] Amount mismatch — possible tampering', undefined, {
+          webhookAmount: payloadAmount,
+          storedAmount,
+          bookingReference,
+          webhookEventId,
+        })
+        // Still process but log the discrepancy — a real fix requires investigation
       }
 
-      const feeRate = await getPlatformFeePercent()
-
-      let platformFeeCents = 0
-      let hotelPayoutCents = 0
-      let splitStatus = 'pending'
-
-      const orderCheck = await db.execute({
-        sql: `SELECT is_hotel_booking, hotel_commission_rate FROM orders WHERE booking_reference = ?`,
-        args: [bookingReference],
-      })
-      const isHotelBooking = orderCheck.rows.length > 0 && Number(orderCheck.rows[0].is_hotel_booking) === 1
-      const hotelCommissionRate = isHotelBooking ? (Number(orderCheck.rows[0].hotel_commission_rate) || 0.10) : 0
-
-      if (totalAmount && totalAmount > 0) {
-        if (isHotelBooking && hotelCommissionRate > 0) {
-          hotelPayoutCents = Math.round(totalAmount / (1 + hotelCommissionRate))
-          platformFeeCents = totalAmount - hotelPayoutCents
-        } else {
-          platformFeeCents = Math.round(totalAmount * feeRate)
-          hotelPayoutCents = 0
-        }
-        splitStatus = 'completed'
-      }
-
-      // Update payment status
+      // Update payment status. Splits (platform fee / hotel payout / driver fare)
+      // are NO LONGER computed here — payout liabilities accrue separately in the
+      // payout ledger at their milestone (driver on trip complete, hotel on check-in).
       await db.execute({
         sql: `UPDATE payments SET
           status = 'completed',
           paddle_webhook_event_id = ?,
-          platform_fee_cents = ?,
-          hotel_payout_cents = ?,
-          split_status = ?,
           updated_at = ?
         WHERE booking_reference = ? AND status = 'pending'`,
         args: [
           (order.id as string),
-          platformFeeCents,
-          hotelPayoutCents,
-          splitStatus,
           now,
           bookingReference,
         ],
@@ -105,24 +81,31 @@ export const POST = Webhooks({
       })
 
       if (existingOrder.rows.length === 0 && metadata) {
+        // Note: payments.amount / order.amount are in CENTS; orders.package_price is in USD.
         const orderNumber = `ORD-${Date.now().toString(36).toUpperCase()}`
+        const customerPhone = metadata.customer_phone || storedPhone || null
+        const customerCountry = (metadata.customer_country as string) || null
         await db.execute({
           sql: `INSERT INTO orders (
             order_number, booking_reference, customer_name, customer_email,
+            customer_phone, customer_country, customer_notes,
             package_id, package_name, package_price, currency,
             status, payment_status, dispatch_status,
             flight_number, airline, arrival_date, arrival_time,
             destination_address, additional_trips, num_people,
             return_date, return_time
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           args: [
             orderNumber,
             bookingReference,
             metadata.customer_name || ((order.customer as Record<string, unknown>)?.name as string) || null,
             metadata.customer_email || ((order.customer as Record<string, unknown>)?.email as string) || null,
+            customerPhone,
+            customerCountry,
+            metadata.customer_notes || null,
             metadata.package_id || '',
             metadata.package_name || '',
-            totalAmount,
+            totalAmount / 100,
             'usd',
             'confirmed',
             'paid',
@@ -140,20 +123,52 @@ export const POST = Webhooks({
         })
         logger.info('[Polar Webhook] Order created from webhook', { bookingReference, orderNumber })
       } else {
-        // Order exists — confirm it
+        // Order exists — confirm it and BACKFILL fields the webhook can contribute
+        // when the race left them empty (package_price 0, missing phone/country).
+        // Do NOT overwrite values POST /api/booking already wrote correctly.
+        const customerPhone = metadata?.customer_phone || storedPhone || null
+        const invoicePriceUsd = totalAmount > 0 ? totalAmount / 100 : null
         await db.execute({
-          sql: `UPDATE orders SET status = 'confirmed', payment_status = 'paid', updated_at = ? WHERE booking_reference = ?`,
-          args: [now, bookingReference],
+          sql: `UPDATE orders SET
+            status = 'confirmed',
+            payment_status = 'paid',
+            package_price = CASE
+              WHEN package_price IS NULL OR package_price = 0 THEN ?
+              ELSE package_price END,
+            customer_phone = CASE
+              WHEN customer_phone IS NULL OR customer_phone = '' THEN ?
+              ELSE customer_phone END,
+            customer_country = CASE
+              WHEN customer_country IS NULL OR customer_country = '' THEN ?
+              ELSE customer_country END,
+            customer_notes = CASE
+              WHEN customer_notes IS NULL OR customer_notes = '' THEN ?
+              ELSE customer_notes END,
+            updated_at = ?
+          WHERE booking_reference = ?`,
+          args: [
+            invoicePriceUsd,
+            customerPhone,
+            (metadata?.customer_country as string) || null,
+            (metadata?.customer_notes as string) || null,
+            now,
+            bookingReference,
+          ],
         })
+        logger.info('[Polar Webhook] Order confirmed and backfilled', { bookingReference, invoicePriceUsd, customerPhone })
       }
 
       logger.info('[Polar Webhook] order.paid processed', {
         orderId: order.id as string,
         bookingReference,
         totalAmount,
-        platformFeeCents,
-        hotelPayoutCents,
       })
+
+      // Realtime outbox — payment completed.
+      emitEvent('payment.completed', {
+        booking_reference: bookingReference,
+        amount_usd: Math.round((totalAmount / 100) * 100) / 100,
+      }, { correlationId: bookingReference }).catch(() => {})
 
       // Send WhatsApp confirmation to customer
       const customerName = metadata.customer_name || ((order.customer as Record<string, unknown>)?.name as string) || ''
@@ -177,6 +192,80 @@ export const POST = Webhooks({
       }
     } catch (err) {
       logger.error('[Polar Webhook] order.paid failed', err instanceof Error ? err : undefined)
+    }
+  },
+  onOrderRefunded: async (payload) => {
+    try {
+      const order = payload.data as Record<string, unknown>
+      const metadata = (order.metadata as Record<string, string> | undefined) || {}
+      const bookingReference = metadata.booking_reference
+      const eventId = order.id as string
+      if (!bookingReference) {
+        logger.warn('[Polar Webhook] order.refunded missing booking_reference', { orderId: eventId })
+        return
+      }
+
+      // refundedAmount is in cents (like the order amount at checkout).
+      const refundedCents = Number((order.refundedAmount as number) || (order.refunded_amount as number) || 0)
+      const amountUsd = Math.round((refundedCents / 100) * 100) / 100
+
+      const outcome = await processBookingRefund({
+        bookingReference,
+        providerEventId: eventId,
+        amountUsd,
+      })
+      logger.info('[Polar Webhook] order.refunded processed', {
+        bookingReference,
+        resolution: outcome.resolution,
+        duplicate: outcome.duplicate,
+        amountUsd,
+      })
+
+      emitEvent('payment.refunded', {
+        booking_reference: bookingReference,
+        amount_usd: amountUsd,
+        resolution: outcome.resolution,
+      }, { correlationId: bookingReference }).catch(() => {})
+
+      // Pre-milestone → no liability exists; cancel associated services.
+      if (outcome.resolution === 'pre_milestone') {
+        const db = getDb()
+        const orderRow = await db.execute({
+          sql: `SELECT id FROM orders WHERE booking_reference = ?`,
+          args: [bookingReference],
+        })
+        const orderId = orderRow.rows[0]?.id as number | undefined
+        if (orderId) {
+          await db.execute({
+            sql: `UPDATE orders SET status = 'cancelled', payment_status = 'refunded', updated_at = datetime('now') WHERE id = ?`,
+            args: [orderId],
+          }).catch(() => {})
+          await db.execute({
+            sql: `UPDATE assignments SET status = 'cancelled', updated_at = datetime('now') WHERE order_id = ? AND status NOT IN ('completed')`,
+            args: [orderId],
+          }).catch(() => {})
+          // Free booked room(s) for this order
+          try {
+            const rbs = await db.execute({
+              sql: `SELECT room_id FROM room_bookings WHERE order_id = ? AND status IN ('confirmed', 'checked_in')`,
+              args: [orderId],
+            })
+            for (const rb of rbs.rows) {
+              const roomId = rb.room_id as number
+              await db.execute({
+                sql: `UPDATE rooms SET status = 'available', available_from = NULL, current_order_id = NULL, updated_at = datetime('now') WHERE id = ? AND current_order_id = ?`,
+                args: [roomId, orderId],
+              }).catch(() => {})
+            }
+            await db.execute({
+              sql: `UPDATE room_bookings SET status = 'cancelled', updated_at = datetime('now') WHERE order_id = ? AND status IN ('confirmed', 'checked_in')`,
+              args: [orderId],
+            }).catch(() => {})
+          } catch {}
+        }
+      }
+    } catch (err) {
+      logger.error('[Polar Webhook] order.refunded failed', err instanceof Error ? err : undefined)
     }
   },
   onPayload: async (payload) => {

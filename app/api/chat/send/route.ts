@@ -4,6 +4,7 @@ import { triggerAiChatMessage, triggerFraudDetection, sendOrQueueWhatsApp } from
 import { generateOpenAIResponse } from '@/lib/services/openai-service'
 import { generateOllamaResponse } from '@/lib/services/ollama-service'
 import { t } from '@/lib/i18n/server'
+import { emitEvent } from '@/lib/events-outbox'
 
 interface SendMessageRequest {
   conversationId?: number
@@ -179,6 +180,8 @@ export async function POST(request: Request) {
       args: [convId, userIdentifier, message],
     })
 
+    emitEvent('message.sent', { conversation_id: convId, sender_type: 'user', content: message }, { correlationId: String(convId) }).catch(() => {})
+
     await db.execute({
       sql: 'UPDATE conversations SET last_message_at = datetime(\'now\'), updated_at = datetime(\'now\') WHERE id = ?',
       args: [convId],
@@ -260,6 +263,8 @@ export async function POST(request: Request) {
         args: [aiResult.confidence, convId],
       })
 
+      emitEvent('ai.response.generated', { conversation_id: convId, content: aiResult.message, source: aiSource }, { correlationId: String(convId) }).catch(() => {})
+
       // Check for escalation (low confidence means escalation detected)
       if (aiResult.confidence < 0.5) {
         await db.execute({
@@ -267,6 +272,7 @@ export async function POST(request: Request) {
                 WHERE id = ? AND status = 'ai_active'`,
           args: [convId],
         })
+        emitEvent('conversation.escalated', { conversation_id: convId, reason: 'low_ai_confidence' }, { correlationId: String(convId) }).catch(() => {})
       }
 
       await db.execute({

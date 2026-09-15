@@ -13,6 +13,8 @@ interface StepPaymentProps {
   customerEmail: string
   customerName: string
   customerPhone: string
+  customerCountry?: string
+  customerNotes?: string
   flightData: FlightData
   destinationAddress: string
   needReturn?: boolean
@@ -57,6 +59,8 @@ export default function StepPayment({
   customerEmail,
   customerName,
   customerPhone,
+  customerCountry,
+  customerNotes,
   flightData,
   destinationAddress,
   needReturn,
@@ -87,6 +91,8 @@ export default function StepPayment({
           customerEmail,
           customerName,
           customerPhone,
+          customerCountry: customerCountry || '',
+          customerNotes: customerNotes || '',
           needReturn: needReturn ?? flightData.needReturn ?? false,
           tour_ids: destination?.additionalTrips ?? [],
           num_people: Math.max(1, Math.floor(destination?.numPeople || 1)),
@@ -129,7 +135,7 @@ export default function StepPayment({
       setError(t.booking.steps.payment.serviceUnreachable)
       setPhase('ready')
     }
-  }, [bookingReference, packageId, customerEmail, customerName, customerPhone, needReturn, flightData, destination, t])
+  }, [bookingReference, packageId, customerEmail, customerName, customerPhone, customerCountry, customerNotes, needReturn, flightData, destination, t])
 
   const hasReturn = needReturn ?? flightData.needReturn ?? false
   const packageName = t.booking.steps.packages.packages[packageId as keyof typeof t.booking.steps.packages.packages]?.name || packageId

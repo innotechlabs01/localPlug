@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useEventStream } from '@/lib/use-event-stream'
 
 interface DriverProfile {
   id: number
@@ -142,6 +143,16 @@ export default function DriverPage() {
     const interval = setInterval(fetchAssignments, 30000)
     return () => clearInterval(interval)
   }, [driver?.profile_complete, fetchAssignments])
+
+  // Realtime push — new assignment / trip progress refreshes the driver home.
+  useEventStream({
+    'driver.assignment_offered': () => { fetchAssignments() },
+    'assignments.accepted': () => { fetchAssignments() },
+    'assignments.declined': () => { fetchAssignments() },
+    'driver.en_route': () => { fetchAssignments() },
+    'trip.pickedup': () => { fetchAssignments() },
+    'driver.trip_completed': () => { fetchAssignments() },
+  }, { pollMs: 10000 })
 
   const handleSave = async () => {
     setSaving(true)

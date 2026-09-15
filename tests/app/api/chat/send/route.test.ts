@@ -38,6 +38,11 @@ vi.mock('@/lib/i18n/server', () => ({
   },
 }))
 
+// Realtime outbox is a no-op in tests (keeps the sequenced db mock intact).
+vi.mock('@/lib/events-outbox', () => ({
+  emitEvent: () => Promise.resolve(null),
+}))
+
 beforeEach(() => {
   vi.resetAllMocks()
 })

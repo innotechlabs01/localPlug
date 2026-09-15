@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { takeOverConversation } from '@/lib/services/chat-service'
 import { auth } from '@clerk/nextjs/server'
+import { emitEvent } from '@/lib/events-outbox'
 
 /**
  * POST /api/chat/escalate
@@ -92,6 +93,12 @@ export async function POST(request: Request) {
         { status: 404 }
       )
     }
+
+    emitEvent('conversation.escalated', {
+      conversation_id: Number(conversationId),
+      agent_id: agentId,
+      reason: reason || 'manual_takeover',
+    }, { correlationId: String(conversationId) }).catch(() => {})
 
     // Auto-assign other unassigned human_active conversations if agent has capacity
     const { findAvailableAgent: findAgent, incrementAgentLoad: incLoad } = await import('@/lib/services/agent-service')
