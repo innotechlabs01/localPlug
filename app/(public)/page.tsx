@@ -7,6 +7,7 @@ import FeriaSection from '@/app/components/feria/feria-section'
 import HowItWorksSection from '@/app/components/how-it-works/how-it-works-section'
 import TestimonialsSection from '@/app/components/testimonials/testimonials-section'
 import PricingSection from '@/app/components/pricing/pricing-section'
+import FAQSection from '@/app/components/faq/faq-section'
 import CtaSection from '@/app/components/cta/cta-section'
 import Footer from '@/app/components/layout/footer'
 
@@ -23,6 +24,7 @@ export default function HomePage() {
         <HowItWorksSection />
         <TestimonialsSection />
         <PricingSection />
+        <FAQSection />
         <CtaSection />
       </main>
       <Footer />

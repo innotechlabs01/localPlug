@@ -1,6 +1,7 @@
 'use client'
 
 import { useI18n } from '@/lib/i18n'
+import QuickContact from '../footer/quick-contact'
 
 function FooterInner() {
   const { t } = useI18n()
@@ -102,6 +103,7 @@ function FooterInner() {
           </div>
         </div>
 
+        <QuickContact />
         <p className="text-[11px] text-[var(--text-muted)]/70 mt-6 text-center">
           {t.footer.photoCredit}
         </p>

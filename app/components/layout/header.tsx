@@ -60,7 +60,7 @@ function HeaderInner() {
               </a>
             ))}
             <LangToggle />
-            <Link href="/booking">
+            <Link href="/booking" prefetch>
               <Button size="sm" variant="primary">
                 {t.nav.planMyArrival}
               </Button>

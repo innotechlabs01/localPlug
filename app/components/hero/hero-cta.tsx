@@ -6,7 +6,7 @@ export default function HeroCta() {
   const { t } = useI18n()
   return (
     <div className="flex flex-col sm:flex-row gap-4">
-      <Link href="/booking">
+      <Link href="/booking?plan=smooth-landing">
         <Button variant="primary" size="lg">
           {t.hero.planNow}
         </Button>
