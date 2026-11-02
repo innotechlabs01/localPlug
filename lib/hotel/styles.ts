@@ -115,15 +115,15 @@ export const btnGhost: React.CSSProperties = {
 
 // ── Status badge map ──
 export const ROOM_STATUS: Record<string, { bg: string; fg: string; label: string }> = {
-  available: { bg: 'rgba(74,222,128,0.12)', fg: '#4ade80', label: 'Disponible' },
-  occupied: { bg: 'rgba(250,204,21,0.12)', fg: '#facc15', label: 'Ocupada' },
-  maintenance: { bg: 'rgba(248,113,113,0.12)', fg: '#f87171', label: 'Mantenimiento' },
+  available: { bg: 'var(--ui-accent-soft)', fg: 'var(--ui-accent)', label: 'Disponible' },
+  occupied: { bg: 'var(--ui-warning-soft)', fg: 'var(--ui-warning)', label: 'Ocupada' },
+  maintenance: { bg: 'var(--ui-danger-soft)', fg: 'var(--ui-danger)', label: 'Mantenimiento' },
 }
 
 export const ORDER_STATUS: Record<string, { bg: string; fg: string; label: string }> = {
-  new: { bg: 'rgba(250,204,21,0.12)', fg: '#facc15', label: 'Nueva' },
-  accepted: { bg: 'rgba(74,222,128,0.12)', fg: '#4ade80', label: 'Aceptada' },
-  checked_in: { bg: 'rgba(96,165,250,0.12)', fg: '#60a5fa', label: 'Check-in' },
-  completed: { bg: 'rgba(74,222,128,0.12)', fg: '#4ade80', label: 'Completada' },
-  cancelled: { bg: 'rgba(248,113,113,0.12)', fg: '#f87171', label: 'Cancelada' },
+  new: { bg: 'var(--ui-warning-soft)', fg: 'var(--ui-warning)', label: 'Nueva' },
+  accepted: { bg: 'var(--ui-accent-soft)', fg: 'var(--ui-accent)', label: 'Aceptada' },
+  checked_in: { bg: 'var(--ui-info-soft)', fg: 'var(--ui-info)', label: 'Check-in' },
+  completed: { bg: 'var(--ui-accent-soft)', fg: 'var(--ui-accent)', label: 'Completada' },
+  cancelled: { bg: 'var(--ui-danger-soft)', fg: 'var(--ui-danger)', label: 'Cancelada' },
 }

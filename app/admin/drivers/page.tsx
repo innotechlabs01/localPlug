@@ -18,28 +18,24 @@ interface Driver {
   emergency_phone?: string | null; city?: string | null; doc_status?: string | null
 }
 
-const catColors: Record<string, string> = {
-  standard: 'var(--info)', suv: 'var(--info)', vip: 'var(--gold)', luxury: 'var(--accent)', van: 'var(--warning)'
-}
-
 const statusLabels: Record<string, string> = {
-  available: 'Available', busy: 'Assigned', offline: 'Offline', suspended: 'Suspended', pending: 'Pending', inactive: 'Inactive'
+  available: 'Disponible', busy: 'Asignado', offline: 'Desconectado', suspended: 'Suspendido', pending: 'Pendiente', inactive: 'Inactivo'
 }
 
 const statusClasses: Record<string, string> = {
-  available: 'badge badge-accent',
-  busy: 'badge badge-info',
-  offline: 'badge',
-  suspended: 'badge badge-danger',
-  pending: 'badge badge-warning',
-  inactive: 'badge',
+  available: 'admin-badge accent',
+  busy: 'admin-badge info',
+  offline: 'admin-badge neutral',
+  suspended: 'admin-badge danger',
+  pending: 'admin-badge warning',
+  inactive: 'admin-badge',
 }
 
 const docClasses: Record<string, string> = {
-  valid: 'badge badge-accent',
-  warning: 'badge badge-warning',
-  expired: 'badge badge-danger',
-  pending: 'badge',
+  valid: 'admin-badge accent',
+  warning: 'admin-badge warning',
+  expired: 'admin-badge danger',
+  pending: 'admin-badge neutral',
 }
 
 export default function DriversPage() {
@@ -110,12 +106,6 @@ export default function DriversPage() {
   const getInit = (name: string | null) =>
     name ? name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '??'
 
-  const getAvatarColor = (name: string | null, vip?: number) => {
-    const hash = (name || '').charCodeAt(0) || 0
-    const cs = ['var(--accent)', 'var(--info)', 'var(--gold)', 'var(--info)', 'var(--accent-hover)', 'var(--bg)']
-    return vip ? 'linear-gradient(135deg, var(--bg), var(--gold))' : `linear-gradient(135deg, ${cs[hash % cs.length]}, var(--bg))`
-  }
-
   const docStatus = (d: Driver): string => {
     if (d.doc_status) return d.doc_status
     return 'valid'
@@ -145,28 +135,28 @@ export default function DriversPage() {
     setModalOpen(true)
   }
 
-  const openEditModal = (d: Driver) => {
-    setEditDriver(d)
+  const openEditModal = (driver: Driver) => {
+    setEditDriver(driver)
     setFormData({
-      name: d.name || '',
-      phone: d.phone || '',
-      email: d.email || '',
-      languages: d.languages || '',
-      vehicle: d.vehicle || '',
-      plate: d.plate || '',
-      category: d.category || '',
-      experienceLevel: d.experience_level || '',
-      notes: d.notes || '',
-      license_expiry: d.license_expiry || '',
-      soat_expiry: d.soat_expiry || '',
-      tech_inspection_expiry: d.tech_inspection_expiry || '',
-      insurance_expiry: d.insurance_expiry || '',
-      year: d.year || '',
-      capacity: d.capacity || '',
-      emergency_contact: d.emergency_contact || '',
-      emergency_phone: d.emergency_phone || '',
-      city: d.city || '',
-      photo_url: d.photo_url || '',
+      name: driver.name || '',
+      phone: driver.phone || '',
+      email: driver.email || '',
+      languages: driver.languages || '',
+      vehicle: driver.vehicle || '',
+      plate: driver.plate || '',
+      category: driver.category || '',
+      experienceLevel: driver.experience_level || '',
+      notes: driver.notes || '',
+      license_expiry: driver.license_expiry || '',
+      soat_expiry: driver.soat_expiry || '',
+      tech_inspection_expiry: driver.tech_inspection_expiry || '',
+      insurance_expiry: driver.insurance_expiry || '',
+      year: driver.year || '',
+      capacity: driver.capacity || '',
+      emergency_contact: driver.emergency_contact || '',
+      emergency_phone: driver.emergency_phone || '',
+      city: driver.city || '',
+      photo_url: driver.photo_url || '',
     })
     setCreateStep(1)
     setModalOpen(true)
@@ -209,678 +199,374 @@ export default function DriversPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-[#646880]">{d.loading || 'Loading drivers...'}</div>
+      <div className="admin-page">
+        <div className="admin-empty" style={{ padding: '48px 24px' }}>
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.3"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          <h3>{d.loading || 'Loading drivers...'}</h3>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="drivers-page" style={{ padding: 0 }}>
-       {/* ── HERO ── */}
-       <div className="drivers-hero">
-         <div>
-           <h1 className="text-[24px] font-bold tracking-tighter text-fg">
-             {d.headerTitle || 'Drivers Management'}
-           </h1>
-           <p className="mt-2 text-[13px] text-fg-muted max-w-[760px] leading-[1.55]">
-             {d.headerDesc || 'Operational driver roster, vehicle eligibility, compliance validation, and assignment readiness for premium airport pickups and VIP tourism services in Medellín.'}
-           </p>
-         </div>
-         <div className="drivers-toolbar flex items-center gap-2.5 flex-wrap">
-           <button
-             className="px-3 py-2 border border-border text-fg-muted rounded-md hover:bg-surface-hover transition-all font-medium"
-             onClick={() => showToast(d.toastCompliance || 'Compliance report queued')}
-           >
-             {d.exportCompliance || 'Export compliance'}
-           </button>
-           <button
-             className="px-4 py-2 bg-accent text-white text-[13px] font-medium rounded-md hover:bg-[#059669] transition-all"
-             onClick={openCreateModal}
-           >
-             {d.create || 'Create Driver'}
-           </button>
-         </div>
-       </div>
-
-       {/* ── FILTER CHIPS ── */}
-       <div className="drivers-filters px-6 py-4 flex items-center gap-2 flex-wrap">
-         {[
-           ['all', d.filterAll || 'All drivers'],
-           ['available', d.filterAvailable || 'Available'],
-           ['assigned', d.filterAssigned || 'Assigned'],
-           ['pending', d.filterPending || 'Pending verification'],
-           ['expired', d.filterExpired || 'Expired documents'],
-           ['vip', d.filterVip || 'VIP eligible'],
-           ['suspended', d.filterSuspended || 'Suspended'],
-         ].map(([key, label]) => (
-           <button
-             key={key}
-             onClick={() => setFilter(key)}
-             className={`chip ${filter === key ? 'chip-active' : ''}`}
-           >
-             {label}
-           </button>
-         ))}
-       </div>
-
-       {/* ── KPI ROW ── */}
-       <div className="drivers-kpis grid-6">
-         {[
-           [d.kpiTotal || 'Total drivers', String(stats.total), d.kpiSubPlus || '+3 this month', true],
-           [d.kpiAvailable || 'Available now', String(stats.available), d.kpiSubAirport || 'Airport ready', true],
-           [d.kpiAssigned || 'Assigned trips', String(stats.assigned), d.kpiSubServices || 'Live services', false],
-           [d.kpiVip || 'VIP eligible', String(stats.vip), d.kpiSubLuxury || 'Luxury certified', true],
-           [d.kpiAlerts || 'Compliance alerts', String(stats.alerts), d.kpiSubReview || 'Needs review', false],
-           [d.kpiAvgRating || 'Avg rating', stats.avg, d.kpiSubTop || 'Top quartile', true],
-         ].map(([label, value, sub, positive], idx) => (
-           <div key={`kpi-${idx}`} className="stat-card">
-             <div className="stat-label">{label}</div>
-             <div className="stat-value">{value}</div>
-             <div className={`stat-change ${positive ? 'up' : 'down'}`}>{sub}</div>
-           </div>
-         ))}
-       </div>
-
-       {/* ── OPS ALERTS + ELIGIBILITY ── */}
-       <div className="ops-alerts grid-2">
-         {/* Alert panel */}
-         <div className="alert-panel">
-           <div className="alert-title">
-             <span>{d.alertsTitle || 'Operational compliance alerts'}</span>
-             <span className="badge badge-warning">
-               {d.alertsOpen?.replace('{count}', String(stats.alerts)) || `${stats.alerts} open`}
-             </span>
-           </div>
-           {filteredAlerts.length === 0 ? (
-             <p className="text-fg-muted py-6 text-center">{d.alertsNone || 'No compliance alerts'}</p>
-           ) : (
-             filteredAlerts.map(driver => (
-               <div key={driver.id} className="alert-row">
-                 <span className={`status-dot ${driver.doc_status === 'expired' ? 'danger' : ''}`} />
-                 <div className="alert-copy">
-                   <strong>{driver.name}</strong>
-                   <span>{docReason(driver).join(', ') || 'Documents expired'} — {driver.vehicle} ({driver.plate})</span>
-                 </div>
-                 <button
-                   className="btn btn-sm btn-secondary"
-                   onClick={() => { setSelectedId(driver.id); setFilter('expired') }}
-                 >
-                   {d.alertsReview || 'Review'}
-                 </button>
-               </div>
-             ))
-           )}
-         </div>
-
-         {/* Eligibility panel */}
-         <div className="eligibility-panel">
-           <h3>{d.eligibilityTitle || 'Assignment eligibility'}</h3>
-           <div className="eligibility-grid grid-2">
-             {[
-               [drivers.filter(drv => drv.status === 'available').length, d.eligibilityPickup || 'Eligible for airport pickup'],
-               [stats.vip, d.eligibilityVip || 'Eligible for VIP guests'],
-               [stats.alerts, d.eligibilityRestricted || 'Restricted by compliance'],
-               [stats.total ? '6 min' : '—', d.eligibilityEta || 'Avg airport ETA'],
-             ].map(([val, lab], idx) => (
-               <div key={idx} className="eligibility-item">
-                 <strong>{val}</strong>
-                 <span>{lab}</span>
-               </div>
-             ))}
-           </div>
-         </div>
-       </div>
-
-      {/* ── MAIN LAYOUT ── */}
-      <div className="drivers-layout">
-        {/* ── LEFT: DRIVER ROSTER ── */}
-        <div className="panel">
-          <div className="panel-header">
-            <div className="panel-title">
-              <span>{d.rosterTitle || 'Driver roster'}</span>
-              <span className="count">{filtered.length} shown</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <div className="dp-search-bar" style={{ margin: 0 }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-                <input
-                  placeholder={d.rosterSearch || 'Search drivers, plates, vehicles...'}
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                />
-              </div>
-              <button className="btn btn-sm btn-secondary" onClick={() => showToast('Card view active')}>Cards</button>
-              <button className="btn btn-sm btn-secondary" onClick={() => showToast('Table view ready')}>Table</button>
-            </div>
-          </div>
-
-           <div className="driver-grid">
-             {filtered.length === 0 ? (
-               <p className="text-fg-muted text-center py-12 grid-col-span-2">{d.rosterNoMatch || 'No drivers match filters'}</p>
-             ) : filtered.map(drv => (
-               <div
-                 key={drv.id}
-                 className={`driver-card ${selectedId === drv.id ? 'active' : ''}`}
-                 onClick={() => setSelectedId(drv.id)}
-               >
-                 <div className="driver-head">
-                   <div className="driver-person">
-                     <div className="driver-avatar" style={{ background: getAvatarColor(drv.name, drv.vip_compatible || undefined) }}>
-                       {drv.photo_url ? (
-                         <img src={drv.photo_url} alt={drv.name || ''} style={{ width: '100%', height: '100%', borderRadius: 14, objectFit: 'cover' }} />
-                       ) : getInit(drv.name)}
-                     </div>
-                     <div>
-                       <div className="driver-name">
-                         {drv.name}
-                         {drv.vip_compatible ? <span className="badge vip">VIP</span> : null}
-                       </div>
-                        <div className="driver-meta">{drv.languages} · {drv.city || 'Medellín'}{drv.phone ? ` · ${drv.phone}` : ''}</div>
-                     </div>
-                   </div>
-                    <span className={statusClasses[drv.status || ''] || 'badge'}>
-                      {statusLabels[drv.status || ''] || drv.status}
-                    </span>
-                 </div>
-
-                 <div className="flex gap-1.5 flex-wrap">
-                    <span className={docClasses[docStatus(drv)] || 'badge'}>
-                      {docStatus(drv) === 'valid' ? (d.rosterValid || 'Valid') : docStatus(drv) === 'warning' ? (d.rosterExpiring || 'Expiring') : docStatus(drv) === 'expired' ? (d.rosterExpired || 'Expired') : (d.rosterPending || 'Pending')}
-                    </span>
-                   {drv.vip_compatible === 1 && <span className="badge vip">{d.rosterVip || 'VIP'}</span>}
-                 </div>
-
-                 <div className="driver-stats">
-                   <div className="driver-stat">
-                     <strong>{drv.rating || 'New'}</strong>
-                     <span>{d.rosterRating || 'Rating'}</span>
-                   </div>
-                   <div className="driver-stat">
-                     <strong>{drv.total_trips || 0}</strong>
-                     <span>{d.rosterTrips || 'Trips'}</span>
-                   </div>
-                   <div className="driver-stat">
-                     <strong>{drv.status === 'available' ? '4 min' : drv.active_orders ? 'In service' : '—'}</strong>
-                     <span>{d.rosterEta || 'ETA'}</span>
-                   </div>
-                 </div>
-
-                 <div className="vehicle-strip">
-                   <span>
-                     <strong className="text-fg">{drv.vehicle || '—'}</strong><br />
-                     {drv.plate} · {drv.year || '—'}
-                   </span>
-                   <span>
-                     {catColors[drv.category || ''] ? (
-                       <span className="flex items-center gap-1">
-                         <span className="h-1.5 w-1.5 rounded-full" style={{ background: catColors[drv.category || ''] }} />
-                         {drv.category}
-                       </span>
-                     ) : '—'}
-                     <br />{drv.capacity || drv.experience_level || '—'}
-                   </span>
-                 </div>
-               </div>
-             ))}
-           </div>
+    <div className="admin-page space-y-6">
+      {/* Hero */}
+      <section className="admin-section-header">
+        <div>
+          <h1 className="admin-page-title">{d.headerTitle || 'Conductores'}</h1>
+          <p className="admin-section-desc">
+            {d.headerDesc || 'Plantilla operativa de conductores, elegibilidad de vehículos, validación de cumplimiento y preparación para asignaciones.'}
+          </p>
         </div>
+        <div className="admin-flex-between" style={{ gap: 8 }}>
+          <button
+            onClick={() => showToast(d.toastCompliance || 'Reporte de cumplimiento encolado')}
+            className="admin-btn admin-btn-secondary admin-btn-sm"
+          >
+            {d.exportCompliance || 'Exportar cumplimiento'}
+          </button>
+          <button onClick={openCreateModal} className="admin-btn admin-btn-primary admin-btn-sm">
+            {d.create || 'Crear Conductor'}
+          </button>
+        </div>
+      </section>
 
-          {/* ── RIGHT: SIDE STACK ── */}
-          <aside className="side-stack">
-            {/* Profile */}
-            <div className="panel">
-              <div className="panel-header flex items-center justify-between pb-2">
-                <span className="panel-title font-medium text-fg">{d.profileTitle || 'Driver profile'}</span>
-                <button
-                  className="btn btn-sm btn-secondary"
-                  onClick={() => {
-                    if (window.confirm('Suspend driver access?')) {
-                      showToast(d.toastStatus || 'Driver status updated')
-                    }
-                  }}
-                >
-                  {d.profileActions || 'Actions'}
-                </button>
-              </div>
-              <div className="panel-body p-4">
-                {!selected ? (
-                  <p className="text-fg-muted text-center py-8">
-                    {d.profileSelect || 'Select a driver to view profile'}
-                  </p>
-                ) : (
-                  <>
-                    <div className="profile-top">
-                      <div className="profile-photo" style={{ background: getAvatarColor(selected.name, selected.vip_compatible || undefined) }}>
-                        {selected.photo_url ? (
-                          <img src={selected.photo_url} alt={selected.name || ''} className="w-full h-full rounded-[20px] object-cover" />
-                        ) : getInit(selected.name)}
-                      </div>
-                      <div>
-                        <h2 className="text-[18px] font-bold text-fg">{selected.name}</h2>
-                        <div className="sub">
-                          {(selected.category || d.profileStandard || 'Standard')} · {selected.plate}
-                        </div>
-                        <div className="flex gap-1.5 flex-wrap mt-2">
-                          <span className={statusClasses[selected.status || ''] || 'badge'}>
-                            {statusLabels[selected.status || ''] || selected.status}
-                          </span>
-                          <span className={docClasses[docStatus(selected)] || 'badge'}>
-                            {docStatus(selected) === 'valid' ? (d.profileValid || 'Valid') : docStatus(selected) === 'warning' ? (d.profileExpiring || 'Expiring soon') : (d.profileExpired || 'Expired')}
-                          </span>
-                          {selected.vip_compatible === 1 && (
-                            <span className="badge badge-gold">
-                              {d.profileVip || 'VIP services'}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="info-grid">
-                      {[
-                        [d.profileEmail || 'Email', selected.email || '—'],
-                        [d.profilePhone || 'Phone', selected.phone || '—'],
-                        [d.profileLanguages || 'Languages', selected.languages || '—'],
-                        [d.profileAssignment || 'Current assignment', selected.active_orders ? `${selected.active_orders} active` : 'Unassigned'],
-                        [d.profileVehicle || 'Vehicle', selected.vehicle || '—'],
-                        [d.profileCapacity || 'Capacity', selected.capacity || selected.experience_level || '—'],
-                        [d.profileLastActive || 'Last active', selected.status === 'available' ? 'Online' : selected.status === 'busy' ? 'In service' : '—'],
-                        [d.profileEligibility || 'Eligibility', docStatus(selected) === 'valid' && selected.status !== 'suspended' ? (d.profileAllowed || 'Assignment allowed') : (d.profileRestricted || 'Assignment restricted')],
-                      ].map(([label, value]) => (
-                        <div key={label} className="info-item">
-                          <label>{label}</label>
-                          <div>{value}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Compliance */}
-            <div className="panel">
-              <div className="panel-header flex items-center justify-between pb-2">
-                <span className="panel-title font-medium text-fg">{d.complianceTitle || 'Compliance validation'}</span>
-              </div>
-              <div className="panel-body p-4">
-                {!selected ? (
-                  <p className="text-fg-muted text-center py-6">
-                    {d.complianceNone || 'No driver selected'}
-                  </p>
-                ) : (
-                  <>
-                    <div className="compliance-list">
-                      {[
-                        [d.complianceLicense || 'Driver license', selected.license_expiry || d.complianceValid || 'Valid'],
-                        [d.complianceSoat || 'SOAT insurance', selected.soat_expiry || d.complianceValid || 'Valid'],
-                        [d.complianceInspection || 'Technical inspection', selected.tech_inspection_expiry || d.complianceValid || 'Valid'],
-                        [d.complianceInsurance || 'Vehicle insurance', selected.insurance_expiry || d.complianceValid || 'Valid'],
-                      ].map(([name, value]) => {
-                        const lower = value.toLowerCase()
-                        const s = lower.includes('expir') ? 'warning' : lower.includes('expired') || lower.includes('missing') ? 'expired' : 'valid'
-                        return (
-                          <div key={name} className="compliance-row">
-                            <div>
-                              <div className="doc-name">{name}</div>
-                              <div className="doc-date">{value}</div>
-                            </div>
-                            <span className={docClasses[s] || 'badge'}>
-                              {s === 'valid' ? (d.complianceValid || 'Valid') : s === 'warning' ? (d.complianceExpiring || 'Expiring') : (d.complianceExpired || 'Expired')}
-                            </span>
-                          </div>
-                          );
-                        })}
-                     </div>
-                    <div className={`alert-box ${docStatus(selected)} p-4 mt-4 rounded-[12px] border border-border`}>
-                      {docStatus(selected) === 'valid'
-                        ? (d.complianceOk || 'Driver is operationally eligible for assignment.')
-                        : docStatus(selected) === 'expired'
-                          ? (d.complianceBlocked || 'Assignment blocked until compliance is restored.')
-                          : (d.complianceWarn || 'Driver can be monitored but needs verification before assignment.')}
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Performance */}
-            <div className="panel">
-              <div className="panel-header flex items-center justify-between pb-2">
-                <span className="panel-title font-medium text-fg">{d.perfTitle || 'Performance & condition'}</span>
-              </div>
-              <div className="panel-body p-4">
-                {!selected ? (
-                  <p className="text-fg-muted text-center py-6">
-                    {d.perfNone || 'No driver selected'}
-                  </p>
-                ) : (
-                  <>
-                    <div className="condition-score">
-                      <div className="score-ring" style={{ background: `conic-gradient(var(--accent) ${Math.round((selected.rating || 0) * 20)}%, var(--border-light) 0)` }}>
-                        <span>{Math.round((selected.rating || 0) * 20)}</span>
-                      </div>
-                      <div>
-                        <div className="font-bold text-fg">{d.perfScore || 'Vehicle condition score'}</div>
-                        <div className="text-fg-muted text-[12px] mt-1">
-                          {d.perfScoreDesc || 'Cleanliness, interior, exterior, and mechanical inspection summary.'}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="metric-list">
-                      {[
-                        [d.perfTrips || 'Trips completed', String(selected.total_trips || 0), Math.min((selected.total_trips || 0) / 4, 92)],
-                        [d.perfRevenue || 'Revenue generated', `$${(selected.total_trips || 0) * 68}`, Math.min((selected.total_trips || 0) / 4, 78)],
-                        [d.perfVip || 'VIP services completed', String(selected.vip_compatible ? Math.round((selected.total_trips || 0) * 0.45) : 0), selected.vip_compatible ? 84 : 34],
-                        [d.perfCancel || 'Cancellation rate', selected.total_trips ? '3.2%' : '0%', selected.total_trips ? 68 : 100],
-                        [d.perfSatisfaction || 'Customer satisfaction', String(selected.rating || 'New'), selected.rating ? Math.round(selected.rating * 20) : 0],
-                      ].map(([name, value, pct]) => (
-                        <div key={name} className="metric-row">
-                          <div className="metric-top">
-                            <span>{name}</span>
-                            <strong>{value}</strong>
-                          </div>
-                          <div className="meter">
-                            <div className="meter-fill" style={{ width: `${pct}%` }} />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          </aside>
+      {/* Filter chips */}
+      <div className="admin-flex-between" style={{ flexWrap: 'wrap', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {[
+            ['all', d.filterAll || 'Todos los conductores'],
+            ['available', d.filterAvailable || 'Disponibles'],
+            ['assigned', d.filterAssigned || 'Asignados'],
+            ['pending', d.filterPending || 'Pendiente verificación'],
+            ['expired', d.filterExpired || 'Documentos expirados'],
+            ['vip', d.filterVip || 'Elegible VIP'],
+            ['suspended', d.filterSuspended || 'Suspendido'],
+          ].map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setFilter(key)}
+              className={`admin-tab ${filter === key ? 'active' : ''}`} style={{ padding: '6px 14px', fontSize: 12 }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* ── CREATE DRIVER MODAL ── */}
-      {modalOpen && (
-        <div
-          style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.62)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: 24, zIndex: 500,
-          }}
-          onClick={() => setModalOpen(false)}
-        >
-          <div
-            style={{
-              width: 'min(900px, 100%)', maxHeight: '90vh', overflow: 'auto',
-              borderRadius: 16, background: 'var(--bg)',
-              border: '1px solid var(--border)',
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div style={{
-              padding: '18px 20px',
-              borderBottom: '1px solid #282b38',
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-            }}>
-              <div>
-                <h2 style={{ fontSize: 18, margin: 0, fontWeight: 700, color: 'var(--fg)' }}>
-                  {editDriver ? (d.modalEdit || 'Edit driver') : (d.modalCreate || 'Create driver')}
-                </h2>
-                <p style={{ color: 'var(--fg-secondary)', fontSize: 12, marginTop: 4 }}>
-                  {editDriver ? (d.modalEditDesc || 'Update driver information. All changes will be logged.') : (d.modalCreateDesc || 'Guided registration for driver, vehicle, documents, and compliance review.')}
-                </p>
+      {/* KPI row */}
+      <div className="admin-grid-6 admin-mt-4">
+        {[
+          [d.kpiTotal || 'Total conductores', String(stats.total), d.kpiSubPlus || '+3 este mes'],
+          [d.kpiAvailable || 'Disponibles ahora', String(stats.available), d.kpiSubAirport || 'Listos aeropuerto', true],
+          [d.kpiAssigned || 'Viajes asignados', String(stats.assigned), d.kpiSubServices || 'Servicios activos', false],
+          [d.kpiVip || 'Elegible VIP', String(stats.vip), d.kpiSubLuxury || 'Certificado lujo', true],
+          [d.kpiAlerts || 'Alertas cumplimiento', String(stats.alerts), d.kpiSubReview || 'Requieren revisión', false],
+          [d.kpiAvgRating || 'Calificación prom.', stats.avg, d.kpiSubTop || 'Cuartel superior', true],
+        ].map(([label, value, sub], idx) => (
+          <div key={`kpi-${idx}`} className="admin-kpi-card">
+            <div className="admin-kpi-label">{label}</div>
+            <div className="admin-kpi-value">{value}</div>
+            <div className="admin-kpi-sub neutral">{sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Ops alerts + eligibility */}
+      <section className="admin-card admin-mt-4">
+        <div className="admin-card-header admin-flex-between">
+          <span className="admin-card-title">{d.alertsTitle || 'Alertas de cumplimiento operativo'}</span>
+          <span className="admin-badge warning">{d.alertsOpen?.replace('{count}', String(stats.alerts)) || `${stats.alerts} abiertas`}</span>
+        </div>
+        <div className="admin-card-body">
+          <div className="admin-grid-2">
+            {/* Alert panel */}
+            <div className="admin-card" style={{ padding: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ui-fg)', marginBottom: 12 }}>
+                {d.alertsTitle || 'Alertas de cumplimiento'}
               </div>
-              <button
-                style={{ color: 'var(--fg-secondary)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 22 }}
-                onClick={() => setModalOpen(false)}
-              >
-                &times;
+              {filteredAlerts.length === 0 ? (
+                <p style={{ color: 'var(--ui-fg-muted)', fontSize: 13, textAlign: 'center', padding: '16px' }}>
+                  {d.alertsNone || 'No hay alertas de cumplimiento'}
+                </p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {filteredAlerts.map(driver => (
+                    <div key={driver.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 8, background: 'var(--ui-surface)', borderRadius: 'var(--ui-radius-sm)', border: '1px solid var(--ui-border)' }}>
+                      <span
+                        className="status-dot"
+                        style={{ width: 8, height: 8, borderRadius: '50%', background: driver.doc_status === 'expired' ? 'var(--ui-danger)' : 'var(--ui-warning)' }}
+                      />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ui-fg)' }}>{driver.name}</div>
+                        <div style={{ fontSize: 11, color: 'var(--ui-fg-muted)' }}>
+                          {docReason(driver).join(', ') || 'Documentos expirados'} — {driver.vehicle} ({driver.plate})
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => { setSelectedId(driver.id); setFilter('expired') }}
+                        className="admin-btn admin-btn-secondary admin-btn-sm"
+                      >
+                        {d.alertsReview || 'Revisar'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Eligibility panel */}
+            <div className="admin-card" style={{ padding: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ui-fg)', marginBottom: 12 }}>
+                {d.eligibilityTitle || 'Elegibilidad de asignación'}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                {[
+                  [drivers.filter(drv => drv.status === 'available').length, d.eligibilityPickup || 'Elegible aeropuerto'],
+                  [stats.vip, d.eligibilityVip || 'Elegible VIP'],
+                  [stats.alerts, d.eligibilityRestricted || 'Restringido cumplimiento'],
+                  ['6 min', d.eligibilityEta || 'ETA promedio'],
+                ].map(([val, lab], idx) => (
+                  <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--ui-fg)' }}>{val}</div>
+                    <div style={{ fontSize: 11, color: 'var(--ui-fg-muted)' }}>{lab}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Main layout */}
+      <section className="admin-card admin-mt-4">
+        <div className="admin-card-header admin-flex-between">
+          <span className="admin-card-title">{d.rosterTitle || 'Plantilla de conductores'}</span>
+          <span className="admin-badge neutral">{filtered.length} mostrados</span>
+        </div>
+        <div className="admin-card-body">
+          <div className="admin-flex-between admin-mb-4" style={{ gap: 8, alignItems: 'center' }}>
+            <div className="admin-field" style={{ minWidth: 220 }}>
+              <label className="admin-field-label">{d.rosterSearch || 'Buscar conductores, placas, vehículos...'}</label>
+              <input
+                className="admin-input"
+                placeholder={d.rosterSearch || 'Buscar conductores, placas, vehículos...'}
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button onClick={() => showToast('Vista tarjetas activa')} className="admin-btn admin-btn-secondary admin-btn-sm">Tarjetas</button>
+              <button onClick={() => showToast('Vista tabla lista')} className="admin-btn admin-btn-secondary admin-btn-sm">Tabla</button>
+            </div>
+          </div>
+          <div className="admin-grid-responsive">
+            {filtered.length === 0 ? (
+              <div className="admin-empty" style={{ padding: '32px 24px', gridColumn: '1 / -1' }}>
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.3"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/></svg>
+                <h3>{d.rosterNoMatch || 'No hay conductores que coincidan con los filtros'}</h3>
+              </div>
+            ) : (
+              filtered.map(drv => (
+                <div
+                  key={drv.id}
+                  className="admin-res-card"
+                  onClick={() => setSelectedId(drv.id)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <div className="admin-res-card-header">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg, var(--ui-accent), var(--ui-bg))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, fontSize: 13 }}>
+                        {drv.photo_url ? (
+                          <img src={drv.photo_url} alt={drv.name || ''} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                        ) : getInit(drv.name)}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 600, color: 'var(--ui-fg)' }}>{drv.name}</div>
+                        {drv.vip_compatible && <span className="admin-badge gold">VIP</span>}
+                      </div>
+                    </div>
+                    <span className={`admin-badge ${statusClasses[drv.status || '']}`}>
+                      {statusLabels[drv.status || ''] || drv.status}
+                    </span>
+                  </div>
+                  <div className="admin-res-body">
+                    <div className="admin-res-row">
+                      <span className="admin-res-label">{d.rosterValid || 'Documentos'}</span>
+                      <span className={`admin-badge ${docClasses[docStatus(drv)] || 'admin-badge neutral'}`}>
+                        {docStatus(drv) === 'valid' ? (d.rosterValid || 'Válido') : docStatus(drv) === 'warning' ? (d.rosterExpiring || 'Expirando') : docStatus(drv) === 'expired' ? (d.rosterExpired || 'Expirado') : (d.rosterPending || 'Pendiente')}
+                      </span>
+                    </div>
+                    {drv.vip_compatible === 1 && (
+                      <div className="admin-res-row">
+                        <span className="admin-res-label">VIP</span>
+                        <span className="admin-badge gold">{d.rosterVip || 'VIP'}</span>
+                      </div>
+                    )}
+                    <div className="admin-res-row">
+                      <span className="admin-res-label">{d.rosterRating || 'Calificación'}</span>
+                      <span style={{ fontFamily: 'var(--ui-font-mono)', fontWeight: 600 }}>{drv.rating || 'Nuevo'}</span>
+                    </div>
+                    <div className="admin-res-row">
+                      <span className="admin-res-label">{d.rosterTrips || 'Viajes'}</span>
+                      <span style={{ fontFamily: 'var(--ui-font-mono)', fontWeight: 600 }}>{drv.total_trips || 0}</span>
+                    </div>
+                    <div className="admin-res-row">
+                      <span className="admin-res-label">{d.rosterEta || 'ETA'}</span>
+                      <span>{drv.status === 'available' ? '4 min' : drv.active_orders ? 'En servicio' : '—'}</span>
+                    </div>
+                    <div className="admin-res-row">
+                      <span className="admin-res-label">Vehículo</span>
+                      <span style={{ fontFamily: 'var(--ui-font-mono)', fontSize: 12 }}>{drv.vehicle || '—'}</span>
+                    </div>
+                    <div className="admin-res-row">
+                      <span className="admin-res-label">Placa / Año</span>
+                      <span style={{ fontSize: 12 }}>{drv.plate} · {drv.year || '—'}</span>
+                    </div>
+                    <div className="admin-res-row">
+                      <span className="admin-res-label">Capacidad / Exp.</span>
+                      <span style={{ fontSize: 12 }}>{drv.capacity || drv.experience_level || '—'}</span>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* Right side stack (profile) moved below on responsive */}
+      <section className="admin-card admin-mt-4">
+        <div className="admin-card-header admin-flex-between">
+          <span className="admin-card-title">{d.profileTitle || 'Perfil del conductor'}</span>
+        </div>
+        <div className="admin-card-body">
+          {!selected ? (
+            <div className="admin-empty" style={{ padding: '32px 24px' }}>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.3"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+              <h3>{d.profileSelect || 'Selecciona un conductor para ver el perfil'}</h3>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'linear-gradient(135deg, var(--ui-accent), var(--ui-bg))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, fontSize: 16 }}>
+                    {selected.photo_url ? (
+                      <img src={selected.photo_url} alt={selected.name || ''} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                    ) : getInit(selected.name)}
+                  </div>
+                  <div>
+                    <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--ui-fg)' }}>{selected.name}</h2>
+                    <div style={{ fontSize: 12, color: 'var(--ui-fg-muted)' }}>
+                      {(selected.category || d.profileStandard || 'Estándar')} · {selected.plate}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                      <span className={`admin-badge ${statusClasses[selected.status || '']}`}>
+                        {statusLabels[selected.status || ''] || selected.status}
+                      </span>
+                      <span className={`admin-badge ${docClasses[docStatus(selected)] || 'admin-badge neutral'}`}>
+                        {docStatus(selected) === 'valid' ? (d.profileValid || 'Válido') : docStatus(selected) === 'warning' ? (d.profileExpiring || 'Expirando pronto') : (d.profileExpired || 'Expirado')}
+                      </span>
+                      {selected.vip_compatible === 1 && (
+                        <span className="admin-badge gold">{d.profileVip || 'Servicios VIP'}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  {[
+                    [d.profileEmail || 'Email', selected.email || '—'],
+                    [d.profilePhone || 'Teléfono', selected.phone || '—'],
+                    [d.profileLanguages || 'Idiomas', selected.languages || '—'],
+                    [d.profileAssignment || 'Asignación actual', selected.active_orders ? `${selected.active_orders} activo(s)` : 'Sin asignar'],
+                    [d.profileVehicle || 'Vehículo', selected.vehicle || '—'],
+                    [d.profileCapacity || 'Capacidad', selected.capacity || selected.experience_level || '—'],
+                    [d.profileLastActive || 'Último activo', selected.status === 'available' ? 'Conectado' : selected.status === 'busy' ? 'En servicio' : '—'],
+                    [d.profileEligibility || 'Elegibilidad', docStatus(selected) === 'valid' && selected.status !== 'suspended' ? (d.profileAllowed || 'Asignación permitida') : (d.profileRestricted || 'Asignación restringida')],
+                  ].map(([label, value], idx) => (
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--ui-border-light)' }}>
+                      <span style={{ fontSize: 12, color: 'var(--ui-fg-muted)' }}>{label}</span>
+                      <span style={{ fontSize: 13, color: 'var(--ui-fg)', fontWeight: 500 }}>{value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Create / Edit Modal */}
+      {modalOpen && (
+        <div className="admin-modal-overlay open" onClick={() => setModalOpen(false)}>
+          <div className="admin-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 640 }}>
+            <div className="admin-modal-header">
+              <h2 className="admin-modal-title">{editDriver ? 'Editar Conductor' : 'Nuevo Conductor'}</h2>
+              <button className="admin-btn admin-btn-ghost admin-btn-sm" onClick={() => setModalOpen(false)}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>
-            <div style={{ padding: 20 }}>
-              {/* Visual stepper */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 8, marginBottom: 18 }}>
-                {[
-                  d.modalStep1 || '1 Personal',
-                  d.modalStep2 || '2 Emergency',
-                  d.modalStep3 || '3 License',
-                  d.modalStep4 || '4 Vehicle',
-                  d.modalStep5 || '5 Docs',
-                  d.modalStep6 || '6 Review',
-                ].map((stepLabel, idx) => {
-                  const stepNum = idx + 1
-                  return (
-                    <div key={stepNum} style={{
-                      border: `1px solid ${createStep >= stepNum ? 'var(--accent)' : 'var(--border)'}`,
-                      background: createStep >= stepNum ? 'rgba(16,185,129,0.12)' : 'var(--surface)',
-                      color: createStep >= stepNum ? 'var(--accent)' : 'var(--fg-secondary)',
-                      borderRadius: 8, padding: 10, fontSize: 11, fontWeight: 700, textAlign: 'center',
-                    }}>
-                      {stepLabel}
-                    </div>
-                  )
-                })}
-              </div>
-
-              {/* Step navigation */}
-              <p style={{ fontSize: 12, color: 'var(--fg-secondary)', marginBottom: 16 }}>
-                {`Step ${createStep} of 6`}
-              </p>
-
-              {/* Step 1: Personal */}
-              {createStep === 1 && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalName || 'Full name'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalNamePlace || 'e.g. Alejandro Restrepo'} value={formData.name || ''} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>ID / passport</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder="CC 1.037.***" /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalPhone || 'Phone'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalPhonePlace || '+57 300 000 0000'} value={formData.phone || ''} onChange={e => setFormData(p => ({ ...p, phone: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalEmail || 'Email'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalEmailPlace || 'driver@company.com'} value={formData.email || ''} onChange={e => setFormData(p => ({ ...p, email: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalLang || 'Languages'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalLangPlace || 'Spanish, English, Portuguese'} value={formData.languages || ''} onChange={e => setFormData(p => ({ ...p, languages: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalVehicleType || 'Vehicle type'}</label>
-                    <select style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }}
-                      value={formData.category || ''} onChange={e => setFormData(p => ({ ...p, category: e.target.value }))}>
-                      <option value="">{d.modalTypePlace || 'Select type...'}</option>
-                      <option value="vip">{d.modalTypeVip || 'VIP SUV'}</option>
-                      <option value="luxury">{d.modalTypeLuxury || 'Luxury'}</option>
-                      <option value="suv">{d.modalTypeSuv || 'SUV'}</option>
-                      <option value="van">{d.modalTypeVan || 'Van'}</option>
-                      <option value="standard">{d.modalTypeStandard || 'Standard'}</option>
+            <div className="admin-modal-body">
+              <form onSubmit={(e) => { e.preventDefault(); handleSubmit() }}>
+                <div className="admin-field">
+                  <label className="admin-field-label">Nombre completo</label>
+                  <input className="admin-input" value={formData.name || ''} onChange={e => setFormData(p => ({ ...p, name: e.target.value }))} placeholder="Juan Pérez" />
+                </div>
+                <div className="admin-grid-2">
+                  <div className="admin-field">
+                    <label className="admin-field-label">Teléfono</label>
+                    <input className="admin-input" value={formData.phone || ''} onChange={e => setFormData(p => ({ ...p, phone: e.target.value }))} placeholder="+57 300 123 4567" />
+                  </div>
+                  <div className="admin-field">
+                    <label className="admin-field-label">Email</label>
+                    <input className="admin-input" type="email" value={formData.email || ''} onChange={e => setFormData(p => ({ ...p, email: e.target.value }))} placeholder="driver@email.com" />
+                  </div>
+                </div>
+                <div className="admin-grid-2">
+                  <div className="admin-field">
+                    <label className="admin-field-label">Vehículo</label>
+                    <input className="admin-input" value={formData.vehicle || ''} onChange={e => setFormData(p => ({ ...p, vehicle: e.target.value }))} placeholder="Toyota Fortuner" />
+                  </div>
+                  <div className="admin-field">
+                    <label className="admin-field-label">Placa</label>
+                    <input className="admin-input" value={formData.plate || ''} onChange={e => setFormData(p => ({ ...p, plate: e.target.value }))} placeholder="ABC-123" />
+                  </div>
+                </div>
+                <div className="admin-grid-2">
+                  <div className="admin-field">
+                    <label className="admin-field-label">Categoría</label>
+                    <select className="admin-select" value={formData.category || ''} onChange={e => setFormData(p => ({ ...p, category: e.target.value }))}>
+                      <option value="standard">Estándar</option>
+                      <option value="suv">SUV</option>
+                      <option value="van">Van</option>
+                      <option value="luxury">Lujo</option>
                     </select>
                   </div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalLicense || 'License expiration'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} value={formData.license_expiry || ''} onChange={e => setFormData(p => ({ ...p, license_expiry: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalSoat || 'SOAT expiration'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} value={formData.soat_expiry || ''} onChange={e => setFormData(p => ({ ...p, soat_expiry: e.target.value }))} /></div>
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>'Other expirations'</label>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-                      <div><label style={{ display: 'block', fontSize: 10, color: 'var(--fg-secondary)', marginBottom: 4 }}>{d.modalInspection || 'Tech inspection'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} value={formData.tech_inspection_expiry || ''} onChange={e => setFormData(p => ({ ...p, tech_inspection_expiry: e.target.value }))} /></div>
-                      <div><label style={{ display: 'block', fontSize: 10, color: 'var(--fg-secondary)', marginBottom: 4 }}>{d.modalInsurance || 'Insurance'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} value={formData.insurance_expiry || ''} onChange={e => setFormData(p => ({ ...p, insurance_expiry: e.target.value }))} /></div>
-                    </div>
-                  </div>
-                   <div style={{ gridColumn: '1 / -1' }}>
-                     <label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>Document uploads</label>
-                     <div style={{
-                       minHeight: 86, border: '1px dashed #282b38', borderRadius: 8,
-                       display: 'grid', placeItems: 'center', textAlign: 'center',
-                       color: 'var(--fg-secondary)', background: 'var(--bg)', fontSize: 12,
-                     }}>
-                       Drop license, SOAT, technical inspection, insurance, vehicle photos
-                     </div>
-                   </div>
-                   <div style={{ gridColumn: '1 / -1' }}>
-                     <label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>Login Credentials</label>
-                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-                       <div><label style={{ display: 'block', fontSize: 10, color: 'var(--fg-secondary)', marginBottom: 4 }}>Driver Email (Login)</label><input type="email" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder="driver@company.com" value={formData.driver_email || ''} onChange={e => setFormData(p => ({ ...p, driver_email: e.target.value }))} /></div>
-                       <div><label style={{ display: 'block', fontSize: 10, color: 'var(--fg-secondary)', marginBottom: 4 }}>Temporary Password</label><input type="text" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder="Min. 8 characters" value={formData.driver_password || ''} onChange={e => setFormData(p => ({ ...p, driver_password: e.target.value }))} /></div>
-                     </div>
-                   </div>
-                   <div style={{ gridColumn: '1 / -1' }}>
-                     <label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalNotes || 'Operational notes'}</label>
-                     <textarea rows={3} style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none', resize: 'none' }}
-                       placeholder={d.modalNotesPlace || 'VIP handling notes, airport authorization, language preferences...'}
-                      value={formData.notes || ''} onChange={e => setFormData(p => ({ ...p, notes: e.target.value }))} />
-                  </div>
-                </div>
-              )}
-
-              {/* Step 2: Emergency */}
-              {createStep === 2 && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalEmergContact || 'Emergency contact'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalEmergPlace || 'Contact name'} value={formData.emergency_contact || ''} onChange={e => setFormData(p => ({ ...p, emergency_contact: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalEmergPhone || 'Emergency phone'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalEmergPhonePlace || '+57 300 000 0000'} value={formData.emergency_phone || ''} onChange={e => setFormData(p => ({ ...p, emergency_phone: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalExpLevel || 'Experience level'}</label>
-                    <select style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }}
-                      value={formData.experienceLevel || ''} onChange={e => setFormData(p => ({ ...p, experienceLevel: e.target.value }))}>
-                      <option value="">{d.modalExpPlace || 'Select...'}</option>
-                      <option value="Standard">{d.modalExpStd || 'Standard'}</option>
-                      <option value="Senior">{d.modalExpSenior || 'Senior'}</option>
-                      <option value="Lead">{d.modalExpLead || 'Lead'}</option>
+                  <div className="admin-field">
+                    <label className="admin-field-label">Experiencia</label>
+                    <select className="admin-select" value={formData.experienceLevel || ''} onChange={e => setFormData(p => ({ ...p, experienceLevel: e.target.value }))}>
+                      <option value="Standard">Estándar</option>
+                      <option value="Senior">Senior</option>
                     </select>
                   </div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalCity || 'City'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalCityPlace || 'e.g. Medellín'} value={formData.city || ''} onChange={e => setFormData(p => ({ ...p, city: e.target.value }))} /></div>
                 </div>
-              )}
-
-              {/* Step 3: License & docs */}
-              {createStep === 3 && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalLicense || 'License expiry'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} value={formData.license_expiry || ''} onChange={e => setFormData(p => ({ ...p, license_expiry: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalSoat || 'SOAT expiry'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} value={formData.soat_expiry || ''} onChange={e => setFormData(p => ({ ...p, soat_expiry: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalInspection || 'Tech inspection'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} value={formData.tech_inspection_expiry || ''} onChange={e => setFormData(p => ({ ...p, tech_inspection_expiry: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalInsurance || 'Insurance expiry'}</label><input type="date" style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} value={formData.insurance_expiry || ''} onChange={e => setFormData(p => ({ ...p, insurance_expiry: e.target.value }))} /></div>
+                <div className="admin-field">
+                  <label className="admin-field-label">Idiomas</label>
+                  <input className="admin-input" value={formData.languages || ''} onChange={e => setFormData(p => ({ ...p, languages: e.target.value }))} placeholder="Español, Inglés" />
                 </div>
-              )}
-
-              {/* Step 4: Vehicle */}
-              {createStep === 4 && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalVehicle || 'Vehicle'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalVehiclePlace || 'e.g. Mercedes V-Class'} value={formData.vehicle || ''} onChange={e => setFormData(p => ({ ...p, vehicle: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalPlate || 'Plate'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalPlatePlace || 'e.g. ABC-123'} value={formData.plate || ''} onChange={e => setFormData(p => ({ ...p, plate: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalVehicleType || 'Vehicle type'}</label>
-                    <select style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }}
-                      value={formData.category || ''} onChange={e => setFormData(p => ({ ...p, category: e.target.value }))}>
-                      <option value="">{d.modalTypePlace || 'Select type...'}</option>
-                      <option value="standard">{d.modalTypeStandard || 'Standard'}</option>
-                      <option value="suv">{d.modalTypeSuv || 'SUV'}</option>
-                      <option value="vip">{d.modalTypeVip || 'VIP SUV'}</option>
-                      <option value="luxury">{d.modalTypeLuxury || 'Luxury'}</option>
-                      <option value="van">{d.modalTypeVan || 'Van'}</option>
-                    </select>
-                  </div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalYear || 'Vehicle year'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalYearPlace || 'e.g. 2024'} value={formData.year || ''} onChange={e => setFormData(p => ({ ...p, year: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalCapacity || 'Capacity'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalCapacityPlace || 'e.g. 4 pax'} value={formData.capacity || ''} onChange={e => setFormData(p => ({ ...p, capacity: e.target.value }))} /></div>
-                  <div><label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalPhotoUrl || 'Photo URL'}</label><input style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none' }} placeholder={d.modalPhotoPlace || 'https://example.com/photo.jpg'} value={formData.photo_url || ''} onChange={e => setFormData(p => ({ ...p, photo_url: e.target.value }))} /></div>
+                <div className="admin-field">
+                  <label className="admin-field-label">Notas</label>
+                  <textarea className="admin-input" rows={2} value={formData.notes || ''} onChange={e => setFormData(p => ({ ...p, notes: e.target.value }))} placeholder="Notas internas..." />
                 </div>
-              )}
-
-              {/* Step 5: Docs & Notes */}
-              {createStep === 5 && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>Document uploads</label>
-                    <div style={{
-                      minHeight: 86, border: '1px dashed #282b38', borderRadius: 8,
-                      display: 'grid', placeItems: 'center', textAlign: 'center',
-                      color: 'var(--fg-secondary)', background: 'var(--bg)', fontSize: 12,
-                    }}>
-                      Drop license, SOAT, technical inspection, insurance, vehicle photos
-                    </div>
-                  </div>
-                  <div style={{ gridColumn: '1 / -1' }}>
-                    <label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{d.modalNotes || 'Operational notes'}</label>
-                    <textarea rows={3} style={{ width: '100%', padding: '10px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--fg)', outline: 'none', resize: 'none' }}
-                      placeholder={d.modalNotesPlace || 'VIP handling notes...'}
-                      value={formData.notes || ''} onChange={e => setFormData(p => ({ ...p, notes: e.target.value }))} />
-                  </div>
+                <div className="admin-modal-footer">
+                  <button type="button" className="admin-btn admin-btn-secondary admin-btn-sm" onClick={() => setModalOpen(false)}>Cancelar</button>
+                  <button type="submit" className="admin-btn admin-btn-primary admin-btn-sm">{editDriver ? 'Guardar Cambios' : 'Crear Conductor'}</button>
                 </div>
-              )}
-
-              {/* Step 6: Review */}
-              {createStep === 6 && (
-                <div style={{
-                  padding: 16, background: 'var(--surface)', border: '1px solid var(--border)',
-                  borderRadius: 8, marginTop: 4, fontSize: 13, color: 'var(--fg-muted)', lineHeight: 1.65,
-                }}>
-                  'Review all driver information before saving. All actions will be logged.'
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginTop: 16 }}>
-                    {[
-                      ['Name', formData.name], ['Phone', formData.phone], ['Email', formData.email],
-                      ['Languages', formData.languages], ['Vehicle', formData.vehicle], ['Plate', formData.plate],
-                      ['Type', formData.category], ['City', formData.city],
-                    ].map(([label, value]) => (
-                      <div key={label}>
-                        <label style={{ display: 'block', fontSize: 10, color: 'var(--fg-secondary)', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: 3 }}>{label}</label>
-                        <div style={{ fontSize: 13, color: 'var(--fg)' }}>{value || '—'}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Navigation buttons */}
-              <div style={{
-                display: 'flex', justifyContent: 'space-between', gap: 10,
-                paddingTop: 16, marginTop: 16, borderTop: '1px solid #282b38',
-              }}>
-                {createStep > 1 ? (
-                  <button
-                    style={{
-                      padding: '10px 16px', border: '1px solid var(--border)', borderRadius: 8,
-                      fontSize: 13, color: 'var(--fg-muted)', background: 'transparent', cursor: 'pointer',
-                    }}
-                    className="hover:bg-[#202330] transition-all"
-                    onClick={() => setCreateStep(s => s - 1)}
-                  >
-                    'Back'
-                  </button>
-                ) : <div />}
-                <div style={{ display: 'flex', gap: 10 }}>
-                  {createStep < 6 ? (
-                    <button
-                      style={{
-                        padding: '10px 20px', background: 'var(--accent)', color: '#fff',
-                        border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer',
-                      }}
-                      className="hover:bg-[#059669] transition-all"
-                      onClick={() => setCreateStep(s => s + 1)}
-                    >
-                      'Next'
-                    </button>
-                  ) : (
-                    <>
-                      <button
-                        style={{
-                          padding: '10px 16px', border: '1px solid var(--border)', borderRadius: 8,
-                          fontSize: 13, color: 'var(--fg-muted)', background: 'transparent', cursor: 'pointer',
-                        }}
-                        className="hover:bg-[#202330] transition-all"
-                        onClick={() => setModalOpen(false)}
-                      >
-                        {d.modalCancel || 'Cancel'}
-                      </button>
-                      <button
-                        style={{
-                          padding: '10px 16px', border: '1px solid var(--border)', borderRadius: 8,
-                          fontSize: 13, color: 'var(--fg-muted)', background: 'transparent', cursor: 'pointer',
-                        }}
-                        className="hover:bg-[#202330] transition-all"
-                        onClick={() => showToast(d.toastDraft || 'Draft saved')}
-                      >
-                        {d.modalDraft || 'Save draft'}
-                      </button>
-                      <button
-                        style={{
-                          padding: '10px 20px', background: 'var(--accent)', color: '#fff',
-                          border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer',
-                        }}
-                        className="hover:bg-[#059669] transition-all"
-                        onClick={handleSubmit}
-                      >
-                        {editDriver ? (d.modalUpdate || 'Update Driver') : (d.modalSubmit || 'Submit for review')}
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
+              </form>
             </div>
           </div>
         </div>
       )}
-
     </div>
   )
 }
-
-

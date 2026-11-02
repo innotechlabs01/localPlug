@@ -127,142 +127,130 @@ export default function HotelsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-fg-muted">Cargando hoteles...</div>
+      <div className="admin-page">
+        <div className="admin-empty" style={{ padding: '48px 24px' }}>
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.3"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          <h3>Cargando hoteles...</h3>
+        </div>
       </div>
     )
   }
 
   return (
-    <div style={{ padding: 0 }}>
-      {/* Header */}
-      <div className="drivers-hero">
+    <div className="admin-page space-y-6">
+      <section className="admin-section-header">
         <div>
-          <h1 className="text-[24px] font-bold tracking-tighter text-fg">Hoteles</h1>
-          <p className="mt-2 text-[13px] text-fg-muted max-w-[760px] leading-[1.55]">
-            Gestiona los hoteles aliados, habitaciones y comisiones de la plataforma.
-          </p>
+          <h1 className="admin-page-title">Hoteles</h1>
+          <p className="admin-section-desc">Gestiona los hoteles aliados, habitaciones y comisiones de la plataforma.</p>
         </div>
-        <div className="drivers-toolbar flex items-center gap-2.5 flex-wrap">
-          <button
-            className="px-4 py-2 bg-accent text-white text-[13px] font-medium rounded-md hover:bg-[#059669] transition-all"
-            onClick={openCreate}
-          >
-            + Crear Hotel
-          </button>
-        </div>
-      </div>
+        <button onClick={openCreate} className="admin-btn admin-btn-primary admin-btn-sm">
+          + Crear Hotel
+        </button>
+      </section>
 
-      {/* KPIs */}
-      <div className="drivers-kpis grid-6">
-        {[
-          ['Total Hoteles', String(hotels.length), 'Todos los hoteles', true],
-          ['Activos', String(hotels.filter(h => h.status === 'active').length), 'Aceptando reservas', true],
-          ['Total Habitaciones', String(hotels.reduce((s, h) => s + (h.room_count || 0), 0)), 'Todas las propiedades', true],
-          ['Comisión Promedio', `${hotels.length ? Math.round(hotels.reduce((s, h) => s + (Number(h.commission_rate) || 0) * 100, 0) / hotels.length) : 0}%`, 'Tasa de plataforma', false],
-        ].map(([label, value, sub, positive], idx) => (
-          <div key={idx} className="stat-card">
-            <div className="stat-label">{label}</div>
-            <div className="stat-value">{value}</div>
-            <div className={`stat-change ${positive ? 'up' : 'down'}`}>{sub}</div>
-          </div>
-        ))}
-      </div>
+      <ReservationKPIsPlaceholder
+        items={[
+          ['Total Hoteles', String(hotels.length), 'Todos los hoteles'],
+          ['Activos', String(hotels.filter(h => h.status === 'active').length), 'Aceptando reservas'],
+          ['Total Habitaciones', String(hotels.reduce((s, h) => s + (h.room_count || 0), 0)), 'Todas las propiedades'],
+          ['Comisión Promedio', `${hotels.length ? Math.round(hotels.reduce((s, h) => s + (Number(h.commission_rate) || 0) * 100, 0) / hotels.length) : 0}%`, 'Tasa de plataforma'],
+        ]}
+      />
 
-      {/* Table */}
-      <div className="panel">
-        <div className="panel-header">
-          <div className="panel-title">
-            <span>Directorio de Hoteles</span>
-            <span className="count">{hotels.length} hoteles</span>
-          </div>
+      <section className="admin-card admin-mt-4">
+        <div className="admin-card-header admin-flex-between">
+          <span className="admin-card-title">Directorio de Hoteles</span>
+          <span className="admin-badge neutral">{hotels.length} hoteles</span>
         </div>
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Hotel</th>
-                <th>Dirección</th>
-                <th>Contacto</th>
-                <th>Comisión</th>
-                <th>Habitaciones</th>
-                <th>Estado</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {hotels.length === 0 ? (
+        <div className="admin-card-body">
+          <div className="admin-table-wrap">
+            <table className="admin-table">
+              <thead>
                 <tr>
-                  <td colSpan={7} className="text-fg-muted text-center py-8">
-                    No hay hoteles. Haz clic en &ldquo;+ Crear Hotel&rdquo; para agregar el primero.
-                  </td>
+                  <th>Hotel</th>
+                  <th>Dirección</th>
+                  <th>Contacto</th>
+                  <th>Comisión</th>
+                  <th>Habitaciones</th>
+                  <th>Estado</th>
+                  <th style={{ textAlign: 'center' }}>Acciones</th>
                 </tr>
-              ) : hotels.map(h => (
-                <tr key={h.id}>
-                  <td>
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-8 h-8 rounded flex items-center justify-center text-[13px] font-bold text-white"
-                        style={{ background: 'linear-gradient(135deg, var(--accent), #059669)' }}
-                      >
-                        {h.name.charAt(0)}
+              </thead>
+              <tbody>
+                {hotels.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} style={{ textAlign: 'center', padding: 32, color: 'var(--ui-fg-muted)' }}>
+                      No hay hoteles. Haz clic en «Crear Hotel» para agregar el primero.
+                    </td>
+                  </tr>
+                ) : hotels.map(h => (
+                  <tr key={h.id}>
+                    <td>
+                      <div className="flex items-center gap-8">
+                        <div className="admin-guest-avatar" style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, var(--ui-accent), var(--ui-bg))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, fontSize: 13 }}>
+                          {h.name.charAt(0)}
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 600, color: 'var(--ui-fg)' }}>{h.name}</div>
+                          <div style={{ fontSize: 11, color: 'var(--ui-fg-muted)' }}>{h.slug}</div>
+                        </div>
                       </div>
-                      <div>
-                        <div className="text-[13px] font-medium text-fg">{h.name}</div>
-                        <div className="text-[11px] text-fg-muted">{h.slug}</div>
+                    </td>
+                    <td style={{ color: 'var(--ui-fg-muted)', fontSize: 13 }}>{h.address || '—'}</td>
+                    <td>
+                      <div style={{ fontSize: 13, color: 'var(--ui-fg)' }}>{h.email || '—'}</div>
+                      <div style={{ fontSize: 11, color: 'var(--ui-fg-muted)' }}>{h.phone || ''}</div>
+                    </td>
+                    <td style={{ fontSize: 13, color: 'var(--ui-fg)' }}>{Math.round((Number(h.commission_rate) || 0) * 100)}%</td>
+                    <td style={{ fontSize: 13, color: 'var(--ui-fg)' }}>{h.room_count || 0}</td>
+                    <td>
+                      <span className={`admin-badge ${h.status === 'active' ? 'accent' : 'neutral'}`}>
+                        {h.status === 'active' ? 'Activo' : 'Inactivo'}
+                      </span>
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <div className="admin-flex-between" style={{ justifyContent: 'center' }}>
+                        <button
+                          onClick={() => openEdit(h)}
+                          className="admin-btn admin-btn-ghost admin-btn-sm"
+                          title="Editar"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                        </button>
+                        <button
+                          onClick={() => setDeleteConfirm(h.id)}
+                          className="admin-btn admin-btn-ghost admin-btn-sm"
+                          title="Eliminar"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                        </button>
                       </div>
-                    </div>
-                  </td>
-                  <td className="text-[13px] text-fg-muted">{h.address || '—'}</td>
-                  <td>
-                    <div className="text-[13px] text-fg">{h.email || '—'}</div>
-                    <div className="text-[11px] text-fg-muted">{h.phone || ''}</div>
-                  </td>
-                  <td className="text-[13px] text-fg">{Math.round((Number(h.commission_rate) || 0) * 100)}%</td>
-                  <td className="text-[13px] text-fg">{h.room_count || 0}</td>
-                  <td>
-                    <span className={h.status === 'active' ? 'badge badge-accent' : 'badge'}>
-                      {h.status === 'active' ? 'Activo' : 'Inactivo'}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="action-btn-group">
-                      <button className="action-btn view" onClick={() => openEdit(h)} title="Editar">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
-                      </button>
-                      <button className="action-btn more" onClick={() => setDeleteConfirm(h.id)} title="Eliminar">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      </section>
 
       {/* Delete confirmation */}
       {deleteConfirm !== null && (
-        <div className="modal-overlay open" onClick={() => setDeleteConfirm(null)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2 className="modal-title">Eliminar Hotel</h2>
-              <button className="icon-btn" onClick={() => setDeleteConfirm(null)}>&times;</button>
+        <div className="admin-modal-overlay open" onClick={() => setDeleteConfirm(null)}>
+          <div className="admin-modal" onClick={e => e.stopPropagation()}>
+            <div className="admin-modal-header">
+              <h2 className="admin-modal-title">Eliminar Hotel</h2>
+              <button className="admin-btn admin-btn-ghost admin-btn-sm" onClick={() => setDeleteConfirm(null)}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
             </div>
-            <div className="modal-body">
-              <p className="text-[13px] text-fg-muted">
+            <div className="admin-modal-body">
+              <p style={{ fontSize: 13, color: 'var(--ui-fg-muted)' }}>
                 ¿Estás seguro de eliminar este hotel y todas sus habitaciones? Esta acción no se puede deshacer.
               </p>
-              <div className="flex justify-end gap-2 mt-4">
-                <button className="btn btn-secondary" onClick={() => setDeleteConfirm(null)}>Cancelar</button>
-                <button
-                  className="btn btn-primary"
-                  style={{ background: '#ef4444' }}
-                  onClick={() => deleteHotel(deleteConfirm)}
-                >
-                  Eliminar
-                </button>
+              <div className="admin-modal-footer">
+                <button className="admin-btn admin-btn-secondary admin-btn-sm" onClick={() => setDeleteConfirm(null)}>Cancelar</button>
+                <button className="admin-btn admin-btn-danger admin-btn-sm" onClick={() => deleteHotel(deleteConfirm)}>Eliminar</button>
               </div>
             </div>
           </div>
@@ -271,79 +259,91 @@ export default function HotelsPage() {
 
       {/* Create / Edit Modal */}
       {modalOpen && (
-        <div className="modal-overlay open" onClick={() => setModalOpen(false)}>
-          <div className="modal max-w-[600px]" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2 className="modal-title">{editHotel ? 'Editar Hotel' : 'Nuevo Hotel'}</h2>
-              <button className="icon-btn" onClick={() => setModalOpen(false)}>&times;</button>
+        <div className="admin-modal-overlay open" onClick={() => setModalOpen(false)}>
+          <div className="admin-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 640 }}>
+            <div className="admin-modal-header">
+              <h2 className="admin-modal-title">{editHotel ? 'Editar Hotel' : 'Nuevo Hotel'}</h2>
+              <button className="admin-btn admin-btn-ghost admin-btn-sm" onClick={() => setModalOpen(false)}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
             </div>
-            <div className="modal-body">
+            <div className="admin-modal-body">
               {createdCredentials ? (
-                <div className="text-center py-4">
-                  <h3 className="text-[16px] font-bold text-fg mb-2">¡Hotel Creado!</h3>
-                  <p className="text-[13px] text-fg-muted mb-4">Comparte estas credenciales con el gerente:</p>
-                  <div className="p-4 rounded-lg mb-4" style={{ background: '#0d0d14', border: '1px solid #2a2a3e' }}>
-                    <div className="text-[12px] text-fg-muted mb-1">Email</div>
-                    <div className="text-[14px] font-mono font-medium text-white mb-3">{createdCredentials.email}</div>
-                    <div className="text-[12px] text-fg-muted mb-1">Contraseña Temporal</div>
-                    <div className="text-[14px] font-mono font-medium text-white">{createdCredentials.password}</div>
-                  </div>
-                  <p className="text-[11px] text-fg-muted mb-4">
-                    El gerente puede cambiar su contraseña después del primer inicio de sesión.
-                  </p>
-                  <div className="flex justify-center gap-2">
-                    <button
-                      className="btn btn-primary"
-                      onClick={() => {
-                        navigator.clipboard.writeText(`Email: ${createdCredentials.email}\nContraseña: ${createdCredentials.password}`)
-                        showToast('Credenciales copiadas')
-                      }}
-                    >
-                      Copiar Credenciales
-                    </button>
-                    <button className="btn btn-secondary" onClick={() => setModalOpen(false)}>Listo</button>
+                <div className="admin-empty">
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.124"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                  <h3>¡Hotel Creado!</h3>
+                  <p className="admin-section-desc" style={{ maxWidth: 'none' }}>Comparte estas credenciales con el gerente:</p>
+                  <div className="admin-card" style={{ padding: 16, background: 'var(--ui-bg-secondary)', border: '1px solid var(--ui-border-light)' }}>
+                    <div className="admin-field">
+                      <label className="admin-field-label">Email</label>
+                      <div style={{ fontFamily: 'var(--ui-font-mono)', fontSize: 14, fontWeight: 600, color: 'var(--ui-fg)' }}>{createdCredentials.email}</div>
+                    </div>
+                    <div className="admin-field">
+                      <label className="admin-field-label">Contraseña Temporal</label>
+                      <div style={{ fontFamily: 'var(--ui-font-mono)', fontSize: 14, fontWeight: 600, color: 'var(--ui-fg)' }}>{createdCredentials.password}</div>
+                    </div>
+                    <p style={{ fontSize: 11, color: 'var(--ui-fg-muted)', marginTop: 12 }}>
+                      El gerente puede cambiar su contraseña después del primer inicio de sesión.
+                    </p>
+                    <div className="admin-flex-between" style={{ marginTop: 16 }}>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(`Email: ${createdCredentials.email}\nContraseña: ${createdCredentials.password}`)
+                          showToast('Credenciales copiadas')
+                        }}
+                        className="admin-btn admin-btn-secondary admin-btn-sm"
+                      >
+                        Copiar Credenciales
+                      </button>
+                      <button className="admin-btn admin-btn-primary admin-btn-sm" onClick={() => setModalOpen(false)}>Listo</button>
+                    </div>
                   </div>
                 </div>
               ) : (
                 <>
-                  <ModalField label="Nombre del Hotel *">
+                  <div className="admin-field">
+                    <label className="admin-field-label">Nombre del Hotel *</label>
                     <input
-                      className="w-full p-2 rounded bg-[#0d0d14] border border-[#2a2a3e] text-white text-[13px]"
+                      className="admin-input"
                       value={form.name || ''}
                       onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
                       placeholder="ej. Hotel Estelar"
                     />
-                  </ModalField>
-                  <ModalField label="Dirección">
+                  </div>
+                  <div className="admin-field">
+                    <label className="admin-field-label">Dirección</label>
                     <input
-                      className="w-full p-2 rounded bg-[#0d0d14] border border-[#2a2a3e] text-white text-[13px]"
+                      className="admin-input"
                       value={form.address || ''}
                       onChange={e => setForm(p => ({ ...p, address: e.target.value }))}
                       placeholder="Calle, Ciudad, País"
                     />
-                  </ModalField>
-                  <div className="grid grid-cols-2 gap-3">
-                    <ModalField label="Email">
+                  </div>
+                  <div className="admin-grid-2">
+                    <div className="admin-field">
+                      <label className="admin-field-label">Email</label>
                       <input
-                        className="w-full p-2 rounded bg-[#0d0d14] border border-[#2a2a3e] text-white text-[13px]"
+                        className="admin-input"
                         type="email"
                         value={form.email || ''}
                         onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
                         placeholder="info@hotel.com"
                       />
-                    </ModalField>
-                    <ModalField label="Teléfono">
+                    </div>
+                    <div className="admin-field">
+                      <label className="admin-field-label">Teléfono</label>
                       <input
-                        className="w-full p-2 rounded bg-[#0d0d14] border border-[#2a2a3e] text-white text-[13px]"
+                        className="admin-input"
                         value={form.phone || ''}
                         onChange={e => setForm(p => ({ ...p, phone: e.target.value }))}
                         placeholder="+57 300 123 4567"
                       />
-                    </ModalField>
+                    </div>
                   </div>
-                  <ModalField label="Comisión (%)">
+                  <div className="admin-field">
+                    <label className="admin-field-label">Comisión (%)</label>
                     <input
-                      className="w-full p-2 rounded bg-[#0d0d14] border border-[#2a2a3e] text-white text-[13px]"
+                      className="admin-input"
                       type="number"
                       min="0"
                       max="100"
@@ -351,52 +351,54 @@ export default function HotelsPage() {
                       onChange={e => setForm(p => ({ ...p, commission_rate: e.target.value }))}
                       placeholder="10"
                     />
-                  </ModalField>
+                  </div>
 
-                  {/* Manager section - only when creating */}
                   {!editHotel && (
-                    <div className="mt-4 pt-4" style={{ borderTop: '1px solid #2a2a3e' }}>
-                      <div className="text-[13px] font-semibold text-white mb-3">Cuenta del Gerente</div>
-                      <ModalField label="Nombre completo *">
+                    <div className="admin-mt-4" style={{ paddingTop: 16, borderTop: '1px solid var(--ui-border-light)' }}>
+                      <div className="admin-section-title admin-section-desc" style={{ fontSize: 13, marginBottom: 12 }}>Cuenta del Gerente</div>
+                      <div className="admin-field">
+                        <label className="admin-field-label">Nombre completo *</label>
                         <input
-                          className="w-full p-2 rounded bg-[#0d0d14] border border-[#2a2a3e] text-white text-[13px]"
+                          className="admin-input"
                           value={form.manager_name || ''}
                           onChange={e => setForm(p => ({ ...p, manager_name: e.target.value }))}
                           placeholder="ej. Juan Pérez"
                         />
-                      </ModalField>
-                      <ModalField label="Email (Login) *">
+                      </div>
+                      <div className="admin-field">
+                        <label className="admin-field-label">Email (Login) *</label>
                         <input
-                          className="w-full p-2 rounded bg-[#0d0d14] border border-[#2a2a3e] text-white text-[13px]"
+                          className="admin-input"
                           type="email"
                           value={form.manager_email || ''}
                           onChange={e => setForm(p => ({ ...p, manager_email: e.target.value }))}
                           placeholder="gerente@hotel.com"
                         />
-                      </ModalField>
-                      <ModalField label="Contraseña Temporal *">
-                        <div className="flex gap-2">
+                      </div>
+                      <div className="admin-field">
+                        <label className="admin-field-label">Contraseña Temporal *</label>
+                        <div style={{ display: 'flex', gap: 8 }}>
                           <input
-                            className="flex-1 p-2 rounded bg-[#0d0d14] border border-[#2a2a3e] text-white text-[13px] font-mono"
+                            className="admin-input flex-1 font-mono"
                             value={form.manager_password || ''}
                             onChange={e => setForm(p => ({ ...p, manager_password: e.target.value }))}
                             placeholder="Mín. 8 caracteres"
                           />
                           <button
                             type="button"
-                            className="px-3 py-2 rounded bg-[#2a2a3e] text-white text-[12px] font-medium hover:bg-[#3a3a4e] transition-colors whitespace-nowrap"
+                            className="admin-btn admin-btn-secondary admin-btn-sm"
                             onClick={() => setForm(p => ({ ...p, manager_password: generatePassword() }))}
                           >
                             Regenerar
                           </button>
                         </div>
-                      </ModalField>
+                      </div>
                     </div>
                   )}
 
-                  <div className="flex justify-end gap-2 mt-4 pt-4" style={{ borderTop: '1px solid #2a2a3e' }}>
-                    <button className="btn btn-secondary" onClick={() => setModalOpen(false)}>Cancelar</button>
-                    <button className="btn btn-primary" onClick={save}>
+                  <div className="admin-modal-footer" style={{ marginTop: 20 }}>
+                    <button className="admin-btn admin-btn-secondary admin-btn-sm" onClick={() => setModalOpen(false)}>Cancelar</button>
+                    <button className="admin-btn admin-btn-primary admin-btn-sm" onClick={save}>
                       {editHotel ? 'Guardar Cambios' : 'Crear Hotel'}
                     </button>
                   </div>
@@ -410,11 +412,16 @@ export default function HotelsPage() {
   )
 }
 
-function ModalField({ label, children }: { label: string; children: React.ReactNode }) {
+function ReservationKPIsPlaceholder({ items }: { items: [string, string, string][] }) {
   return (
-    <div className="mb-3">
-      <label className="block text-[12px] font-medium text-fg-muted mb-1">{label}</label>
-      {children}
+    <div className="admin-grid-4 admin-mt-4">
+      {items.map(([label, value, sub], idx) => (
+        <div key={idx} className="admin-kpi-card">
+          <div className="admin-kpi-label">{label}</div>
+          <div className="admin-kpi-value">{value}</div>
+          <div className="admin-kpi-sub neutral">{sub}</div>
+        </div>
+      ))}
     </div>
   )
 }

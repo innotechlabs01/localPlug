@@ -12,13 +12,21 @@ export type ModulePermissions = Record<string, {
   can_delete: boolean
 }>
 
+function isAdminEmail(email: string): boolean {
+  const adminEmails = (process.env.ADMIN_EMAILS || '')
+    .split(',')
+    .map(e => e.trim().toLowerCase())
+    .filter(Boolean)
+  return adminEmails.includes(email.toLowerCase())
+}
+
 export async function getUserPermissions(clerkId: string): Promise<ModulePermissions | null> {
   await ensureSchema()
 
   const db = getDb()
 
   let user = await db.execute({
-    sql: `SELECT u.id, u.role_id, r.name as role_name
+    sql: `SELECT u.id, u.role_id, r.name as role_name, u.email
           FROM users u LEFT JOIN roles r ON u.role_id = r.id
           WHERE u.clerk_id = ? AND u.status = 'active'`,
     args: [clerkId],
@@ -39,10 +47,12 @@ export async function getUserPermissions(clerkId: string): Promise<ModulePermiss
       email = clerkUser.primaryEmailAddress?.emailAddress || ''
     } catch { /* clerk fetch may fail */ }
 
+    const roleId = isAdminEmail(email) ? 1 : viewerRoleId
+
     await db.execute({
       sql: `INSERT OR IGNORE INTO users (clerk_id, name, email, password_hash, role_id, status, created_at, updated_at)
             VALUES (?, ?, ?, '', ?, 'active', datetime('now'), datetime('now'))`,
-      args: [clerkId, name, email, viewerRoleId],
+      args: [clerkId, name, email, roleId],
     })
 
     const newUser = await db.execute({
@@ -52,11 +62,11 @@ export async function getUserPermissions(clerkId: string): Promise<ModulePermiss
     if (newUser.rows.length > 0) {
       await db.execute({
         sql: 'INSERT OR IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)',
-        args: [newUser.rows[0].id as number, viewerRoleId],
+        args: [newUser.rows[0].id as number, roleId],
       })
     }
 
-    console.log(`[Permissions] Auto-registered user ${clerkId} (${name}) as viewer`)
+    console.log(`[Permissions] Auto-registered user ${clerkId} (${name}) as ${isAdminEmail(email) ? 'admin' : 'viewer'}`)
 
     // Also set Clerk private_metadata so role is visible in Clerk Dashboard
     const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY || ''
@@ -64,13 +74,13 @@ export async function getUserPermissions(clerkId: string): Promise<ModulePermiss
       try {
         const client = await clerkClient()
         await client.users.updateUserMetadata(clerkId, {
-          privateMetadata: { role: 'viewer' },
+          privateMetadata: { role: isAdminEmail(email) ? 'admin' : 'viewer' },
         })
       } catch { /* non-critical */ }
     }
 
     user = await db.execute({
-      sql: `SELECT u.id, u.role_id, r.name as role_name
+      sql: `SELECT u.id, u.role_id, r.name as role_name, u.email
             FROM users u LEFT JOIN roles r ON u.role_id = r.id
             WHERE u.clerk_id = ? AND u.status = 'active'`,
       args: [clerkId],
@@ -79,9 +89,33 @@ export async function getUserPermissions(clerkId: string): Promise<ModulePermiss
     if (!user.rows.length) return null
   }
 
-  const roleName = user.rows[0].role_name as string
+  const userRow = user.rows[0] as any
+  const roleName = userRow.role_name as string
+  const currentRoleId = userRow.role_id as number
+  const userEmail = userRow.email as string
 
-  if (roleName === 'admin') {
+  // Promote to admin if email matches ADMIN_EMAILS and not already admin
+  const adminRole = await db.execute({ sql: "SELECT id FROM roles WHERE name = 'admin' LIMIT 1", args: [] })
+  const adminRoleId = adminRole.rows[0]?.id || 1
+
+  if (isAdminEmail(userEmail) && currentRoleId !== adminRoleId) {
+    await db.execute({
+      sql: `UPDATE users SET role_id = ?, updated_at = datetime('now') WHERE clerk_id = ?`,
+      args: [adminRoleId, clerkId],
+    })
+    const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY || ''
+    if (CLERK_SECRET_KEY) {
+      try {
+        const client = await clerkClient()
+        await client.users.updateUserMetadata(clerkId, {
+          privateMetadata: { role: 'admin' },
+        })
+      } catch { /* non-critical */ }
+    }
+    console.log(`[Permissions] Promoted user to ADMIN: ${userEmail}`)
+  }
+
+  if (roleName === 'admin' || isAdminEmail(userEmail)) {
     const allModules = await db.execute(
       'SELECT slug FROM modules ORDER BY sort_order'
     )

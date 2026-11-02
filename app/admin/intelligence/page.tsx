@@ -172,10 +172,10 @@ function AnalyticsInner() {
           </div>
 
           {/* Total Bookings */}
-          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[10px] p-4 relative overflow-hidden hover:border-[#3b82f6] hover:shadow-[0_0_0_1px_rgba(59,130,246,0.3)] transition-all">
-            <div className="absolute top-0 left-0 right-0 h-[3px] bg-[#3b82f6]" />
+          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-[10px] p-4 relative overflow-hidden hover:border-[var(--ui-info)] hover:shadow-[0_0_0_1px_rgba(59,130,246,0.3)] transition-all">
+            <div className="absolute top-0 left-0 right-0 h-[3px] bg-[var(--ui-info)]" />
             <div className="flex items-start justify-between mb-2.5">
-              <div className="w-[38px] h-[38px] rounded-[6px] bg-[rgba(59,130,246,0.12)] flex items-center justify-center text-[#3b82f6]">
+              <div className="w-[38px] h-[38px] rounded-[6px] bg-[var(--ui-info-soft)] flex items-center justify-center text-[var(--ui-info)]">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <rect x="2" y="3" width="20" height="14" rx="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" />
                 </svg>
@@ -291,13 +291,13 @@ function AnalyticsInner() {
               <div className="flex gap-1">
                 <button
                   onClick={() => setChartMode('revenue')}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all ${chartMode === 'revenue' ? 'bg-[rgba(16,185,129,0.12)] text-[var(--accent)]' : 'bg-[#202330] text-[var(--fg-secondary)]'}`}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all ${chartMode === 'revenue' ? 'bg-[rgba(16,185,129,0.12)] text-[var(--accent)]' : 'bg-[var(--ui-surface-hover)] text-[var(--ui-fg-secondary)]'}`}
                 >
                   {d.revenue || 'Revenue'}
                 </button>
                 <button
                   onClick={() => setChartMode('bookings')}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all ${chartMode === 'bookings' ? 'bg-[rgba(16,185,129,0.12)] text-[var(--accent)]' : 'bg-[#202330] text-[var(--fg-secondary)]'}`}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-all ${chartMode === 'bookings' ? 'bg-[rgba(16,185,129,0.12)] text-[var(--accent)]' : 'bg-[var(--ui-surface-hover)] text-[var(--ui-fg-secondary)]'}`}
                 >
                   {d.bookings || 'Bookings'}
                 </button>
@@ -417,7 +417,7 @@ function AnalyticsInner() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="bg-[#111318] border-b border-[var(--border)]">
+                  <tr className="bg-[var(--ui-bg-secondary)] border-b border-[var(--border)]">
                     <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[var(--fg-secondary)] px-4 py-2.5">{d.country || 'Country'}</th>
                     <th className="text-right text-[11px] font-semibold uppercase tracking-[0.6px] text-[var(--fg-secondary)] px-4 py-2.5">{d.tourists || 'Tourists'}</th>
                     <th className="text-right text-[11px] font-semibold uppercase tracking-[0.6px] text-[var(--fg-secondary)] px-4 py-2.5">{d.share || 'Share'}</th>
@@ -431,7 +431,7 @@ function AnalyticsInner() {
                     const trendVal = share > 20 ? Math.floor(share / 5) : share > 10 ? Math.floor(share / 3) : Math.floor(share / 2)
                     const trendColor = trendVal >= 0 ? 'var(--accent)' : 'var(--danger)'
                     return (
-                      <tr key={i} className="border-b border-[var(--border)] hover:bg-[#202330] transition-colors">
+                      <tr key={i} className="border-b border-[var(--border)] hover:bg-[var(--ui-surface-hover)] transition-colors">
                         <td className="px-4 py-2.5 text-[13px] text-[var(--fg)]">{flag} {c.country}</td>
                         <td className="px-4 py-2.5 text-[13px] text-right text-[var(--fg)]">{c.count}</td>
                         <td className="px-4 py-2.5 text-[13px] text-right text-[var(--fg-secondary)]">{c.share}%</td>
@@ -521,7 +521,7 @@ function AnalyticsInner() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="bg-[#111318] border-b border-[var(--border)]">
+                  <tr className="bg-[var(--ui-bg-secondary)] border-b border-[var(--border)]">
                     <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[var(--fg-secondary)] px-4 py-2.5">{d.driverCol || 'Driver'}</th>
                     <th className="text-right text-[11px] font-semibold uppercase tracking-[0.6px] text-[var(--fg-secondary)] px-4 py-2.5">{d.tripsCol || 'Trips'}</th>
                     <th className="text-center text-[11px] font-semibold uppercase tracking-[0.6px] text-[var(--fg-secondary)] px-4 py-2.5">{d.ratingCol || 'Rating'}</th>
@@ -538,7 +538,7 @@ function AnalyticsInner() {
                     const half = drv.rating - stars >= 0.3
                     const starStr = '★'.repeat(stars) + (half ? '½' : '')
                     return (
-                      <tr key={drv.id} className="border-b border-[var(--border)] hover:bg-[#202330] transition-colors">
+                      <tr key={drv.id} className="border-b border-[var(--border)] hover:bg-[var(--ui-surface-hover)] transition-colors">
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2.5">
                             <span

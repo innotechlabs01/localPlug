@@ -249,13 +249,13 @@ export default function StepPayment({
 
       {error && (
         <div className="mb-6 p-4 rounded-[var(--radius-md)] bg-[rgba(248,113,113,0.1)] border border-[rgba(248,113,113,0.2)] flex items-start gap-3" role="alert">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ui-danger)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 mt-0.5">
             <circle cx="12" cy="12" r="10" />
             <line x1="12" y1="8" x2="12" y2="12" />
             <line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
           <div>
-            <p className="text-body-md text-[#f87171] font-medium">{error}</p>
+            <p className="text-body-md text-[var(--ui-danger)] font-medium">{error}</p>
             <button
               type="button"
               onClick={() => { setError(null); setPhase('ready') }}

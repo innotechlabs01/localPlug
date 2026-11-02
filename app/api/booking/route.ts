@@ -8,6 +8,7 @@ import { rateLimitMiddleware } from '@/lib/rate-limit'
 import { emitEvent } from '@/lib/events-outbox'
 import { z } from 'zod'
 import { sendOrQueueWhatsApp } from '@/lib/n8n/client'
+import { sendEmail } from '@/lib/email'
 
 const BookingSchema = z.object({
   id: z.string().max(100).optional(),
@@ -270,13 +271,62 @@ export async function POST(request: Request) {
     console.log('[Booking] Order created:', orderNumber)
 
     // 8. Enviar WhatsApp de confirmación al cliente inmediatamente
+    const lang = (customer.language_code || customer.language || 'es').toLowerCase()
+    const msgEs = `Hola ${customer.name}! Reserva ${orderNumber} creada.\nPaquete: ${packageName}\nLlegada: ${flight.arrivalDate || '-'} ${flight.arrivalTime || ''}\nVuelo: ${flight.flightNumber || '-'}\nDestino: ${dest.address || '-'}\nPrecio: ${packagePrice.toFixed(2)} USD\nRef: ${bookingRef}\nVer: https://www.medellinpremium.com/mis-reservas\nTe contactamos para confirmar pago.`
+    const msgEn = `Hi ${customer.name}! Booking ${orderNumber} created.\nPackage: ${packageName}\nArrival: ${flight.arrivalDate || '-'} ${flight.arrivalTime || ''}\nFlight: ${flight.flightNumber || '-'}\nDestination: ${dest.address || '-'}\nPrice: ${packagePrice.toFixed(2)} USD\nRef: ${bookingRef}\nView: https://www.medellinpremium.com/mis-reservas\nWe'll contact you to confirm payment.`
+
     try {
       if (customer.phone && customer.name) {
         await sendOrQueueWhatsApp({
           number: customer.phone,
-          message: `¡Hola ${customer.name}! ✅ Tu reserva ${orderNumber} ha sido creada con éxito en Medellín Premium. Te contactaremos por WhatsApp para confirmar el pago y los detalles de tu llegada. ¡Gracias por confiar en nosotros!`,
+          message: lang.startsWith('en') ? msgEn : msgEs,
         }).catch((err) => {
           console.error('[Booking] WhatsApp confirmation failed:', err)
+        })
+      }
+
+      // Email de confirmación al usuario (respaldo si WhatsApp falla)
+      if (customer.email) {
+        const subjectEs = `Confirmación de reserva ${orderNumber} - Medellín Premium`
+        const subjectEn = `Booking confirmation ${orderNumber} - Medellín Premium`
+        const htmlEs = `
+          <h2>¡Reserva creada con éxito!</h2>
+          <p>Hola <strong>${customer.name}</strong>,</p>
+          <p>Tu reserva ha sido registrada en Medellín Premium.</p>
+          <ul>
+            <li><strong>Referencia:</strong> ${bookingRef} (${orderNumber})</li>
+            <li><strong>Paquete:</strong> ${packageName}</li>
+            <li><strong>Llegada:</strong> ${flight.arrivalDate || '-'} ${flight.arrivalTime || ''}</li>
+            <li><strong>Vuelo:</strong> ${flight.flightNumber || '-'}</li>
+            <li><strong>Destino:</strong> ${dest.address || '-'}</li>
+            <li><strong>Precio:</strong> ${packagePrice.toFixed(2)} USD</li>
+          </ul>
+          <p>Te contactaremos por WhatsApp para confirmar el pago y los detalles de tu llegada.</p>
+          <p><a href="https://www.medellinpremium.com/mis-reservas">Ver mis reservas</a></p>
+        `
+        const htmlEn = `
+          <h2>Booking created successfully!</h2>
+          <p>Hi <strong>${customer.name}</strong>,</p>
+          <p>Your booking has been registered with Medellín Premium.</p>
+          <ul>
+            <li><strong>Reference:</strong> ${bookingRef} (${orderNumber})</li>
+            <li><strong>Package:</strong> ${packageName}</li>
+            <li><strong>Arrival:</strong> ${flight.arrivalDate || '-'} ${flight.arrivalTime || ''}</li>
+            <li><strong>Flight:</strong> ${flight.flightNumber || '-'}</li>
+            <li><strong>Destination:</strong> ${dest.address || '-'}</li>
+            <li><strong>Price:</strong> ${packagePrice.toFixed(2)} USD</li>
+          </ul>
+          <p>We will contact you via WhatsApp to confirm payment and arrival details.</p>
+          <p><a href="https://www.medellinpremium.com/mis-reservas">View my bookings</a></p>
+        `
+        await sendEmail({
+          to: customer.email,
+          subject: lang.startsWith('en') ? subjectEn : subjectEs,
+          html: lang.startsWith('en') ? htmlEn : htmlEs,
+          text: lang.startsWith('en') ? msgEn : msgEs,
+          bookingReference: bookingRef,
+        }).catch((err) => {
+          console.error('[Booking] Email confirmation failed:', err)
         })
       }
     } catch (err) {
@@ -288,7 +338,13 @@ export async function POST(request: Request) {
       booking_reference: bookingRef,
       order_number: orderNumber,
       customer_name: customer.name || '',
-      package_name: body.package || '',
+      customer_phone: customer.phone || '',
+      package_name: packageName || body.package || '',
+      package_price: packagePrice,
+      arrival_date: flight.arrivalDate || '',
+      arrival_time: flight.arrivalTime || '',
+      flight_number: flight.flightNumber || '',
+      destination_address: dest.address || '',
       status: 'confirmed',
       created_at: new Date().toISOString(),
       clerk_user_id: clerkId,

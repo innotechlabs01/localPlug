@@ -1,26 +1,20 @@
 import { NextResponse } from 'next/server'
-import { getActivePromoEvents } from '@/lib/promo-events'
+import { listEventsSince, getLatestEventId } from '@/lib/events-outbox'
+import { auth } from '@clerk/nextjs/server'
 
 export const dynamic = 'force-dynamic'
 
-/** Public endpoint: currently-visible promo events/banners for the landing site. */
-export async function GET() {
-  try {
-    const [heroEvents, sectionEvents] = await Promise.all([
-      getActivePromoEvents('hero_banner'),
-      getActivePromoEvents('section'),
-    ])
-    return NextResponse.json({
-      events: [...heroEvents, ...sectionEvents],
-      hero_banner: heroEvents[0] ?? null,
-      section: sectionEvents[0] ?? null,
-    }, {
-      headers: {
-        'Cache-Control': 'public, max-age=30, s-maxage=30',
-      },
-    })
-  } catch (err) {
-    console.error('[promo events GET]', err)
-    return NextResponse.json({ events: [], hero_banner: null, section: null })
-  }
+/**
+ * Alias of /api/realtime/events for clients that call /api/events?since=<id>.
+ * Returns outbox events strictly newer than `since`.
+ */
+export async function GET(req: Request) {
+  const { userId } = await auth()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { searchParams } = new URL(req.url)
+  const since = Number(searchParams.get('since') || 0)
+  const events = await listEventsSince(Number.isFinite(since) ? since : 0)
+  const latest = await getLatestEventId()
+  return NextResponse.json({ events, cursor: latest })
 }

@@ -36,6 +36,14 @@ type ClerkEvent = {
   }
 }
 
+function isAdminEmail(email: string): boolean {
+  const adminEmails = (process.env.ADMIN_EMAILS || '')
+    .split(',')
+    .map(e => e.trim().toLowerCase())
+    .filter(Boolean)
+  return adminEmails.includes(email.toLowerCase())
+}
+
 export async function POST(req: Request) {
   try {
     if (!CLERK_WEBHOOK_SECRET) {
@@ -71,59 +79,51 @@ export async function POST(req: Request) {
     const email = email_addresses?.[0]?.email_address || ''
     const name = [first_name, last_name].filter(Boolean).join(' ').trim() || email
 
+    const adminRole = await db.execute({ sql: "SELECT id FROM roles WHERE name = 'admin' LIMIT 1", args: [] })
+    const adminRoleId = adminRole.rows[0]?.id || 1
+    const viewerRole = await db.execute({ sql: "SELECT id FROM roles WHERE name = 'viewer' LIMIT 1", args: [] })
+    const viewerRoleId = viewerRole.rows[0]?.id || 4
+
+    const isAdmin = isAdminEmail(email)
+
     if (evt.type === 'user.created' || evt.type === 'user.updated') {
       const existing = await db.execute({
-        sql: 'SELECT id FROM users WHERE clerk_id = ?',
+        sql: 'SELECT id, role_id FROM users WHERE clerk_id = ?',
         args: [clerkId],
       })
 
       if (existing.rows.length === 0) {
-        // Check if user already has a role in Clerk metadata (e.g. admin-created driver/manager)
-        const incomingRole = (evt.data.private_metadata?.role as string) || (evt.data.public_metadata?.role as string) || ''
+        // New user — assign admin if email matches, otherwise viewer
+        const roleId = isAdmin ? adminRoleId : viewerRoleId
 
-        if (incomingRole && ['admin', 'hotel_manager', 'driver'].includes(incomingRole)) {
-          // User was created by admin API with a specific role — preserve it
-          // Map Clerk role to local DB role
-          const roleMap: Record<string, string> = {
-            admin: 'admin',
-            hotel_manager: 'hotel_manager',
-            driver: 'driver',
-          }
-          const dbRoleName = roleMap[incomingRole] || 'viewer'
-          const roles = await db.execute({ sql: 'SELECT id FROM roles WHERE name = ?', args: [dbRoleName] })
-          const roleId = roles.rows[0]?.id || 4
-
-          await db.execute({
-            sql: `INSERT OR IGNORE INTO users (clerk_id, name, email, password_hash, role_id, status, created_at, updated_at)
-                  VALUES (?, ?, ?, '', ?, 'active', datetime('now'), datetime('now'))`,
-            args: [clerkId, name, email, roleId],
-          })
-
-          console.log(`[Clerk Webhook] Created user as ${incomingRole}`)
-        } else {
-          // Self-registered user — default to viewer
-          const roles = await db.execute("SELECT id FROM roles WHERE name = 'viewer'")
-          const viewerRoleId = roles.rows[0]?.id || 4
-
-          await db.execute({
-            sql: `INSERT OR IGNORE INTO users (clerk_id, name, email, password_hash, role_id, status, created_at, updated_at)
-                  VALUES (?, ?, ?, '', ?, 'active', datetime('now'), datetime('now'))`,
-            args: [clerkId, name, email, viewerRoleId],
-          })
-
-          // Only set viewer role if no role was already set
-          if (!incomingRole) {
-            await setClerkMetadata(clerkId, { role: 'viewer' })
-          }
-
-          console.log(`[Clerk Webhook] Created viewer user`)
-        }
-      } else {
-        // Update existing user info
         await db.execute({
-          sql: `UPDATE users SET name = ?, email = ?, updated_at = datetime('now') WHERE clerk_id = ?`,
-          args: [name, email, clerkId],
+          sql: `INSERT OR IGNORE INTO users (clerk_id, name, email, password_hash, role_id, status, created_at, updated_at)
+                VALUES (?, ?, ?, '', ?, 'active', datetime('now'), datetime('now'))`,
+          args: [clerkId, name, email, roleId],
         })
+
+        // Sync role into Clerk metadata
+        await setClerkMetadata(clerkId, { role: isAdmin ? 'admin' : 'viewer' })
+
+        console.log(`[Clerk Webhook] Created user ${isAdmin ? 'ADMIN' : 'viewer'}: ${email}`)
+      } else {
+        // Existing user — update info and promote to admin if email matches ADMIN_EMAILS
+        const currentRoleId = existing.rows[0].role_id as number
+        const targetRoleId = isAdmin ? adminRoleId : currentRoleId
+
+        if (isAdmin && currentRoleId !== adminRoleId) {
+          await db.execute({
+            sql: `UPDATE users SET name = ?, email = ?, role_id = ?, updated_at = datetime('now') WHERE clerk_id = ?`,
+            args: [name, email, adminRoleId, clerkId],
+          })
+          await setClerkMetadata(clerkId, { role: 'admin' })
+          console.log(`[Clerk Webhook] Promoted user to ADMIN: ${email}`)
+        } else {
+          await db.execute({
+            sql: `UPDATE users SET name = ?, email = ?, updated_at = datetime('now') WHERE clerk_id = ?`,
+            args: [name, email, clerkId],
+          })
+        }
       }
     }
 

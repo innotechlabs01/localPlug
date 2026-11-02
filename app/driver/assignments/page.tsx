@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useEventStream } from '@/lib/use-event-stream'
+import { useToast } from '@/lib/admin/toast-context'
 
 interface Assignment {
   id: number
@@ -26,25 +27,25 @@ interface Assignment {
 }
 
 const STATUS_STYLES: Record<string, { label: string; bg: string; fg: string }> = {
-  pending: { label: 'Pendiente', bg: 'rgba(250,204,21,0.12)', fg: '#facc15' },
-  pending_acceptance: { label: 'Esperando', bg: 'rgba(250,204,21,0.12)', fg: '#facc15' },
-  offered: { label: 'Ofrecida', bg: 'rgba(96,165,250,0.12)', fg: '#60a5fa' },
-  accepted: { label: 'Aceptada', bg: 'rgba(74,222,128,0.12)', fg: '#4ade80' },
-  confirmed_to_client: { label: 'Confirmada', bg: 'rgba(74,222,128,0.12)', fg: '#4ade80' },
-  en_route: { label: 'En camino', bg: 'rgba(96,165,250,0.12)', fg: '#60a5fa' },
-  in_progress: { label: 'Pasajero a bordo', bg: 'rgba(96,165,250,0.18)', fg: '#60a5fa' },
-  completed: { label: 'Completada', bg: 'rgba(100,100,100,0.12)', fg: '#9ca3af' },
-  cancelled: { label: 'Cancelada', bg: 'rgba(248,113,113,0.12)', fg: '#f87171' },
-  declined: { label: 'Rechazada', bg: 'rgba(248,113,113,0.12)', fg: '#f87171' },
-  expired: { label: 'Expirada', bg: 'rgba(248,113,113,0.12)', fg: '#f87171' },
+  pending: { label: 'Pendiente', bg: 'var(--ui-warning-soft)', fg: 'var(--ui-warning)' },
+  pending_acceptance: { label: 'Esperando', bg: 'var(--ui-warning-soft)', fg: 'var(--ui-warning)' },
+  offered: { label: 'Ofrecida', bg: 'var(--ui-info-soft)', fg: 'var(--ui-info)' },
+  accepted: { label: 'Aceptada', bg: 'var(--ui-accent-soft)', fg: 'var(--ui-accent)' },
+  confirmed_to_client: { label: 'Confirmada', bg: 'var(--ui-accent-soft)', fg: 'var(--ui-accent)' },
+  en_route: { label: 'En camino', bg: 'var(--ui-info-soft)', fg: 'var(--ui-info)' },
+  in_progress: { label: 'Pasajero a bordo', bg: 'var(--ui-info-soft)', fg: 'var(--ui-info)' },
+  completed: { label: 'Completada', bg: 'var(--ui-accent-soft)', fg: 'var(--ui-accent)' },
+  cancelled: { label: 'Cancelada', bg: 'var(--ui-danger-soft)', fg: 'var(--ui-danger)' },
+  declined: { label: 'Rechazada', bg: 'var(--ui-danger-soft)', fg: 'var(--ui-danger)' },
+  expired: { label: 'Expirada', bg: 'var(--ui-danger-soft)', fg: 'var(--ui-danger)' },
 }
 
 type Tab = 'pending' | 'active' | 'history'
 
 export default function DriverAssignmentsPage() {
+  const { showToast } = useToast()
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
   const [activeTab, setActiveTab] = useState<Tab>('pending')
   const [actionLoading, setActionLoading] = useState<number | null>(null)
   const [completingId, setCompletingId] = useState<number | null>(null)
@@ -59,15 +60,15 @@ export default function DriverAssignmentsPage() {
       if (res.ok) {
         const data = await res.json()
         setAssignments(data.assignments || [])
-        setError(false)
       } else {
-        setError(true)
+        showToast('No se pudieron cargar las asignaciones')
       }
     } catch {
-      setError(true)
+      showToast('Error de red cargando asignaciones')
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
-  }, [])
+  }, [showToast])
 
   useEffect(() => {
     fetchAssignments()
@@ -75,43 +76,37 @@ export default function DriverAssignmentsPage() {
     return () => clearInterval(interval)
   }, [fetchAssignments])
 
-  // Realtime push — new assignment or accept/decline/trip change refreshes immediately.
   useEventStream({
     'driver.assignment_offered': () => { fetchAssignments() },
-    'assignments.accepted': () => { fetchAssignments() },
-    'assignments.declined': () => { fetchAssignments() },
+    'driver.assignment_accepted': () => { fetchAssignments() },
+    'driver.assignment_declined': () => { fetchAssignments() },
     'driver.en_route': () => { fetchAssignments() },
     'trip.pickedup': () => { fetchAssignments() },
     'driver.trip_completed': () => { fetchAssignments() },
+    'driver.trip_cancelled': () => { fetchAssignments() },
   }, { pollMs: 8000 })
 
-  const handleAction = async (assignmentId: number, action: 'accept' | 'decline') => {
+  const handleDriverAction = async (
+    assignmentId: number,
+    action: 'accept' | 'decline' | 'en_route' | 'pickedup' | 'complete' | 'cancel',
+    reason?: string,
+    metadata?: Record<string, unknown>
+  ) => {
     setActionLoading(assignmentId)
     try {
-      await fetch(`/api/assignments/${assignmentId}/${action}`, {
+      const res = await fetch(`/api/driver/assignments/${assignmentId}/action`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-      })
-      await fetchAssignments()
-    } finally { setActionLoading(null) }
-  }
-
-  const handleTripStatus = async (assignmentId: number, status: 'en_route' | 'pickedup') => {
-    setActionLoading(assignmentId)
-    try {
-      const res = await fetch(`/api/driver/assignments/${assignmentId}/status`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ action, reason, metadata }),
       })
       if (res.ok) {
         await fetchAssignments()
       } else {
         const data = await res.json().catch(() => ({}))
-        window.alert(data.error || 'No se pudo actualizar el estado del viaje.')
+        showToast(data.error || 'No se pudo procesar la acción')
       }
     } catch {
-      window.alert('Error de red al actualizar el estado del viaje.')
+      showToast('Error de red al procesar la acción')
     } finally {
       setActionLoading(null)
     }
@@ -131,7 +126,7 @@ export default function DriverAssignmentsPage() {
       let url: string | null = null
       if (parkingAnswer === 'yes') {
         if (!proofFile) {
-          window.alert('Debe cargar la foto del parqueadero.')
+          showToast('Debe cargar la foto del parqueadero')
           return
         }
         if (!proofUrl) {
@@ -141,7 +136,7 @@ export default function DriverAssignmentsPage() {
           const up = await fetch('/api/driver/parking-proof/upload', { method: 'POST', body: form })
           const upData = await up.json()
           if (!up.ok || !upData.url) {
-            window.alert(upData.error || 'Error al subir la foto.')
+            showToast(upData.error || 'Error al subir la foto')
             setUploadingProof(false)
             return
           }
@@ -149,12 +144,10 @@ export default function DriverAssignmentsPage() {
           setUploadingProof(false)
         }
       }
-      await fetch(`/api/driver/assignments/${completingId}/complete`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ airport_parking: parkingAnswer === 'yes', parking_proof_url: url }),
+      await handleDriverAction(completingId, 'complete', undefined, {
+        airport_parking: parkingAnswer === 'yes',
+        parking_proof_url: url,
       })
-      await fetchAssignments()
       setCompletingId(null)
       setParkingAnswer(null)
       setProofFile(null)
@@ -164,411 +157,301 @@ export default function DriverAssignmentsPage() {
     }
   }
 
-  const filtered = assignments.filter(a => {
+  const filtered = assignments.filter((a) => {
     if (activeTab === 'pending') return ['pending', 'pending_acceptance', 'offered'].includes(a.status)
     if (activeTab === 'active') return ['accepted', 'confirmed_to_client', 'en_route', 'in_progress'].includes(a.status)
     return ['completed', 'cancelled', 'declined', 'expired'].includes(a.status)
   })
 
   const counts = {
-    pending: assignments.filter(a => ['pending', 'pending_acceptance', 'offered'].includes(a.status)).length,
-    active: assignments.filter(a => ['accepted', 'confirmed_to_client', 'en_route', 'in_progress'].includes(a.status)).length,
-    history: assignments.filter(a => ['completed', 'cancelled', 'declined', 'expired'].includes(a.status)).length,
+    pending: assignments.filter((a) => ['pending', 'pending_acceptance', 'offered'].includes(a.status)).length,
+    active: assignments.filter((a) => ['accepted', 'confirmed_to_client', 'en_route', 'in_progress'].includes(a.status)).length,
+    history: assignments.filter((a) => ['completed', 'cancelled', 'declined', 'expired'].includes(a.status)).length,
   }
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '80px 0' }}>
-        <div style={{
-          width: 24, height: 24,
-          border: '2px solid var(--border)',
-          borderTopColor: 'var(--accent-gold)',
-          borderRadius: '50%',
-          animation: 'spin 1s linear infinite',
-        }} />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div style={{
-        display: 'flex', flexDirection: 'column', alignItems: 'center',
-        justifyContent: 'center', padding: '80px 24px', textAlign: 'center',
-        color: 'var(--text-muted)',
-      }}>
-        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" strokeWidth="1.5" style={{ marginBottom: 14, opacity: 0.6 }}>
-          <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-        </svg>
-        <p style={{ fontSize: 14, margin: '0 0 16px', color: 'var(--danger)' }}>No se pudieron cargar las asignaciones</p>
-        <button
-          onClick={() => { setLoading(true); setError(false); fetchAssignments() }}
-          style={{
-            padding: '8px 18px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-            background: 'var(--accent-gold)', color: '#000', border: 'none', cursor: 'pointer',
-            transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
-          }}
-        >
-          Reintentar
-        </button>
+      <div className="admin-page">
+        <div className="admin-empty" style={{ padding: '60px 24px' }}>
+          <div className="admin-skeleton-text long" style={{ height: 32, width: '40%', margin: '0 auto 16px' }} />
+          <div className="admin-skeleton-text short" style={{ height: 20, width: '20%', margin: '0 auto' }} />
+        </div>
       </div>
     )
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <div>
-        <h1 style={{
-          fontSize: 22, fontWeight: 700,
-          fontFamily: 'var(--font-display)',
-          color: 'var(--text-primary)', margin: 0,
-        }}>Asignaciones</h1>
-        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '4px 0 0' }}>
-          {filtered.length} asignaciones
-        </p>
+    <div className="admin-page space-y-6">
+      <section className="admin-section-header">
+        <div>
+          <h1 className="admin-page-title">Mis asignaciones</h1>
+          <p className="admin-section-desc">
+            Gestiona tus asignaciones de viajes: acepta nuevas, avisa cuando estás en camino,
+            recogiste al pasajero o finalizaste el servicio.
+          </p>
+        </div>
+      </section>
+
+      <div className="admin-grid-3 admin-mb-4">
+        <div className="admin-kpi-card">
+          <div className="admin-kpi-label">Pendientes</div>
+          <div className="admin-kpi-value">{counts.pending}</div>
+          <div className="admin-kpi-sub neutral">por aceptar</div>
+        </div>
+        <div className="admin-kpi-card">
+          <div className="admin-kpi-label">Activas</div>
+          <div className="admin-kpi-value">{counts.active}</div>
+          <div className="admin-kpi-sub neutral">en curso</div>
+        </div>
+        <div className="admin-kpi-card">
+          <div className="admin-kpi-label">Historial</div>
+          <div className="admin-kpi-value">{counts.history}</div>
+          <div className="admin-kpi-sub neutral">completadas</div>
+        </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 8 }}>
-        {(['pending', 'active', 'history'] as Tab[]).map(tab => {
-          const isActive = activeTab === tab
-          return (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              style={{
-                padding: '8px 16px', borderRadius: 10,
-                fontSize: 12, fontWeight: 500,
-                background: isActive ? 'var(--accent-gold)' : 'var(--bg-card)',
-                color: isActive ? '#000' : 'var(--text-secondary)',
-                border: `1px solid ${isActive ? 'var(--accent-gold)' : 'var(--border)'}`,
-                cursor: 'pointer',
-                transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
-              }}
-              onMouseEnter={(e) => {
-                if (!isActive) {
-                  e.currentTarget.style.borderColor = 'var(--accent-gold-dim, #b08a5a)'
-                  e.currentTarget.style.color = 'var(--text-primary)'
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isActive) {
-                  e.currentTarget.style.borderColor = 'var(--border)'
-                  e.currentTarget.style.color = 'var(--text-secondary)'
-                }
-              }}
-            >
-              {tab === 'pending' ? 'Pendientes' : tab === 'active' ? 'Activas' : 'Historial'}
-              <span style={{ marginLeft: 6, opacity: 0.6 }}>{counts[tab]}</span>
-            </button>
-          )
-        })}
+      <div className="admin-tabs admin-mb-4">
+        <button
+          className={`admin-tab ${activeTab === 'pending' ? 'active' : ''}`}
+          onClick={() => setActiveTab('pending')}
+        >
+          Pendientes <span className="admin-badge neutral">{counts.pending}</span>
+        </button>
+        <button
+          className={`admin-tab ${activeTab === 'active' ? 'active' : ''}`}
+          onClick={() => setActiveTab('active')}
+        >
+          Activas <span className="admin-badge neutral">{counts.active}</span>
+        </button>
+        <button
+          className={`admin-tab ${activeTab === 'history' ? 'active' : ''}`}
+          onClick={() => setActiveTab('history')}
+        >
+          Historial <span className="admin-badge neutral">{counts.history}</span>
+        </button>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {filtered.length === 0 ? (
-          <div style={{
-            display: 'flex', flexDirection: 'column',
-            alignItems: 'center', justifyContent: 'center',
-            padding: '64px 24px', textAlign: 'center',
-            color: 'var(--text-muted)',
-          }}>
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ marginBottom: 12, opacity: 0.3 }}>
-              <rect x="1" y="3" width="15" height="13" /><polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
-              <circle cx="5.5" cy="18.5" r="2.5" /><circle cx="18.5" cy="18.5" r="2.5" />
-            </svg>
-            <p style={{ fontSize: 14, margin: 0 }}>
-              No hay asignaciones {activeTab === 'pending' ? 'pendientes' : activeTab === 'active' ? 'activas' : 'en historial'}
-            </p>
-          </div>
-        ) : (
-          filtered.map(a => {
-            const status = STATUS_STYLES[a.status] || { label: a.status, bg: 'rgba(100,100,100,0.12)', fg: '#9ca3af' }
-            const canAccept = ['pending', 'pending_acceptance', 'offered'].includes(a.status)
+      <section className="admin-card">
+        <div className="admin-card-body">
+          {filtered.length === 0 ? (
+            <div className="admin-empty" style={{ padding: '48px 24px' }}>
+              <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.3"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/></svg>
+              <h3>
+                {activeTab === 'pending' ? 'No hay asignaciones pendientes'
+                  : activeTab === 'active' ? 'No tienes viajes activos'
+                  : 'Sin historial de viajes'}
+              </h3>
+              <p style={{ color: 'var(--ui-fg-muted)', fontSize: 13 }}>
+                {activeTab === 'pending'
+                  ? 'Cuando llegue una nueva asignación, aparecerá aquí para que la aceptes o rechaces.'
+                  : activeTab === 'active'
+                    ? 'Tus viajes aceptados y en curso se mostrarán aquí.'
+                    : 'Tus viajes finalizados aparecerán aquí.'}
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {filtered.map((a) => {
+                const status = STATUS_STYLES[a.status] || { label: a.status, bg: 'rgba(100,100,100,0.12)', fg: 'var(--ui-fg-secondary)' }
+                const canAccept = ['pending', 'pending_acceptance', 'offered'].includes(a.status)
 
-            return (
-              <div
-                key={a.id}
-                style={{
-                  background: 'var(--bg-card)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 14,
-                  padding: 16,
-                  boxShadow: 'var(--shadow-card)',
-                  transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.boxShadow = 'var(--shadow-elevated)'
-                  e.currentTarget.style.borderColor = 'var(--accent-gold)'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.boxShadow = 'var(--shadow-card)'
-                  e.currentTarget.style.borderColor = 'var(--border)'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{
-                      display: 'inline-flex', padding: '3px 10px',
-                      borderRadius: 8, fontSize: 11, fontWeight: 500,
-                      background: status.bg, color: status.fg,
-                    }}>
-                      {status.label}
-                    </span>
-                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                      {a.order_number || `#${a.id}`}
-                    </span>
-                  </div>
-                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                    {a.pickup_date || a.arrival_date || ''} {a.pickup_time || a.arrival_time || ''}
-                  </span>
-                </div>
-
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-                  gap: 12, fontSize: 13, marginBottom: 12,
-                }}>
-                  <div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Cliente</div>
-                    <div style={{ color: 'var(--text-primary)' }}>{a.customer_name || '—'}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Paquete</div>
-                    <div style={{ color: 'var(--text-primary)' }}>{a.package_name || '—'}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Vuelo</div>
-                    <div style={{ color: 'var(--text-primary)' }}>{a.airline || ''} {a.flight_number || '—'}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Destino</div>
-                    <div style={{ color: 'var(--text-primary)' }}>{a.destination_address || '—'}</div>
-                  </div>
-                </div>
-
-                {a.customer_phone && (
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
-                    Tel: {a.customer_phone}
-                  </div>
-                )}
-
-                 <div style={{ display: 'flex', gap: 8 }}>
-                    {canAccept && (
-                      <>
-                        <button
-                          onClick={() => handleAction(a.id, 'accept')}
-                          disabled={actionLoading === a.id}
+                return (
+                  <div
+                    key={a.id}
+                    className="admin-res-card"
+                    onClick={() => {}}
+                    style={{ cursor: 'default' }}
+                  >
+                    <div className="admin-res-card-header">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span
                           style={{
-                            padding: '6px 16px', borderRadius: 8,
-                            fontSize: 12, fontWeight: 500,
-                            background: 'var(--accent-gold)', color: '#000',
-                            border: 'none', cursor: 'pointer',
-                            opacity: actionLoading === a.id ? 0.5 : 1,
-                            transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
-                          }}
-                          onMouseEnter={(e) => {
-                            if (actionLoading !== a.id) {
-                              e.currentTarget.style.background = 'var(--accent-gold-light, #e8c9a0)'
-                            }
-                          }}
-                          onMouseLeave={(e) => {
-                            if (actionLoading !== a.id) {
-                              e.currentTarget.style.background = 'var(--accent-gold)'
-                            }
+                            display: 'inline-flex', padding: '3px 10px', borderRadius: 8, fontSize: 11, fontWeight: 500,
+                            background: status.bg, color: status.fg,
                           }}
                         >
-                          {actionLoading === a.id ? 'Procesando...' : 'Aceptar'}
-                        </button>
+                          {status.label}
+                        </span>
+                        <span style={{ fontSize: 11, color: 'var(--ui-fg-muted)' }}>
+                          {a.order_number || `#${a.id}`}
+                        </span>
+                      </div>
+                      <span style={{ fontSize: 11, color: 'var(--ui-fg-muted)' }}>
+                        {a.pickup_date || a.arrival_date || ''} {a.pickup_time || a.arrival_time || ''}
+                      </span>
+                    </div>
+                    <div className="admin-res-body">
+                      <div className="admin-res-row">
+                        <span className="admin-res-label">Cliente</span>
+                        <span>{a.customer_name || '—'}</span>
+                      </div>
+                      <div className="admin-res-row">
+                        <span className="admin-res-label">Paquete</span>
+                        <span>{a.package_name || '—'}</span>
+                      </div>
+                      <div className="admin-res-row">
+                        <span className="admin-res-label">Vuelo</span>
+                        <span style={{ fontFamily: 'var(--ui-font-mono)', fontSize: 11 }}>{a.airline || ''} {a.flight_number || '—'}</span>
+                      </div>
+                      <div className="admin-res-row">
+                        <span className="admin-res-label">Destino</span>
+                        <span>{a.destination_address || '—'}</span>
+                      </div>
+                      {a.customer_phone && (
+                        <div className="admin-res-row">
+                          <span className="admin-res-label">Teléfono</span>
+                          <span>{a.customer_phone}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {canAccept && (
+                        <>
+                          <button
+                            onClick={() => handleDriverAction(a.id, 'accept')}
+                            disabled={actionLoading === a.id}
+                            className="admin-btn admin-btn-primary admin-btn-sm"
+                          >
+                            {actionLoading === a.id ? 'Procesando...' : 'Aceptar'}
+                          </button>
+                          <button
+                            onClick={() => handleDriverAction(a.id, 'decline')}
+                            disabled={actionLoading === a.id}
+                            className="admin-btn admin-btn-ghost admin-btn-sm"
+                            style={{ border: '1px solid var(--ui-danger)', color: 'var(--ui-danger)' }}
+                          >
+                            {actionLoading === a.id ? 'Procesando...' : 'Rechazar'}
+                          </button>
+                        </>
+                      )}
+                      {!canAccept && ['accepted', 'confirmed_to_client'].includes(a.status) && (
                         <button
-                          onClick={() => handleAction(a.id, 'decline')}
+                          onClick={() => handleDriverAction(a.id, 'en_route')}
                           disabled={actionLoading === a.id}
-                          style={{
-                            padding: '6px 16px', borderRadius: 8,
-                            fontSize: 12, fontWeight: 500,
-                            background: 'rgba(248,113,113,0.12)',
-                            color: '#f87171',
-                            border: '1px solid rgba(248,113,113,0.2)',
-                            cursor: 'pointer',
-                            opacity: actionLoading === a.id ? 0.5 : 1,
-                            transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
-                          }}
-                          onMouseEnter={(e) => {
-                            if (actionLoading !== a.id) {
-                              e.currentTarget.style.background = 'rgba(248,113,113,0.18)'
-                            }
-                          }}
-                          onMouseLeave={(e) => {
-                            if (actionLoading !== a.id) {
-                              e.currentTarget.style.background = 'rgba(248,113,113,0.12)'
-                            }
-                          }}
+                          className="admin-btn admin-btn-secondary admin-btn-sm"
                         >
-                          Rechazar
+                          {actionLoading === a.id ? 'Procesando...' : 'En camino'}
                         </button>
-                      </>
-                    )}
-                    {!canAccept && ['accepted', 'confirmed_to_client', 'en_route', 'in_progress'].includes(a.status) && (
-                      <>
-                        {['accepted', 'confirmed_to_client'].includes(a.status) && (
-                          <button
-                            onClick={() => handleTripStatus(a.id, 'en_route')}
-                            disabled={actionLoading === a.id}
-                            style={{
-                              padding: '6px 16px', borderRadius: 8,
-                              fontSize: 12, fontWeight: 500,
-                              background: 'rgba(96,165,250,0.12)', color: '#60a5fa',
-                              border: '1px solid rgba(96,165,250,0.25)',
-                              cursor: 'pointer',
-                              opacity: actionLoading === a.id ? 0.5 : 1,
-                              transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
-                            }}
-                          >
-                            {actionLoading === a.id ? 'Procesando...' : 'En camino'}
-                          </button>
-                        )}
-                        {a.status === 'en_route' && (
-                          <button
-                            onClick={() => handleTripStatus(a.id, 'pickedup')}
-                            disabled={actionLoading === a.id}
-                            style={{
-                              padding: '6px 16px', borderRadius: 8,
-                              fontSize: 12, fontWeight: 500,
-                              background: 'rgba(74,222,128,0.12)', color: '#4ade80',
-                              border: '1px solid rgba(74,222,128,0.25)',
-                              cursor: 'pointer',
-                              opacity: actionLoading === a.id ? 0.5 : 1,
-                              transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
-                            }}
-                          >
-                            {actionLoading === a.id ? 'Procesando...' : 'Recogí al pasajero'}
-                          </button>
-                        )}
-                      </>
-                    )}
-                    {!canAccept && ['accepted', 'confirmed_to_client', 'en_route', 'in_progress'].includes(a.status) && (
-                      <button
-                        onClick={() => startComplete(a.id)}
-                        disabled={actionLoading === a.id}
-                        style={{
-                          padding: '6px 16px', borderRadius: 8,
-                          fontSize: 12, fontWeight: 500,
-                          background: 'var(--accent-gold)', color: '#000',
-                          border: 'none', cursor: 'pointer',
-                          opacity: actionLoading === a.id ? 0.5 : 1,
-                          transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
-                        }}
-                        onMouseEnter={(e) => {
-                          if (actionLoading !== a.id) {
-                            e.currentTarget.style.background = 'var(--accent-gold-light, #e8c9a0)'
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (actionLoading !== a.id) {
-                            e.currentTarget.style.background = 'var(--accent-gold)'
-                          }
-                        }}
-                      >
-                        {actionLoading === a.id ? 'Finalizando...' : 'Finalizar viaje'}
-                      </button>
-                    )}
+                      )}
+                      {!canAccept && a.status === 'en_route' && (
+                        <button
+                          onClick={() => handleDriverAction(a.id, 'pickedup')}
+                          disabled={actionLoading === a.id}
+                          className="admin-btn admin-btn-secondary admin-btn-sm"
+                        >
+                          {actionLoading === a.id ? 'Procesando...' : 'Recogí pasajero'}
+                        </button>
+                      )}
+                      {!canAccept && ['accepted', 'confirmed_to_client', 'en_route', 'in_progress'].includes(a.status) && (
+                        <button
+                          onClick={() => startComplete(a.id)}
+                          disabled={actionLoading === a.id}
+                          className="admin-btn admin-btn-primary admin-btn-sm"
+                        >
+                          {actionLoading === a.id ? 'Finalizando...' : 'Finalizar viaje'}
+                        </button>
+                      )}
+                    </div>
                   </div>
-              </div>
-            )
-          })
-        )}
-      </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </section>
+
       {completingId !== null && (
-        <div style={{
-          position: 'fixed', inset: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 999,
-        }}>
-          <div style={{
-            background: 'var(--bg-card)',
-            border: '1px solid var(--border)',
-            borderRadius: 14,
-            padding: 22,
-            width: 'min(90vw, 380px)',
-            boxShadow: 'var(--shadow-elevated)',
-          }}>
-            <h2 style={{ margin: '0 0 6px', fontSize: 16, fontWeight: 600, color: 'var(--text-primary)' }}>
-              Finalizar viaje
-            </h2>
-            <p style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--text-secondary)' }}>
-              ¿Estacionó en parqueadero del aeropuerto?
-            </p>
+        <div className="admin-modal-overlay open" onClick={() => setCompletingId(null)}>
+          <div className="admin-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 420 }}>
+            <div className="admin-modal-header">
+              <h2 className="admin-modal-title">Finalizar viaje</h2>
+              <button className="admin-btn admin-btn-ghost admin-btn-sm" onClick={() => setCompletingId(null)}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div className="admin-modal-body">
+              <p style={{ fontSize: 13, color: 'var(--ui-fg-muted)', marginBottom: 16 }}>
+                ¿Estacionó en el parqueadero del aeropuerto?
+              </p>
 
-            {!parkingAnswer && (
-              <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
-                <button
-                  onClick={() => setParkingAnswer('yes')}
-                  style={{ flex: 1, padding: '8px 12px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-                    background: 'var(--accent-gold)', color: '#000', border: 'none', cursor: 'pointer' }}
-                >Sí, subir foto</button>
-                <button
-                  onClick={() => setParkingAnswer('no')}
-                  style={{ flex: 1, padding: '8px 12px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-                    background: 'var(--bg-subtle-2)', color: 'var(--text-primary)', border: '1px solid var(--border)', cursor: 'pointer' }}
-                >No</button>
-              </div>
-            )}
-
-            {parkingAnswer === 'yes' && (
-              <div style={{ marginBottom: 16 }}>
-                {!proofFile ? (
-                  <input
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    onChange={(e) => setProofFile(e.target.files?.[0] ?? null)}
-                    style={{ fontSize: 13 }}
-                  />
-                ) : (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: 'var(--text-secondary)' }}>
-                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{proofFile.name}</span>
-                    {proofUrl !== null && <span style={{ color: 'var(--accent-gold)' }}>✓ listo</span>}
-                  </div>
-                )}
-                {!proofUrl && (
+              {!parkingAnswer && (
+                <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
                   <button
-                    onClick={async () => {
-                      if (!proofFile) return
-                      setUploadingProof(true)
-                      const form = new FormData()
-                      form.append('file', proofFile)
-                      const up = await fetch('/api/driver/parking-proof/upload', { method: 'POST', body: form })
-                      const upData = await up.json()
-                      if (!up.ok || !upData.url) {
-                        window.alert(upData.error || 'Error al subir la foto.')
-                      } else {
-                        setProofUrl(upData.url)
-                      }
-                      setUploadingProof(false)
-                    }}
-                    disabled={uploadingProof}
-                    style={{ marginTop: 10, width: '100%', padding: '8px 12px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-                      background: 'var(--accent-gold)', color: '#000', border: 'none', cursor: 'pointer',
-                      opacity: uploadingProof ? 0.6 : 1 }}
-                  >{uploadingProof ? 'Subiendo...' : 'Subir foto'}</button>
-                )}
-              </div>
-            )}
+                    onClick={() => setParkingAnswer('yes')}
+                    className="admin-btn admin-btn-primary admin-btn-sm"
+                    style={{ flex: 1 }}
+                  >
+                    Sí, subir foto
+                  </button>
+                  <button
+                    onClick={() => setParkingAnswer('no')}
+                    className="admin-btn admin-btn-ghost admin-btn-sm"
+                    style={{ flex: 1 }}
+                  >
+                    No
+                  </button>
+                </div>
+              )}
 
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button
-                onClick={() => { setCompletingId(null); setParkingAnswer(null); setProofFile(null); setProofUrl(null) }}
-                style={{ flex: 1, padding: '8px 12px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-                  background: 'var(--bg-subtle-2)', color: 'var(--text-primary)', border: '1px solid var(--border)', cursor: 'pointer' }}
-              >Cancelar</button>
-              <button
-                onClick={handleComplete}
-                disabled={actionLoading === completingId || (parkingAnswer === 'yes' && !proofUrl)}
-                style={{ flex: 1, padding: '8px 12px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-                  background: 'var(--accent-gold)', color: '#000', border: 'none', cursor: 'pointer',
-                  opacity: actionLoading === completingId ? 0.6 : 1 }}
-              >{actionLoading === completingId ? 'Guardando...' : 'Confirmar'}</button>
+              {parkingAnswer === 'yes' && (
+                <div style={{ marginBottom: 16 }}>
+                  {!proofFile ? (
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={(e) => setProofFile(e.target.files?.[0] ?? null)}
+                      className="admin-input admin-input-sm"
+                    />
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: 'var(--ui-fg-muted)' }}>
+                      <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{proofFile.name}</span>
+                      {proofUrl !== null && <span style={{ color: 'var(--ui-accent)' }}>✓ listo</span>}
+                    </div>
+                  )}
+                  {!proofUrl && (
+                    <button
+                      onClick={async () => {
+                        if (!proofFile) return
+                        setUploadingProof(true)
+                        const form = new FormData()
+                        form.append('file', proofFile)
+                        const up = await fetch('/api/driver/parking-proof/upload', { method: 'POST', body: form })
+                        const upData = await up.json()
+                        if (!up.ok || !upData.url) {
+                          showToast(upData.error || 'Error al subir la foto')
+                        } else {
+                          setProofUrl(upData.url)
+                        }
+                        setUploadingProof(false)
+                      }}
+                      disabled={uploadingProof}
+                      className="admin-btn admin-btn-secondary admin-btn-sm"
+                      style={{ width: '100%', marginTop: 10 }}
+                    >
+                      {uploadingProof ? 'Subiendo...' : 'Subir foto'}
+                    </button>
+                  )}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button
+                  onClick={() => { setCompletingId(null); setParkingAnswer(null); setProofFile(null); setProofUrl(null) }}
+                  className="admin-btn admin-btn-secondary admin-btn-sm"
+                  style={{ flex: 1 }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleComplete}
+                  disabled={actionLoading === completingId || (parkingAnswer === 'yes' && !proofUrl)}
+                  className="admin-btn admin-btn-primary admin-btn-sm"
+                  style={{ flex: 1 }}
+                >
+                  {actionLoading === completingId ? 'Guardando...' : 'Confirmar'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

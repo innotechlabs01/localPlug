@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { adminFetch } from '@/lib/admin/admin-fetch'
@@ -201,110 +202,194 @@ export default function AdminReservations() {
   }
 
   return (
-      <div className="reservations-page">
-        <ReservationKPIs reservations={reservations} />
-
-        <div className="flex flex-wrap items-end gap-3 bg-[var(--surface)] border border-[var(--border)] rounded-[var(--radius-md)] p-4">
-          <div className="input-group">
-            <label className="input-label">{d.dateFrom || 'From'}</label>
-            <input type="date" className="input" style={{ fontSize: 12, padding: '6px 10px' }} value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
-          </div>
-          <div className="input-group">
-            <label className="input-label">{d.dateTo || 'To'}</label>
-            <input type="date" className="input" style={{ fontSize: 12, padding: '6px 10px' }} value={dateTo} onChange={e => setDateTo(e.target.value)} />
-          </div>
-          <div className="input-group">
-            <label className="input-label">{d.country || 'Country'}</label>
-            <select className="input" style={{ fontSize: 12, padding: '6px 10px' }} value={countryFilter} onChange={e => setCountryFilter(e.target.value)}>
-              <option value="">All</option>
-              {countries.map(c => <option key={c.code} value={c.name}>{c.flag} {c.name}</option>)}
-            </select>
-          </div>
-          <div className="input-group">
-            <label className="input-label">{d.flight || 'Flight'}</label>
-            <input type="text" className="input" style={{ fontSize: 12, padding: '6px 10px', width: 120 }} placeholder="Search..." value={flightFilter} onChange={e => setFlightFilter(e.target.value)} />
-          </div>
-          <div className="input-group">
-            <label className="input-label">{d.package || 'Package'}</label>
-            <input type="text" className="input" style={{ fontSize: 12, padding: '6px 10px', width: 120 }} placeholder="Search..." value={packageFilter} onChange={e => setPackageFilter(e.target.value)} />
-          </div>
-          <div className="input-group">
-            <label className="input-label">{d.payment || 'Payment'}</label>
-            <select className="input" style={{ fontSize: 12, padding: '6px 10px' }} value={paymentFilter} onChange={e => setPaymentFilter(e.target.value)}>
-              <option value="all">All</option>
-              <option value="pending">Pending</option>
-              <option value="paid">Paid</option>
-              <option value="partial">Partial</option>
-              <option value="refunded">Refunded</option>
-            </select>
-          </div>
-          <button className="btn btn-ghost btn-sm" onClick={() => { setDateFrom(''); setDateTo(''); setCountryFilter(''); setFlightFilter(''); setPackageFilter(''); setPaymentFilter('all') }}>
-            {d.clearFilters || 'Clear'}
-          </button>
+    <div className="admin-page">
+      <section className="admin-section-header">
+        <div>
+          <h1 className="admin-page-title">{d.pageTitle || 'Reservas'}</h1>
+          <p className="admin-section-desc">Gestiona todas las reservas de la plataforma. Cambia estados, asigna conductores y notifica a los huéspedes.</p>
         </div>
+        <div className="admin-flex-between">
+          <button onClick={handleExportCSV} className="admin-btn admin-btn-secondary admin-btn-sm">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            {d.export_ || 'Exportar'}
+          </button>
+          <Link href="/booking" className="admin-btn admin-btn-primary admin-btn-sm">
+            {d.newReservation || 'Nueva Reserva'}
+          </Link>
+        </div>
+      </section>
 
-        <ReservationFilters selectedFilter={selectedFilter} onFilterChange={setSelectedFilter} reservations={reservations} />
+      <ReservationKPIs reservations={reservations} />
 
-        <div className="res-table-section">
-          <div className="res-table-card">
-            <div className="card-header">
-              <span className="card-title">{d.allReservations || 'All Reservations'}</span>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <button onClick={handleExportCSV} className="btn btn-secondary btn-sm">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                  Export
-                </button>
-              </div>
+      <section className="admin-card admin-mt-4">
+        <div className="admin-card-header admin-flex-between">
+          <span className="admin-card-title">{d.allReservations || 'Todas las Reservas'}</span>
+          <div className="admin-tabs">
+            <button className={`admin-tab ${selectedFilter === 'all' ? 'active' : ''}`} onClick={() => setSelectedFilter('all')}>
+              {d.filters?.all || 'Todas'}
+            </button>
+            <button className={`admin-tab ${selectedFilter === 'pending' ? 'active' : ''}`} onClick={() => setSelectedFilter('pending')}>
+              {d.filters?.pending || 'Pendiente'}
+            </button>
+            <button className={`admin-tab ${selectedFilter === 'confirmed' ? 'active' : ''}`} onClick={() => setSelectedFilter('confirmed')}>
+              {d.filters?.confirmed || 'Confirmada'}
+            </button>
+            <button className={`admin-tab ${selectedFilter === 'assigned' ? 'active' : ''}`} onClick={() => setSelectedFilter('assigned')}>
+              {d.filters?.assigned || 'Asignada'}
+            </button>
+            <button className={`admin-tab ${selectedFilter === 'completed' ? 'active' : ''}`} onClick={() => setSelectedFilter('completed')}>
+              {d.filters?.completed || 'Completada'}
+            </button>
+          </div>
+        </div>
+        <div className="admin-card-body">
+          <div className="admin-flex-between admin-mb-4">
+            <div className="admin-field">
+              <label className="admin-field-label">{d.searchPlaceholder || 'Buscar reservas...'}</label>
+              <input
+                className="admin-input"
+                type="text"
+                placeholder={d.searchPlaceholder || 'Buscar reservas...'}
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+              />
             </div>
-            <div className="table-wrap">
-              <ReservationTable reservations={filteredReservations} onViewReservation={handleOpenModal} />
-            </div>
+            <button
+              onClick={() => { setDateFrom(''); setDateTo(''); setCountryFilter(''); setFlightFilter(''); setPackageFilter(''); setPaymentFilter('all') }}
+              className="admin-btn admin-btn-ghost admin-btn-sm"
+            >
+              {d.clearFilters || 'Limpiar filtros'}
+            </button>
+          </div>
+          <div className="admin-table-wrap admin-mb-4">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Referencia</th>
+                  <th>Huésped</th>
+                  <th>Paquete</th>
+                  <th>Llegada</th>
+                  <th>Estado</th>
+                  <th>Pago</th>
+                  <th>Monto</th>
+                  <th style={{ textAlign: 'center' }}>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredReservations.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} style={{ textAlign: 'center', padding: 32, color: 'var(--ui-fg-muted)' }}>
+                      {d.noReservations || 'No se encontraron reservas'}
+                    </td>
+                  </tr>
+                ) : (
+                  filteredReservations.map((r) => (
+                    <tr key={r.id} onClick={() => handleOpenModal(r)} style={{ cursor: 'pointer' }}>
+                      <td>
+                        <span className="admin-res-ref">{r.orderNumber || r.bookingReference}</span>
+                      </td>
+                      <td>
+                        <div className="flex items-center gap-8" style={{ alignItems: 'center' }}>
+                          <div className="admin-guest-avatar" style={{ width: 32, height: 32, borderRadius: '50%', background: 'linear-gradient(135deg, var(--ui-accent), var(--ui-bg))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 600, fontSize: 13 }}>
+                            {r.guest.firstName.charAt(0)}{r.guest.lastName.charAt(0)}
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 600, color: 'var(--ui-fg)' }}>{r.guest.firstName} {r.guest.lastName}</div>
+                            <div style={{ fontSize: 11, color: 'var(--ui-fg-muted)' }}>{r.guest.email}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>{r.service.name}</td>
+                      <td>
+                        <div style={{ fontSize: 12, color: 'var(--ui-fg-muted)' }}>{r.arrivalDate}</div>
+                        <div style={{ fontWeight: 600 }}>{r.arrivalTime || '--:--'}</div>
+                      </td>
+                      <td>
+                        <span className={`admin-badge ${getStatusBadgeSimple(r.status)}`}>{getStatusText(r.status)}</span>
+                      </td>
+                      <td>
+                        <span className={`admin-badge ${getPaymentBadgeSimple(r.paymentStatus)}`}>{getPaymentText(r.paymentStatus)}</span>
+                      </td>
+                      <td style={{ fontFamily: 'var(--ui-font-mono)', fontSize: 12 }}>${(r.totalAmount || 0).toLocaleString()}</td>
+                      <td style={{ textAlign: 'center' }}>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleOpenModal(r) }}
+                          className="admin-btn admin-btn-ghost admin-btn-sm"
+                          title="Ver detalle"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 12s3-8 10-8 10 8 10 8-10 8-10-8"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
 
-          <div className="timeline-card">
-            <div className="card-header">
-              <span className="card-title">{d.upcomingArrivals || 'Upcoming Arrivals'}</span>
-              <span className="badge badge-accent" style={{ fontSize: 10 }}>
-                {upcomingArrivals.length} {d.todayLabel || 'Today'}
-              </span>
-            </div>
-            <div className="timeline-list">
-              {upcomingArrivals.length > 0 ? upcomingArrivals.map(r => {
-                const arrivalDate = new Date(`${r.arrivalDate}T${r.arrivalTime || '00:00'}`)
-                const isArrived = arrivalDate < new Date()
-                const dotClass = isArrived ? 'arrived' : r.status === 'pending' ? 'pending' : r.status === 'awaiting_payment' ? 'awaiting' : ''
-                return (
-                  <div key={r.id} className="timeline-item" onClick={() => handleOpenModal(r)} style={{ cursor: 'pointer' }}>
-                    <div className={`timeline-dot${dotClass ? ` ${dotClass}` : ''}`} style={{ marginTop: 6, position: 'relative', zIndex: 1 }} />
-                    <div className="timeline-body" style={{ padding: 0 }}>
-                      <div className="timeline-time">{formatTime(r.arrivalTime)} — {getStatusText(r.status)}</div>
-                      <div className="timeline-guest">{r.guest.firstName} {r.guest.lastName}</div>
-                      <div className="timeline-meta">
-                        {r.flightInfo && <span className="badge badge-info" style={{ fontSize: 10 }}>{r.flightInfo}</span>}
-                        {r.service.name}
-                      </div>
+          {upcomingArrivals.length > 0 && (
+            <div className="admin-mt-4">
+              <div className="admin-section-header">
+                <span className="admin-section-title">{d.upcomingArrivals || 'Próximas Llegadas'}</span>
+                <span className="admin-badge accent">{upcomingArrivals.length} {d.todayLabel || 'Hoy'}</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {upcomingArrivals.map((r) => (
+                  <div
+                    key={r.id}
+                    className="admin-res-card"
+                    onClick={() => handleOpenModal(r)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <div className="admin-res-card-header">
+                      <span className="admin-res-ref">{r.orderNumber || r.bookingReference}</span>
+                      <span className={`admin-badge ${getStatusBadgeSimple(r.status)}`}>{getStatusText(r.status)}</span>
                     </div>
-                    <div className="timeline-right">
-                      <span className={`status-badge ${getStatusBadgeSimple(r.status)}`} style={{ fontSize: 10 }}>{getStatusText(r.status)}</span>
+                    <div className="admin-res-body">
+                      <div className="admin-res-row">
+                        <span className="admin-res-label">Huésped</span>
+                        <span>{r.guest.firstName} {r.guest.lastName}</span>
+                      </div>
+                      <div className="admin-res-row">
+                        <span className="admin-res-label">Paquete</span>
+                        <span>{r.service.name}</span>
+                      </div>
+                      <div className="admin-res-row">
+                        <span className="admin-res-label">Llegada</span>
+                        <span>{r.arrivalDate} {r.arrivalTime || ''}</span>
+                      </div>
+                      {r.flightInfo && (
+                        <div className="admin-res-row">
+                          <span className="admin-res-label">Vuelo</span>
+                          <span style={{ fontFamily: 'var(--ui-font-mono)', fontSize: 11 }}>{r.flightInfo}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="admin-res-actions">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleOpenModal(r) }}
+                        className="admin-btn admin-btn-primary admin-btn-sm"
+                      >
+                        Ver detalle
+                      </button>
                     </div>
                   </div>
-                )
-              }) : (
-                <div style={{ padding: '32px 18px', textAlign: 'center', fontSize: 13, color: 'var(--fg-muted)' }}>{d.noUpcomingArrivals || 'No upcoming arrivals'}</div>
-              )}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
+      </section>
 
-        <ReservationDetailModal
-          open={modalOpen}
-          reservation={selectedReservation}
-          onClose={handleCloseModal}
-          onSendWhatsApp={handleSendWhatsApp}
-          onCancelReservation={handleCancelReservation}
-          loading={actionLoading}
-        />
-      </div>
+      <ReservationDetailModal
+        open={modalOpen}
+        reservation={selectedReservation}
+        onClose={handleCloseModal}
+        onSendWhatsApp={handleSendWhatsApp}
+        onCancelReservation={handleCancelReservation}
+        loading={actionLoading}
+      />
+    </div>
   )
 }
 
@@ -341,5 +426,15 @@ function getStatusBadgeSimple(status: string): string {
     completed: 'completed',
     cancelled: 'cancelled',
   }
+  return map[status] || 'pending'
+}
+
+function getPaymentText(status: string): string {
+  const map: Record<string, string> = { pending: 'Pending', paid: 'Paid', partial: 'Partial', refunded: 'Refunded' }
+  return map[status] || 'Unknown'
+}
+
+function getPaymentBadgeSimple(status: string): string {
+  const map: Record<string, string> = { pending: 'pending', paid: 'paid', partial: 'partial', refunded: 'refunded' }
   return map[status] || 'pending'
 }

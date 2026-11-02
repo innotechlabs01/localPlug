@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { getDriverFromSession } from '@/lib/driver/auth'
+import { recordAudit } from '@/lib/driver/audit'
 import { accrueDriverPayout } from '@/lib/payout'
 import { emitEvent } from '@/lib/events-outbox'
 
@@ -13,6 +14,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: result.error }, { status: result.status })
     }
     const driverId = result.driver.id
+    const clerkId = result.clerkId
 
     const { id } = await params
     const assignmentId = Number(id)
@@ -78,6 +80,20 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
             WHERE id = ?`,
       args: [airportParking ? 1 : 0, proofUrl, airportParking ? 'pending' : 'approved', orderId],
     })
+
+    // Audit log — immutable record of driver completion
+    await recordAudit({
+      assignmentId,
+      orderId,
+      driverId,
+      actorType: 'driver',
+      actorId: clerkId ? Number(clerkId) : undefined,
+      actorName: result.driver.name,
+      action: 'completed',
+      fromStatus: rowStatus,
+      toStatus: 'completed',
+      metadata: { airport_parking: airportParking, parking_proof_url: proofUrl },
+    }).catch(() => {})
 
     await db.execute({
       sql: `UPDATE drivers SET status = 'available', updated_at = datetime('now') WHERE id = ?`,

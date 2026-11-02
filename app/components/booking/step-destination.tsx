@@ -220,7 +220,7 @@ export default function StepDestination({ data, onChange, customerNotes = '', on
                         className="w-full p-4 flex items-center gap-3 text-left hover:bg-[rgba(255,255,255,0.02)] transition-colors rounded-[var(--radius-md)]"
                       >
                         <div className="w-10 h-10 rounded-lg flex items-center justify-center text-lg font-bold shrink-0"
-                          style={{ background: 'linear-gradient(135deg, var(--accent-gold), #b8860b)' }}>
+                          style={{ background: 'linear-gradient(135deg, var(--accent-gold), var(--ui-gold))' }}>
                           {hotel.name.charAt(0)}
                         </div>
                         <div className="flex-1 min-w-0">

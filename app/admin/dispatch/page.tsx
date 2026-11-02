@@ -253,41 +253,41 @@ export default function DispatchPage() {
 
       <div className="dispatch-layout">
         {/* ── Left Panel: Requests ── */}
-        <div className="dispatch-panel dispatch-left">
-          <div className="dp-header">
-            <div className="dp-header-title">
+        <div className="dispatch-panel dispatch-left admin-panel admin-panel-left">
+          <div className="dp-header admin-dp-header">
+            <div className="dp-header-title admin-dp-header-title">
               {d.requests || 'Requests'}
-              <span className="dp-header-count">{filteredOrders.length}</span>
+              <span className="dp-header-count admin-dp-header-count">{filteredOrders.length}</span>
             </div>
-            <button onClick={fetchData} style={{ background: 'none', border: 'none', color: T.fgSecondary, cursor: 'pointer', fontSize: 14, padding: '4px', display: 'flex', alignItems: 'center', gap: 6 }} title={d.refresh || 'Refresh'}>
+            <button onClick={fetchData} className="admin-btn admin-btn-ghost admin-btn-sm" title={d.refresh || 'Refresh'}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
               {d.refresh || 'Refresh'}
             </button>
           </div>
 
-          <div className="dp-search-bar">
+          <div className="dp-search-bar admin-dp-search-bar">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
             <input placeholder={d.searchPlaceholder || 'Search by name, flight, hotel...'} value={query} onChange={e => setQuery(e.target.value)} />
           </div>
 
-          <div className="dp-left-stats">
-            <div className="dp-left-stat">
+          <div className="dp-left-stats admin-dp-left-stats">
+            <div className="dp-left-stat admin-dp-left-stat">
               <div className="val" style={{ color: T.warning }}>{counts.pending}</div>
               <div className="lbl">Pending</div>
             </div>
-            <div className="dp-left-stat">
+            <div className="dp-left-stat admin-dp-left-stat">
               <div className="val" style={{ color: T.accent }}>{counts.assigned}</div>
               <div className="lbl">Assigned</div>
             </div>
-            <div className="dp-left-stat">
+            <div className="dp-left-stat admin-dp-left-stat">
               <div className="val" style={{ color: T.info }}>{counts.enroute}</div>
               <div className="lbl">En Route</div>
             </div>
           </div>
 
-<div className="dp-filter-tabs">
+<div className="dp-filter-tabs admin-dp-filter-tabs">
                       {(['all', 'pending', 'assigned', 'enroute', 'pickedup', 'completed', 'vip'] as const).map(f => (
-                        <button key={f} className={`dp-filter-tab ${tab === f ? 'active' : ''}`} onClick={() => setTab(f)}>
+                        <button key={f} className={`dp-filter-tab admin-dp-filter-tab ${tab === f ? 'active' : ''}`} onClick={() => setTab(f)}>
                           {f === 'all' ? (d.all || 'All')
                             : f === 'pending' ? (d.pending || 'Pending')
                             : f === 'assigned' ? (d.assigned || 'Assigned')
@@ -299,42 +299,43 @@ export default function DispatchPage() {
                       ))}
                     </div>
 
-          <div className="dp-request-list">
+          <div className="dp-request-list admin-dp-request-list">
             {filteredOrders.length === 0 ? (
-              <div className="dp-empty-state" style={{ padding: '48px 24px' }}>
+              <div className="admin-empty" style={{ padding: '48px 24px' }}>
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.3"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/></svg>
-                <p>{d.noRequests || 'No requests found'}</p>
+                <h3>{d.noRequests || 'No requests found'}</h3>
+                <p>{d.selectRequestDesc || 'Choose a customer request from the left panel to view details and assign a driver.'}</p>
               </div>
             ) : filteredOrders.map(order => (
               <div
                 key={order.id}
-                className={`dp-request-card ${order.id === selectedId ? 'selected' : ''}`}
+                className={`admin-dp-request-card ${order.id === selectedId ? 'selected' : ''}`}
                 onClick={() => setSelectedId(order.id)}
               >
-                <div className={`dp-request-priority ${order.priority === 'urgent' ? 'high' : order.priority === 'high' ? 'medium' : 'low'}`} />
-                <div className="dp-request-body">
-                  <div className="dp-request-name">
+                <div className={`admin-dp-priority ${order.priority === 'urgent' ? 'high' : order.priority === 'urgent' ? 'medium' : 'low'}`} />
+                <div className="admin-dp-body">
+                  <div className="admin-dp-name">
                     {order.customer_name || d.customer || 'Customer'}
-                    {isVip(order) && <span className="dp-vip-badge">VIP</span>}
+                    {isVip(order) && <span className="admin-dp-vip">VIP</span>}
                     {getCountryFlag(order.customer_country) && <span style={{ fontSize: 10 }}>{getCountryFlag(order.customer_country)}</span>}
                   </div>
-                  <div className="dp-request-meta">
-                    {order.flight_number && <span className="dp-request-flight">{order.flight_number}</span>}
+                  <div className="admin-dp-meta">
+                    {order.flight_number && <span className="admin-dp-flight">{order.flight_number}</span>}
                     <span>{order.airline || ''}</span>
-{order.package_name && <><span>·</span><span>{order.package_name}</span></>}
-                       {order.customer_phone && <><span>·</span><span>{order.customer_phone}</span></>}
-                       {order.customer_country && <><span>·</span><span>{order.customer_country}</span></>}
-                       {order.totalAmount !== undefined && <><span>·</span><span>${order.totalAmount.toFixed(2)}</span></>}
-                       {order.transactionId && <><span>·</span><span>Txn {order.transactionId}</span></>}
-                       {order.destination_address && <><span>·</span><span>{order.destination_address}</span></>}
+                    {order.package_name && <><span>·</span><span>{order.package_name}</span></>}
+                    {order.customer_phone && <><span>·</span><span>{order.customer_phone}</span></>}
+                    {order.customer_country && <><span>·</span><span>{order.customer_country}</span></>}
+                    {order.totalAmount !== undefined && <><span>·</span><span>${order.totalAmount.toFixed(2)}</span></>}
+                    {order.transactionId && <><span>·</span><span>Txn {order.transactionId}</span></>}
+                    {order.destination_address && <><span>·</span><span>{order.destination_address}</span></>}
                   </div>
                 </div>
-                <div className="dp-request-right">
-                  <div className="dp-request-time">{order.arrival_time?.substring(0, 5) || '--:--'}</div>
-                  <span className={`dp-request-status ${getDispatchStatusClass(order.dispatch_status)}`}>
+                <div className="admin-dp-right">
+                  <div className="admin-dp-time">{order.arrival_time?.substring(0, 5) || '--:--'}</div>
+                  <span className={`admin-dp-status ${getDispatchStatusClass(order.dispatch_status)}`}>
                     {STATUS_LABELS[order.dispatch_status || 'pending'] || 'Pending'}
                   </span>
-                  <span className={`dp-payment-badge ${order.payment_status === 'completed' ? 'paid' : 'pending'}`}>
+                  <span className={`admin-badge ${order.payment_status === 'completed' ? 'accent' : 'neutral'}`}>
                     {order.payment_status === 'completed' ? 'Paid' : 'Pending'}
                   </span>
                 </div>

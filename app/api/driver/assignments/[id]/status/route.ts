@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { getDriverFromSession } from '@/lib/driver/auth'
+import { recordAudit } from '@/lib/driver/audit'
 import { recordMetric } from '@lp/events'
 import { emitEvent } from '@/lib/events-outbox'
 
@@ -23,6 +24,7 @@ export async function POST(
       return NextResponse.json({ error: result.error }, { status: result.status })
     }
     const driverId = result.driver.id
+    const clerkId = result.clerkId
 
     const { id } = await params
     const assignmentId = Number(id)
@@ -99,6 +101,19 @@ export async function POST(
       sql: `UPDATE orders SET dispatch_status = ?, updated_at = datetime('now') WHERE id = ?`,
       args: [orderDispatchStatus, orderId],
     })
+
+    // Audit log — immutable record of driver state change
+    await recordAudit({
+      assignmentId,
+      orderId,
+      driverId,
+      actorType: 'driver',
+      actorId: clerkId ? Number(clerkId) : undefined,
+      actorName: result.driver.name,
+      action: nextStatus === 'pickedup' ? 'pickedup' : 'en_route',
+      fromStatus: currentStatus,
+      toStatus: storedStatus,
+    }).catch(() => {})
 
     recordMetric('driver_trip_status_change', 1, {
       from: currentStatus,

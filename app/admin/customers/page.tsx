@@ -4,33 +4,30 @@ import { useState, useEffect, useCallback } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { useToast } from '@/lib/admin/toast-context'
 import { formatDateFull } from '@/lib/date-utils'
-import type { Customer } from '@/app/api/admin/customers/route'
 
-type TabKey = 'profile' | 'reservations' | 'preferences' | 'support' | 'tags'
+const formatCurrency = (val: number) => '$' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-const VIP_BADGES: Record<string, string> = {
-  platinum: 'bg-[rgba(168,85,247,0.15)] text-[#a855f7]',
-  gold: 'bg-[rgba(234,179,8,0.15)] text-[#eab308]',
-  silver: 'bg-[rgba(148,163,184,0.15)] text-[#94a3b8]',
-  standard: 'bg-[rgba(100,116,139,0.1)] text-[#64748b]',
+const vipBadge: Record<string, string> = {
+  platinum: 'admin-badge gold',
+  gold: 'admin-badge gold',
+  silver: 'admin-badge neutral',
+  standard: 'admin-badge neutral',
 }
 
-const STATUS_BADGES: Record<string, string> = {
-  active: 'bg-[rgba(16,185,129,0.12)] text-[#10b981]',
-  inactive: 'bg-[rgba(100,104,128,0.12)] text-[#646880]',
+const statusBadge: Record<string, string> = {
+  active: 'admin-badge accent',
+  inactive: 'admin-badge neutral',
 }
 
-function formatCurrency(val: number): string {
-  return '$' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+const COUNTRY_FLAGS: Record<string, string> = {
+  'Argentina': '🇦🇷', 'USA': '🇺🇸', 'United States': '🇺🇸', 'Spain': '🇪🇸', 'Mexico': '🇲🇽',
+  'UK': '🇬🇧', 'United Kingdom': '🇬🇧', 'Colombia': '🇨🇴', 'France': '🇫🇷', 'Germany': '🇩🇪',
+  'Brazil': '🇧🇷', 'Chile': '🇨🇱', 'Peru': '🇵🇪', 'Italy': '🇮🇹', 'Canada': '🇨🇦', 'Australia': '🇦🇺',
 }
 
-function formatDate(dateStr: string | null | undefined): string {
-  return formatDateFull(dateStr)
-}
-
-function vipLabel(d: any, level: string): string {
-  const key = `vip${level.charAt(0).toUpperCase()}${level.slice(1)}` as keyof typeof d
-  return (d[key] as string) || level
+function getCountryFlag(country: string | null): string {
+  if (!country) return '🌍'
+  return COUNTRY_FLAGS[country] || '🌍'
 }
 
 function getInitials(name: string): string {
@@ -39,66 +36,32 @@ function getInitials(name: string): string {
 
 function getAvatarBg(vipLevel: string): string {
   const bgMap: Record<string, string> = {
-    platinum: 'var(--gold-soft)',
-    gold: 'var(--gold-soft)',
-    silver: 'rgba(148,163,184,0.15)',
-    standard: 'var(--accent-soft)',
+    platinum: 'var(--ui-gold-soft)', gold: 'var(--ui-gold-soft)', silver: 'var(--ui-surface-hover)', standard: 'var(--ui-accent-soft)',
   }
   return bgMap[vipLevel] || bgMap.standard
 }
 
 function getAvatarColor(vipLevel: string): string {
   const colorMap: Record<string, string> = {
-    platinum: 'var(--gold)',
-    gold: 'var(--gold)',
-    silver: 'var(--fg-muted)',
-    standard: 'var(--accent)',
+    platinum: 'var(--ui-gold)', gold: 'var(--ui-gold)', silver: 'var(--ui-fg-muted)', standard: 'var(--ui-accent)',
   }
   return colorMap[vipLevel] || colorMap.standard
 }
 
-const COUNTRY_FLAGS: Record<string, string> = {
-  'Argentina': '🇦🇷', 'USA': '🇺🇸', 'United States': '🇺🇸',
-  'Spain': '🇪🇸', 'Mexico': '🇲🇽', 'UK': '🇬🇧', 'United Kingdom': '🇬🇧',
-  'France': '🇫🇷', 'Colombia': '🇨🇴', 'Japan': '🇯🇵', 'Germany': '🇩🇪',
-  'Brazil': '🇧🇷', 'Chile': '🇨🇱', 'Peru': '🇵🇪', 'Italy': '🇮🇹',
-  'Canada': '🇨🇦', 'Australia': '🇦🇺',
-}
-
-function getCountryFlag(country: string | null): string {
-  if (!country) return '🌍'
-  return COUNTRY_FLAGS[country] || '🌍'
-}
-
-function getRelativeTime(dateStr: string | null | undefined): string {
-  if (!dateStr) return 'Never'
-  const date = new Date(dateStr)
-  const now = new Date()
-  const diff = now.getTime() - date.getTime()
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-  if (days === 0) return 'Today'
-  if (days === 1) return 'Yesterday'
-  if (days < 7) return `${days} days ago`
-  if (days < 30) return `${Math.floor(days / 7)} week${Math.floor(days / 7) > 1 ? 's' : ''} ago`
-  if (days < 365) return `${Math.floor(days / 30)} months ago`
-  return `${Math.floor(days / 365)} year${Math.floor(days / 365) > 1 ? 's' : ''} ago`
-}
-
 export default function CustomersPage() {
   const { t } = useI18n()
-  const d = (t.admin as any).customers
+  const d = (t.admin as any).customers ?? {}
 
-  const [customers, setCustomers] = useState<Customer[]>([])
+  const [customers, setCustomers] = useState<any[]>([])
   const [kpi, setKpi] = useState<any>({})
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [vipFilter, setVipFilter] = useState('all')
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
-  const [detailTab, setDetailTab] = useState<TabKey>('profile')
+  const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null)
   const [showForm, setShowForm] = useState(false)
-  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
-  const [formData, setFormData] = useState<Partial<Customer>>({})
+  const [editingCustomer, setEditingCustomer] = useState<any | null>(null)
+  const [formData, setFormData] = useState<Partial<any>>({})
   const { showToast } = useToast()
 
   const fetchCustomers = useCallback(async () => {
@@ -127,7 +90,7 @@ export default function CustomersPage() {
     setShowForm(true)
   }
 
-  const openEdit = (customer: Customer) => {
+  const openEdit = (customer: any) => {
     setEditingCustomer(customer)
     setFormData({ ...customer })
     setShowForm(true)
@@ -142,7 +105,7 @@ export default function CustomersPage() {
           body: JSON.stringify({ id: editingCustomer.id, ...formData }),
         })
         if (!res.ok) throw new Error('Failed to update')
-        showToast(d.customerSaved as string)
+        showToast(d.customerSaved || 'Cliente guardado')
       } else {
         const res = await fetch('/api/admin/customers', {
           method: 'POST',
@@ -150,25 +113,25 @@ export default function CustomersPage() {
           body: JSON.stringify(formData),
         })
         if (!res.ok) throw new Error('Failed to create')
-        showToast(d.customerSaved as string)
+        showToast(d.customerSaved || 'Cliente guardado')
       }
       setShowForm(false)
       fetchCustomers()
     } catch (err) {
-      showToast('Error saving customer')
+      showToast('Error guardando cliente')
     }
   }
 
-  const deactivateCustomer = async (customer: Customer) => {
-    if (!confirm(d.confirmDelete as string)) return
+  const deactivateCustomer = async (customer: any) => {
+    if (!confirm(d.confirmDelete || '¿Desactivar este cliente?')) return
     try {
       const res = await fetch(`/api/admin/customers?id=${customer.id}`, { method: 'DELETE' })
       if (!res.ok) throw new Error('Failed to delete')
-      showToast(d.customerDeleted as string)
+      showToast(d.customerDeleted || 'Cliente desactivado')
       if (selectedCustomer?.id === customer.id) setSelectedCustomer(null)
       fetchCustomers()
     } catch (err) {
-      showToast('Error deactivating customer')
+      showToast('Error desactivando cliente')
     }
   }
 
@@ -186,159 +149,135 @@ export default function CustomersPage() {
     URL.revokeObjectURL(url)
   }
 
-  const filtered = customers
+  const vipLabel = (level: string): string => {
+    const map: Record<string, string> = { platinum: 'Platinum', gold: 'Gold', silver: 'Silver', standard: 'Standard' }
+    return map[level] || level
+  }
 
   return (
-    <div style={{ paddingBottom: 40 }}>
-      <div className="customers-page">
-        {/* KPI Row */}
-        <div className="customer-kpi-row">
-          {[
-            { label: d.kpiTotalCustomers || 'Total Customers', value: kpi.total ?? '—', color: 'green' },
-            { label: d.kpiActiveMonth || 'Active This Month', value: kpi.active ?? '—', color: 'blue' },
-            { label: d.kpiVipCustomers || 'VIP Customers', value: kpi.vip ?? '—', color: 'gold' },
-            { label: d.kpiReturningRate || 'Returning Rate', value: kpi.returning_rate ?? '—', color: 'green' },
-            { label: d.kpiAvgLtv || 'Avg. LTV', value: formatCurrency(kpi.avg_ltv ?? 0), color: 'purple' },
-            { label: d.kpiNpsScore || 'NPS Score', value: kpi.nps ?? '—', color: 'gold' },
-          ].map((card, i) => (
-            <div key={i} className="customer-kpi">
-              <div className={`kpi-val ${card.color}`}>{card.value}</div>
-              <div className="kpi-label">{card.label}</div>
-            </div>
-          ))}
+    <div className="admin-page space-y-6">
+      <section className="admin-section-header">
+        <div>
+          <h1 className="admin-page-title">{d.title || 'Clientes'}</h1>
+          <p className="admin-section-desc">{d.subtitle?.replace('{count}', String(kpi.total || customers.length)) || 'Gestiona los clientes de la plataforma.'}</p>
         </div>
-
-        {/* Toolbar */}
-        <div className="toolbar-row">
-          <div className="filter-group">
+        <div className="admin-flex-between" style={{ gap: 8 }}>
+          <button onClick={exportCsv} className="admin-btn admin-btn-secondary admin-btn-sm">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            {d.export || 'Exportar'}
+          </button>
+          <button onClick={openNew} className="admin-btn admin-btn-primary admin-btn-sm">
+            {d.add || '+ Agregar Cliente'}
+          </button>
+        </div>
+      </section>
+      <div className="admin-grid-6 admin-mb-4">
+        {[
+          { label: d.kpiTotalCustomers || 'Total Clientes', value: kpi.total ?? '—', icon: 'green' },
+          { label: d.kpiActiveMonth || 'Activos este mes', value: kpi.active ?? '—', icon: 'blue' },
+          { label: d.kpiVipCustomers || 'Clientes VIP', value: kpi.vip ?? '—', icon: 'gold' },
+          { label: d.kpiReturningRate || 'Tasa de retorno', value: kpi.returning_rate ?? '—', icon: 'green' },
+          { label: d.kpiAvgLtv || 'LTV Promedio', value: formatCurrency(kpi.avg_ltv ?? 0), icon: 'purple' },
+          { label: d.kpiNpsScore || 'NPS Score', value: kpi.nps ?? '—', icon: 'gold' },
+        ].map((card, i) => (
+          <div key={i} className="admin-kpi-card">
+            <div className="admin-kpi-label">{card.label}</div>
+            <div className="admin-kpi-value">{card.value}</div>
+            <div className="admin-kpi-sub neutral"></div>
+          </div>
+        ))}
+      </div>
+      <section className="admin-card admin-mt-4">
+        <div className="admin-card-header admin-flex-between">
+          <span className="admin-card-title">{d.title || 'Directorio de Clientes'}</span>
+          <div style={{ display: 'flex', gap: 8 }}>
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="input"
-              style={{ width: 'auto', padding: '6px 10px', fontSize: 12, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--fg)', outline: 'none' }}
+              onChange={e => setStatusFilter(e.target.value)}
+              className="admin-select"
             >
-              <option value="all">{d.filterAll as string}</option>
-              <option value="active">{d.filterActive as string}</option>
-              <option value="inactive">{d.filterInactive as string}</option>
+              <option value="all">{d.filterAll || 'Todos'}</option>
+              <option value="active">{d.filterActive || 'Activos'}</option>
+              <option value="inactive">{d.filterInactive || 'Inactivos'}</option>
             </select>
-          </div>
-          <div className="filter-group">
             <select
               value={vipFilter}
-              onChange={(e) => setVipFilter(e.target.value)}
-              className="input"
-              style={{ width: 'auto', padding: '6px 10px', fontSize: 12, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--fg)', outline: 'none' }}
+              onChange={e => setVipFilter(e.target.value)}
+              className="admin-select"
             >
-              <option value="all">{d.vipFilterAll || 'All VIP Levels'}</option>
-              <option value="platinum">{d.vipPlatinum as string}</option>
-              <option value="gold">{d.vipGold as string}</option>
-              <option value="silver">{d.vipSilver as string}</option>
-              <option value="standard">{d.vipNone as string}</option>
+              <option value="all">{d.vipFilterAll || 'Todos los niveles VIP'}</option>
+              <option value="platinum">Platinum</option>
+              <option value="gold">Gold</option>
+              <option value="silver">Silver</option>
+              <option value="standard">Standard</option>
             </select>
           </div>
-          <button onClick={exportCsv} className="btn btn-primary btn-sm">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            {d.export as string}
-          </button>
-          <button onClick={openNew} className="btn btn-secondary btn-sm">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></svg>
-            {d.add as string}
-          </button>
         </div>
-
-        {/* Customer Table */}
-        <div className="card" style={{ margin: 0 }}>
-          <div className="card-header" style={{ padding: '12px 16px' }}>
-            <span className="card-title" style={{ fontSize: 13 }}>{d.title as string}</span>
-            <span style={{ fontSize: 11, color: 'var(--fg-muted)' }}>{(d.subtitle as string).replace('{count}', String(kpi.total || customers.length))}</span>
-          </div>
-          <div className="table-wrap">
-            <table>
+        <div className="admin-card-body">
+          <div className="admin-table-wrap">
+            <table className="admin-table">
               <thead>
                 <tr>
-                  <th>Customer</th>
-                  <th>Country</th>
-                  <th>Status</th>
-                  <th>Last Trip</th>
-                  <th>Trips</th>
+                  <th>Cliente</th>
+                  <th>País</th>
+                  <th>Estado</th>
+                  <th>Último Viaje</th>
+                  <th>Viajes</th>
                   <th>LTV</th>
-                  <th>VIP Level</th>
-                  <th>Actions</th>
+                  <th>Nivel VIP</th>
+                  <th style={{ textAlign: 'center' }}>Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr>
-                    <td colSpan={8} className="text-center py-12">{d.loading as string}</td>
-                  </tr>
-                ) : filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="text-center py-12">{d.noResults as string}</td>
-                  </tr>
+                  <tr><td colSpan={8} style={{ textAlign: 'center', padding: 32, color: 'var(--ui-fg-muted)' }}>{d.loading || 'Cargando clientes...'}</td></tr>
+                ) : customers.length === 0 ? (
+                  <tr><td colSpan={8} style={{ textAlign: 'center', padding: 32, color: 'var(--ui-fg-muted)' }}>{d.noResults || 'No se encontraron clientes'}</td></tr>
                 ) : (
-                  filtered.map((customer) => (
-                    <tr
-                      key={customer.id}
-                      className="customer-row"
-                      data-status={customer.status}
-                      data-vip={customer.vip_level}
-                      onClick={() => { setSelectedCustomer(customer); setDetailTab('profile') }}
-                    >
+                  customers.map((customer) => (
+                    <tr key={customer.id} onClick={() => { setSelectedCustomer(customer) }} style={{ cursor: 'pointer' }}>
                       <td>
-                        <div className="table-customer-name">
-                          <div
-                            className="table-customer-avatar"
-                            style={{
-                              background: getAvatarBg(customer.vip_level),
-                              color: getAvatarColor(customer.vip_level)
-                            }}
-                          >
+                        <div className="flex items-center gap-8">
+                          <div className="admin-guest-avatar" style={{ width: 32, height: 32, borderRadius: '50%', background: getAvatarBg(customer.vip_level || 'standard'), color: getAvatarColor(customer.vip_level || 'standard'), display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 12 }}>
                             {getInitials(customer.name)}
                           </div>
                           <div>
-                            <div className="font-medium">{customer.name}</div>
-                            <div style={{ color: 'var(--fg-muted)', fontSize: 12 }}>{customer.email}</div>
+                            <div style={{ fontWeight: 600, color: 'var(--ui-fg)' }}>{customer.name}</div>
+                            <div style={{ fontSize: 11, color: 'var(--ui-fg-muted)' }}>{customer.email}</div>
                           </div>
                         </div>
                       </td>
+                      <td style={{ fontSize: 13 }}>{getCountryFlag(customer.country)} {customer.country || '—'}</td>
                       <td>
-                        <span className="country-flag">{getCountryFlag(customer.country)}</span> {customer.country || '—'}
-                      </td>
-                      <td>
-                        <span className={`badge ${customer.status === 'active' ? 'badge-accent' : 'badge-warning'}`} style={{ fontSize: 10, padding: '2px 8px' }}>
-                          {customer.status === 'active' ? d.statusActive as string : d.statusInactive as string}
+                        <span className={`admin-badge ${customer.status === 'active' ? 'accent' : 'neutral'}`}>
+                          {customer.status === 'active' ? d.statusActive || 'Activo' : d.statusInactive || 'Inactivo'}
                         </span>
                       </td>
-                      <td style={{ fontSize: 12, color: 'var(--fg-secondary)' }}>{getRelativeTime(customer.last_trip_date)}</td>
+                      <td style={{ fontSize: 12, color: 'var(--ui-fg-muted)' }}>{customer.last_trip_date ? new Date(customer.last_trip_date).toLocaleDateString() : '—'}</td>
                       <td style={{ fontWeight: 600 }}>{customer.total_trips}</td>
-                      <td style={{ fontWeight: 600, fontFamily: 'var(--font-mono)' }}>{formatCurrency(customer.lifetime_value)}</td>
+                      <td style={{ fontWeight: 600, fontFamily: 'var(--ui-font-mono)' }}>{formatCurrency(customer.lifetime_value)}</td>
                       <td>
-                        <span className={`vip-badge ${customer.vip_level || 'standard'}`}>
-                          {vipLabel(d, customer.vip_level)}
-                        </span>
+                        <span className={`admin-badge ${vipBadge[customer.vip_level || 'standard']}`}>{vipLabel(customer.vip_level || 'standard')}</span>
                       </td>
-                      <td>
-                        <div className="actions-group">
+                      <td style={{ textAlign: 'center' }}>
+                        <div className="admin-flex-between" style={{ justifyContent: 'center', gap: 6 }}>
                           <button
-                            onClick={(e) => { e.stopPropagation(); setSelectedCustomer(customer); setDetailTab('profile') }}
-                            className="action-btn"
-                            title="View"
+                            onClick={(e) => { e.stopPropagation(); setSelectedCustomer(customer) }}
+                            className="admin-btn admin-btn-ghost admin-btn-sm" title="Ver"
                           >
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2 12s3-8 10-8 10 8 10 8-10 8-10-8"/><circle cx="12" cy="12" r="3"/></svg>
                           </button>
                           <button
                             onClick={(e) => { e.stopPropagation(); openEdit(customer) }}
-                            className="action-btn"
-                            title="Edit"
+                            className="admin-btn admin-btn-ghost admin-btn-sm" title="Editar"
                           >
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                           </button>
                           <button
                             onClick={(e) => { e.stopPropagation(); deactivateCustomer(customer) }}
-                            className="action-btn danger"
-                            title="Delete"
+                            className="admin-btn admin-btn-danger admin-btn-sm" title="Desactivar"
                           >
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
                           </button>
                         </div>
                       </td>
@@ -349,246 +288,135 @@ export default function CustomersPage() {
             </table>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Panel Overlay */}
-      <div
-        className={`panel-overlay ${selectedCustomer ? 'open' : ''}`}
-        onClick={() => setSelectedCustomer(null)}
-      />
-
-      {/* Slide-in Detail Panel */}
       {selectedCustomer && (
-        <div className={`detail-panel open`}>
-          <div className="panel-header">
-            <span className="panel-header-title">{selectedCustomer.name}</span>
-            <button className="panel-close" onClick={() => setSelectedCustomer(null)}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
-          </div>
-          <div className="panel-body">
-            {/* Profile Summary */}
-            <div className="profile-summary">
-              <div
-                className="profile-avatar-large"
-                style={{
-                  background: getAvatarBg(selectedCustomer.vip_level),
-                  color: getAvatarColor(selectedCustomer.vip_level)
-                }}
-              >
-                {getInitials(selectedCustomer.name)}
-              </div>
-              <div className="profile-info">
-                <div className="profile-name">
-                  {selectedCustomer.name}{' '}
-                  <span className={`vip-badge ${selectedCustomer.vip_level || 'standard'}`}>
-                    {vipLabel(d, selectedCustomer.vip_level)}
-                  </span>
-                </div>
-                <div className="profile-meta">
-                  <span>{getCountryFlag(selectedCustomer.country)} {selectedCustomer.country || '—'}</span>
-                  <span>&middot;</span>
-                  <span>{selectedCustomer.phone || '—'}</span>
-                </div>
-                <div className="profile-meta">
-                  <span>{selectedCustomer.email}</span>
-                  <span>&middot;</span>
-                  <span>{selectedCustomer.languages || '—'}</span>
-                </div>
-                <div className="profile-stats">
-                  <div className="profile-stat">
-                    <div className="profile-stat-num">{selectedCustomer.total_trips}</div>
-                    <div className="profile-stat-label">Trips</div>
-                  </div>
-                  <div className="profile-stat">
-                    <div className="profile-stat-num" style={{ fontFamily: 'var(--font-mono)' }}>{formatCurrency(selectedCustomer.lifetime_value)}</div>
-                    <div className="profile-stat-label">LTV</div>
-                  </div>
-                  <div className="profile-stat">
-                    <div className="profile-stat-num">{formatDate(selectedCustomer.created_at) || '—'}</div>
-                    <div className="profile-stat-label">Since</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Tab navigation */}
-            <div className="tabs" style={{ marginBottom: 0 }}>
-              {(['profile', 'reservations', 'preferences', 'support', 'tags'] as TabKey[]).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setDetailTab(tab)}
-                  className={`tab ${detailTab === tab ? 'active' : ''}`}
-                >
-                  {d[`detail${tab.charAt(0).toUpperCase()}${tab.slice(1)}` as keyof typeof d] as string || tab}
-                </button>
-              ))}
-            </div>
-
-            {/* Tab Content */}
-            {detailTab === 'profile' && (
-              <div>
-                <div className="panel-section-title">{d.profileName as string || 'Profile'}</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--fg-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>{d.profilePhone as string || 'Phone'}</div>
-                      <div style={{ fontSize: 13, color: 'var(--fg)' }}>{selectedCustomer.phone || '—'}</div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--fg-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>{d.profileCountry as string || 'Country'}</div>
-                      <div style={{ fontSize: 13, color: 'var(--fg)' }}>{selectedCustomer.country || '—'}</div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--fg-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>{d.profileLanguages as string || 'Languages'}</div>
-                      <div style={{ fontSize: 13, color: 'var(--fg)' }}>{selectedCustomer.languages || '—'}</div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--fg-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>{d.profileVipLevel as string || 'VIP Level'}</div>
-                      <span className={`vip-badge ${selectedCustomer.vip_level || 'standard'}`}>
-                        {vipLabel(d, selectedCustomer.vip_level)}
-                      </span>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--fg-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>{d.profileStatus as string || 'Status'}</div>
-                      <span className={`badge ${selectedCustomer.status === 'active' ? 'badge-accent' : 'badge-warning'}`} style={{ fontSize: 10, padding: '2px 8px' }}>
-                        {selectedCustomer.status === 'active' ? d.statusActive as string : d.statusInactive as string}
-                      </span>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--fg-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>{d.profileMemberSince as string || 'Member Since'}</div>
-                      <div style={{ fontSize: 13, color: 'var(--fg)' }}>{formatDate(selectedCustomer.created_at)}</div>
-                    </div>
-                  </div>
-                  <div className="flex gap-2 pt-2">
-                    <button onClick={() => openEdit(selectedCustomer)} className="btn btn-primary w-full">
-                      {d.modalEdit as string}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {detailTab === 'reservations' && (
-              <div className="py-8 text-center" style={{ color: 'var(--fg-muted)' }}>
-                {d.noReservations as string}
-              </div>
-            )}
-
-            {detailTab === 'preferences' && (
-              <div className="py-8 text-center" style={{ color: 'var(--fg-muted)' }}>
-                {d.noPreferences as string}
-              </div>
-            )}
-
-            {detailTab === 'support' && (
-              <div className="py-8 text-center" style={{ color: 'var(--fg-muted)' }}>
-                {d.noSupport as string}
-              </div>
-            )}
-
-            {detailTab === 'tags' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div>
-                  <div className="panel-section-title">{d.tagsTitle as string || 'Tags'}</div>
-                  {(() => {
-                    let tags: string[] = []
-                    try { tags = JSON.parse(selectedCustomer.tags || '[]') } catch {}
-                    return tags.length > 0 ? (
-                      <div className="tags-wrap">
-                        {tags.map((tag, i) => (
-                          <span key={i} className="tag-item active">{tag}</span>
-                        ))}
-                      </div>
-                    ) : (
-                      <p style={{ fontSize: 13, color: 'var(--fg-muted)' }}>{d.noTags as string}</p>
-                    )
-                  })()}
-                </div>
-                <div>
-                  <div className="panel-section-title">{d.notesTitle as string || 'Notes'}</div>
-                  <p style={{ fontSize: 13, color: selectedCustomer.notes ? 'var(--fg-secondary)' : 'var(--fg-muted)' }}>
-                    {selectedCustomer.notes || (d.noTags as string)}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Add/Edit Modal */}
-      {showForm && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6" onClick={() => setShowForm(false)}>
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-          <div
-            className="relative w-full max-w-[520px] rounded-[14px] overflow-hidden"
-            style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)' }}>
-              <h3 className="text-[15px] font-semibold" style={{ color: 'var(--fg)' }}>
-                {editingCustomer ? d.modalEdit as string : d.modalAdd as string}
-              </h3>
-              <button onClick={() => setShowForm(false)} className="p-1.5 rounded-[4px] transition-all" style={{ color: 'var(--fg-muted)' }}>
+        <div className="admin-modal-overlay open" onClick={() => setSelectedCustomer(null)}>
+          <div className="admin-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 720 }}>
+            <div className="admin-modal-header">
+              <h2 className="admin-modal-title">{selectedCustomer.name}</h2>
+              <button className="admin-btn admin-btn-ghost admin-btn-sm" onClick={() => setSelectedCustomer(null)}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>
-            <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
-              <Field label={d.formName as string}>
-                <input type="text" value={formData.name || ''} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full px-3 py-2 text-[13px] rounded-[6px] outline-none" style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--fg)' }} />
-              </Field>
-              <Field label={d.formEmail as string}>
-                <input type="email" value={formData.email || ''} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="w-full px-3 py-2 text-[13px] rounded-[6px] outline-none" style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--fg)' }} />
-              </Field>
-              <Field label={d.formPhone as string}>
-                <input type="text" value={formData.phone || ''} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="w-full px-3 py-2 text-[13px] rounded-[6px] outline-none" style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--fg)' }} />
-              </Field>
-              <Field label={d.formCountry as string}>
-                <input type="text" value={formData.country || ''} onChange={(e) => setFormData({ ...formData, country: e.target.value })} className="w-full px-3 py-2 text-[13px] rounded-[6px] outline-none" style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--fg)' }} />
-              </Field>
-              <Field label={d.formLanguages as string}>
-                <input type="text" value={formData.languages || ''} onChange={(e) => setFormData({ ...formData, languages: e.target.value })} className="w-full px-3 py-2 text-[13px] rounded-[6px] outline-none" style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--fg)' }} />
-              </Field>
-              <Field label={d.formVipLevel as string}>
-                <select value={formData.vip_level || 'standard'} onChange={(e) => setFormData({ ...formData, vip_level: e.target.value })} className="w-full px-3 py-2 text-[13px] rounded-[6px] outline-none" style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--fg)' }}>
-                  <option value="standard">{d.vipNone as string}</option>
-                  <option value="silver">{d.vipSilver as string}</option>
-                  <option value="gold">{d.vipGold as string}</option>
-                  <option value="platinum">{d.vipPlatinum as string}</option>
-                </select>
-              </Field>
-              <Field label={d.formStatus as string}>
-                <select value={formData.status || 'active'} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className="w-full px-3 py-2 text-[13px] rounded-[6px] outline-none" style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--fg)' }}>
-                  <option value="active">{d.optionActive as string}</option>
-                  <option value="inactive">{d.optionInactive as string}</option>
-                </select>
-              </Field>
-              <Field label={d.formNotes as string}>
-                <textarea value={formData.notes || ''} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} rows={3} className="w-full px-3 py-2 text-[13px] rounded-[6px] outline-none resize-none" style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--fg)' }} />
-              </Field>
-            </div>
-            <div className="px-6 py-4 flex gap-2 justify-end" style={{ borderTop: '1px solid var(--border)' }}>
-              <button onClick={() => setShowForm(false)} className="px-4 py-2 text-[13px] font-medium rounded-[6px] transition-all" style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--fg)' }}>
-                {d.cancel as string}
-              </button>
-              <button onClick={saveCustomer} className="px-4 py-2 text-[13px] font-medium rounded-[6px] transition-all text-white" style={{ background: 'var(--accent)' }}>
-                {editingCustomer ? d.saveChanges as string : d.modalAdd as string}
-              </button>
+            <div className="admin-modal-body">
+              <div className="admin-grid-2">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ width: 56, height: 56, borderRadius: '50%', background: getAvatarBg(selectedCustomer.vip_level || 'standard'), color: getAvatarColor(selectedCustomer.vip_level || 'standard'), display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600, fontSize: 16 }}>
+                    {getInitials(selectedCustomer.name)}
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--ui-fg)' }}>{selectedCustomer.name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--ui-fg-muted)' }}>
+                      {getCountryFlag(selectedCustomer.country)} {selectedCustomer.country || '—'}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                      <span className={`admin-badge ${statusBadge[selectedCustomer.status]}`}>
+                        {selectedCustomer.status === 'active' ? d.statusActive || 'Activo' : d.statusInactive || 'Inactivo'}
+                      </span>
+                      <span className={`admin-badge ${vipBadge[selectedCustomer.vip_level || 'standard']}`}>{vipLabel(selectedCustomer.vip_level || 'standard')}</span>
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  {[
+                    [d.profileEmail || 'Email', selectedCustomer.email || '—'],
+                    [d.profilePhone || 'Teléfono', selectedCustomer.phone || '—'],
+                    [d.profileLanguages || 'Idiomas', selectedCustomer.languages || '—'],
+                    [d.profileMemberSince || 'Desde', formatDateFull(selectedCustomer.created_at) || '—'],
+                  ].map(([label, value], idx) => (
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--ui-border-light)' }}>
+                      <span style={{ fontSize: 12, color: 'var(--ui-fg-muted)' }}>{label}</span>
+                      <span style={{ fontSize: 13, color: 'var(--ui-fg)', fontWeight: 500 }}>{value}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                <div style={{ padding: 12, background: 'var(--ui-surface)', borderRadius: 'var(--ui-radius-sm)', border: '1px solid var(--ui-border)' }}>
+                  <div style={{ fontSize: 11, color: 'var(--ui-fg-muted)', textTransform: 'uppercase', letterSpacing: 0.4 }}>Viajes</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--ui-font-mono)' }}>{selectedCustomer.total_trips}</div>
+                </div>
+                <div style={{ padding: 12, background: 'var(--ui-surface)', borderRadius: 'var(--ui-radius-sm)', border: '1px solid var(--ui-border)' }}>
+                  <div style={{ fontSize: 11, color: 'var(--ui-fg-muted)', textTransform: 'uppercase', letterSpacing: 0.4 }}>LTV</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--ui-font-mono)' }}>{formatCurrency(selectedCustomer.lifetime_value)}</div>
+                </div>
+                <div style={{ padding: 12, background: 'var(--ui-surface)', borderRadius: 'var(--ui-radius-sm)', border: '1px solid var(--ui-border)' }}>
+                  <div style={{ fontSize: 11, color: 'var(--ui-fg-muted)', textTransform: 'uppercase', letterSpacing: 0.4 }}>Último viaje</div>
+                  <div style={{ fontSize: 13, color: 'var(--ui-fg-muted)' }}>{selectedCustomer.last_trip_date ? new Date(selectedCustomer.last_trip_date).toLocaleDateString() : '—'}</div>
+                </div>
+              </div>
+              <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
+                <button onClick={() => openEdit(selectedCustomer)} className="admin-btn admin-btn-primary admin-btn-sm">{d.modalEdit || 'Editar Cliente'}</button>
+                <button onClick={() => setSelectedCustomer(null)} className="admin-btn admin-btn-ghost admin-btn-sm">Cerrar</button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-    </div>
-  )
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-[12px] font-medium" style={{ color: 'var(--fg-secondary)' }}>{label}</label>
-      {children}
+      {showForm && (
+        <div className="admin-modal-overlay open" onClick={() => setShowForm(false)}>
+          <div className="admin-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 560 }}>
+            <div className="admin-modal-header">
+              <h2 className="admin-modal-title">{editingCustomer ? d.modalEdit || 'Editar Cliente' : d.modalAdd || 'Agregar Cliente'}</h2>
+              <button className="admin-btn admin-btn-ghost admin-btn-sm" onClick={() => setShowForm(false)}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div className="admin-modal-body">
+              <form onSubmit={(e) => { e.preventDefault(); saveCustomer() }}>
+                <div className="admin-field">
+                  <label className="admin-field-label">{d.formName || 'Nombre completo'}</label>
+                  <input className="admin-input" value={formData.name || ''} onChange={e => setFormData({ ...formData, name: e.target.value })} />
+                </div>
+                <div className="admin-field">
+                  <label className="admin-field-label">{d.formEmail || 'Email'}</label>
+                  <input className="admin-input" type="email" value={formData.email || ''} onChange={e => setFormData({ ...formData, email: e.target.value })} />
+                </div>
+                <div className="admin-field">
+                  <label className="admin-field-label">{d.formPhone || 'Teléfono'}</label>
+                  <input className="admin-input" value={formData.phone || ''} onChange={e => setFormData({ ...formData, phone: e.target.value })} />
+                </div>
+                <div className="admin-field">
+                  <label className="admin-field-label">{d.formCountry || 'País'}</label>
+                  <input className="admin-input" value={formData.country || ''} onChange={e => setFormData({ ...formData, country: e.target.value })} />
+                </div>
+                <div className="admin-field">
+                  <label className="admin-field-label">{d.formLanguages || 'Idiomas'}</label>
+                  <input className="admin-input" value={formData.languages || ''} onChange={e => setFormData({ ...formData, languages: e.target.value })} />
+                </div>
+                <div className="admin-grid-2">
+                  <div className="admin-field">
+                    <label className="admin-field-label">{d.formVipLevel || 'Nivel VIP'}</label>
+                    <select className="admin-select" value={formData.vip_level || 'standard'} onChange={e => setFormData({ ...formData, vip_level: e.target.value })}>
+                      <option value="standard">{d.vipNone || 'Standard'}</option>
+                      <option value="silver">{d.vipSilver || 'Silver'}</option>
+                      <option value="gold">{d.vipGold || 'Gold'}</option>
+                      <option value="platinum">{d.vipPlatinum || 'Platinum'}</option>
+                    </select>
+                  </div>
+                  <div className="admin-field">
+                    <label className="admin-field-label">{d.formStatus || 'Estado'}</label>
+                    <select className="admin-select" value={formData.status || 'active'} onChange={e => setFormData({ ...formData, status: e.target.value })}>
+                      <option value="active">{d.optionActive || 'Activo'}</option>
+                      <option value="inactive">{d.optionInactive || 'Inactivo'}</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="admin-field">
+                  <label className="admin-field-label">{d.formNotes || 'Notas'}</label>
+                  <textarea className="admin-input" rows={3} value={formData.notes || ''} onChange={e => setFormData({ ...formData, notes: e.target.value })} />
+                </div>
+                <div className="admin-modal-footer">
+                  <button type="button" className="admin-btn admin-btn-secondary admin-btn-sm" onClick={() => setShowForm(false)}>{d.cancel || 'Cancelar'}</button>
+                  <button type="submit" className="admin-btn admin-btn-primary admin-btn-sm">{editingCustomer ? d.saveChanges || 'Guardar Cambios' : d.modalAdd || 'Agregar Cliente'}</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

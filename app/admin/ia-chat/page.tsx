@@ -57,17 +57,17 @@ type FilterMode = 'all' | 'ai_active' | 'human_active' | 'closed' | 'flagged'
 type ChannelFilter = 'all' | 'whatsapp' | 'web'
 
 const STATUS_STYLES: Record<string, string> = {
-  ai_active: 'bg-[rgba(59,130,246,0.12)] text-[#3b82f6]',
+  ai_active: 'bg-[var(--ui-info-soft)] text-[var(--ui-info)]',
 
-  human_active: 'bg-[rgba(16,185,129,0.12)] text-[#10b981]',
-  closed: 'bg-[rgba(100,104,128,0.12)] text-[#646880]',
+  human_active: 'bg-[var(--ui-accent-soft)] text-[var(--ui-accent)]',
+  closed: 'bg-[var(--ui-fg-muted)]/10 text-[var(--ui-fg-muted)]',
 }
 
 const PRIORITY_STYLES: Record<string, string> = {
-  low: 'bg-[rgba(100,104,128,0.12)] text-[#646880]',
-  normal: 'bg-[rgba(59,130,246,0.12)] text-[#3b82f6]',
-  high: 'bg-[rgba(245,158,11,0.12)] text-[#f59e0b]',
-  urgent: 'bg-[rgba(239,68,80,0.12)] text-[#ef4450]',
+  low: 'bg-[var(--ui-fg-muted)]/10 text-[var(--ui-fg-muted)]',
+  normal: 'bg-[var(--ui-info-soft)] text-[var(--ui-info)]',
+  high: 'bg-[var(--ui-warning-soft)] text-[var(--ui-warning)]',
+  urgent: 'bg-[var(--ui-danger-soft)] text-[var(--ui-danger)]',
 }
 
 function formatDate(dateStr: string | null, t: any): string {
@@ -434,14 +434,14 @@ export default function IaChatPage() {
   return (
     <div className="h-[calc(100vh-8rem)] flex gap-4">
       {/* Conversation List */}
-      <div className="w-80 shrink-0 flex flex-col bg-[#181b25] rounded-[10px] border border-[#282b38] overflow-hidden">
-        <div className="p-3 border-b border-[#282b38] space-y-2">
+      <div className="w-80 shrink-0 flex flex-col bg-[var(--ui-surface)] rounded-[var(--ui-radius-md)] border border-[var(--ui-border)] overflow-hidden">
+        <div className="p-3 border-b border-[var(--ui-border)] space-y-2">
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t.admin.chat.searchPlaceholder}
-            className="w-full px-3 py-2 bg-[#0b0d14] border border-[#282b38] rounded-[6px] text-[13px] text-[#f0f2f5] placeholder:text-[#646880] outline-none focus:border-[#10b981] transition-all"
+            className="w-full px-3 py-2 bg-[var(--ui-bg)] border border-[var(--ui-border)] rounded-[var(--ui-radius-sm)] text-[13px] text-[var(--ui-fg)] placeholder:text-[var(--ui-fg-secondary)] outline-none focus:border-[var(--ui-accent)] transition-all"
           />
           <div className="flex gap-1 overflow-x-auto pb-1">
             {(['all', 'whatsapp', 'web'] as ChannelFilter[]).map((ch) => (
@@ -450,8 +450,8 @@ export default function IaChatPage() {
                 onClick={() => setChannelFilter(ch)}
                 className={`px-2.5 py-1 rounded-full text-[11px] font-medium whitespace-nowrap transition-all ${
                   channelFilter === ch
-                    ? 'bg-[#10b981] text-white'
-                    : 'bg-[#111318] text-[#9ca0b0] hover:bg-[#202330]'
+                    ? 'bg-[var(--ui-accent)] text-[var(--ui-bg)]'
+                    : 'bg-[var(--ui-bg-secondary)] text-[var(--ui-fg-secondary)] hover:bg-[var(--ui-surface-hover)]'
                 }`}
               >
                 {ch === 'whatsapp' ? t.admin.chat.channelFilter.whatsapp : ch === 'web' ? t.admin.chat.channelFilter.web : t.admin.chat.channelFilter.all}
@@ -465,8 +465,8 @@ export default function IaChatPage() {
                 onClick={() => setFilter(f)}
                 className={`px-2.5 py-1 rounded-full text-[11px] font-medium whitespace-nowrap transition-all ${
                   filter === f
-                    ? 'bg-[#10b981] text-white'
-                    : 'bg-[#111318] text-[#9ca0b0] hover:bg-[#202330]'
+                    ? 'bg-[var(--ui-accent)] text-[var(--ui-bg)]'
+                    : 'bg-[var(--ui-bg-secondary)] text-[var(--ui-fg-secondary)] hover:bg-[var(--ui-surface-hover)]'
                 }`}
               >
                 {t.admin.chat.filters[f === 'ai_active' ? 'aiActive' : f === 'human_active' ? 'humanActive' : f]}
@@ -477,31 +477,31 @@ export default function IaChatPage() {
 
         <div className="flex-1 overflow-y-auto">
           {isLoadingConv ? (
-            <div className="p-4 text-center text-[#646880]">{t.common.loading}</div>
+            <div className="p-4 text-center text-[var(--ui-fg-secondary)]">{t.common.loading}</div>
           ) : filteredConversations.length === 0 ? (
-            <div className="p-4 text-center text-[#646880]">{t.admin.chat.noConversations}</div>
+            <div className="p-4 text-center text-[var(--ui-fg-secondary)]">{t.admin.chat.noConversations}</div>
           ) : (
             filteredConversations.map((conv) => (
               <button
                 key={conv.id}
                 onClick={() => selectConversation(conv)}
-                className={`w-full text-left p-3 border-b border-[#282b38] hover:bg-[#202330] transition-all ${
-                  selectedConv?.id === conv.id ? 'bg-[rgba(16,185,129,0.06)] border-l-2 border-l-[#10b981]' : ''
+                className={`w-full text-left p-3 border-b border-[var(--ui-border)] hover:bg-[var(--ui-surface-hover)] transition-all ${
+                  selectedConv?.id === conv.id ? 'bg-[rgba(16,185,129,0.06)] border-l-2 border-l-[var(--ui-accent)]' : ''
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-medium text-[#f0f2f5] truncate flex items-center gap-1.5">
+                    <p className="text-[13px] font-medium text-[var(--ui-fg)] truncate flex items-center gap-1.5">
                       {conv.last_sender_type === 'user' && conv.status !== 'closed' && (
-                        <span className="w-2 h-2 rounded-full bg-[#f59e0b] shrink-0" title="Pending response" />
+                        <span className="w-2 h-2 rounded-full bg-[var(--ui-warning)] shrink-0" title="Pending response" />
                       )}
                       {conv.user_name || conv.user_identifier}
                     </p>
-                    <p className="text-[13px] text-[#9ca0b0] truncate mt-0.5">
+                    <p className="text-[13px] text-[var(--ui-fg-secondary)] truncate mt-0.5">
                       {conv.last_message || t.admin.chat.noMessages}
                     </p>
                   </div>
-                  <div className="text-[11px] text-[#646880] whitespace-nowrap">
+                  <div className="text-[11px] text-[var(--ui-fg-secondary)] whitespace-nowrap">
                     {formatDate(conv.last_message_at || conv.created_at, t)}
                   </div>
                 </div>
@@ -510,17 +510,17 @@ export default function IaChatPage() {
                     {t.admin.chat.status[conv.status as keyof typeof t.admin.chat.status] || conv.status}
                   </span>
                   {conv.channel === 'whatsapp' && (
-                    <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-[rgba(16,185,129,0.12)] text-[#10b981]">
+                    <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-[var(--ui-accent-soft)] text-[var(--ui-accent)]">
                       {t.admin.chat.channelWA}
                     </span>
                   )}
                   {conv.channel === 'web' && (
-                    <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-[rgba(59,130,246,0.12)] text-[#3b82f6]">
+                    <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-[var(--ui-info-soft)] text-[var(--ui-info)]">
                       {t.admin.chat.channelWeb}
                     </span>
                   )}
                   {conv.flagged === 1 && (
-                    <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-[rgba(239,68,80,0.12)] text-[#ef4450]">
+                    <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-[var(--ui-danger-soft)] text-[var(--ui-danger)]">
                       {t.admin.chat.filters.flagged || 'Flagged'}
                     </span>
                   )}
@@ -529,7 +529,7 @@ export default function IaChatPage() {
                       {t.admin.chat.priority[conv.priority as keyof typeof t.admin.chat.priority] || conv.priority}
                     </span>
                   )}
-                  <span className="text-[11px] text-[#646880] ml-auto">
+                  <span className="text-[11px] text-[var(--ui-fg-secondary)] ml-auto">
                     {t.admin.chat.conversation.messageCount.replace('{count}', String(conv.message_count))}
                   </span>
                 </div>
@@ -540,11 +540,11 @@ export default function IaChatPage() {
       </div>
 
       {/* Conversation View */}
-      <div className="flex-1 flex flex-col bg-[#181b25] rounded-[10px] border border-[#282b38] overflow-hidden">
+      <div className="flex-1 flex flex-col bg-[var(--ui-surface)] rounded-[var(--ui-radius-md)] border border-[var(--ui-border)] overflow-hidden">
         {!selectedConv ? (
-          <div className="flex-1 flex items-center justify-center text-[#646880]">
+          <div className="flex-1 flex items-center justify-center text-[var(--ui-fg-secondary)]">
             <div className="text-center">
-              <div className="w-16 h-16 rounded-full bg-[#111318] flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 rounded-full bg-[var(--ui-bg-secondary)] flex items-center justify-center mx-auto mb-4">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
                 </svg>
@@ -555,9 +555,9 @@ export default function IaChatPage() {
         ) : (
           <>
             {/* Conversation Header */}
-            <div className="px-4 py-3 border-b border-[#282b38] flex items-center justify-between shrink-0">
+            <div className="px-4 py-3 border-b border-[var(--ui-border)] flex items-center justify-between shrink-0">
               <div>
-                <h2 className="text-[13px] font-semibold text-[#f0f2f5]">
+                <h2 className="text-[13px] font-semibold text-[var(--ui-fg)]">
                   {selectedConv.user_name || selectedConv.user_identifier}
                 </h2>
                 <div className="flex items-center gap-2 mt-0.5">
@@ -565,12 +565,12 @@ export default function IaChatPage() {
                     {t.admin.chat.status[selectedConv.status as keyof typeof t.admin.chat.status] || selectedConv.status}
                   </span>
                   {selectedConv.flagged === 1 && (
-                    <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-[rgba(239,68,80,0.12)] text-[#ef4450]">
+                    <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-[var(--ui-danger-soft)] text-[var(--ui-danger)]">
                       {t.admin.chat.conversation.flagged}: {selectedConv.flag_reason || 'Yes'}
                     </span>
                   )}
                   {selectedConv.agent_name && (
-                    <span className="text-[11px] text-[#9ca0b0]">
+                    <span className="text-[11px] text-[var(--ui-fg-secondary)]">
                       {t.admin.chat.conversation.agentAssigned}: {selectedConv.agent_name}
                     </span>
                   )}
@@ -581,7 +581,7 @@ export default function IaChatPage() {
                   <button
                     onClick={handleTakeOver}
                     disabled={isTakingOver}
-                    className="px-3 py-1.5 text-[11px] font-medium bg-[#10b981] text-white rounded-[6px] hover:bg-[#059669] disabled:opacity-50 transition-all"
+                    className="px-3 py-1.5 text-[11px] font-medium bg-[var(--ui-accent)] text-[var(--ui-bg)] rounded-[6px] hover:bg-[#059669] disabled:opacity-50 transition-all"
                   >
                     {isTakingOver ? t.admin.chat.takingOver : t.admin.chat.takeOver}
                   </button>
@@ -589,7 +589,7 @@ export default function IaChatPage() {
                 {selectedConv.status === 'human_active' && (
                   <button
                     onClick={handleReleaseToAI}
-                    className="px-3 py-1.5 text-[11px] font-medium bg-[#10b981] text-white rounded-[6px] hover:bg-[#059669] transition-all"
+                    className="px-3 py-1.5 text-[11px] font-medium bg-[var(--ui-accent)] text-[var(--ui-bg)] rounded-[6px] hover:bg-[#059669] transition-all"
                   >
                     {t.admin.chat.releaseToAI || 'AI Mode'}
                   </button>
@@ -597,14 +597,14 @@ export default function IaChatPage() {
                 <button
                   onClick={() => { setShowEscalateModal(true); setEscalateReason('') }}
                   disabled={selectedConv.status === 'human_active' || selectedConv.status === 'closed'}
-                  className="px-3 py-1.5 text-[11px] font-medium border border-[rgba(245,158,11,0.3)] text-[#f59e0b] rounded-[6px] hover:bg-[rgba(245,158,11,0.12)] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  className="px-3 py-1.5 text-[11px] font-medium border border-[var(--ui-warning-soft)] text-[var(--ui-warning)] rounded-[6px] hover:bg-[var(--ui-warning-soft)] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
                   {t.admin.chat.escalate}
                 </button>
                 <button
                   onClick={() => { closingRef.current = selectedConv.id; setShowCloseModal(true) }}
                   disabled={selectedConv.status === 'closed'}
-                  className="px-3 py-1.5 text-[11px] font-medium border border-[rgba(239,68,80,0.3)] text-[#ef4450] rounded-[6px] hover:bg-[rgba(239,68,80,0.12)] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  className="px-3 py-1.5 text-[11px] font-medium border border-[var(--ui-danger-soft)] text-[var(--ui-danger)] rounded-[6px] hover:bg-[var(--ui-danger-soft)] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
                   {t.admin.chat.close}
                 </button>
@@ -612,7 +612,7 @@ export default function IaChatPage() {
             </div>
 
             {/* User Info Bar */}
-            <div className="px-4 py-2 bg-[#111318] border-b border-[#282b38] flex items-center gap-4 text-[11px] text-[#9ca0b0] shrink-0">
+            <div className="px-4 py-2 bg-[var(--ui-bg-secondary)] border-b border-[var(--ui-border)] flex items-center gap-4 text-[11px] text-[var(--ui-fg-secondary)] shrink-0">
               {selectedConv.user_email && (
                 <span>{t.admin.chat.conversation.email}: {selectedConv.user_email}</span>
               )}
@@ -622,15 +622,15 @@ export default function IaChatPage() {
               <span>
                 {t.admin.chat.conversation.channel}:{' '}
                 {selectedConv.channel === 'whatsapp' ? (
-                  <span className="inline-flex items-center gap-1 text-[#10b981] font-medium">
+                  <span className="inline-flex items-center gap-1 text-[var(--ui-accent)] font-medium">
                     {t.admin.chat.channelWhatsapp}
                   </span>
                 ) : selectedConv.channel === 'n8n' ? (
-                  <span className="inline-flex items-center gap-1 text-[#8b5cf6] font-medium">
+                  <span className="inline-flex items-center gap-1 text-[var(--ui-satisfaction)] font-medium">
                     {t.admin.chat.channelN8n}
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 text-[#3b82f6] font-medium">
+                  <span className="inline-flex items-center gap-1 text-[var(--ui-info)] font-medium">
                     {t.admin.chat.channelWeb}
                   </span>
                 )}
@@ -643,9 +643,9 @@ export default function IaChatPage() {
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {isLoadingMsg ? (
-                <div className="text-center text-[#646880] py-8">{t.common.loading}</div>
+                <div className="text-center text-[var(--ui-fg-secondary)] py-8">{t.common.loading}</div>
               ) : messages.length === 0 ? (
-                <div className="text-center text-[#646880] py-8">{t.admin.chat.noMessages}</div>
+                <div className="text-center text-[var(--ui-fg-secondary)] py-8">{t.admin.chat.noMessages}</div>
               ) : (
                 messages.map((msg) => (
                   <div key={msg.id} className={`flex ${msg.sender_type === 'user' ? 'justify-end' : 'justify-start'}`}>
@@ -653,30 +653,30 @@ export default function IaChatPage() {
                       msg.sender_type === 'user' ? 'order-1' : ''
                     }`}>
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[11px] text-[#646880]">
+                        <span className="text-[11px] text-[var(--ui-fg-secondary)]">
                           {msg.sender_type === 'ai' ? t.admin.chat.senderAI : msg.sender_type === 'agent' ? (msg.agent_name || t.admin.chat.senderAgent) : msg.sender_type === 'system' ? t.admin.chat.senderSystem : selectedConv.user_name || t.admin.chat.senderUser}
                         </span>
                         {msg.metadata && (() => {
                           try {
                             const meta = JSON.parse(msg.metadata)
                             if (meta.source === 'whatsapp') {
-                              return <span className="px-1.5 py-0.5 rounded text-[10px] bg-[rgba(16,185,129,0.12)] text-[#10b981]">{t.admin.chat.channelWA}</span>
+                              return <span className="px-1.5 py-0.5 rounded text-[10px] bg-[rgba(16,185,129,0.12)] text-[var(--ui-accent)]">{t.admin.chat.channelWA}</span>
                             }
                           } catch { /* ignore */ }
                           return null
                         })()}
-                        <span className="text-[11px] text-[#646880]">
+                        <span className="text-[11px] text-[var(--ui-fg-secondary)]">
                           {formatDate(msg.created_at, t)}
                         </span>
                       </div>
                       <div className={`rounded-2xl px-4 py-2 text-[13px] ${
                         msg.sender_type === 'user'
-                          ? 'bg-[#10b981] text-white rounded-br-md'
+                          ? 'bg-[var(--ui-accent)] text-[var(--ui-bg)] rounded-br-md'
                           : msg.sender_type === 'system'
-                          ? 'bg-[rgba(245,158,11,0.12)] text-[#f59e0b] italic rounded-bl-md'
+                          ? 'bg-[var(--ui-warning-soft)] text-[var(--ui-warning)] italic rounded-bl-md'
                           : msg.sender_type === 'agent'
-                          ? 'bg-[rgba(212,168,75,0.1)] text-[#f0f2f5] border border-[rgba(212,168,75,0.3)] rounded-bl-md'
-                          : 'bg-[#202330] text-[#f0f2f5] rounded-bl-md'
+                          ? 'bg-[var(--ui-gold-soft)] text-[var(--ui-fg)] border border-[var(--ui-gold)] rounded-bl-md'
+                          : 'bg-[var(--ui-surface-hover)] text-[var(--ui-fg)] rounded-bl-md'
                       }`}>
                         {msg.content}
                       </div>
@@ -688,7 +688,7 @@ export default function IaChatPage() {
             </div>
 
             {/* Input */}
-            <div className="border-t border-[#282b38] p-3 shrink-0">
+            <div className="border-t border-[var(--ui-border)] p-3 shrink-0">
               <div className="flex items-center gap-2">
                 <input
                   ref={inputRef}
@@ -698,12 +698,12 @@ export default function IaChatPage() {
                   onKeyDown={handleKeyDown}
                   placeholder={t.admin.chat.typeMessage}
                   disabled={selectedConv.status === 'closed' || isSending}
-                  className="flex-1 px-4 py-2.5 bg-[#0b0d14] border border-[#282b38] rounded-[6px] text-[13px] text-[#f0f2f5] placeholder:text-[#646880] outline-none focus:border-[#10b981] transition-all disabled:opacity-50"
+                  className="flex-1 px-4 py-2.5 bg-[var(--ui-bg)] border border-[var(--ui-border)] rounded-[6px] text-[13px] text-[var(--ui-fg)] placeholder:text-[var(--ui-fg-secondary)] outline-none focus:border-[#10b981] transition-all disabled:opacity-50"
                 />
                 <button
                   onClick={sendAsAgent}
                   disabled={!inputValue.trim() || selectedConv.status === 'closed' || isSending}
-                  className="w-10 h-10 rounded-[6px] bg-[#10b981] text-white flex items-center justify-center hover:bg-[#059669] disabled:opacity-50 disabled:cursor-not-allowed transition-all shrink-0"
+                  className="w-10 h-10 rounded-[6px] bg-[var(--ui-accent)] text-white flex items-center justify-center hover:bg-[#059669] disabled:opacity-50 disabled:cursor-not-allowed transition-all shrink-0"
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <line x1="22" y1="2" x2="11" y2="13" />
@@ -717,46 +717,46 @@ export default function IaChatPage() {
       </div>
 
       {/* Agent Management Sidebar */}
-      <div className="w-64 shrink-0 flex flex-col bg-[#181b25] rounded-[10px] border border-[#282b38] overflow-hidden">
-        <div className="p-3 border-b border-[#282b38] flex items-center justify-between">
-          <h3 className="text-[13px] font-semibold text-[#f0f2f5]">{t.admin.chat.agents.title}</h3>
+      <div className="w-64 shrink-0 flex flex-col bg-[var(--ui-surface)] rounded-[10px] border border-[var(--ui-border)] overflow-hidden">
+        <div className="p-3 border-b border-[var(--ui-border)] flex items-center justify-between">
+          <h3 className="text-[13px] font-semibold text-[var(--ui-fg)]">{t.admin.chat.agents.title}</h3>
           <button
             onClick={() => { setEditingAgent(null); setShowAgentModal(true) }}
-            className="text-[11px] font-medium text-[#10b981] hover:underline"
+            className="text-[11px] font-medium text-[var(--ui-accent)] hover:underline"
           >
             {t.admin.chat.agents.addAgent}
           </button>
         </div>
         <div className="flex-1 overflow-y-auto">
           {agents.length === 0 ? (
-            <div className="p-3 text-center text-[#646880] text-[11px]">{t.admin.chat.agents.noAgents}</div>
+            <div className="p-3 text-center text-[var(--ui-fg-secondary)] text-[11px]">{t.admin.chat.agents.noAgents}</div>
           ) : (
             agents.map((agent) => (
               <div
                 key={agent.id}
-                className="p-3 border-b border-[#282b38] hover:bg-[#202330] cursor-pointer"
+                className="p-3 border-b border-[var(--ui-border)] hover:bg-[var(--ui-surface-hover)] cursor-pointer"
                 onClick={() => { setEditingAgent(agent); setShowAgentModal(true) }}
               >
                 <div className="flex items-center gap-2">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-[11px] font-bold ${
-                    agent.status === 'available' ? 'bg-[#10b981]' :
-                    agent.status === 'busy' ? 'bg-[#d4a84b]' : 'bg-[#646880]'
+                    agent.status === 'available' ? 'bg-[var(--ui-accent)]' :
+                    agent.status === 'busy' ? 'bg-[var(--ui-gold)]' : 'bg-[var(--ui-fg-secondary)]'
                   }`}>
                     {agent.name.charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[13px] font-medium text-[#f0f2f5] truncate">{agent.name}</p>
-                    <p className="text-[11px] text-[#9ca0b0]">{agent.email}</p>
+                    <p className="text-[13px] font-medium text-[var(--ui-fg)] truncate">{agent.name}</p>
+                    <p className="text-[11px] text-[var(--ui-fg-secondary)]">{agent.email}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 mt-1.5">
                   <span className={`px-2 py-0.5 rounded text-[11px] font-medium ${
-                    agent.status === 'available' ? 'bg-[rgba(16,185,129,0.12)] text-[#10b981]' :
-                    agent.status === 'busy' ? 'bg-[rgba(245,158,11,0.12)] text-[#f59e0b]' : 'bg-[rgba(100,104,128,0.12)] text-[#646880]'
+                    agent.status === 'available' ? 'bg-[rgba(16,185,129,0.12)] text-[var(--ui-accent)]' :
+                    agent.status === 'busy' ? 'bg-[rgba(245,158,11,0.12)] text-[var(--ui-warning)]' : 'bg-[var(--ui-fg-secondary)] text-[var(--ui-fg-secondary)]'
                   }`}>
                     {t.admin.chat.agents[agent.status as keyof typeof t.admin.chat.agents] || agent.status}
                   </span>
-                  <span className="text-[11px] text-[#646880]">
+                  <span className="text-[11px] text-[var(--ui-fg-secondary)]">
                     {t.admin.chat.agents.currentLoad
                       .replace('{current}', String(agent.current_conversations))
                       .replace('{max}', String(agent.max_conversations))}
@@ -771,26 +771,26 @@ export default function IaChatPage() {
       {/* Escalate Modal */}
       {showEscalateModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center" onClick={() => setShowEscalateModal(false)}>
-          <div className="bg-[#181b25] border border-[#282b38] rounded-[14px] shadow-[0_20px_60px_rgba(0,0,0,0.5)] p-6 w-96 mx-4" onClick={e => e.stopPropagation()}>
-            <h3 className="text-[15px] font-semibold text-[#f0f2f5] mb-2">{t.admin.chat.confirmEscalate}</h3>
+          <div className="bg-[var(--ui-surface)] border border-[var(--ui-border)] rounded-[14px] shadow-[0_20px_60px_rgba(0,0,0,0.5)] p-6 w-96 mx-4" onClick={e => e.stopPropagation()}>
+            <h3 className="text-[15px] font-semibold text-[var(--ui-fg)] mb-2">{t.admin.chat.confirmEscalate}</h3>
             <textarea
               value={escalateReason}
               onChange={(e) => setEscalateReason(e.target.value)}
               placeholder={t.admin.chat.escalateReasonPlaceholder}
               rows={3}
-              className="w-full px-3 py-2 bg-[#0b0d14] border border-[#282b38] rounded-[6px] text-[13px] text-[#f0f2f5] placeholder:text-[#646880] outline-none focus:border-[#10b981] transition-all mt-3 resize-none"
+              className="w-full px-3 py-2 bg-[var(--ui-bg)] border border-[var(--ui-border)] rounded-[6px] text-[13px] text-[var(--ui-fg)] placeholder:text-[var(--ui-fg-secondary)] outline-none focus:border-[#10b981] transition-all mt-3 resize-none"
             />
             <div className="flex justify-end gap-3 mt-4">
               <button
                 onClick={() => setShowEscalateModal(false)}
-                className="px-4 py-2 text-[13px] font-medium text-[#9ca0b0] hover:text-[#f0f2f5] transition-colors"
+                className="px-4 py-2 text-[13px] font-medium text-[var(--ui-fg-secondary)] hover:text-[var(--ui-fg)] transition-colors"
               >
                 {t.admin.chat.agents?.cancel || 'Cancel'}
               </button>
               <button
                 onClick={handleEscalate}
                 disabled={!escalateReason.trim()}
-                className="px-4 py-2 text-[13px] font-medium bg-[#f59e0b] text-white rounded-[6px] hover:bg-[#d97706] disabled:opacity-50 transition-all"
+                className="px-4 py-2 text-[13px] font-medium bg-[var(--ui-warning)] text-[var(--ui-bg)] rounded-[6px] hover:bg-[#d97706] disabled:opacity-50 transition-all"
               >
                 {t.admin.chat.escalate}
               </button>
@@ -798,23 +798,23 @@ export default function IaChatPage() {
           </div>
         </div>
       )}
-
+ 
       {/* Close Modal */}
       {showCloseModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center" onClick={() => { closingRef.current = null; setShowCloseModal(false) }}>
-          <div className="bg-[#181b25] border border-[#282b38] rounded-[14px] shadow-[0_20px_60px_rgba(0,0,0,0.5)] p-6 w-96 mx-4" onClick={e => e.stopPropagation()}>
-            <h3 className="text-[15px] font-semibold text-[#f0f2f5] mb-2">{t.admin.chat.confirmClose}</h3>
-            {error && <p className="text-[#ef4450] text-[12px] mt-2">{error}</p>}
+          <div className="bg-[var(--ui-surface)] border border-[var(--ui-border)] rounded-[var(--ui-radius-lg)] shadow-[0_20px_60px_rgba(0,0,0,0.5)] p-6 w-96 mx-4" onClick={e => e.stopPropagation()}>
+            <h3 className="text-[15px] font-semibold text-[var(--ui-fg)] mb-2">{t.admin.chat.confirmClose}</h3>
+            {error && <p className="text-[var(--ui-danger)] text-[12px] mt-2">{error}</p>}
             <div className="flex justify-end gap-3 mt-4">
               <button
                 onClick={() => { closingRef.current = null; setShowCloseModal(false) }}
-                className="px-4 py-2 text-[13px] font-medium text-[#9ca0b0] hover:text-[#f0f2f5] transition-colors"
+                className="px-4 py-2 text-[13px] font-medium text-[var(--ui-fg-secondary)] hover:text-[var(--ui-fg)] transition-colors"
               >
                 {t.admin.chat.agents?.cancel || 'Cancel'}
               </button>
               <button
                 onClick={handleClose}
-                className="px-4 py-2 text-[13px] font-medium bg-[#ef4450] text-white rounded-[6px] hover:bg-[#dc2626] transition-all"
+                className="px-4 py-2 text-[13px] font-medium bg-[var(--ui-danger)] text-[var(--ui-bg)] rounded-[6px] hover:bg-[#dc2626] transition-all"
               >
                 {t.admin.chat.close}
               </button>
@@ -826,8 +826,8 @@ export default function IaChatPage() {
       {/* Agent Modal */}
       {showAgentModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center" onClick={() => setShowAgentModal(false)}>
-          <div className="bg-[#181b25] border border-[#282b38] rounded-[14px] shadow-[0_20px_60px_rgba(0,0,0,0.5)] p-6 w-96 mx-4" onClick={e => e.stopPropagation()}>
-            <h3 className="text-[15px] font-semibold text-[#f0f2f5] mb-4">
+          <div className="bg-[var(--ui-surface)] border border-[var(--ui-border)] rounded-[14px] shadow-[0_20px_60px_rgba(0,0,0,0.5)] p-6 w-96 mx-4" onClick={e => e.stopPropagation()}>
+            <h3 className="text-[15px] font-semibold text-[var(--ui-fg)] mb-4">
               {editingAgent ? t.admin.chat.agents.editAgent : t.admin.chat.agents.addAgent}
             </h3>
             <AgentForm
@@ -877,40 +877,40 @@ function AgentForm({
   return (
       <form onSubmit={handleSubmit} className="space-y-3">
       <div>
-        <label className="text-[11px] font-medium text-[#9ca0b0] block mb-1">{t.admin.chat.agents.name}</label>
+        <label className="text-[11px] font-medium text-[var(--ui-fg-secondary)] block mb-1">{t.admin.chat.agents.name}</label>
         <input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
           required
-          className="w-full px-3 py-2 bg-[#0b0d14] border border-[#282b38] rounded-[6px] text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-all"
+          className="w-full px-3 py-2 bg-[var(--ui-bg)] border border-[var(--ui-border)] rounded-[6px] text-[13px] text-[var(--ui-fg)] outline-none focus:border-[#10b981] transition-all"
         />
       </div>
       <div>
-        <label className="text-[11px] font-medium text-[#9ca0b0] block mb-1">{t.admin.chat.agents.email}</label>
+        <label className="text-[11px] font-medium text-[var(--ui-fg-secondary)] block mb-1">{t.admin.chat.agents.email}</label>
         <input
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
-          className="w-full px-3 py-2 bg-[#0b0d14] border border-[#282b38] rounded-[6px] text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-all"
+          className="w-full px-3 py-2 bg-[var(--ui-bg)] border border-[var(--ui-border)] rounded-[6px] text-[13px] text-[var(--ui-fg)] outline-none focus:border-[#10b981] transition-all"
         />
       </div>
       <div>
-        <label className="text-[11px] font-medium text-[#9ca0b0] block mb-1">{t.admin.chat.agents.phone}</label>
+        <label className="text-[11px] font-medium text-[var(--ui-fg-secondary)] block mb-1">{t.admin.chat.agents.phone}</label>
         <input
           type="text"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
-          className="w-full px-3 py-2 bg-[#0b0d14] border border-[#282b38] rounded-[6px] text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-all"
+          className="w-full px-3 py-2 bg-[var(--ui-bg)] border border-[var(--ui-border)] rounded-[6px] text-[13px] text-[var(--ui-fg)] outline-none focus:border-[#10b981] transition-all"
         />
       </div>
       <div>
-        <label className="text-[11px] font-medium text-[#9ca0b0] block mb-1">{t.admin.chat.agents.status}</label>
+        <label className="text-[11px] font-medium text-[var(--ui-fg-secondary)] block mb-1">{t.admin.chat.agents.status}</label>
         <select
           value={status}
           onChange={(e) => setStatus(e.target.value)}
-          className="w-full px-3 py-2 bg-[#0b0d14] border border-[#282b38] rounded-[6px] text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-all"
+          className="w-full px-3 py-2 bg-[var(--ui-bg)] border border-[var(--ui-border)] rounded-[6px] text-[13px] text-[var(--ui-fg)] outline-none focus:border-[#10b981] transition-all"
         >
           <option value="available">{t.admin.chat.agents.available}</option>
           <option value="busy">{t.admin.chat.agents.busy}</option>
@@ -918,37 +918,37 @@ function AgentForm({
         </select>
       </div>
       <div>
-        <label className="text-[11px] font-medium text-[#9ca0b0] block mb-1">{t.admin.chat.agents.maxConversations}</label>
+        <label className="text-[11px] font-medium text-[var(--ui-fg-secondary)] block mb-1">{t.admin.chat.agents.maxConversations}</label>
         <input
           type="number"
           value={maxConv}
           onChange={(e) => setMaxConv(parseInt(e.target.value) || 5)}
           min={1}
           max={20}
-          className="w-full px-3 py-2 bg-[#0b0d14] border border-[#282b38] rounded-[6px] text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-all"
+          className="w-full px-3 py-2 bg-[var(--ui-bg)] border border-[var(--ui-border)] rounded-[6px] text-[13px] text-[var(--ui-fg)] outline-none focus:border-[#10b981] transition-all"
         />
       </div>
       <div>
-        <label className="text-[11px] font-medium text-[#9ca0b0] block mb-1">{t.admin.chat.agents.specializations}</label>
+        <label className="text-[11px] font-medium text-[var(--ui-fg-secondary)] block mb-1">{t.admin.chat.agents.specializations}</label>
         <input
           type="text"
           value={specs}
           onChange={(e) => setSpecs(e.target.value)}
           placeholder={t.admin.chat.specsPlaceholder || 'billing, logistics, support'}
-          className="w-full px-3 py-2 bg-[#0b0d14] border border-[#282b38] rounded-[6px] text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-all"
+          className="w-full px-3 py-2 bg-[var(--ui-bg)] border border-[var(--ui-border)] rounded-[6px] text-[13px] text-[var(--ui-fg)] outline-none focus:border-[#10b981] transition-all"
         />
       </div>
       <div className="flex justify-end gap-3 pt-2">
         <button
           type="button"
           onClick={onCancel}
-          className="px-4 py-2 text-[13px] font-medium text-[#9ca0b0] hover:text-[#f0f2f5] transition-colors"
+          className="px-4 py-2 text-[13px] font-medium text-[var(--ui-fg-secondary)] hover:text-[var(--ui-fg)] transition-colors"
         >
           {t.admin.chat.agents.cancel}
         </button>
         <button
           type="submit"
-          className="px-4 py-2 text-[13px] font-medium bg-[#10b981] text-white rounded-[6px] hover:bg-[#059669] transition-all"
+          className="px-4 py-2 text-[13px] font-medium bg-[var(--ui-accent)] text-white rounded-[6px] hover:bg-[#059669] transition-all"
         >
           {t.admin.chat.agents.save}
         </button>

@@ -144,8 +144,8 @@ export default function StepFlightLogistics({ data, onChange, config }: StepFlig
         {validationStatus !== 'idle' && (
           <div className={`flex items-center gap-2 px-4 py-3 rounded-[var(--radius-md)] text-sm ${
             validationStatus === 'valid'
-              ? 'bg-[rgba(34,197,94,0.12)] border border-[rgba(34,197,94,0.25)] text-[#22c55e]'
-              : 'bg-[rgba(234,179,8,0.12)] border border-[rgba(234,179,8,0.25)] text-[#eab308]'
+              ? 'bg-[var(--ui-accent-soft)] border border-[var(--ui-accent-soft)] text-[var(--ui-accent)]'
+              : 'bg-[var(--ui-warning-soft)] border border-[var(--ui-warning-soft)] text-[var(--ui-warning)]'
           }`}>
             {validationStatus === 'valid' ? (
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">

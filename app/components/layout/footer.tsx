@@ -79,9 +79,11 @@ function FooterInner() {
           <nav aria-label="Legal">
             <h4 className="text-sm font-semibold text-white mb-5">{t.footer.legal}</h4>
             <ul className="space-y-3">
-              <li><a href="/terms" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors duration-200">{t.footer.terms}</a></li>
-              <li><a href="/privacy" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors duration-200">{t.footer.privacy}</a></li>
-              <li><a href="/refund-policy" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors duration-200">{t.footer.refundPolicy}</a></li>
+              <li><a href="/terminos-y-condiciones" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors duration-200">{t.footer.terms || 'Términos y condiciones'}</a></li>
+              <li><a href="/politica-de-privacidad" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors duration-200">{t.footer.privacy || 'Política de privacidad'}</a></li>
+              <li><a href="/politica-de-reembolsos" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors duration-200">{t.footer.refundPolicy || 'Política de reembolsos'}</a></li>
+              <li><a href="/faq" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors duration-200">'FAQ'</a></li>
+              <li><a href="/mis-reservas" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors duration-200">Mis reservas</a></li>
             </ul>
           </nav>
         </div>

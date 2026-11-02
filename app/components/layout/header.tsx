@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useAuth, SignInButton, UserButton } from '@clerk/nextjs'
 import Link from 'next/link'
 import Button from '@/app/components/ui/button'
 import LangToggle from '@/app/components/ui/lang-toggle'
@@ -8,6 +9,7 @@ import { useI18n } from '@/lib/i18n'
 
 function HeaderInner() {
   const { t } = useI18n()
+  const { isSignedIn } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
 
@@ -49,7 +51,7 @@ function HeaderInner() {
             <span className="text-accent-gold">Premium</span>
           </a>
 
-          <div className="hidden md:flex items-center gap-10">
+          <div className="hidden md:flex items-center gap-6">
             {navLinks.map((link) => (
               <a
                 key={link.href}
@@ -59,7 +61,20 @@ function HeaderInner() {
                 {link.label}
               </a>
             ))}
+            {isSignedIn && (
+              <Link href="/mis-reservas" className="text-sm font-medium text-[var(--text-secondary)] hover:text-white transition-colors duration-200">
+                Mis reservas
+              </Link>
+            )}
             <LangToggle />
+            {!isSignedIn && (
+              <SignInButton mode="modal">
+                <button className="text-sm font-medium text-[var(--text-secondary)] hover:text-white transition-colors duration-200">
+                  'Iniciar sesión'
+                </button>
+              </SignInButton>
+            )}
+            {isSignedIn && <UserButton />}
             <Link href="/booking" prefetch>
               <Button size="sm" variant="primary">
                 {t.nav.planMyArrival}
@@ -100,6 +115,18 @@ function HeaderInner() {
                   {link.label}
                 </a>
               ))}
+              {isSignedIn && (
+                <Link href="/mis-reservas" className="text-body-md text-[var(--text-secondary)] hover:text-white hover:bg-white/5 transition-colors duration-200 rounded-lg px-3 py-2.5 min-h-[44px] flex items-center" onClick={() => setMobileOpen(false)}>
+                  Mis reservas
+                </Link>
+              )}
+              {!isSignedIn && (
+                <SignInButton mode="modal">
+                  <button className="w-full text-left text-body-md text-[var(--text-secondary)] hover:text-white hover:bg-white/5 transition-colors duration-200 rounded-lg px-3 py-2.5 min-h-[44px] flex items-center">
+                    'Iniciar sesión'
+                  </button>
+                </SignInButton>
+              )}
               <Link href="/booking" className="block mt-3" onClick={() => setMobileOpen(false)}>
                 <Button size="sm" variant="primary" className="w-full">
                   {t.nav.planMyArrival}

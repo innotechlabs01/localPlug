@@ -9,9 +9,11 @@ import { RealtimeProvider, useRealtime } from '@/lib/admin/realtime-context'
 import { InactivityGuard } from '@/app/admin/components/InactivityGuard'
 import { ToastProvider, useToast } from '@/lib/admin/toast-context'
 import { DateFilterProvider, useDateFilter } from '@/lib/admin/date-filter-context'
+import '@/admin/ui.css'
 
 interface NavItem {
-  labelKey: string
+  labelKey?: string
+  label?: string
   href: string
   icon: React.ReactNode
   badge?: string
@@ -94,6 +96,15 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
           </svg>
         ),
         badge: '3',
+      },
+      {
+        label: 'Auditoría',
+        href: '/admin/auditoria',
+        icon: (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="21"/>
+          </svg>
+        ),
       },
     ],
   },
@@ -383,9 +394,9 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
 
   if (!isLoaded || permsLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen" style={{ background: '#0b0d14' }}>
-        <div className="text-center" style={{ color: '#9ca0b0' }}>
-          <div className="animate-spin w-8 h-8 border-2 border-t-transparent rounded-full mx-auto mb-4" style={{ borderColor: '#282b38', borderTopColor: '#10b981' }} />
+      <div className="flex items-center justify-center min-h-screen" style={{ background: 'var(--ui-bg)' }}>
+        <div className="text-center" style={{ color: 'var(--ui-fg-secondary)' }}>
+          <div className="animate-spin w-8 h-8 border-2 border-t-transparent rounded-full mx-auto mb-4" style={{ borderColor: 'var(--ui-border)', borderTopColor: 'var(--ui-accent)' }} />
           Loading...
         </div>
       </div>
@@ -394,24 +405,24 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
 
   if (accessDenied) {
     return (
-      <div className="flex items-center justify-center min-h-screen" style={{ background: '#0b0d14' }}>
+      <div className="flex items-center justify-center min-h-screen" style={{ background: 'var(--ui-bg)' }}>
         <div className="text-center max-w-md px-6">
           <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6" style={{ background: 'rgba(239,68,68,0.1)' }}>
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--ui-danger)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10"/>
               <line x1="12" y1="8" x2="12" y2="12"/>
               <line x1="12" y1="16" x2="12.01" y2="16"/>
             </svg>
           </div>
           <h1 className="text-[20px] font-bold text-white mb-2">Access Restricted</h1>
-          <p className="text-[14px] text-[#9ca0b0] leading-relaxed mb-6">
+          <p className="text-[14px] text-[var(--ui-fg-secondary)] leading-relaxed mb-6">
             Your account does not have the necessary permissions to access the admin panel. 
             Please contact the platform administrator to request access.
           </p>
           <button
             onClick={() => signOut({ redirectUrl: '/sign-in/admin' })}
             className="px-6 py-2.5 rounded-lg text-[13px] font-medium transition-all"
-            style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}
+            style={{ background: 'rgba(239,68,68,0.15)', color: 'var(--ui-danger)', border: '1px solid var(--ui-danger)' }}
           >
             Sign Out
           </button>
@@ -432,6 +443,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
       '/admin/analytics': t.admin.nav.analytics as string,
       '/admin/payments': t.admin.nav.payments as string,
       '/admin/parking-proofs': t.admin.nav.parking as string,
+      '/admin/auditoria': 'Auditoría',
       '/admin/agenda': 'Agenda',
       '/admin/cases': 'Cases',
       '/admin/roles': t.admin.nav.roles as string,
@@ -441,23 +453,23 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="app-layout">
+    <div className="admin-app admin-layout">
       {/* Mobile overlay */}
       {sidebarOpen && (
-        <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setSidebarOpen(false)} />
+        <div className="admin-sidebar-overlay open" onClick={() => setSidebarOpen(false)} />
       )}
 
       {/* Sidebar */}
-      <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
-        <div className="sidebar-header">
-          <div className="sidebar-logo">M</div>
-          <div className="sidebar-brand">
+      <aside className={`admin-sidebar ${sidebarOpen ? 'open' : 'collapsed'}`}>
+        <div className="admin-sidebar-header">
+          <div className="admin-sidebar-logo">M</div>
+          <div className="admin-sidebar-brand">
             {t.admin.layout?.sidebarBrandTitle || 'Medellín Admin'}
             <small>{t.admin.layout?.sidebarBrandSubtitle || 'Operations Platform'}</small>
           </div>
         </div>
 
-        <nav className="sidebar-nav">
+        <nav className="admin-sidebar-nav">
           {filteredNavSections.map(s => {
             const section = { ...s, items: [...s.items] }
             if (section.labelKey === 'sectionManagement') {
@@ -474,7 +486,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
             return section
           }).map((section) => (
             <div key={section.labelKey}>
-              <div className="nav-section-label">
+              <div className="admin-nav-section-label">
                 {t.admin.nav[section.labelKey as keyof typeof t.admin.nav] as string}
               </div>
               {section.items.map((item) => {
@@ -484,12 +496,12 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                     key={item.href}
                     href={item.href}
                     onClick={() => setSidebarOpen(false)}
-                    className={`nav-item ${isActive ? 'active' : ''}`}
+                    className={`admin-nav-item ${isActive ? 'active' : ''}`}
                   >
                     {item.icon}
-                    <span>{t.admin.nav[item.labelKey as keyof typeof t.admin.nav] as string}</span>
+                    <span>{item.label || (t.admin.nav[item.labelKey as keyof typeof t.admin.nav] as string)}</span>
                     {item.badge !== undefined && (
-                      <span className="nav-badge">{item.href === '/admin/dispatch' ? stats.pending_dispatch : item.href === '/admin/ia-chat' ? stats.pending_user_reply : item.badge}</span>
+                      <span className="admin-nav-badge">{item.href === '/admin/dispatch' ? stats.pending_dispatch : item.href === '/admin/ia-chat' ? stats.pending_user_reply : item.badge}</span>
                     )}
                   </Link>
                 )
@@ -498,7 +510,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
 
-        <div className="sidebar-footer">
+        <div className="admin-sidebar-footer">
           <button onClick={() => signOut({ redirectUrl: '/sign-in/admin' })} className="nav-item" style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', textAlign: 'left' }}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
@@ -510,23 +522,23 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main area */}
-      <div className="main-area">
-        <header className="topbar">
-          <div className="topbar-left">
+      <div className={`admin-main ${sidebarOpen ? '' : 'admin-main-collapsed'}`}>
+        <header className="admin-topbar">
+          <div className="admin-topbar-left">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="icon-btn md:hidden"
+              className="admin-menu-btn md:hidden"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>
               </svg>
             </button>
-            <span className="page-title">{getPageTitle()}</span>
+            <span className="admin-page-title">{getPageTitle()}</span>
             <span className="badge badge-accent" style={{ fontSize: 10 }}>
               {t.admin.dashboard.live as string}
             </span>
           </div>
-          <div className="topbar-right">
+          <div className="admin-topbar-right">
             <div className="search-input" style={{ width: 200 }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
@@ -618,7 +630,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         {/* ── Global Date Navigation ── */}
         <DateNav />
 
-        <div className="content">
+        <div className="admin-content">
           {children}
         </div>
       </div>

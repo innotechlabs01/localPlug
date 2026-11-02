@@ -23,7 +23,7 @@ const faqItems: FAQItem[] = [
   },
   {
     question: '¿Qué métodos de pago aceptan?',
-    answer: 'Aceptamos tarjetas de crédito y débito a través de nuestra plataforma de pagos segura (Paddle).',
+    answer: 'Aceptamos tarjetas de crédito y débito a través de nuestra plataforma de pagos segura (Polar).',
   },
   {
     question: '¿Puedo cancelar mi reserva?',

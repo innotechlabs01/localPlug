@@ -435,29 +435,29 @@ export default function SettingsPage() {
           <div className="settings-section-header">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
             <span className="settings-section-title">{d.paymentIntegration || 'Payment Integration'}</span>
-            <span className="settings-section-desc">{d.paddleProcessing || 'Paddle payment processing'}</span>
+            <span className="settings-section-desc">{d.paymentProcessing || 'Polar payment processing'}</span>
           </div>
           <div className="settings-section-body">
-            <div className="paddle-connect-card">
-              <div className="paddle-status">
-                <div className="paddle-status-dot" />
-                <span className="paddle-status-text">{d.connected || 'Connected'}</span>
-                <span style={{ fontSize: 12, color: 'var(--fg-secondary)', marginLeft: 4 }}>{d.viaPaddle || 'via Paddle'}</span>
+            <div className="polar-connect-card">
+              <div className="polar-status">
+                <div className="polar-status-dot" />
+                <span className="polar-status-text">{d.connected || 'Connected'}</span>
+                <span style={{ fontSize: 12, color: 'var(--fg-secondary)', marginLeft: 4 }}>{d.viaPolar || 'via Polar'}</span>
               </div>
-              <div className="paddle-field">
+              <div className="polar-field">
                 <label>{d.clientToken || 'Client Token'}</label>
                 <div className="value">tok_live_51H3h...</div>
               </div>
-              <div className="paddle-field">
+              <div className="polar-field">
                 <label>{d.apiKey || 'API Key'}</label>
                 <div className="value">••••••••••••••••••••••••</div>
               </div>
-              <div className="paddle-field">
+              <div className="polar-field">
                 <label>{d.webhookUrl || 'Webhook URL'}</label>
-                <div className="value">https://api.localplug.com/paddle/webhook</div>
+                <div className="value">https://api.localplug.com/polar/webhook</div>
               </div>
               <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                <button className="btn btn-secondary btn-sm" onClick={() => showToast(d.reconnect || 'Reconnect Paddle')}>{d.reconnect || 'Reconnect'}</button>
+                <button className="btn btn-secondary btn-sm" onClick={() => showToast(d.reconnect || 'Reconnect Polar')}>{d.reconnect || 'Reconnect'}</button>
               </div>
             </div>
           </div>

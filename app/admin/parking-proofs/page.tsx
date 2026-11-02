@@ -90,13 +90,19 @@ export default function AdminParkingProofsPage() {
   const formatCurrency = (val: number, curr?: string) =>
     '$' + val.toLocaleString('en-US', { minimumFractionDigits: 2 }) + (curr === 'COP' ? ' COP' : ' USD')
 
+  const statusConfig: Record<string, { bg: string; fg: string; label: string }> = {
+    approved: { bg: 'var(--ui-accent-soft)', fg: 'var(--ui-accent)', label: 'Aprobada' },
+    rejected: { bg: 'var(--ui-danger-soft)', fg: 'var(--ui-danger)', label: 'Rechazada' },
+    pending: { bg: 'var(--ui-warning-soft)', fg: 'var(--ui-warning)', label: 'Pendiente' },
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div>
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, fontFamily: 'var(--font-display)', color: 'var(--text-primary)' }}>
+        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, fontFamily: 'var(--font-display)', color: 'var(--ui-fg)' }}>
           Pruebas de parqueo
         </h1>
-        <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>Evidencias de estacionamiento de conductores</p>
+        <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--ui-fg-secondary)' }}>Evidencias de estacionamiento de conductores</p>
       </div>
 
       <div style={{ display: 'flex', gap: 8 }}>
@@ -108,9 +114,9 @@ export default function AdminParkingProofsPage() {
               onClick={() => setTab(t)}
               style={{
                 padding: '8px 14px', borderRadius: 10, fontSize: 12, fontWeight: 500,
-                background: active ? 'var(--accent-gold)' : 'var(--bg-card)',
-                color: active ? '#000' : 'var(--text-secondary)',
-                border: `1px solid ${active ? 'var(--accent-gold)' : 'var(--border)'}`,
+                background: active ? 'var(--ui-accent-gold)' : 'var(--ui-bg-card)',
+                color: active ? 'var(--ui-bg)' : 'var(--ui-fg-secondary)',
+                border: `1px solid ${active ? 'var(--ui-accent-gold)' : 'var(--ui-border)'}`,
                 cursor: 'pointer',
               }}
             >
@@ -122,82 +128,85 @@ export default function AdminParkingProofsPage() {
       </div>
 
       {loading ? (
-        <div style={{ padding: '48px 0', textAlign: 'center', color: 'var(--text-muted)' }}>Cargando…</div>
+        <div style={{ padding: '48px 0', textAlign: 'center', color: 'var(--ui-fg-secondary)' }}>Cargando…</div>
       ) : proofs.length === 0 ? (
-        <div style={{ padding: '48px 0', textAlign: 'center', color: 'var(--text-muted)' }}>No hay pruebas en este estado.</div>
+        <div style={{ padding: '48px 0', textAlign: 'center', color: 'var(--ui-fg-secondary)' }}>No hay pruebas en este estado.</div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {proofs.map(p => (
-            <div key={p.id} style={{
-              background: 'var(--bg-card)', border: '1px solid var(--border)',
-              borderRadius: 14, padding: 16, boxShadow: 'var(--shadow-card)',
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{
-                    padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-                    background: p.parking_proof_status === 'approved' ? 'rgba(74,222,128,0.12)' : p.parking_proof_status === 'rejected' ? 'rgba(248,113,113,0.12)' : 'rgba(250,204,21,0.12)',
-                    color: p.parking_proof_status === 'approved' ? '#4ade80' : p.parking_proof_status === 'rejected' ? '#f87171' : '#facc15',
-                  }}>{p.parking_proof_status === 'approved' ? 'Aprobada' : p.parking_proof_status === 'rejected' ? 'Rechazada' : 'Pendiente'}</span>
-                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>#{p.order_number} · {p.booking_reference}</span>
+          {proofs.map(p => {
+            const st = statusConfig[p.parking_proof_status]
+            return (
+              <div key={p.id} style={{
+                background: 'var(--ui-bg-card)', border: '1px solid var(--ui-border)',
+                borderRadius: 14, padding: 16, boxShadow: 'var(--ui-shadow-card)',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{
+                      padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+                      background: st.bg,
+                      color: st.fg,
+                    }}>{st.label}</span>
+                    <span style={{ fontSize: 12, color: 'var(--ui-fg-secondary)' }}>#{p.order_number} · {p.booking_reference}</span>
+                  </div>
+                  <span style={{ fontSize: 11, color: 'var(--ui-fg-secondary)' }}>{new Date(p.created_at).toLocaleDateString()}</span>
                 </div>
-                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{new Date(p.created_at).toLocaleDateString()}</span>
-              </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, fontSize: 13, marginBottom: 12 }}>
-                <div><div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Cliente</div><div style={{ color: 'var(--text-primary)' }}>{p.customer_name}</div></div>
-                <div><div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Paquete</div><div style={{ color: 'var(--text-primary)' }}>{p.package_name}</div></div>
-                <div><div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Total</div><div style={{ color: 'var(--text-primary)' }}>{formatCurrency(p.package_price, p.currency)}</div></div>
-                <div><div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Conductor</div><div style={{ color: 'var(--text-primary)' }}>{p.driver_name || '—'}</div></div>
-              </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, fontSize: 13, marginBottom: 12 }}>
+                  <div><div style={{ fontSize: 11, color: 'var(--ui-fg-secondary)' }}>Cliente</div><div style={{ color: 'var(--ui-fg)' }}>{p.customer_name}</div></div>
+                  <div><div style={{ fontSize: 11, color: 'var(--ui-fg-secondary)' }}>Paquete</div><div style={{ color: 'var(--ui-fg)' }}>{p.package_name}</div></div>
+                  <div><div style={{ fontSize: 11, color: 'var(--ui-fg-secondary)' }}>Total</div><div style={{ color: 'var(--ui-fg)' }}>{formatCurrency(p.package_price, p.currency)}</div></div>
+                  <div><div style={{ fontSize: 11, color: 'var(--ui-fg-secondary)' }}>Conductor</div><div style={{ color: 'var(--ui-fg)' }}>{p.driver_name || '—'}</div></div>
+                </div>
 
-              {p.parking_proof_url && (
-                <a href={p.parking_proof_url} target="_blank" rel="noopener noreferrer"
-                  style={{ display: 'inline-block', marginBottom: 12, fontSize: 12, color: 'var(--accent-gold)' }}>
-                  Ver foto del parqueadero ↗
-                </a>
-              )}
-              {p.parking_proof_rejected_reason && (
-                <div style={{ fontSize: 12, color: '#f87171', marginBottom: 12 }}>Motivo: {p.parking_proof_rejected_reason}</div>
-              )}
+                {p.parking_proof_url && (
+                  <a href={p.parking_proof_url} target="_blank" rel="noopener noreferrer"
+                    style={{ display: 'inline-block', marginBottom: 12, fontSize: 12, color: 'var(--ui-accent-gold)' }}>
+                    Ver foto del parqueadero ↗
+                  </a>
+                )}
+                {p.parking_proof_rejected_reason && (
+                  <div style={{ fontSize: 12, color: 'var(--ui-danger)', marginBottom: 12 }}>Motivo: {p.parking_proof_rejected_reason}</div>
+                )}
 
-              {p.parking_proof_status === 'pending' && (
-                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10 }}>
-                  <button
-                    onClick={() => review(p.id, 'approved')}
-                    disabled={actionLoading === p.id || rejectId === p.id}
-                    style={{ padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-                      background: 'rgba(74,222,128,0.12)', color: '#4ade80', border: '1px solid rgba(74,222,128,0.3)', cursor: 'pointer' }}
-                  >Aprobar</button>
-                  {rejectId === p.id ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
-                      <textarea
-                        value={rejectReason}
-                        onChange={(e) => setRejectReason(e.target.value)}
-                        placeholder="Motivo del rechazo"
-                        rows={2}
-                        style={{ width: '100%', padding: 6, borderRadius: 6, fontSize: 12, border: '1px solid var(--border)', background: 'var(--bg-subtle-2)', color: 'var(--text-primary)' }}
-                      />
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button onClick={() => review(p.id, 'rejected')} disabled={actionLoading === p.id}
-                          style={{ padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-                            background: '#f87171', color: '#fff', border: 'none', cursor: 'pointer' }}>Enviar</button>
-                        <button onClick={() => { setRejectId(null); setRejectReason('') }}
-                          style={{ padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-                            background: 'var(--bg-subtle-2)', color: 'var(--text-secondary)', border: '1px solid var(--border)', cursor: 'pointer' }}>Cancelar</button>
-                      </div>
-                    </div>
-                  ) : (
-                    <button onClick={() => setRejectId(p.id)}
+                {p.parking_proof_status === 'pending' && (
+                  <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10 }}>
+                    <button
+                      onClick={() => review(p.id, 'approved')}
+                      disabled={actionLoading === p.id || rejectId === p.id}
                       style={{ padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-                        background: 'rgba(248,113,113,0.12)', color: '#f87171', border: '1px solid rgba(248,113,113,0.3)', cursor: 'pointer' }}>
-                      Rechazar
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
+                        background: 'var(--ui-accent-soft)', color: 'var(--ui-accent)', border: '1px solid var(--ui-accent-soft)', cursor: 'pointer' }}
+                    >Aprobar</button>
+                    {rejectId === p.id ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
+                        <textarea
+                          value={rejectReason}
+                          onChange={(e) => setRejectReason(e.target.value)}
+                          placeholder="Motivo del rechazo"
+                          rows={2}
+                          style={{ width: '100%', padding: 6, borderRadius: 6, fontSize: 12, border: '1px solid var(--ui-border)', background: 'var(--ui-bg)', color: 'var(--ui-fg)' }}
+                        />
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button onClick={() => review(p.id, 'rejected')} disabled={actionLoading === p.id}
+                            style={{ padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+                              background: 'var(--ui-danger)', color: 'var(--ui-bg)', border: 'none', cursor: 'pointer' }}>Enviar</button>
+                          <button onClick={() => { setRejectId(null); setRejectReason('') }}
+                            style={{ padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+                              background: 'var(--ui-surface-hover)', color: 'var(--ui-fg-secondary)', border: '1px solid var(--ui-border)', cursor: 'pointer' }}>Cancelar</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button onClick={() => setRejectId(p.id)}
+                        style={{ padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600,
+                          background: 'var(--ui-danger-soft)', color: 'var(--ui-danger)', border: '1px solid var(--ui-danger-soft)', cursor: 'pointer' }}>
+                        Rechazar
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
