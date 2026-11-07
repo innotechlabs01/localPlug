@@ -65,32 +65,44 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const orderId = orderIdRow
     const proofUrl = airportParking ? parkingProofUrl : existingProof
 
-    await db.execute({
-      sql: `UPDATE assignments
-            SET status = 'completed', completed_at = datetime('now'), block_until = NULL, updated_at = datetime('now')
-            WHERE id = ? AND driver_id = ? AND status IN ('accepted', 'confirmed_to_client', 'en_route')`,
-      args: [assignmentId, driverId],
-    })
+    const outboxCompletedPayload = {
+      order_id: orderId,
+      driver_id: driverId,
+      assignment_id: assignmentId,
+      airport_parking: airportParking,
+      timestamp: new Date().toISOString(),
+    }
 
-    await db.execute({
-      sql: `UPDATE orders
-            SET airport_parking = ?, parking_proof_url = ?, parking_proof_status = ?, dispatch_status = 'completed', updated_at = datetime('now')
-            WHERE id = ?`,
-      args: [airportParking ? 1 : 0, proofUrl, airportParking ? 'pending' : 'approved', orderId],
-    })
-
-    await db.execute({
-      sql: `UPDATE drivers SET status = 'available', updated_at = datetime('now') WHERE id = ?`,
-      args: [driverId],
-    })
+    // Atomic Transactional Outbox Batch: Complete assignment, order, free driver, emit outbox event
+    await db.batch([
+      {
+        sql: `UPDATE assignments
+              SET status = 'completed', completed_at = datetime('now'), block_until = NULL, updated_at = datetime('now')
+              WHERE id = ? AND driver_id = ? AND status IN ('accepted', 'confirmed_to_client', 'en_route')`,
+        args: [assignmentId, driverId],
+      },
+      {
+        sql: `UPDATE orders
+              SET airport_parking = ?, parking_proof_url = ?, parking_proof_status = ?, dispatch_status = 'completed', updated_at = datetime('now')
+              WHERE id = ?`,
+        args: [airportParking ? 1 : 0, proofUrl, airportParking ? 'pending' : 'approved', orderId],
+      },
+      {
+        sql: `UPDATE drivers SET status = 'available', updated_at = datetime('now') WHERE id = ?`,
+        args: [driverId],
+      },
+      {
+        sql: `INSERT INTO events_outbox (type, payload, correlation_id, status, max_retries)
+              VALUES ('driver.trip_completed', ?, ?, 'pending', 5)`,
+        args: [JSON.stringify(outboxCompletedPayload), String(orderId)],
+      },
+    ])
 
     // Milestone: record driver payout liability (category fare snapshot).
     await accrueDriverPayout(orderId, driverId).catch(err => {
       console.error('[driver complete-trip] payout accrual failed:', err)
     })
 
-    // Realtime outbox — trip completed.
-    emitEvent('driver.trip_completed', { order_id: orderId, driver_id: driverId }, { correlationId: String(orderId) }).catch(() => {})
     // Realtime outbox — parking proof submitted (needs admin review).
     if (airportParking) {
       emitEvent('parking_proof.submitted', { order_id: orderId, driver_id: driverId, status: 'pending' }, { correlationId: String(orderId) }).catch(() => {})

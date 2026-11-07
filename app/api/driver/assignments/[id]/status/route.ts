@@ -87,32 +87,40 @@ export async function POST(
     const storedStatus = nextStatus === 'pickedup' ? 'in_progress' : 'en_route'
     const timestampCol = nextStatus === 'pickedup' ? 'in_progress_at' : 'en_route_at'
     const orderDispatchStatus = nextStatus === 'pickedup' ? 'in_progress' : 'en_route'
+    const eventType = nextStatus === 'pickedup' ? 'trip.pickedup' : 'driver.en_route'
 
-    await db.execute({
-      sql: `UPDATE assignments
-            SET status = ?, ${timestampCol} = datetime('now'), updated_at = datetime('now')
-            WHERE id = ? AND driver_id = ?`,
-      args: [storedStatus, assignmentId, driverId],
-    })
-
-    await db.execute({
-      sql: `UPDATE orders SET dispatch_status = ?, updated_at = datetime('now') WHERE id = ?`,
-      args: [orderDispatchStatus, orderId],
-    })
-
-    recordMetric('driver_trip_status_change', 1, {
-      from: currentStatus,
-      to: nextStatus,
-    })
-
-    // Realtime outbox — live trip stage transition.
-    emitEvent(nextStatus === 'pickedup' ? 'trip.pickedup' : 'driver.en_route', {
+    const outboxPayload = {
       assignment_id: assignmentId,
       order_id: orderId,
       driver_id: driverId,
       status: storedStatus,
       from: currentStatus,
-    }, { correlationId: String(assignmentId) }).catch(() => {})
+      timestamp: new Date().toISOString(),
+    }
+
+    // Atomic Transactional Outbox Batch
+    await db.batch([
+      {
+        sql: `UPDATE assignments
+              SET status = ?, ${timestampCol} = datetime('now'), updated_at = datetime('now')
+              WHERE id = ? AND driver_id = ?`,
+        args: [storedStatus, assignmentId, driverId],
+      },
+      {
+        sql: `UPDATE orders SET dispatch_status = ?, updated_at = datetime('now') WHERE id = ?`,
+        args: [orderDispatchStatus, orderId],
+      },
+      {
+        sql: `INSERT INTO events_outbox (type, payload, correlation_id, status, max_retries)
+              VALUES (?, ?, ?, 'pending', 5)`,
+        args: [eventType, JSON.stringify(outboxPayload), String(assignmentId)],
+      },
+    ])
+
+    recordMetric('driver_trip_status_change', 1, {
+      from: currentStatus,
+      to: nextStatus,
+    })
 
     return NextResponse.json({
       success: true,
