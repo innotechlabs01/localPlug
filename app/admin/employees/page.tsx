@@ -1,196 +1,373 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useI18n } from '@/lib/i18n'
+import { adminFetch } from '@/lib/admin/admin-fetch'
+import { useToast } from '@/lib/admin/toast-context'
 
 interface Employee {
-  id: string
-  name: string
-  role: string
-  license: string
-  specialty: string
-  email: string
-  status: 'Active' | 'Inactive'
+  id: number; name: string | null; email: string | null; phone: string | null
+  employee_status: string | null; role_id: number | null; role_name: string | null
+  rating: number | null; total_trips: number | null; created_at: string
 }
 
-const initialEmployees: Employee[] = [
-  { id: '#E001', name: 'Alejandro Ríos', role: 'Senior Attorney', license: 'TP-873642', specialty: 'Laboral & Seguridad Social', email: 'alejandro.rios@localplug.com', status: 'Active' },
-  { id: '#E002', name: 'Maria Alejandra', role: 'Junior Attorney', license: 'TP-992145', specialty: 'Derecho Administrativo & Tutelas', email: 'maria.alejandra@localplug.com', status: 'Active' },
-  { id: '#E003', name: 'Carolina Gomez', role: 'Legal Secretary', license: 'N/A', specialty: 'Gestión Documental y Radicados', email: 'carolina.gomez@localplug.com', status: 'Active' },
-]
+interface Role {
+  id: number; name: string; description: string
+}
+
+const theme = {
+  bg: 'var(--bg)', surface: 'var(--surface)', surfaceHover: 'var(--surface-hover)', border: 'var(--border)', borderLight: 'var(--surface-active)',
+  fg: 'var(--fg)', fgSecondary: 'var(--fg-muted)', fgMuted: 'var(--fg-secondary)',
+  accent: 'var(--accent)', accentSoft: 'rgba(16,185,129,0.12)',
+  warning: 'var(--warning)', warningSoft: 'rgba(245,158,11,0.12)',
+  danger: 'var(--danger)', dangerSoft: 'rgba(239,68,80,0.12)',
+  info: 'var(--info)', infoSoft: 'rgba(59,130,246,0.12)',
+  gold: 'var(--gold)',
+  radiusSm: '6px', radiusMd: '10px',
+}
 
 export default function EmployeesPage() {
   const { t } = useI18n()
-  const [employees, setEmployees] = useState<Employee[]>(initialEmployees)
+  const d = t.admin.employees || t.admin.team
+
+  const [employees, setEmployees] = useState<Employee[]>([])
+  const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
-  const [showForm, setShowForm] = useState(false)
-  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
-  const [formData, setFormData] = useState<Partial<Employee>>({})
+  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [roles, setRoles] = useState<Role[]>([])
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editEmp, setEditEmp] = useState<Employee | null>(null)
+  const [form, setForm] = useState<Record<string, string>>({})
+  const { showToast } = useToast()
 
-  const filtered = employees.filter((e) =>
-    e.name.toLowerCase().includes(search.toLowerCase()) ||
-    e.role.toLowerCase().includes(search.toLowerCase()) ||
-    e.specialty.toLowerCase().includes(search.toLowerCase()),
-  )
-
-  const openNew = () => {
-    setEditingEmployee(null)
-    setFormData({ name: '', role: '', license: '', specialty: '', email: '', status: 'Active' })
-    setShowForm(true)
-  }
-
-  const openEdit = (emp: Employee) => {
-    setEditingEmployee(emp)
-    setFormData({ ...emp })
-    setShowForm(true)
-  }
-
-  const saveEmployee = () => {
-    if (editingEmployee) {
-      setEmployees(employees.map((e) => (e.id === editingEmployee.id ? { ...e, ...formData } as Employee : e)))
-    } else {
-      const newId = `#E${String(employees.length + 1).padStart(3, '0')}`
-      setEmployees([...employees, { ...formData, id: newId } as Employee])
+  const fetchEmployees = useCallback(async () => {
+    try {
+      const [empRes, roleRes] = await Promise.all([
+        adminFetch('/api/admin/employees'),
+        adminFetch('/api/admin/team'),
+      ])
+      if (empRes.ok) {
+        const data = await empRes.json()
+        setEmployees(data.employees || [])
+      }
+      if (roleRes.ok) {
+        const data = await roleRes.json()
+        setRoles(data.roles || data || [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch employees', err)
     }
-    setShowForm(false)
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { fetchEmployees() }, [fetchEmployees])
+
+  const selected = useMemo(() => employees.find(e => e.id === selectedId), [employees, selectedId])
+
+  const stats = useMemo(() => ({
+    total: employees.length,
+    active: employees.filter(e => e.employee_status === 'active').length,
+    onRoute: employees.filter(e => e.employee_status === 'on_route').length,
+    avgRating: employees.length ? (employees.reduce((s, e) => s + (e.rating || 0), 0) / employees.filter(e => e.rating).length).toFixed(1) : '0',
+    totalTrips: employees.reduce((s, e) => s + (e.total_trips || 0), 0),
+    expiringDocs: 0,
+  }), [employees])
+
+  const filtered = useMemo(() => employees.filter(e => {
+    const q = search.toLowerCase()
+    if (search && !(e.name || '').toLowerCase().includes(q) && !(e.email || '').toLowerCase().includes(q)) return false
+    if (filter === 'all') return true
+    if (filter === 'verified') return true
+    if (filter === 'pending') return true
+    if (filter === 'needs_review') return true
+    return e.employee_status === filter
+  }), [employees, search, filter])
+
+  const getInit = (name: string | null) =>
+    name ? name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '??'
+
+  const getAvatarColor = (name: string | null) => {
+    const hash = (name || '').charCodeAt(0) || 0
+    const cs = ['var(--accent)', 'var(--info)', 'var(--gold)', 'var(--info)', 'var(--accent-hover)', 'var(--bg)']
+    return `linear-gradient(135deg, ${cs[hash % cs.length]}, var(--bg))`
   }
 
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-[18px] font-semibold text-[#f0f2f5]">{t.admin.employees.title as string}</h1>
-          <p className="text-[13px] text-[#646880] mt-0.5">{t.admin.employees.subtitle.replace('{count}', String(employees.length)) as string}</p>
-        </div>
-        <button onClick={openNew} className="px-4 py-2 bg-[#10b981] text-white rounded-[6px] text-[13px] font-medium hover:bg-[#059669] transition-all flex items-center gap-1.5">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-          {t.admin.employees.add as string}
-        </button>
-      </div>
+  const getRoleBadge = (role: string | null) => {
+    const cls = role === 'admin' ? 'admin' : role === 'ops' ? 'ops' : role === 'support' ? 'support' : ''
+    return cls
+  }
 
-      {/* Search */}
-      <div className="relative mb-4 max-w-[300px]">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="absolute left-3 top-1/2 -translate-y-1/2 text-[#646880]">
-          <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-        </svg>
-        <input
-          type="text"
-          placeholder={t.admin.employees.search as string}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-9 pr-3 py-2 bg-[#0b0d14] border border-[#282b38] rounded-[6px] text-[13px] text-[#f0f2f5] placeholder:text-[#646880] outline-none focus:border-[#10b981] transition-all"
-        />
-      </div>
+  const openCreate = () => { setEditEmp(null); setForm({}); setModalOpen(true) }
 
-      {/* Table */}
-      <div className="bg-[#181b25] border border-[#282b38] rounded-[10px] overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-[#282b38]">
-                <th className="text-left px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880]">{t.admin.employees.tableName as string}</th>
-                <th className="text-left px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880]">{t.admin.employees.tableRole as string}</th>
-                <th className="text-left px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880]">{t.admin.employees.tableLicense as string}</th>
-                <th className="text-left px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880]">{t.admin.employees.tableSpecialty as string}</th>
-                <th className="text-left px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880]">{t.admin.employees.tableEmail as string}</th>
-                <th className="text-left px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880]">{t.admin.employees.tableStatus as string}</th>
-                <th className="text-right px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880]">{t.admin.employees.tableActions as string}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((emp) => (
-                <tr key={emp.id} className="border-b border-[#282b38] last:border-b-0 hover:bg-[#202330] transition-colors">
-                  <td className="px-5 py-3 text-[13px] font-medium text-[#f0f2f5]">{emp.name}</td>
-                  <td className="px-5 py-3">
-                    <span className="text-[13px] text-[#9ca0b0]">{emp.role}</span>
-                  </td>
-                  <td className="px-5 py-3">
-                    <span className="text-[13px] font-mono text-[#9ca0b0]">{emp.license}</span>
-                  </td>
-                  <td className="px-5 py-3 text-[13px] text-[#9ca0b0] max-w-[220px] truncate">{emp.specialty}</td>
-                  <td className="px-5 py-3 text-[13px] text-[#9ca0b0]">{emp.email}</td>
-                  <td className="px-5 py-3">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium ${
-                      emp.status === 'Active'
-                        ? 'bg-[rgba(16,185,129,0.12)] text-[#10b981]'
-                        : 'bg-[rgba(100,104,128,0.12)] text-[#646880]'
-                    }`}>
-                      {emp.status}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3 text-right">
-                    <button onClick={() => openEdit(emp)} className="p-1.5 rounded-[4px] text-[#9ca0b0] hover:bg-[#202330] hover:text-[#3b82f6] transition-all" title="Edit">
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {filtered.length === 0 && (
-          <div className="text-center py-12 text-[#646880] text-[14px]">{t.admin.employees.noResults as string}</div>
-        )}
-      </div>
+  const openEdit = (e: Employee) => {
+    setEditEmp(e)
+    setForm({
+      name: e.name || '',
+      email: e.email || '',
+      phone: e.phone || '',
+      role_id: String(e.role_id || ''),
+      employee_status: e.employee_status || 'active',
+    })
+    setModalOpen(true)
+  }
 
-      {/* Add/Edit Modal */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[1000] p-6" onClick={() => setShowForm(false)}>
-          <div className="w-full max-w-[480px] bg-[#181b25] border border-[#282b38] rounded-[14px] shadow-[0_20px_60px_rgba(0,0,0,0.5)]" onClick={(e) => e.stopPropagation()}>
-            <div className="px-6 py-4 border-b border-[#282b38] flex items-center justify-between">
-              <h3 className="text-[15px] font-semibold text-[#f0f2f5]">{editingEmployee ? t.admin.employees.modalEdit as string : t.admin.employees.modalAdd as string}</h3>
-              <button onClick={() => setShowForm(false)} className="text-[#646880] hover:text-[#f0f2f5] transition-colors">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-              </button>
+  const handleSubmit = async () => {
+    try {
+      const body = { ...form }
+      if (editEmp) body.id = String(editEmp.id)
+      const res = await adminFetch('/api/admin/employees', {
+        method: editEmp ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (res.ok) {
+        showToast(editEmp ? 'Employee updated' : 'Employee created')
+        setModalOpen(false)
+        fetchEmployees()
+      } else {
+        showToast('Failed to save employee')
+      }
+    } catch { showToast('Error saving employee') }
+  }
+
+   if (loading) {
+     return <div className="flex items-center justify-center h-64 text-[#646880]">{d.loading || 'Loading...'}</div>
+   }
+
+   return (
+     <div className="emp-page">
+       <section className="emp-hero">
+         <div>
+           <h1>{d.title || 'Employees'}</h1>
+           <p>{d.subtitle || `Manage your team — ${stats.total} members`}</p>
+         </div>
+         <div className="emp-toolbar">
+           <button className="btn btn-secondary btn-sm"
+             onClick={() => showToast('Export queued')}>{d.export_ || 'Export'}</button>
+           <button className="btn btn-primary btn-sm"
+             onClick={openCreate}>{d.add || '+ Add Employee'}</button>
+         </div>
+       </section>
+
+       <div className="emp-filters">
+         {['all', 'active', 'inactive', 'on_route', 'verified', 'pending', 'needs_review'].map(f => (
+           <button key={f}
+             className={`chip ${filter === f ? 'active' : ''}`}
+             onClick={() => setFilter(f)}>
+             {f === 'all' ? 'All' : f.charAt(0).toUpperCase() + f.slice(1).replace('_', ' ')}
+           </button>
+         ))}
+       </div>
+
+       <div className="emp-kpis">
+         {[
+           [d.kpis?.total || 'Total', String(stats.total)],
+           [d.kpis?.active || 'Active', String(stats.active)],
+           [d.kpis?.onRoute || 'On Route', String(stats.onRoute)],
+           [d.kpis?.avgRating || 'Avg Rating', stats.avgRating],
+           [d.kpis?.totalTrips || 'Total Trips', String(stats.totalTrips)],
+           [d.kpis?.expiringDocs || 'Expiring Docs', String(stats.expiringDocs)],
+         ].map(([label, value]) => (
+           <div key={label} className="stat-card card-glass">
+             <div className="stat-label">{label}</div>
+             <div className="stat-value">{value}</div>
+           </div>
+         ))}
+       </div>
+
+       <div className="emp-layout">
+         {/* ── Left: Table ── */}
+         <section className="panel">
+           <div className="panel-header">
+             <div className="panel-title">{d.tableTitle || 'Employee Directory'} <span className="count">{filtered.length} visible</span></div>
+             <div className="emp-toolbar">
+               <button className="btn btn-secondary btn-sm" onClick={() => showToast('Filters opened')}>Filter</button>
+               <button className="btn btn-secondary btn-sm" onClick={() => showToast('Export CSV')}>{d.export_ || 'Export'}</button>
+             </div>
+           </div>
+           <div className="table-wrap">
+             <table className="emp-table">
+               <thead>
+                 <tr>
+                   <th>{d.tableName || 'Employee'}</th>
+                   <th>{d.tableRole || 'Role'}</th>
+                   <th>{d.tableStatus || 'Status'}</th>
+                   <th>{d.tableTrips || 'Trips'}</th>
+                   <th>{d.tableRating || 'Rating'}</th>
+                   <th>Actions</th>
+                 </tr>
+               </thead>
+               <tbody>
+                 {filtered.length === 0 ? (
+                   <tr>
+                     <td colSpan={6} className="text-fg-muted text-center py-8">{d.noResults || 'No employees found'}</td>
+                   </tr>
+                 ) : filtered.map(emp => (
+                   <tr key={emp.id} className="emp-row" onClick={() => setSelectedId(emp.id)}>
+                     <td>
+                       <div className="emp-person">
+                         <div className="emp-avatar" style={{ background: getAvatarColor(emp.name) }}>
+                           {getInit(emp.name)}
+                         </div>
+                         <div>
+                           <div className="emp-name">{emp.name}</div>
+                           <div className="emp-meta">{emp.email}</div>
+                         </div>
+                       </div>
+                     </td>
+                     <td>
+                       <span className={`badge-role ${getRoleBadge(emp.role_name)}`}>
+                         {emp.role_name || '—'}
+                       </span>
+                     </td>
+                     <td>
+                       <span className={`badge-status ${emp.employee_status === 'active' ? 'active' : emp.employee_status === 'inactive' ? 'inactive' : emp.employee_status === 'suspended' ? 'suspended' : 'leave'}`}>
+                         {emp.employee_status === 'leave' ? 'On Leave' : (emp.employee_status || '—')}
+                       </span>
+                     </td>
+                     <td>{emp.total_trips || 0}</td>
+                     <td>{emp.rating ? `★ ${emp.rating}` : '—'}</td>
+                     <td>
+                       <div className="inline-actions">
+                         <button className="mini-btn" onClick={() => showToast('Audit log opened')}>Log</button>
+                         <button className="mini-btn" onClick={e => { e.stopPropagation(); openEdit(emp) }}>{d.edit || 'Edit'}</button>
+                       </div>
+                     </td>
+                   </tr>
+                 ))}
+               </tbody>
+             </table>
+           </div>
+         </section>
+
+         {/* ── Right: Side Panel ── */}
+         <aside className="side-stack">
+           <section className="side-card">
+             <div className="panel-header">
+               <div className="panel-title">{d.sidePanel?.profile || 'Selected Profile'} <span className="count">{selected?.role_name || '—'}</span></div>
+               {selected && (
+                 <button className="btn btn-secondary btn-sm" onClick={() => openEdit(selected)}>Edit</button>
+               )}
+             </div>
+             <div className="content">
+               {!selected ? (
+                 <p style={{ color: 'var(--fg-muted)', textAlign: 'center', padding: '32px 0' }}>{d.selectPrompt || 'Select an employee to view profile'}</p>
+               ) : (
+                 <>
+                   <div className="profile-top">
+                     <div className="profile-photo" style={{ background: getAvatarColor(selected.name) }}>
+                       {getInit(selected.name)}
+                     </div>
+                     <div>
+                       <h2>{selected.name}</h2>
+                       <div className="sub">{selected.role_name || '—'}</div>
+                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                         <span className={`badge-role ${getRoleBadge(selected.role_name)}`}>{selected.role_name || '—'}</span>
+                         <span className={`badge-status ${selected.employee_status === 'active' ? 'active' : selected.employee_status === 'inactive' ? 'inactive' : selected.employee_status === 'suspended' ? 'suspended' : 'leave'}`}>
+                           {selected.employee_status === 'leave' ? 'On Leave' : (selected.employee_status || '—')}
+                         </span>
+                       </div>
+                     </div>
+                   </div>
+                   <div className="info-grid" style={{ marginTop: 16 }}>
+                     <div className="info-item"><label>{d.formEmail || 'Email'}</label><div>{selected.email || '—'}</div></div>
+                     <div className="info-item"><label>{d.formPhone || 'Phone'}</label><div>{selected.phone || '—'}</div></div>
+                     <div className="info-item"><label>{d.formRole || 'Role'}</label><div>{selected.role_name || '—'}</div></div>
+                     <div className="info-item"><label>Trips</label><div>{selected.total_trips || 0}</div></div>
+                     <div className="info-item"><label>Rating</label><div>{selected.rating ? `★ ${selected.rating}` : '—'}</div></div>
+                     <div className="info-item"><label>Joined</label><div>{selected.created_at ? new Date(selected.created_at).toLocaleDateString() : '—'}</div></div>
+                   </div>
+                   <div className="audit" id="selNote">Employee record active since {selected.created_at ? new Date(selected.created_at).toLocaleDateString() : '—'}</div>
+                 </>
+               )}
+             </div>
+           </section>
+
+           <section className="side-card">
+             <div className="panel-header">
+               <div className="panel-title">{d.sidePanel?.recentActivity || 'Recent Activity'}</div>
+             </div>
+             <div className="content activity-list">
+               {!selected ? (
+                 <p style={{ color: 'var(--fg-muted)', padding: '12px 0', fontSize: 13 }}>{d.noSelection || 'No employee selected'}</p>
+               ) : (
+                 [
+                   { dot: theme.accent, text: 'Profile updated', time: '2h ago' },
+                   { dot: theme.info, text: 'Trip #128 completed', time: '5h ago' },
+                   { dot: theme.warning, text: 'Documents verified', time: '1d ago' },
+                 ].map((act, i) => (
+                   <div key={i} className="activity-item">
+                     <div className="activity-dot" style={{ background: act.dot }} />
+                     <div>{act.text}</div>
+                     <div className="activity-time">{act.time}</div>
+                   </div>
+                 ))
+               )}
+             </div>
+           </section>
+         </aside>
+       </div>
+
+      {/* ── Create/Edit Modal ── */}
+      {modalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-backdrop" onClick={() => setModalOpen(false)} />
+          <div className="modal max-w-[600px]">
+            <div className="modal-header">
+              <div>
+                <h2>{editEmp ? (d.modalEdit || 'Edit Employee') : (d.modalAdd || 'Add Employee')}</h2>
+                <p>{d.modalDesc || 'Employee registration and role assignment.'}</p>
+              </div>
+              <button className="close-btn" onClick={() => setModalOpen(false)}>×</button>
             </div>
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[12px] font-medium text-[#9ca0b0]">{t.admin.employees.formName as string}</label>
-                  <input type="text" value={formData.name || ''} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full px-3 py-2 bg-[#0b0d14] border border-[#282b38] rounded-[6px] text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-all" />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[12px] font-medium text-[#9ca0b0]">{t.admin.employees.formRole as string}</label>
-                  <select value={formData.role || ''} onChange={(e) => setFormData({ ...formData, role: e.target.value })} className="w-full px-3 py-2 bg-[#0b0d14] border border-[#282b38] rounded-[6px] text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-all">
-                    <option value="">Select role</option>
-                    <option value="Senior Attorney">Senior Attorney</option>
-                    <option value="Junior Attorney">Junior Attorney</option>
-                    <option value="Legal Secretary">Legal Secretary</option>
-                    <option value="Paralegal">Paralegal</option>
-                  </select>
-                </div>
+
+            <div className="modal-body grid grid-cols-2 gap-3">
+              <div className="form-group">
+                <label>{d.formName || 'Full name'}</label>
+                <input placeholder="e.g. John Doe"
+                  value={form.name || ''} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[12px] font-medium text-[#9ca0b0]">{t.admin.employees.formLicense as string}</label>
-                  <input type="text" value={formData.license || ''} onChange={(e) => setFormData({ ...formData, license: e.target.value })} placeholder="TP-XXXXX" className="w-full px-3 py-2 bg-[#0b0d14] border border-[#282b38] rounded-[6px] text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-all" />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[12px] font-medium text-[#9ca0b0]">{t.admin.employees.formStatus as string}</label>
-                  <select value={formData.status || 'Active'} onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Active' | 'Inactive' })} className="w-full px-3 py-2 bg-[#0b0d14] border border-[#282b38] rounded-[6px] text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-all">
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                  </select>
-                </div>
+              <div className="form-group">
+                <label>{d.formEmail || 'Email'}</label>
+                <input placeholder="email@company.com"
+                  value={form.email || ''} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} />
               </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[12px] font-medium text-[#9ca0b0]">{t.admin.employees.formSpecialty as string}</label>
-                <input type="text" value={formData.specialty || ''} onChange={(e) => setFormData({ ...formData, specialty: e.target.value })} className="w-full px-3 py-2 bg-[#0b0d14] border border-[#282b38] rounded-[6px] text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-all" />
+              <div className="form-group">
+                <label>{d.formPhone || 'Phone'}</label>
+                <input placeholder="+57 300 000 0000"
+                  value={form.phone || ''} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} />
               </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[12px] font-medium text-[#9ca0b0]">{t.admin.employees.formEmail as string}</label>
-                <input type="email" value={formData.email || ''} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="w-full px-3 py-2 bg-[#0b0d14] border border-[#282b38] rounded-[6px] text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-all" />
+              <div className="form-group">
+                <label>{d.formRole || 'Role'}</label>
+                <select value={form.role_id || ''} onChange={e => setForm(p => ({ ...p, role_id: e.target.value }))}>
+                  <option value="">{d.selectRole || 'Select role...'}</option>
+                  {roles.map(r => (
+                    <option key={r.id} value={r.id}>{r.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>{d.formStatus || 'Status'}</label>
+                <select value={form.employee_status || 'active'} onChange={e => setForm(p => ({ ...p, employee_status: e.target.value }))}>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="suspended">Suspended</option>
+                  <option value="leave">On Leave</option>
+                </select>
               </div>
             </div>
-            <div className="px-6 py-4 border-t border-[#282b38] flex gap-2 justify-end">
-              <button onClick={() => setShowForm(false)} className="px-4 py-2 bg-transparent border border-[#282b38] text-[#f0f2f5] rounded-[6px] text-[13px] font-medium hover:bg-[#202330] transition-all">{t.admin.employees.cancel as string}</button>
-              <button onClick={saveEmployee} className="px-4 py-2 bg-[#10b981] text-white rounded-[6px] text-[13px] font-medium hover:bg-[#059669] transition-all">
-                {editingEmployee ? t.admin.employees.saveChanges as string : t.admin.employees.modalAdd as string}
+
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setModalOpen(false)}>{d.cancel || 'Cancel'}</button>
+              <button className="btn btn-primary" onClick={handleSubmit}>
+                {editEmp ? (d.saveChanges || 'Update') : (d.modalAdd || 'Create')}
               </button>
             </div>
           </div>
         </div>
       )}
+
     </div>
   )
 }

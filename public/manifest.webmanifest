@@ -1,0 +1,20 @@
+{
+  "name": "LocalPlug Driver",
+  "short_name": "Driver",
+  "description": "Portal del conductor LocalPlug — asignaciones, viajes y ganancias.",
+  "start_url": "/driver",
+  "scope": "/driver",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "/images/icon/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

@@ -11,7 +11,7 @@ export default function HeroCta() {
           {t.hero.planNow}
         </Button>
       </Link>
-      <a href="#services">
+      <a href="#pricing">
         <Button variant="ghost" size="lg">
           {t.hero.viewServices}
         </Button>

@@ -1,18 +1,5 @@
 'use client'
 
-interface AirlineEntry {
-  name: string
-  iata: string
-  flights: string[]
-}
-
-const airlineDb: Record<string, AirlineEntry> = {
-  'american airlines': { name: 'American Airlines', iata: 'AA', flights: ['AA1123', 'AA123', 'AA456'] },
-  'aa': { name: 'American Airlines', iata: 'AA', flights: ['AA1123', 'AA123', 'AA456'] },
-  'avianca': { name: 'Avianca', iata: 'AV', flights: ['AV123'] },
-  'av': { name: 'Avianca', iata: 'AV', flights: ['AV123'] },
-}
-
 export interface FlightValidationResult {
   valid: boolean
   airlineName?: string
@@ -29,16 +16,28 @@ export interface FlightValidationService {
   validateFlight: (params: FlightValidationParams) => Promise<FlightValidationResult>
 }
 
+async function findFlight(airline: string, flightNumber: string): Promise<FlightValidationResult> {
+  try {
+    const res = await fetch(`/api/flights/validate?airline=${encodeURIComponent(airline)}&flightNumber=${encodeURIComponent(flightNumber)}`)
+    if (!res.ok) {
+      return { valid: false, error: 'Validation service unavailable' }
+    }
+    return await res.json()
+  } catch {
+    return { valid: false, error: 'Validation service unavailable' }
+  }
+}
+
+export async function searchFlights(airline: string, flightNumber: string): Promise<FlightValidationResult> {
+  return findFlight(airline, flightNumber)
+}
+
 export function createFlightValidation(options?: { latency?: number }): FlightValidationService {
   const latency = options?.latency ?? 200
 
   return {
     validateFlight: async ({ airline, flightNumber }: FlightValidationParams): Promise<FlightValidationResult> => {
       await new Promise((r) => setTimeout(r, latency))
-
-      if (localStorage.getItem('__mock_fail') === 'true') {
-        return { valid: false, error: 'Validation service unavailable' }
-      }
 
       const trimmedAirline = airline.trim().toLowerCase()
       const trimmedFlight = flightNumber.trim().toUpperCase()
@@ -47,30 +46,16 @@ export function createFlightValidation(options?: { latency?: number }): FlightVa
         return { valid: false, error: 'Missing required fields' }
       }
 
-      const airlineEntry = airlineDb[trimmedAirline]
-      if (!airlineEntry) {
-        return { valid: false }
+      const result = await findFlight(trimmedAirline, trimmedFlight)
+
+      if (result.valid) {
+        return { valid: true, airlineName: result.airlineName, flightNumber: result.flightNumber }
+      }
+      if (result.error) {
+        return { valid: false, error: result.error }
       }
 
-      const flightStartsWithIata = trimmedFlight.startsWith(airlineEntry.iata)
-      const isNumeric = /^\d+$/.test(trimmedFlight)
-
-      let normalizedFlight: string
-      if (isNumeric) {
-        normalizedFlight = airlineEntry.iata + trimmedFlight
-      } else if (flightStartsWithIata) {
-        normalizedFlight = trimmedFlight
-      } else {
-        normalizedFlight = airlineEntry.iata + trimmedFlight
-      }
-
-      const isKnownFlight = airlineEntry.flights.some((f) => f.toUpperCase() === normalizedFlight)
-
-      if (!isKnownFlight) {
-        return { valid: false }
-      }
-
-      return { valid: true, airlineName: airlineEntry.name, flightNumber: normalizedFlight }
+      return { valid: false }
     },
   }
 }

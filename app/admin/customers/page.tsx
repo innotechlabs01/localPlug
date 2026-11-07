@@ -1,262 +1,594 @@
 'use client'
 
-import { useState } from 'react'
-import Link from 'next/link'
+import { useState, useEffect, useCallback } from 'react'
 import { useI18n } from '@/lib/i18n'
+import { useToast } from '@/lib/admin/toast-context'
+import { formatDateFull } from '@/lib/date-utils'
+import type { Customer } from '@/app/api/admin/customers/route'
 
-interface Client {
-  id: string
-  name: string
-  type: string
-  status: 'Active' | 'Inactive'
-  email: string
-  phone: string
-  createdAt: string
+type TabKey = 'profile' | 'reservations' | 'preferences' | 'support' | 'tags'
+
+const VIP_BADGES: Record<string, string> = {
+  platinum: 'bg-[rgba(168,85,247,0.15)] text-[#a855f7]',
+  gold: 'bg-[rgba(234,179,8,0.15)] text-[#eab308]',
+  silver: 'bg-[rgba(148,163,184,0.15)] text-[#94a3b8]',
+  standard: 'bg-[rgba(100,116,139,0.1)] text-[#64748b]',
 }
 
-const initialClients: Client[] = [
-  { id: '#101', name: 'Carlos Mendoza', type: 'Laboral', status: 'Active', email: 'carlos.mendoza@email.com', phone: '+57 300 123 4567', createdAt: 'Jan 15, 2026' },
-  { id: '#102', name: 'Diana Restrepo', type: 'Civil / Familia', status: 'Active', email: 'diana.restrepo@email.com', phone: '+57 300 234 5678', createdAt: 'Feb 03, 2026' },
-  { id: '#103', name: 'Inversiones Alfa SAS', type: 'Comercial', status: 'Inactive', email: 'contacto@alfainversiones.com', phone: '+57 601 345 6789', createdAt: 'Mar 20, 2025' },
-]
+const STATUS_BADGES: Record<string, string> = {
+  active: 'bg-[rgba(16,185,129,0.12)] text-[#10b981]',
+  inactive: 'bg-[rgba(100,104,128,0.12)] text-[#646880]',
+}
+
+function formatCurrency(val: number): string {
+  return '$' + val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+function formatDate(dateStr: string | null | undefined): string {
+  return formatDateFull(dateStr)
+}
+
+function vipLabel(d: any, level: string): string {
+  const key = `vip${level.charAt(0).toUpperCase()}${level.slice(1)}` as keyof typeof d
+  return (d[key] as string) || level
+}
+
+function getInitials(name: string): string {
+  return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
+}
+
+function getAvatarBg(vipLevel: string): string {
+  const bgMap: Record<string, string> = {
+    platinum: 'var(--gold-soft)',
+    gold: 'var(--gold-soft)',
+    silver: 'rgba(148,163,184,0.15)',
+    standard: 'var(--accent-soft)',
+  }
+  return bgMap[vipLevel] || bgMap.standard
+}
+
+function getAvatarColor(vipLevel: string): string {
+  const colorMap: Record<string, string> = {
+    platinum: 'var(--gold)',
+    gold: 'var(--gold)',
+    silver: 'var(--fg-muted)',
+    standard: 'var(--accent)',
+  }
+  return colorMap[vipLevel] || colorMap.standard
+}
+
+const COUNTRY_FLAGS: Record<string, string> = {
+  'Argentina': '🇦🇷', 'USA': '🇺🇸', 'United States': '🇺🇸',
+  'Spain': '🇪🇸', 'Mexico': '🇲🇽', 'UK': '🇬🇧', 'United Kingdom': '🇬🇧',
+  'France': '🇫🇷', 'Colombia': '🇨🇴', 'Japan': '🇯🇵', 'Germany': '🇩🇪',
+  'Brazil': '🇧🇷', 'Chile': '🇨🇱', 'Peru': '🇵🇪', 'Italy': '🇮🇹',
+  'Canada': '🇨🇦', 'Australia': '🇦🇺',
+}
+
+function getCountryFlag(country: string | null): string {
+  if (!country) return '🌍'
+  return COUNTRY_FLAGS[country] || '🌍'
+}
+
+function getRelativeTime(dateStr: string | null | undefined): string {
+  if (!dateStr) return 'Never'
+  const date = new Date(dateStr)
+  const now = new Date()
+  const diff = now.getTime() - date.getTime()
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  if (days === 0) return 'Today'
+  if (days === 1) return 'Yesterday'
+  if (days < 7) return `${days} days ago`
+  if (days < 30) return `${Math.floor(days / 7)} week${Math.floor(days / 7) > 1 ? 's' : ''} ago`
+  if (days < 365) return `${Math.floor(days / 30)} months ago`
+  return `${Math.floor(days / 365)} year${Math.floor(days / 365) > 1 ? 's' : ''} ago`
+}
 
 export default function CustomersPage() {
   const { t } = useI18n()
-  const [clients, setClients] = useState<Client[]>(initialClients)
-  const [search, setSearch] = useState('')
-  const [selectedClient, setSelectedClient] = useState<Client | null>(null)
-  const [editingClient, setEditingClient] = useState<Client | null>(null)
-  const [showForm, setShowForm] = useState(false)
-  const [formData, setFormData] = useState<Partial<Client>>({})
+  const d = (t.admin as any).customers
 
-  const filtered = clients.filter((c) =>
-    c.name.toLowerCase().includes(search.toLowerCase()) ||
-    c.id.toLowerCase().includes(search.toLowerCase()) ||
-    c.type.toLowerCase().includes(search.toLowerCase()),
-  )
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [kpi, setKpi] = useState<any>({})
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [vipFilter, setVipFilter] = useState('all')
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
+  const [detailTab, setDetailTab] = useState<TabKey>('profile')
+  const [showForm, setShowForm] = useState(false)
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
+  const [formData, setFormData] = useState<Partial<Customer>>({})
+  const { showToast } = useToast()
+
+  const fetchCustomers = useCallback(async () => {
+    try {
+      setLoading(true)
+      const params = new URLSearchParams()
+      if (search) params.set('search', search)
+      if (statusFilter !== 'all') params.set('status', statusFilter)
+      if (vipFilter !== 'all') params.set('vip_level', vipFilter)
+      const res = await fetch(`/api/admin/customers?${params.toString()}`)
+      const data = await res.json()
+      setCustomers(data.customers || [])
+      setKpi(data.kpi || {})
+    } catch (err) {
+      console.error('Failed to fetch customers', err)
+    } finally {
+      setLoading(false)
+    }
+  }, [search, statusFilter, vipFilter])
+
+  useEffect(() => { fetchCustomers() }, [fetchCustomers])
 
   const openNew = () => {
-    setEditingClient(null)
-    setFormData({ name: '', type: '', email: '', phone: '', status: 'Active' })
+    setEditingCustomer(null)
+    setFormData({ name: '', email: '', phone: '', country: '', languages: '', status: 'active', vip_level: 'standard', notes: '', tags: '[]' })
     setShowForm(true)
   }
 
-  const openEdit = (client: Client) => {
-    setEditingClient(client)
-    setFormData({ ...client })
+  const openEdit = (customer: Customer) => {
+    setEditingCustomer(customer)
+    setFormData({ ...customer })
     setShowForm(true)
   }
 
-  const saveClient = () => {
-    if (editingClient) {
-      setClients(clients.map((c) => (c.id === editingClient.id ? { ...c, ...formData } as Client : c)))
-    } else {
-      const newId = `#${Date.now().toString().slice(-4)}`
-      setClients([...clients, { ...formData, id: newId, createdAt: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) } as Client])
+  const saveCustomer = async () => {
+    try {
+      if (editingCustomer) {
+        const res = await fetch('/api/admin/customers', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: editingCustomer.id, ...formData }),
+        })
+        if (!res.ok) throw new Error('Failed to update')
+        showToast(d.customerSaved as string)
+      } else {
+        const res = await fetch('/api/admin/customers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData),
+        })
+        if (!res.ok) throw new Error('Failed to create')
+        showToast(d.customerSaved as string)
+      }
+      setShowForm(false)
+      fetchCustomers()
+    } catch (err) {
+      showToast('Error saving customer')
     }
-    setShowForm(false)
   }
 
-  const toggleStatus = (client: Client) => {
-    setClients(clients.map((c) => (c.id === client.id ? { ...c, status: c.status === 'Active' ? 'Inactive' : 'Active' } : c)))
+  const deactivateCustomer = async (customer: Customer) => {
+    if (!confirm(d.confirmDelete as string)) return
+    try {
+      const res = await fetch(`/api/admin/customers?id=${customer.id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Failed to delete')
+      showToast(d.customerDeleted as string)
+      if (selectedCustomer?.id === customer.id) setSelectedCustomer(null)
+      fetchCustomers()
+    } catch (err) {
+      showToast('Error deactivating customer')
+    }
   }
+
+  const exportCsv = () => {
+    const headers = ['ID', 'Name', 'Email', 'Phone', 'Country', 'Trips', 'LTV', 'Status', 'VIP Level', 'Last Trip', 'Member Since']
+    const rows = customers.map((c) => [
+      c.id, c.name, c.email, c.phone, c.country, c.total_trips, c.lifetime_value,
+      c.status, c.vip_level, c.last_trip_date || '', c.created_at,
+    ])
+    const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = 'customers.csv'; a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const filtered = customers
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-[18px] font-semibold text-[#f0f2f5]">{t.admin.customers.title as string}</h1>
-          <p className="text-[13px] text-[#646880] mt-0.5">{t.admin.customers.subtitle.replace('{count}', String(clients.length)) as string}</p>
-        </div>
-        <button onClick={openNew} className="px-4 py-2 bg-[#10b981] text-white rounded-[6px] text-[13px] font-medium hover:bg-[#059669] transition-all flex items-center gap-1.5">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-          {t.admin.customers.add as string}
-        </button>
-      </div>
-
-      {/* Search */}
-      <div className="relative mb-4 max-w-[300px]">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="absolute left-3 top-1/2 -translate-y-1/2 text-[#646880]">
-          <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
-        </svg>
-        <input
-          type="text"
-          placeholder={t.admin.customers.search as string}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-9 pr-3 py-2 bg-[#0b0d14] border border-[#282b38] rounded-[6px] text-[13px] text-[#f0f2f5] placeholder:text-[#646880] outline-none focus:border-[#10b981] transition-all"
-        />
-      </div>
-
-      {/* Table */}
-      <div className="bg-[#181b25] border border-[#282b38] rounded-[10px] overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-[#282b38]">
-                <th className="text-left px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880]">{t.admin.customers.tableId as string}</th>
-                <th className="text-left px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880]">{t.admin.customers.tableName as string}</th>
-                <th className="text-left px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880]">{t.admin.customers.tableType as string}</th>
-                <th className="text-left px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880]">{t.admin.customers.tableStatus as string}</th>
-                <th className="text-left px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880]">{t.admin.customers.tableEmail as string}</th>
-                <th className="text-left px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880]">{t.admin.customers.tablePhone as string}</th>
-                <th className="text-left px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880]">{t.admin.customers.tableCreated as string}</th>
-                <th className="text-right px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880]">{t.admin.customers.tableActions as string}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((client) => (
-                <tr key={client.id} className="border-b border-[#282b38] last:border-b-0 hover:bg-[#202330] transition-colors">
-                  <td className="px-5 py-3 text-[13px] font-medium text-[#f0f2f5]">{client.id}</td>
-                  <td className="px-5 py-3">
-                    <button onClick={() => setSelectedClient(client)} className="text-[13px] font-medium text-[#10b981] hover:text-[#34d399] transition-colors">
-                      {client.name}
-                    </button>
-                  </td>
-                  <td className="px-5 py-3 text-[13px] text-[#9ca0b0]">{client.type}</td>
-                  <td className="px-5 py-3">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium ${
-                      client.status === 'Active'
-                        ? 'bg-[rgba(16,185,129,0.12)] text-[#10b981]'
-                        : 'bg-[rgba(100,104,128,0.12)] text-[#646880]'
-                    }`}>
-                      {client.status === 'Active' ? t.admin.customers.statusActive as string : t.admin.customers.statusInactive as string}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3 text-[13px] text-[#9ca0b0]">{client.email}</td>
-                  <td className="px-5 py-3 text-[13px] text-[#9ca0b0] font-mono">{client.phone}</td>
-                  <td className="px-5 py-3 text-[13px] text-[#9ca0b0]">{client.createdAt}</td>
-                  <td className="px-5 py-3 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <button onClick={() => openEdit(client)} className="p-1.5 rounded-[4px] text-[#9ca0b0] hover:bg-[#202330] hover:text-[#3b82f6] transition-all" title="Edit">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                      </button>
-                      <button onClick={() => toggleStatus(client)} className={`p-1.5 rounded-[4px] transition-all ${
-                        client.status === 'Active'
-                          ? 'text-[#9ca0b0] hover:bg-[#202330] hover:text-[#f59e0b]'
-                          : 'text-[#9ca0b0] hover:bg-[#202330] hover:text-[#10b981]'
-                      }`} title={client.status === 'Active' ? 'Deactivate' : 'Activate'}>
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          {client.status === 'Active' ? (
-                            <><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0110 0v4" /></>
-                          ) : (
-                            <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></>
-                          )}
-                        </svg>
-                      </button>
-                      <button onClick={() => setSelectedClient(client)} className="p-1.5 rounded-[4px] text-[#9ca0b0] hover:bg-[#202330] hover:text-[#10b981] transition-all" title="View">
-                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {filtered.length === 0 && (
-          <div className="text-center py-12 text-[#646880] text-[14px]">{t.admin.customers.noResults as string}</div>
-        )}
-      </div>
-
-      {/* Detail Modal */}
-      {selectedClient && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[1000] p-6" onClick={() => setSelectedClient(null)}>
-          <div className="w-full max-w-[480px] bg-[#181b25] border border-[#282b38] rounded-[14px] shadow-[0_20px_60px_rgba(0,0,0,0.5)]" onClick={(e) => e.stopPropagation()}>
-            <div className="px-6 py-4 border-b border-[#282b38] flex items-center justify-between">
-              <h3 className="text-[15px] font-semibold text-[#f0f2f5]">{t.admin.customers.modalTitle as string}</h3>
-              <button onClick={() => setSelectedClient(null)} className="text-[#646880] hover:text-[#f0f2f5] transition-colors">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-              </button>
+    <div style={{ paddingBottom: 40 }}>
+      <div className="customers-page">
+        {/* KPI Row */}
+        <div className="customer-kpi-row">
+          {[
+            { label: d.kpiTotalCustomers || 'Total Customers', value: kpi.total ?? '—', color: 'green' },
+            { label: d.kpiActiveMonth || 'Active This Month', value: kpi.active ?? '—', color: 'blue' },
+            { label: d.kpiVipCustomers || 'VIP Customers', value: kpi.vip ?? '—', color: 'gold' },
+            { label: d.kpiReturningRate || 'Returning Rate', value: kpi.returning_rate ?? '—', color: 'green' },
+            { label: d.kpiAvgLtv || 'Avg. LTV', value: formatCurrency(kpi.avg_ltv ?? 0), color: 'purple' },
+            { label: d.kpiNpsScore || 'NPS Score', value: kpi.nps ?? '—', color: 'gold' },
+          ].map((card, i) => (
+            <div key={i} className="customer-kpi">
+              <div className={`kpi-val ${card.color}`}>{card.value}</div>
+              <div className="kpi-label">{card.label}</div>
             </div>
-            <div className="p-6 space-y-4">
-              <div className="flex items-center gap-3 pb-4 border-b border-[#282b38]">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#10b981] to-[#059669] flex items-center justify-center text-white font-semibold text-[15px]">
-                  {selectedClient.name.charAt(0)}
+          ))}
+        </div>
+
+        {/* Toolbar */}
+        <div className="toolbar-row">
+          <div className="filter-group">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="input"
+              style={{ width: 'auto', padding: '6px 10px', fontSize: 12, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--fg)', outline: 'none' }}
+            >
+              <option value="all">{d.filterAll as string}</option>
+              <option value="active">{d.filterActive as string}</option>
+              <option value="inactive">{d.filterInactive as string}</option>
+            </select>
+          </div>
+          <div className="filter-group">
+            <select
+              value={vipFilter}
+              onChange={(e) => setVipFilter(e.target.value)}
+              className="input"
+              style={{ width: 'auto', padding: '6px 10px', fontSize: 12, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--fg)', outline: 'none' }}
+            >
+              <option value="all">{d.vipFilterAll || 'All VIP Levels'}</option>
+              <option value="platinum">{d.vipPlatinum as string}</option>
+              <option value="gold">{d.vipGold as string}</option>
+              <option value="silver">{d.vipSilver as string}</option>
+              <option value="standard">{d.vipNone as string}</option>
+            </select>
+          </div>
+          <button onClick={exportCsv} className="btn btn-primary btn-sm">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            {d.export as string}
+          </button>
+          <button onClick={openNew} className="btn btn-secondary btn-sm">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="16" y1="11" x2="22" y2="11"/></svg>
+            {d.add as string}
+          </button>
+        </div>
+
+        {/* Customer Table */}
+        <div className="card" style={{ margin: 0 }}>
+          <div className="card-header" style={{ padding: '12px 16px' }}>
+            <span className="card-title" style={{ fontSize: 13 }}>{d.title as string}</span>
+            <span style={{ fontSize: 11, color: 'var(--fg-muted)' }}>{(d.subtitle as string).replace('{count}', String(kpi.total || customers.length))}</span>
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Customer</th>
+                  <th>Country</th>
+                  <th>Status</th>
+                  <th>Last Trip</th>
+                  <th>Trips</th>
+                  <th>LTV</th>
+                  <th>VIP Level</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={8} className="text-center py-12">{d.loading as string}</td>
+                  </tr>
+                ) : filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="text-center py-12">{d.noResults as string}</td>
+                  </tr>
+                ) : (
+                  filtered.map((customer) => (
+                    <tr
+                      key={customer.id}
+                      className="customer-row"
+                      data-status={customer.status}
+                      data-vip={customer.vip_level}
+                      onClick={() => { setSelectedCustomer(customer); setDetailTab('profile') }}
+                    >
+                      <td>
+                        <div className="table-customer-name">
+                          <div
+                            className="table-customer-avatar"
+                            style={{
+                              background: getAvatarBg(customer.vip_level),
+                              color: getAvatarColor(customer.vip_level)
+                            }}
+                          >
+                            {getInitials(customer.name)}
+                          </div>
+                          <div>
+                            <div className="font-medium">{customer.name}</div>
+                            <div style={{ color: 'var(--fg-muted)', fontSize: 12 }}>{customer.email}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span className="country-flag">{getCountryFlag(customer.country)}</span> {customer.country || '—'}
+                      </td>
+                      <td>
+                        <span className={`badge ${customer.status === 'active' ? 'badge-accent' : 'badge-warning'}`} style={{ fontSize: 10, padding: '2px 8px' }}>
+                          {customer.status === 'active' ? d.statusActive as string : d.statusInactive as string}
+                        </span>
+                      </td>
+                      <td style={{ fontSize: 12, color: 'var(--fg-secondary)' }}>{getRelativeTime(customer.last_trip_date)}</td>
+                      <td style={{ fontWeight: 600 }}>{customer.total_trips}</td>
+                      <td style={{ fontWeight: 600, fontFamily: 'var(--font-mono)' }}>{formatCurrency(customer.lifetime_value)}</td>
+                      <td>
+                        <span className={`vip-badge ${customer.vip_level || 'standard'}`}>
+                          {vipLabel(d, customer.vip_level)}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="actions-group">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setSelectedCustomer(customer); setDetailTab('profile') }}
+                            className="action-btn"
+                            title="View"
+                          >
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); openEdit(customer) }}
+                            className="action-btn"
+                            title="Edit"
+                          >
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); deactivateCustomer(customer) }}
+                            className="action-btn danger"
+                            title="Delete"
+                          >
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* Panel Overlay */}
+      <div
+        className={`panel-overlay ${selectedCustomer ? 'open' : ''}`}
+        onClick={() => setSelectedCustomer(null)}
+      />
+
+      {/* Slide-in Detail Panel */}
+      {selectedCustomer && (
+        <div className={`detail-panel open`}>
+          <div className="panel-header">
+            <span className="panel-header-title">{selectedCustomer.name}</span>
+            <button className="panel-close" onClick={() => setSelectedCustomer(null)}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div className="panel-body">
+            {/* Profile Summary */}
+            <div className="profile-summary">
+              <div
+                className="profile-avatar-large"
+                style={{
+                  background: getAvatarBg(selectedCustomer.vip_level),
+                  color: getAvatarColor(selectedCustomer.vip_level)
+                }}
+              >
+                {getInitials(selectedCustomer.name)}
+              </div>
+              <div className="profile-info">
+                <div className="profile-name">
+                  {selectedCustomer.name}{' '}
+                  <span className={`vip-badge ${selectedCustomer.vip_level || 'standard'}`}>
+                    {vipLabel(d, selectedCustomer.vip_level)}
+                  </span>
+                </div>
+                <div className="profile-meta">
+                  <span>{getCountryFlag(selectedCustomer.country)} {selectedCustomer.country || '—'}</span>
+                  <span>&middot;</span>
+                  <span>{selectedCustomer.phone || '—'}</span>
+                </div>
+                <div className="profile-meta">
+                  <span>{selectedCustomer.email}</span>
+                  <span>&middot;</span>
+                  <span>{selectedCustomer.languages || '—'}</span>
+                </div>
+                <div className="profile-stats">
+                  <div className="profile-stat">
+                    <div className="profile-stat-num">{selectedCustomer.total_trips}</div>
+                    <div className="profile-stat-label">Trips</div>
+                  </div>
+                  <div className="profile-stat">
+                    <div className="profile-stat-num" style={{ fontFamily: 'var(--font-mono)' }}>{formatCurrency(selectedCustomer.lifetime_value)}</div>
+                    <div className="profile-stat-label">LTV</div>
+                  </div>
+                  <div className="profile-stat">
+                    <div className="profile-stat-num">{formatDate(selectedCustomer.created_at) || '—'}</div>
+                    <div className="profile-stat-label">Since</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Tab navigation */}
+            <div className="tabs" style={{ marginBottom: 0 }}>
+              {(['profile', 'reservations', 'preferences', 'support', 'tags'] as TabKey[]).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setDetailTab(tab)}
+                  className={`tab ${detailTab === tab ? 'active' : ''}`}
+                >
+                  {d[`detail${tab.charAt(0).toUpperCase()}${tab.slice(1)}` as keyof typeof d] as string || tab}
+                </button>
+              ))}
+            </div>
+
+            {/* Tab Content */}
+            {detailTab === 'profile' && (
+              <div>
+                <div className="panel-section-title">{d.profileName as string || 'Profile'}</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--fg-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>{d.profilePhone as string || 'Phone'}</div>
+                      <div style={{ fontSize: 13, color: 'var(--fg)' }}>{selectedCustomer.phone || '—'}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--fg-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>{d.profileCountry as string || 'Country'}</div>
+                      <div style={{ fontSize: 13, color: 'var(--fg)' }}>{selectedCustomer.country || '—'}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--fg-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>{d.profileLanguages as string || 'Languages'}</div>
+                      <div style={{ fontSize: 13, color: 'var(--fg)' }}>{selectedCustomer.languages || '—'}</div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--fg-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>{d.profileVipLevel as string || 'VIP Level'}</div>
+                      <span className={`vip-badge ${selectedCustomer.vip_level || 'standard'}`}>
+                        {vipLabel(d, selectedCustomer.vip_level)}
+                      </span>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--fg-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>{d.profileStatus as string || 'Status'}</div>
+                      <span className={`badge ${selectedCustomer.status === 'active' ? 'badge-accent' : 'badge-warning'}`} style={{ fontSize: 10, padding: '2px 8px' }}>
+                        {selectedCustomer.status === 'active' ? d.statusActive as string : d.statusInactive as string}
+                      </span>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--fg-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>{d.profileMemberSince as string || 'Member Since'}</div>
+                      <div style={{ fontSize: 13, color: 'var(--fg)' }}>{formatDate(selectedCustomer.created_at)}</div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <button onClick={() => openEdit(selectedCustomer)} className="btn btn-primary w-full">
+                      {d.modalEdit as string}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {detailTab === 'reservations' && (
+              <div className="py-8 text-center" style={{ color: 'var(--fg-muted)' }}>
+                {d.noReservations as string}
+              </div>
+            )}
+
+            {detailTab === 'preferences' && (
+              <div className="py-8 text-center" style={{ color: 'var(--fg-muted)' }}>
+                {d.noPreferences as string}
+              </div>
+            )}
+
+            {detailTab === 'support' && (
+              <div className="py-8 text-center" style={{ color: 'var(--fg-muted)' }}>
+                {d.noSupport as string}
+              </div>
+            )}
+
+            {detailTab === 'tags' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div>
+                  <div className="panel-section-title">{d.tagsTitle as string || 'Tags'}</div>
+                  {(() => {
+                    let tags: string[] = []
+                    try { tags = JSON.parse(selectedCustomer.tags || '[]') } catch {}
+                    return tags.length > 0 ? (
+                      <div className="tags-wrap">
+                        {tags.map((tag, i) => (
+                          <span key={i} className="tag-item active">{tag}</span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p style={{ fontSize: 13, color: 'var(--fg-muted)' }}>{d.noTags as string}</p>
+                    )
+                  })()}
                 </div>
                 <div>
-                  <div className="text-[15px] font-semibold text-[#f0f2f5]">{selectedClient.name}</div>
-                  <div className="text-[12px] text-[#646880]">{selectedClient.id}</div>
+                  <div className="panel-section-title">{d.notesTitle as string || 'Notes'}</div>
+                  <p style={{ fontSize: 13, color: selectedCustomer.notes ? 'var(--fg-secondary)' : 'var(--fg-muted)' }}>
+                    {selectedCustomer.notes || (d.noTags as string)}
+                  </p>
                 </div>
-                <span className={`ml-auto px-2.5 py-0.5 rounded-full text-[11px] font-medium ${
-                  selectedClient.status === 'Active'
-                    ? 'bg-[rgba(16,185,129,0.12)] text-[#10b981]'
-                    : 'bg-[rgba(100,104,128,0.12)] text-[#646880]'
-                }`}>
-                  {selectedClient.status}
-                </span>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div><div className="text-[11px] text-[#646880] font-medium">Type</div><div className="text-[13px] text-[#f0f2f5] mt-0.5">{selectedClient.type}</div></div>
-                <div><div className="text-[11px] text-[#646880] font-medium">Created</div><div className="text-[13px] text-[#f0f2f5] mt-0.5">{selectedClient.createdAt}</div></div>
-                <div className="col-span-2"><div className="text-[11px] text-[#646880] font-medium">Email</div><div className="text-[13px] text-[#f0f2f5] mt-0.5">{selectedClient.email}</div></div>
-                <div className="col-span-2"><div className="text-[11px] text-[#646880] font-medium">Phone</div><div className="text-[13px] text-[#f0f2f5] mt-0.5 font-mono">{selectedClient.phone}</div></div>
-              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Add/Edit Modal */}
+      {showForm && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6" onClick={() => setShowForm(false)}>
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div
+            className="relative w-full max-w-[520px] rounded-[14px] overflow-hidden"
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)' }}>
+              <h3 className="text-[15px] font-semibold" style={{ color: 'var(--fg)' }}>
+                {editingCustomer ? d.modalEdit as string : d.modalAdd as string}
+              </h3>
+              <button onClick={() => setShowForm(false)} className="p-1.5 rounded-[4px] transition-all" style={{ color: 'var(--fg-muted)' }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
             </div>
-            <div className="px-6 py-4 border-t border-[#282b38] flex gap-2 justify-end">
-              <button onClick={() => setSelectedClient(null)} className="px-4 py-2 bg-transparent border border-[#282b38] text-[#f0f2f5] rounded-[6px] text-[13px] font-medium hover:bg-[#202330] transition-all">{t.admin.customers.modalClose as string}</button>
-              <Link
-                href={`/admin/cases/${selectedClient.id.replace('#', '')}`}
-                className="px-4 py-2 bg-[#10b981] text-white rounded-[6px] text-[13px] font-medium hover:bg-[#059669] transition-all"
-              >
-                {t.admin.customers.modalViewCase as string}
-              </Link>
+            <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+              <Field label={d.formName as string}>
+                <input type="text" value={formData.name || ''} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full px-3 py-2 text-[13px] rounded-[6px] outline-none" style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--fg)' }} />
+              </Field>
+              <Field label={d.formEmail as string}>
+                <input type="email" value={formData.email || ''} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="w-full px-3 py-2 text-[13px] rounded-[6px] outline-none" style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--fg)' }} />
+              </Field>
+              <Field label={d.formPhone as string}>
+                <input type="text" value={formData.phone || ''} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="w-full px-3 py-2 text-[13px] rounded-[6px] outline-none" style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--fg)' }} />
+              </Field>
+              <Field label={d.formCountry as string}>
+                <input type="text" value={formData.country || ''} onChange={(e) => setFormData({ ...formData, country: e.target.value })} className="w-full px-3 py-2 text-[13px] rounded-[6px] outline-none" style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--fg)' }} />
+              </Field>
+              <Field label={d.formLanguages as string}>
+                <input type="text" value={formData.languages || ''} onChange={(e) => setFormData({ ...formData, languages: e.target.value })} className="w-full px-3 py-2 text-[13px] rounded-[6px] outline-none" style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--fg)' }} />
+              </Field>
+              <Field label={d.formVipLevel as string}>
+                <select value={formData.vip_level || 'standard'} onChange={(e) => setFormData({ ...formData, vip_level: e.target.value })} className="w-full px-3 py-2 text-[13px] rounded-[6px] outline-none" style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--fg)' }}>
+                  <option value="standard">{d.vipNone as string}</option>
+                  <option value="silver">{d.vipSilver as string}</option>
+                  <option value="gold">{d.vipGold as string}</option>
+                  <option value="platinum">{d.vipPlatinum as string}</option>
+                </select>
+              </Field>
+              <Field label={d.formStatus as string}>
+                <select value={formData.status || 'active'} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className="w-full px-3 py-2 text-[13px] rounded-[6px] outline-none" style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--fg)' }}>
+                  <option value="active">{d.optionActive as string}</option>
+                  <option value="inactive">{d.optionInactive as string}</option>
+                </select>
+              </Field>
+              <Field label={d.formNotes as string}>
+                <textarea value={formData.notes || ''} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} rows={3} className="w-full px-3 py-2 text-[13px] rounded-[6px] outline-none resize-none" style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--fg)' }} />
+              </Field>
+            </div>
+            <div className="px-6 py-4 flex gap-2 justify-end" style={{ borderTop: '1px solid var(--border)' }}>
+              <button onClick={() => setShowForm(false)} className="px-4 py-2 text-[13px] font-medium rounded-[6px] transition-all" style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--fg)' }}>
+                {d.cancel as string}
+              </button>
+              <button onClick={saveCustomer} className="px-4 py-2 text-[13px] font-medium rounded-[6px] transition-all text-white" style={{ background: 'var(--accent)' }}>
+                {editingCustomer ? d.saveChanges as string : d.modalAdd as string}
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Add/Edit Form Modal */}
-      {showForm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[1000] p-6" onClick={() => setShowForm(false)}>
-          <div className="w-full max-w-[480px] bg-[#181b25] border border-[#282b38] rounded-[14px] shadow-[0_20px_60px_rgba(0,0,0,0.5)]" onClick={(e) => e.stopPropagation()}>
-            <div className="px-6 py-4 border-b border-[#282b38] flex items-center justify-between">
-              <h3 className="text-[15px] font-semibold text-[#f0f2f5]">{editingClient ? t.admin.customers.modalEdit as string : t.admin.customers.modalAdd as string}</h3>
-              <button onClick={() => setShowForm(false)} className="text-[#646880] hover:text-[#f0f2f5] transition-colors">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[12px] font-medium text-[#9ca0b0]">{t.admin.customers.formName as string}</label>
-                <input type="text" value={formData.name || ''} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="w-full px-3 py-2 bg-[#0b0d14] border border-[#282b38] rounded-[6px] text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-all" />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[12px] font-medium text-[#9ca0b0]">{t.admin.customers.formType as string}</label>
-                <select value={formData.type || ''} onChange={(e) => setFormData({ ...formData, type: e.target.value })} className="w-full px-3 py-2 bg-[#0b0d14] border border-[#282b38] rounded-[6px] text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-all">
-                  <option value="">Select type</option>
-                  <option value="Laboral">Laboral</option>
-                  <option value="Civil / Familia">Civil / Familia</option>
-                  <option value="Comercial">Comercial</option>
-                  <option value="Administrativo">Administrativo</option>
-                </select>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[12px] font-medium text-[#9ca0b0]">{t.admin.customers.formEmail as string}</label>
-                <input type="email" value={formData.email || ''} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="w-full px-3 py-2 bg-[#0b0d14] border border-[#282b38] rounded-[6px] text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-all" />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[12px] font-medium text-[#9ca0b0]">{t.admin.customers.formPhone as string}</label>
-                <input type="text" value={formData.phone || ''} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="w-full px-3 py-2 bg-[#0b0d14] border border-[#282b38] rounded-[6px] text-[#13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-all" />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[12px] font-medium text-[#9ca0b0]">{t.admin.customers.formStatus as string}</label>
-                <select value={formData.status || 'Active'} onChange={(e) => setFormData({ ...formData, status: e.target.value as 'Active' | 'Inactive' })} className="w-full px-3 py-2 bg-[#0b0d14] border border-[#282b38] rounded-[6px] text-[13px] text-[#f0f2f5] outline-none focus:border-[#10b981] transition-all">
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                </select>
-              </div>
-            </div>
-            <div className="px-6 py-4 border-t border-[#282b38] flex gap-2 justify-end">
-              <button onClick={() => setShowForm(false)} className="px-4 py-2 bg-transparent border border-[#282b38] text-[#f0f2f5] rounded-[6px] text-[13px] font-medium hover:bg-[#202330] transition-all">{t.admin.customers.cancel as string}</button>
-              <button onClick={saveClient} className="px-4 py-2 bg-[#10b981] text-white rounded-[6px] text-[13px] font-medium hover:bg-[#059669] transition-all">
-                {editingClient ? t.admin.customers.saveChanges as string : t.admin.customers.modalAdd as string}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
 
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-[12px] font-medium" style={{ color: 'var(--fg-secondary)' }}>{label}</label>
+      {children}
+    </div>
+  )
+}

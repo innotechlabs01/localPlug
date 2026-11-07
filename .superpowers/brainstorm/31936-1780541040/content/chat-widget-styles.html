@@ -1,0 +1,187 @@
+<style>
+  .intro { text-align: center; margin-bottom: 24px; }
+  .intro h2 { font-size: 24px; margin-bottom: 8px; }
+  .intro p { color: #666; font-size: 15px; }
+
+  .cards { display: flex; gap: 24px; flex-wrap: wrap; justify-content: center; }
+  .card { 
+    flex: 1; min-width: 280px; max-width: 340px; 
+    border-radius: 16px; overflow: hidden;
+    cursor: pointer; transition: all 0.2s;
+    border: 2px solid #e5e7eb;
+  }
+  .card:hover { border-color: #6366f1; }
+  .card.selected { border-color: #6366f1; box-shadow: 0 0 0 2px #6366f1; }
+
+  .card-preview {
+    padding: 20px; min-height: 320px;
+    display: flex; flex-direction: column; align-items: center;
+    position: relative;
+  }
+
+  /* Simulated phone frame */
+  .phone-frame {
+    width: 220px; height: 380px;
+    border-radius: 24px; overflow: hidden;
+    position: relative;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+  }
+
+  /* Chat widget floating button on page */
+  .page-mock {
+    width: 100%; height: 140px;
+    background: #f0f0f0; border-radius: 12px;
+    position: relative; margin-bottom: 12px;
+  }
+
+  .floating-btn {
+    width: 44px; height: 44px; border-radius: 50%;
+    position: absolute; bottom: 12px; right: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+
+  /* Chat window inside phone */
+  .chat-window { width: 100%; height: 100%; display: flex; flex-direction: column; }
+  .chat-header { padding: 10px 12px; display: flex; align-items: center; gap: 8px; }
+  .chat-avatar { width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,0.3); display: flex; align-items: center; justify-content: center; font-size: 12px; }
+  .chat-header-text { flex: 1; }
+  .chat-header-name { font-size: 11px; font-weight: 600; }
+  .chat-header-status { font-size: 9px; opacity: 0.8; }
+  .chat-close { font-size: 14px; opacity: 0.7; cursor: pointer; }
+  .chat-body { flex: 1; padding: 10px; overflow: hidden; display: flex; flex-direction: column; gap: 6px; }
+  .chat-msg { max-width: 75%; padding: 6px 10px; border-radius: 12px; font-size: 10px; line-height: 1.3; }
+  .chat-msg.user { align-self: flex-end; }
+  .chat-msg.ai { align-self: flex-start; }
+  .chat-input-area { padding: 8px 10px; display: flex; gap: 6px; align-items: center; }
+  .chat-input { flex: 1; height: 28px; border-radius: 20px; border: none; padding: 0 10px; font-size: 10px; }
+  .chat-send-btn { width: 28px; height: 28px; border-radius: 50%; border: none; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; }
+
+  .card-footer { padding: 14px 16px; background: #f9fafb; border-top: 1px solid #e5e7eb; }
+  .card-footer h3 { font-size: 15px; margin-bottom: 2px; }
+  .card-footer p { font-size: 12px; color: #6b7280; margin: 0; }
+
+  .tag { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 10px; margin-top: 6px; font-weight: 500; }
+
+  .indicators { display: flex; gap: 16px; justify-content: center; margin-top: 20px; }
+  .indicator { display: flex; flex-direction: column; align-items: center; font-size: 11px; color: #666; }
+  .indicator .dot { width: 6px; height: 6px; border-radius: 50%; margin-bottom: 4px; }
+</style>
+
+<div class="intro">
+  <h2>💬 Estilo del Chat Widget</h2>
+  <p>Elige el diseño que más te guste para el floating chat</p>
+</div>
+
+<div class="cards">
+
+  <!-- A: WhatsApp Style -->
+  <div class="card" data-choice="whatsapp" onclick="toggleSelect(this)">
+    <div class="card-preview" style="background: #f5f5f5;">
+      <div class="phone-frame">
+        <div class="chat-window">
+          <div class="chat-header" style="background: #075e54; color: white;">
+            <div class="chat-avatar">🤖</div>
+            <div class="chat-header-text">
+              <div class="chat-header-name">Soporte LocalPlug</div>
+              <div class="chat-header-status">Online</div>
+            </div>
+            <div class="chat-close">✕</div>
+          </div>
+          <div class="chat-body" style="background: #efeae2;">
+            <div class="chat-msg ai" style="background: white; color: #333;">¡Hola! ¿En qué puedo ayudarte?</div>
+            <div class="chat-msg user" style="background: #d9fdd3; color: #333;">Quiero reservar un viaje</div>
+            <div class="chat-msg ai" style="background: white; color: #333;">Claro, ¿cuándo sería?</div>
+          </div>
+          <div style="background: #f0f0f0;">
+            <div class="chat-input-area">
+              <input class="chat-input" placeholder="Escribe un mensaje..." style="background: white; border: 1px solid #ddd;">
+              <button class="chat-send-btn" style="background: #075e54; color: white;">➤</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-footer">
+      <h3>A) WhatsApp Style</h3>
+      <p>Header verde #075e54, fondo #efeae2, burbujas verdes del usuario</p>
+      <span class="tag" style="background: #d1fae5; color: #065f46;">Actual</span>
+    </div>
+  </div>
+
+  <!-- B: Glass Modern -->
+  <div class="card" data-choice="glass" onclick="toggleSelect(this)">
+    <div class="card-preview" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+      <div class="phone-frame">
+        <div class="chat-window" style="backdrop-filter: blur(20px); background: rgba(255,255,255,0.85);">
+          <div class="chat-header" style="background: rgba(255,255,255,0.2); color: #1a1a2e; border-bottom: 1px solid rgba(255,255,255,0.3);">
+            <div class="chat-avatar" style="background: #667eea; color: white;">S</div>
+            <div class="chat-header-text">
+              <div class="chat-header-name" style="color: #1a1a2e;">Soporte</div>
+              <div class="chat-header-status" style="color: #4a5568;">En línea</div>
+            </div>
+            <div class="chat-close" style="color: #666;">✕</div>
+          </div>
+          <div class="chat-body" style="background: transparent;">
+            <div class="chat-msg ai" style="background: rgba(255,255,255,0.9); color: #1a1a2e; box-shadow: 0 1px 4px rgba(0,0,0,0.06);">¡Hola! ¿En qué puedo ayudarte?</div>
+            <div class="chat-msg user" style="background: #667eea; color: white; box-shadow: 0 1px 4px rgba(0,0,0,0.1);">Quiero reservar un viaje</div>
+            <div class="chat-msg ai" style="background: rgba(255,255,255,0.9); color: #1a1a2e; box-shadow: 0 1px 4px rgba(0,0,0,0.06);">Claro, ¿cuándo sería?</div>
+          </div>
+          <div>
+            <div class="chat-input-area" style="background: transparent; border-top: 1px solid rgba(0,0,0,0.06);">
+              <input class="chat-input" placeholder="Escribe un mensaje..." style="background: rgba(255,255,255,0.9); border: 1px solid rgba(0,0,0,0.08); color: #333;">
+              <button class="chat-send-btn" style="background: #667eea; color: white;">➤</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-footer">
+      <h3>B) Glass Modern</h3>
+      <p>Fondo gradiente purple/blue, glassmorphism, burbujas blancas/translúcidas</p>
+      <span class="tag" style="background: #ede9fe; color: #5b21b6;">Nuevo</span>
+    </div>
+  </div>
+
+  <!-- C: Dark Professional -->
+  <div class="card" data-choice="dark" onclick="toggleSelect(this)">
+    <div class="card-preview" style="background: #1a1a2e;">
+      <div class="phone-frame">
+        <div class="chat-window" style="background: #1a1a2e;">
+          <div class="chat-header" style="background: #16213e; color: white; border-bottom: 1px solid #0f3460;">
+            <div class="chat-avatar" style="background: #0f3460; color: #e94560; font-weight: bold;">LP</div>
+            <div class="chat-header-text">
+              <div class="chat-header-name">LocalPlug</div>
+              <div class="chat-header-status" style="color: #aaa;">Online</div>
+            </div>
+            <div class="chat-close" style="color: #aaa;">✕</div>
+          </div>
+          <div class="chat-body" style="background: #1a1a2e;">
+            <div class="chat-msg ai" style="background: #16213e; color: #e0e0e0; border: 1px solid #0f3460;">¡Hola! ¿En qué puedo ayudarte?</div>
+            <div class="chat-msg user" style="background: #e94560; color: white;">Quiero reservar un viaje</div>
+            <div class="chat-msg ai" style="background: #16213e; color: #e0e0e0; border: 1px solid #0f3460;">Claro, ¿cuándo sería?</div>
+          </div>
+          <div>
+            <div class="chat-input-area" style="background: #16213e; border-top: 1px solid #0f3460;">
+              <input class="chat-input" placeholder="Escribe un mensaje..." style="background: #1a1a2e; color: white; border: 1px solid #0f3460;">
+              <button class="chat-send-btn" style="background: #e94560; color: white;">➤</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-footer">
+      <h3>C) Dark Professional</h3>
+      <p>Fondo oscuro #1a1a2e, acento rojo #e94560, acento azul #0f3460</p>
+      <span class="tag" style="background: #e0e7ff; color: #3730a3;">Inspirado Dribbble</span>
+    </div>
+  </div>
+
+</div>
+
+<div class="indicators">
+  <div class="indicator"><div class="dot" style="background: #075e54;"></div>1. WhatsApp</div>
+  <div class="indicator"><div class="dot" style="background: #667eea;"></div>2. Glass</div>
+  <div class="indicator"><div class="dot" style="background: #e94560;"></div>3. Dark</div>
+</div>

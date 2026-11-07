@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
-import { triggerDeliveryCompleted } from '@/lib/n8n/client'
+import { triggerDeliveryCompleted, triggerFeedbackRequest } from '@/lib/n8n/client'
 
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const { bookingReference, customerName, customerPhone } = body
+    const { bookingReference, customerName, customerPhone, bookingId } = body
 
     if (!bookingReference) {
       return NextResponse.json(
@@ -23,6 +23,16 @@ export async function POST(req: Request) {
 
     if (!result.success) {
       return NextResponse.json({ error: result.error }, { status: 502 })
+    }
+
+    // Send feedback request after delivery completion
+    if (customerPhone) {
+      triggerFeedbackRequest({
+        bookingReference,
+        customerName: customerName || '',
+        customerPhone: customerPhone || undefined,
+        bookingId: bookingId || undefined,
+      }).catch((err) => console.error('[Feedback Request] Failed:', err))
     }
 
     return NextResponse.json({ received: true, workflowId: result.workflowId })

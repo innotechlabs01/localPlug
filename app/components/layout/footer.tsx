@@ -8,7 +8,7 @@ function FooterInner() {
   return (
     <footer className="bg-[var(--bg-card)] border-t border-[var(--border)]">
       <div className="mx-auto max-w-container px-4 md:px-12 py-20">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-[60px] mb-[60px]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-[60px] mb-[60px]">
           <div className="lg:col-span-1">
             <h3 className="font-display text-2xl font-semibold text-white mb-4">
               Medellín{' '}
@@ -19,55 +19,53 @@ function FooterInner() {
             </p>
           </div>
 
-          <div>
+          <nav aria-label="Quick links">
             <h4 className="text-sm font-semibold text-white mb-5">{t.footer.quickLinks}</h4>
             <ul className="space-y-3">
               <li>
-                <a href="#services" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors">
-                  Airport Transfer
+                <a href="#services" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors duration-200">
+                  {t.footer.links.airportTransfer}
                 </a>
               </li>
               <li>
-                <a href="#experiences" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors">
-                  City Tours
+                <a href="#experiences" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors duration-200">
+                  {t.footer.links.cityTours}
                 </a>
               </li>
               <li>
-                <a href="#experiences" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors">
-                  Guatapé Trips
+                <a href="#experiences" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors duration-200">
+                  {t.footer.links.guatapeTrips}
                 </a>
               </li>
               <li>
-                <a href="#pricing" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors">
-                  Nightlife VIP
+                <a href="#pricing" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors duration-200">
+                  {t.footer.links.nightlifeVIP}
                 </a>
               </li>
             </ul>
-          </div>
+          </nav>
 
-          <div>
+          <nav aria-label="Company">
             <h4 className="text-sm font-semibold text-white mb-5">{t.footer.company}</h4>
             <ul className="space-y-3">
-              <li><a href="#" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors">{t.footer.aboutUs}</a></li>
-              <li><a href="#" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors">{t.footer.contactUs}</a></li>
-              <li><a href="#" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors">{t.footer.careers}</a></li>
-              <li><a href="#" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors">{t.footer.press}</a></li>
+              <li><a href="#services" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors duration-200">{t.footer.aboutUs}</a></li>
+              <li><a href="mailto:hello@medellinwithoutstress.com" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors duration-200">{t.footer.contactUs}</a></li>
             </ul>
-          </div>
+          </nav>
 
           <div>
             <h4 className="text-sm font-semibold text-white mb-5">{t.footer.contact}</h4>
             <ul className="space-y-3">
               <li className="flex items-start gap-2 text-sm text-[var(--text-muted)]">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 mt-0.5">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 mt-0.5" aria-hidden="true">
                   <path d="M12 22s-8-4-8-10V5l8-3 8 3v7c0 6-8 10-8 10z" />
                   <circle cx="12" cy="10" r="3" />
                 </svg>
                 <span>{t.footer.address}</span>
               </li>
               <li>
-                <a href="mailto:hello@medellinwithoutstress.com" className="flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+                <a href="mailto:hello@medellinwithoutstress.com" className="flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors duration-200">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0" aria-hidden="true">
                     <rect x="2" y="4" width="20" height="16" rx="2" />
                     <path d="M22 4L12 13 2 4" />
                   </svg>
@@ -76,24 +74,37 @@ function FooterInner() {
               </li>
             </ul>
           </div>
+
+          <nav aria-label="Legal">
+            <h4 className="text-sm font-semibold text-white mb-5">{t.footer.legal}</h4>
+            <ul className="space-y-3">
+              <li><a href="/terms" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors duration-200">{t.footer.terms}</a></li>
+              <li><a href="/privacy" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors duration-200">{t.footer.privacy}</a></li>
+              <li><a href="/refund-policy" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors duration-200">{t.footer.refundPolicy}</a></li>
+            </ul>
+          </nav>
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-between pt-8 border-t border-[var(--border)]">
           <p className="text-xs text-[var(--text-muted)]">
             {t.footer.copyright.replace('{year}', String(new Date().getFullYear()))}
           </p>
-          <div className="flex gap-4 mt-4 sm:mt-0">
-            <a href="#" className="w-10 h-10 rounded-full bg-[var(--glass)] flex items-center justify-center text-[var(--text-secondary)] hover:bg-[var(--accent-gold)] hover:text-[var(--bg-dark)] transition-all">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg>
+          <div className="flex gap-3 mt-4 sm:mt-0" role="list" aria-label="Social media links">
+            <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-[var(--glass)] flex items-center justify-center text-[var(--text-secondary)] hover:bg-[var(--accent-gold)] hover:text-[var(--bg-dark)] transition-all duration-200" aria-label="Facebook" role="listitem">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg>
             </a>
-            <a href="#" className="w-10 h-10 rounded-full bg-[var(--glass)] flex items-center justify-center text-[var(--text-secondary)] hover:bg-[var(--accent-gold)] hover:text-[var(--bg-dark)] transition-all">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/><circle cx="18" cy="6" r="1.5"/></svg>
+            <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-[var(--glass)] flex items-center justify-center text-[var(--text-secondary)] hover:bg-[var(--accent-gold)] hover:text-[var(--bg-dark)] transition-all duration-200" aria-label="Instagram" role="listitem">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/><circle cx="18" cy="6" r="1.5"/></svg>
             </a>
-            <a href="#" className="w-10 h-10 rounded-full bg-[var(--glass)] flex items-center justify-center text-[var(--text-secondary)] hover:bg-[var(--accent-gold)] hover:text-[var(--bg-dark)] transition-all">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z"/></svg>
+            <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-full bg-[var(--glass)] flex items-center justify-center text-[var(--text-secondary)] hover:bg-[var(--accent-gold)] hover:text-[var(--bg-dark)] transition-all duration-200" aria-label="Twitter" role="listitem">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z"/></svg>
             </a>
           </div>
         </div>
+
+        <p className="text-[11px] text-[var(--text-muted)]/70 mt-6 text-center">
+          {t.footer.photoCredit}
+        </p>
       </div>
     </footer>
   )

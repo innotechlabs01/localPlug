@@ -1,11 +1,16 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
+import { auth } from '@clerk/nextjs/server'
 
 // GET: List all agents
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const db = getDb()
+    const { userId } = await auth()
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
+    const db = getDb()
     const result = await db.execute({
       sql: `SELECT
               id, name, email, phone, status, max_conversations,
@@ -31,6 +36,40 @@ export async function GET() {
 // POST: Create or update agent
 export async function POST(request: Request) {
   try {
+    // Get the authenticated user from Clerk
+    const { userId } = await auth()
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    // Get the user's internal ID and role from the database using the clerk_id
+    const db = await import('@/lib/db').then(mod => mod.getDb())
+    const userResult = await db.execute({
+      sql: 'SELECT id, role_id FROM users WHERE clerk_id = ?',
+      args: [userId]
+    })
+
+    if (userResult.rows.length === 0) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      )
+    }
+
+    const userIdInternal = userResult.rows[0].id
+    const roleId = userResult.rows[0].role_id
+
+    // Check if the user is an agent/admin (has a role_id assigned)
+    if (roleId === null) {
+      return NextResponse.json(
+        { error: 'Forbidden: insufficient permissions' },
+        { status: 403 }
+      )
+    }
+
     const body = await request.json()
     const { id, name, email, phone, status, maxConversations, specializations } = body
 
@@ -40,8 +79,6 @@ export async function POST(request: Request) {
         { status: 400 },
       )
     }
-
-    const db = getDb()
 
     if (id) {
       // Update existing agent
@@ -95,6 +132,40 @@ export async function POST(request: Request) {
 // PATCH: Update agent status
 export async function PATCH(request: Request) {
   try {
+    // Get the authenticated user from Clerk
+    const { userId } = await auth()
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    // Get the user's internal ID and role from the database using the clerk_id
+    const db = await import('@/lib/db').then(mod => mod.getDb())
+    const userResult = await db.execute({
+      sql: 'SELECT id, role_id FROM users WHERE clerk_id = ?',
+      args: [userId]
+    })
+
+    if (userResult.rows.length === 0) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      )
+    }
+
+    const userIdInternal = userResult.rows[0].id
+    const roleId = userResult.rows[0].role_id
+
+    // Check if the user is an agent/admin (has a role_id assigned)
+    if (roleId === null) {
+      return NextResponse.json(
+        { error: 'Forbidden: insufficient permissions' },
+        { status: 403 }
+      )
+    }
+
     const body = await request.json()
     const { agentId, status } = body
 
@@ -104,8 +175,6 @@ export async function PATCH(request: Request) {
         { status: 400 },
       )
     }
-
-    const db = getDb()
 
     await db.execute({
       sql: `UPDATE support_agents

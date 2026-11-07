@@ -1,80 +1,67 @@
 import { NextResponse } from 'next/server'
-import { getDb } from '@/lib/db'
-import { t } from '@/lib/i18n/server'
-
-interface CloseRequest {
-  conversationId: number
-  closedBy: 'user' | 'agent' | 'ai'
-  reason?: string
-  locale?: string
-}
+import { closeConversation, releaseToAIMode } from '@/lib/services/chat-service'
+import { auth } from '@clerk/nextjs/server'
 
 export async function POST(request: Request) {
   try {
-    const body: CloseRequest = await request.json()
-    const { conversationId, closedBy, reason, locale } = body
+    const { conversationId, closedBy, releaseToAi } = await request.json()
 
     if (!conversationId) {
       return NextResponse.json(
         { error: 'conversationId is required' },
-        { status: 400 },
+        { status: 400 }
       )
     }
 
-    const db = getDb()
+    let conversation
 
-    // Get conversation details
-    const convResult = await db.execute({
-      sql: 'SELECT * FROM conversations WHERE id = ?',
-      args: [conversationId],
-    })
+    if (releaseToAi) {
+      const { userId } = await auth()
+      if (!userId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
 
-    if (convResult.rows.length === 0) {
-      return NextResponse.json(
-        { error: 'Conversation not found' },
-        { status: 404 },
-      )
-    }
-
-    const conversation = convResult.rows[0]
-
-    // Update conversation status
-    await db.execute({
-      sql: `UPDATE conversations SET status = 'closed', updated_at = datetime('now') WHERE id = ?`,
-      args: [conversationId],
-    })
-
-    // If agent was assigned, decrement their conversation count
-    if (conversation.assigned_agent_id) {
-      await db.execute({
-        sql: `UPDATE support_agents
-              SET current_conversations = MAX(0, current_conversations - 1),
-                  status = CASE WHEN current_conversations <= 1 THEN 'available' ELSE status END,
-                  last_active_at = datetime('now')
-              WHERE id = ?`,
-        args: [conversation.assigned_agent_id],
+      const db = await import('@/lib/db').then(mod => mod.getDb())
+      const userResult = await db.execute({
+        sql: 'SELECT id FROM users WHERE clerk_id = ?',
+        args: [userId]
       })
+      if (userResult.rows.length === 0) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      }
+      const agentId = Number(userResult.rows[0].id)
+      conversation = await releaseToAIMode(conversationId, agentId, closedBy)
+    } else if (closedBy !== 'user') {
+      const { userId } = await auth()
+      if (!userId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+
+      conversation = await closeConversation(conversationId, closedBy || 'agent')
+    } else {
+      conversation = await closeConversation(conversationId, 'user')
     }
 
-    // Add system message about closure
-    const closeMessage = reason
-      ? t(locale || 'en', 'chat.closed', { reason })
-      : `Conversation closed by ${closedBy}`
-    await db.execute({
-      sql: `INSERT INTO messages (conversation_id, sender_type, content, message_type)
-            VALUES (?, 'system', ?, 'text')`,
-      args: [conversationId, closeMessage],
-    })
+    if (!conversation) {
+      return NextResponse.json(
+        { error: 'Conversation not found or cannot be updated' },
+        { status: 404 }
+      )
+    }
 
     return NextResponse.json({
       success: true,
-      closed: true,
+      conversation: {
+        id: conversation.id,
+        status: conversation.status,
+        assigned_agent_id: conversation.assigned_agent_id
+      }
     })
   } catch (error) {
-    console.error('[Chat API] Close error:', error)
+    console.error('Error in close endpoint:', error)
     return NextResponse.json(
-      { error: 'Failed to close conversation' },
-      { status: 500 },
+      { error: 'Internal server error' },
+      { status: 500 }
     )
   }
 }

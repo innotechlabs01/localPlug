@@ -1,0 +1,27 @@
+{
+  "name": "@lp/domains",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./base": "./src/base.ts",
+    "./types": "./src/types.ts",
+    "./booking": "./src/booking.ts",
+    "./payment": "./src/payment.ts",
+    "./driver": "./src/driver.ts",
+    "./vehicle": "./src/vehicle.ts",
+    "./assignment": "./src/assignment.ts",
+    "./notification": "./src/notification.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}

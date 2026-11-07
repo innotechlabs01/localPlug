@@ -18,12 +18,11 @@ export async function getPayment(bookingReference: string): Promise<PaymentRecor
     amount: row.amount as number,
     currency: row.currency as string,
     status: row.status as PaymentRecord['status'],
-    stripePaymentIntentId: row.stripe_payment_intent_id as string,
-    stripeWebhookEventId: row.stripe_webhook_event_id as string | undefined,
+    paddleTransactionId: (row.paddle_transaction_id as string) || (row.transaction_id as string) || '',
+    paddleWebhookEventId: (row.paddle_webhook_event_id as string) || (row.webhook_event_id as string) || undefined,
     customerEmail: row.customer_email as string,
     customerName: row.customer_name as string,
     customerPhone: (row.customer_phone as string) || undefined,
-
     errorMessage: row.error_message as string | undefined,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
@@ -35,7 +34,7 @@ export async function setPayment(record: PaymentRecord): Promise<void> {
   await db.execute({
     sql: `INSERT OR REPLACE INTO payments 
       (booking_reference, package_id, package_name, amount, currency, status, 
-       stripe_payment_intent_id, stripe_webhook_event_id, customer_email, customer_name,
+       paddle_transaction_id, paddle_webhook_event_id, customer_email, customer_name,
        customer_phone, error_message, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
@@ -45,8 +44,8 @@ export async function setPayment(record: PaymentRecord): Promise<void> {
       record.amount,
       record.currency,
       record.status,
-      record.stripePaymentIntentId,
-      record.stripeWebhookEventId || null,
+      record.paddleTransactionId,
+      record.paddleWebhookEventId || null,
       record.customerEmail,
       record.customerName,
       record.customerPhone || null,

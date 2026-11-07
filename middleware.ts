@@ -1,0 +1,184 @@
+import { NextResponse } from 'next/server'
+import { clerkMiddleware, createRouteMatcher, clerkClient } from '@clerk/nextjs/server'
+import { applyRateLimit, checkIpBanned, extractIp } from '@/lib/rate-limit'
+
+const AUTHORIZED_PARTIES = [
+  process.env.NEXT_PUBLIC_SITE_URL,
+  'https://local-plug.vercel.app',
+  'http://localhost:3000',
+  process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : undefined,
+  process.env.VERCEL_BRANCH_URL ? `https://${process.env.VERCEL_BRANCH_URL}` : undefined,
+  process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
+].filter(Boolean) as string[]
+
+const isPublicRoute = createRouteMatcher([
+  '/',
+  '/booking',
+  '/booking/confirmation',
+  '/api/booking',
+  '/api/payments/status',
+  '/api/payments/create-intent',
+  '/api/payments/confirm',
+  '/api/flights/validate',
+  '/api/bookings/search',
+  '/api/webhooks/(.*)',
+  '/api/checkout/(.*)',
+  '/api/admin/lookup',
+  '/api/chat/start',
+  '/api/chat/send',
+  '/api/chat/rating',
+  '/api/chat/request-escalate',
+  '/api/chat/close',
+  '/api/ratings(.*)',
+  '/api/hotels(.*)',
+  '/api/promotions/validate(.*)',
+  '/api/config',
+  '/api/events',
+  '/api/health(.*)',
+  '/api/cron/(.*)',
+  '/api/plans',
+  '/api/trm',
+  '/api/geocode',
+  '/sign-in(.*)',
+  '/sign-up(.*)',
+])
+
+const isAdminApiRoute = createRouteMatcher([
+  '/api/admin/(.*)',
+  '/api/chat/messages',
+  '/api/chat/conversations',
+  '/api/chat/agents',
+  '/api/chat/escalate',
+])
+const isLookupRoute = createRouteMatcher(['/api/admin/lookup'])
+
+const BODY_MAX_SIZE = 1024 * 1024 // 1MB
+
+export default clerkMiddleware(
+  async (auth, req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: corsHeaders(req),
+    })
+  }
+
+  const { pathname } = new URL(req.url)
+  if (pathname.startsWith('/api/')) {
+    // Check IP ban first (escalating bans from repeated violations)
+    const ip = extractIp(req)
+    const banResponse = await checkIpBanned(ip)
+    if (banResponse) return banResponse
+
+    const rateLimitRes = await applyRateLimit(req)
+    if (rateLimitRes) return rateLimitRes
+
+    if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
+      const contentLength = parseInt(req.headers.get('content-length') || '0', 10)
+      if (contentLength > BODY_MAX_SIZE) {
+        return NextResponse.json(
+          { error: 'payload_too_large', message: 'Request body too large' },
+          { status: 413 },
+        )
+      }
+    }
+  }
+
+  if (isLookupRoute(req)) {
+    return NextResponse.next()
+  }
+
+  // Redirect authenticated users from landing page to their portal dashboard
+  if (pathname === '/') {
+    const authResult = await auth() as { userId: string | null }
+    if (authResult.userId) {
+      try {
+        const client = await clerkClient()
+        const clerkUser = await client.users.getUser(authResult.userId)
+        const role = clerkUser.privateMetadata?.role as string | undefined
+        const portalMap: Record<string, string> = { admin: '/admin', hotel_manager: '/hotel', driver: '/driver' }
+        if (role && portalMap[role]) {
+          return NextResponse.redirect(new URL(portalMap[role], req.url))
+        }
+      } catch { /* fall through */ }
+    }
+  }
+
+  // Strict role-based portal separation (page routes only, not /api/)
+  const isPortalPage =
+    (pathname.startsWith('/admin') || pathname.startsWith('/hotel') || pathname.startsWith('/driver')) &&
+    !pathname.startsWith('/api/')
+
+  if (isPortalPage && !isPublicRoute(req)) {
+    const authResult = await auth() as { userId: string | null }
+    const userId = authResult.userId
+    if (!userId) {
+      const signInUrl = pathname.startsWith('/admin')
+        ? '/sign-in/admin'
+        : pathname.startsWith('/hotel') ? '/sign-in/hotel' : '/sign-in/driver'
+      return NextResponse.redirect(new URL(signInUrl, req.url))
+    }
+
+    try {
+      const client = await clerkClient()
+      const clerkUser = await client.users.getUser(userId)
+      const role = clerkUser.privateMetadata?.role as string | undefined
+
+      const portalForRole: Record<string, string> = {
+        admin: '/admin',
+        hotel_manager: '/hotel',
+        driver: '/driver',
+      }
+
+      if (role && portalForRole[role]) {
+        const expectedPortal = portalForRole[role]
+        if (!pathname.startsWith(expectedPortal)) {
+          return NextResponse.redirect(new URL(expectedPortal, req.url))
+        }
+      }
+      // If no role or unrecognized role, let through — the portal layout
+      // will show "Access Restricted" if the user lacks permissions.
+    } catch {
+      // Clerk fetch failed — let through; API handlers will reject
+    }
+    return NextResponse.next()
+  } else if (isAdminApiRoute(req)) {
+    const authResult = await auth() as { userId: string | null }
+    const userId = authResult.userId
+    if (!userId) {
+      return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    return NextResponse.next()
+  } else if (!isPublicRoute(req)) {
+    await auth.protect()
+  }
+},
+{
+  authorizedParties: AUTHORIZED_PARTIES,
+})
+
+function corsHeaders(req: Request): Record<string, string> {
+  const origin = req.headers.get('origin') || ''
+  const allowedOrigins = [
+    process.env.NEXT_PUBLIC_SITE_URL,
+    'https://local-plug.vercel.app',
+    'http://localhost:3000',
+    process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : undefined,
+    process.env.VERCEL_BRANCH_URL ? `https://${process.env.VERCEL_BRANCH_URL}` : undefined,
+  ].filter(Boolean) as string[]
+
+  const isAllowed = allowedOrigins.some(o => origin.startsWith(o))
+  return {
+    'Access-Control-Allow-Origin': isAllowed ? origin : allowedOrigins[0] || '',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, svix-id, svix-timestamp, svix-signature',
+    'Access-Control-Max-Age': '86400',
+  }
+}
+
+export const config = {
+  matcher: [
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    '/(api|trpc)(.*)',
+  ],
+}

@@ -29,8 +29,8 @@ export default function BookingConfirmation({ onReset, bookingReference }: Booki
 
       {bookingReference && (
         <div className="bg-[var(--bg-elevated)] border border-[var(--border)] rounded-[var(--radius-md)] p-4 mb-6">
-          <p className="text-body-sm text-[var(--text-muted)] mb-1">{confirmT.referenceLabel}</p>
-          <p className="text-label-lg text-[var(--accent-gold)] font-mono tracking-wider">{bookingReference.slice(0, 8).toUpperCase()}</p>
+          <p className="text-sm text-[var(--text-muted)] mb-1">{confirmT.referenceLabel}</p>
+          <p className="text-lg text-[var(--accent-gold)] font-mono tracking-wider">{bookingReference.slice(0, 8).toUpperCase()}</p>
         </div>
       )}
 

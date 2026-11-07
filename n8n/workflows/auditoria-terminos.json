@@ -1,0 +1,102 @@
+{
+  "name": "Auditoria de Terminos",
+  "active": false,
+  "nodes": [
+    {
+      "id": "schedule-trigger",
+      "name": "Diario 6:00 AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300],
+      "parameters": {
+        "rule": {
+          "interval": [{"field": "hours", "hoursInterval": 24}]
+        }
+      }
+    },
+    {
+      "id": "http-deadline-alerts",
+      "name": "Obtener Alertas de Terminos",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [450, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "http://host.docker.internal:3000/api/automations/deadline-alerts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "accept", "value": "application/json"}
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "code-audit-results",
+      "name": "Auditar y Clasificar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 300],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\n\nconst critical = item.critical || [];\nconst warning = item.warning || [];\nconst hearings = item.hearings || [];\n\nconst auditReport = {\n  timestamp: new Date().toISOString(),\n  workflow: 'auditoria-terminos',\n  criticos: critical.map(t => ({\n    caso: t.title,\n    numero: t.case_number,\n    vencido: true\n  })),\n  porVencer: warning.map(t => ({\n    caso: t.title,\n    numero: t.case_number\n  })),\n  audienciasHoy: hearings.map(h => ({\n    caso: h.case_title,\n    numero: h.case_number\n  })),\n  resumen: {\n    totalCriticos: critical.length,\n    totalPorVencer: warning.length,\n    totalAudiencias: hearings.length,\n    requiereAccion: critical.length > 0\n  }\n};\n\nreturn [{\n  json: auditReport\n}];"
+      }
+    },
+    {
+      "id": "http-register-events",
+      "name": "Registrar Eventos en LEGICON",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [850, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3000/api/events/llamado",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "accept", "value": "application/json"},
+            {"name": "Content-Type", "value": "application/json"}
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"case_id\": \"{{ $json.criticos[0]?.caso || 'audit' }}\",\n  \"description\": \"Auditoria automatica de terminos - {{ $json.resumen.totalCriticos }} criticos, {{ $json.resumen.totalPorVencer }} por vencer\",\n  \"event_type\": \"auditoria_terminos\"\n}",
+        "options": {}
+      }
+    },
+    {
+      "id": "sticky-note",
+      "name": "Auditoria de Terminos LEGICON",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [250, 100],
+      "parameters": {
+        "content": "**Auditoria de Terminos**\n\nEjecuta diariamente a las 6:00 AM:\n1. Consulta terminos criticos y por vencer\n2. Clasifica por nivel de urgencia\n3. Registra eventos de auditoria en LEGICON\n4. Notifica a los abogados responsables",
+        "color": 2,
+        "height": 140,
+        "width": 300
+      }
+    }
+  ],
+  "connections": {
+    "Diario 6:00 AM": {
+      "main": [[{"node": "Obtener Alertas de Terminos", "type": "main", "index": 0}]]
+    },
+    "Obtener Alertas de Terminos": {
+      "main": [[{"node": "Auditar y Clasificar", "type": "main", "index": 0}]]
+    },
+    "Auditar y Clasificar": {
+      "main": [[{"node": "Registrar Eventos en LEGICON", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "timezone": "America/Bogota",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true
+  }
+}

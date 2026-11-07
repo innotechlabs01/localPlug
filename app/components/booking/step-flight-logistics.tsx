@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { createFlightValidation } from './lib/flight-validation'
+import { getToday } from '@/lib/date-utils'
+import { CONFIG_DEFAULTS } from './lib/config-defaults'
 
 interface FlightData {
   flightNumber: string
@@ -17,18 +19,42 @@ interface FlightData {
 interface StepFlightLogisticsProps {
   data: FlightData
   onChange: (data: FlightData) => void
+  config?: BookingConfig | null
 }
 
-function getMinDate(): string {
-  const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  today.setDate(today.getDate() + 10)
-  return today.toISOString().split('T')[0]
+interface BookingConfig {
+  packages: Record<string, {
+    name: string
+    base_price_usd?: number
+    price?: number
+    service_fee_flat?: number
+    price_per_person_usd?: number
+    features?: string[]
+    tours?: Array<{ id: number; name: string; price_per_person_usd: number; vehicle_type?: string; duration_hours?: number }>
+    is_popular?: boolean
+  }>
+  returnTripCharge: number
+  serviceFee: number
+  taxRate: number
+  currency: string
+  advanceBookingDays: number
+  trips?: Array<{ id: string; name: string; price_per_person_usd: number }>
+  trm?: number
+}
+
+function getMinDate(advanceDays: number = 10): string {
+  return getToday().replace(/(\d{4})-(\d{2})-(\d{2})/, (_, y, m, d) => {
+    const date = new Date(Number(y), Number(m) - 1, Number(d) + advanceDays)
+    const yy = date.getFullYear()
+    const mm = String(date.getMonth() + 1).padStart(2, '0')
+    const dd = String(date.getDate()).padStart(2, '0')
+    return `${yy}-${mm}-${dd}`
+  })
 }
 
 const flightValidation = createFlightValidation({ latency: 300 })
 
-export default function StepFlightLogistics({ data, onChange }: StepFlightLogisticsProps) {
+export default function StepFlightLogistics({ data, onChange, config }: StepFlightLogisticsProps) {
   const { t } = useI18n()
   const flightT = t.booking.steps.flight
   const [validationStatus, setValidationStatus] = useState<'idle' | 'valid' | 'invalid'>('idle')
@@ -44,7 +70,13 @@ export default function StepFlightLogistics({ data, onChange }: StepFlightLogist
     onChange({ ...data, needReturn: !data.needReturn })
   }
 
-  const minDate = getMinDate()
+  const minDate = getMinDate(config?.advanceBookingDays ?? 10)
+
+  useEffect(() => {
+    if (data.needReturn && data.arrivalDate && data.returnDate && data.returnDate < data.arrivalDate) {
+      onChange({ ...data, returnDate: '' })
+    }
+  }, [data.arrivalDate, data.needReturn, data.returnDate])
 
   useEffect(() => {
     const airline = data.airline.trim()
@@ -163,18 +195,42 @@ export default function StepFlightLogistics({ data, onChange }: StepFlightLogist
           </div>
         </div>
 
-        {/* Return transportation toggle */}
-        <label className="flex items-center gap-3 p-4 rounded-[var(--radius-md)] border border-[var(--border)] cursor-pointer hover:border-[var(--accent-gold)] transition-all duration-200 bg-[var(--bg-elevated)]">
-          <input
-            type="checkbox"
-            checked={data.needReturn}
-            onChange={toggleReturn}
-            className="w-5 h-5 rounded border-[var(--border)] text-[var(--accent-gold)] focus:ring-[var(--accent-gold)]/20 focus:ring-2 shrink-0"
-          />
-          <span className="text-body-md text-[var(--text-primary)]">
-            {flightT.needReturn || 'I also need return transportation to the airport'}
-          </span>
-        </label>
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={toggleReturn}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleReturn() }}}
+          className={`p-4 rounded-[var(--radius-md)] border cursor-pointer transition-all duration-200 ${
+            data.needReturn
+              ? 'border-[var(--accent-gold)] bg-[rgba(212,165,116,0.08)]'
+              : 'border-[var(--border)] bg-[var(--bg-elevated)] hover:border-[var(--border-light)]'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <div className={`w-[22px] h-[22px] rounded-md border-2 flex items-center justify-center shrink-0 transition-all duration-200 ${
+              data.needReturn
+                ? 'bg-[var(--accent-gold)] border-[var(--accent-gold)]'
+                : 'border-[var(--border)]'
+            }`}>
+              {data.needReturn && (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--bg-dark)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className="text-[14px] font-semibold text-white">
+                {flightT.needReturn || 'I also need return transportation to the airport'}
+              </h4>
+              <p className="text-[12px] text-[var(--text-muted)] mt-0.5">
+                Pre-scheduled driver will pick you up for your departure
+              </p>
+            </div>
+            <span className="text-[14px] font-semibold text-[var(--accent-gold)] whitespace-nowrap shrink-0">
+              +${config?.returnTripCharge ?? CONFIG_DEFAULTS.returnTripCharge} <span className="text-[12px] font-normal text-[var(--text-muted)]">USD</span>
+            </span>
+          </div>
+        </div>
 
         {data.needReturn && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pl-2 border-l-2 border-[var(--accent-gold)]">
@@ -187,7 +243,7 @@ export default function StepFlightLogistics({ data, onChange }: StepFlightLogist
                 type="date"
                 value={data.returnDate}
                 onChange={handleChange('returnDate')}
-                min={minDate}
+                min={data.arrivalDate || minDate}
                 className="w-full px-3 py-3 rounded-[var(--radius-md)] text-body-md text-white bg-[var(--bg-elevated)] placeholder:text-[var(--text-muted)] transition-all duration-200 outline-none border border-[var(--border)] focus:border-[var(--accent-gold)] focus:ring-2 focus:ring-[var(--accent-gold)]/20 [color-scheme:dark]"
               />
             </div>

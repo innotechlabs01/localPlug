@@ -1,0 +1,142 @@
+import { auth, clerkClient } from '@clerk/nextjs/server'
+import { getDb } from '@/lib/db'
+
+const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY || ''
+const CLERK_API_URL = 'https://api.clerk.com/v1'
+
+async function ensureClerkRole(clerkId: string, role: string) {
+  if (!CLERK_SECRET_KEY) return
+  try {
+    const client = await clerkClient()
+    const user = await client.users.getUser(clerkId)
+    if (user.privateMetadata?.role !== role) {
+      await client.users.updateUser(clerkId, {
+        privateMetadata: { ...user.privateMetadata, role },
+      })
+      console.log(`[Driver Auth] Set Clerk role for ${clerkId}: ${role}`)
+    }
+  } catch {
+    // Non-critical — role will be fixed by claim-role endpoint
+  }
+}
+
+export interface DriverProfile {
+  id: number
+  clerk_user_id: string
+  name: string
+  phone: string | null
+  email: string | null
+  vehicle: string
+  plate: string
+  category: string
+  status: string
+  rating: number
+  languages: string | null
+  experience_level: string | null
+  photo_url: string | null
+  commission_rate: number | null
+  profile_complete: number
+  license_number: string | null
+  license_expiry: string | null
+  bank_account: string | null
+  city: string | null
+  vip_compatible: number
+  total_trips: number
+  vehicle_category_id: number | null
+}
+
+export async function getDriverFromSession(): Promise<{ driver: DriverProfile; clerkId: string } | { error: string; status: number }> {
+  const { userId: clerkId } = await auth()
+  if (!clerkId) {
+    return { error: 'Unauthorized', status: 401 }
+  }
+
+  const db = getDb()
+  const result = await db.execute({
+    sql: `SELECT d.* FROM drivers d WHERE d.clerk_user_id = ?`,
+    args: [clerkId],
+  })
+
+  if (result.rows.length === 0) {
+    return { error: 'Driver profile not found', status: 404 }
+  }
+
+  return { driver: result.rows[0] as unknown as DriverProfile, clerkId }
+}
+
+export async function ensureDriverProfile(clerkId: string): Promise<DriverProfile> {
+  const db = getDb()
+
+  // 1. Check by clerk_user_id
+  const existing = await db.execute({
+    sql: `SELECT d.* FROM drivers d WHERE d.clerk_user_id = ?`,
+    args: [clerkId],
+  })
+
+  if (existing.rows.length > 0) {
+    // Ensure Clerk metadata has driver role
+    ensureClerkRole(clerkId, 'driver')
+    return existing.rows[0] as unknown as DriverProfile
+  }
+
+  // 2. Get Clerk user data
+  let clerkUser
+  try {
+    const client = await clerkClient()
+    clerkUser = await client.users.getUser(clerkId)
+  } catch {
+    throw new Error('DRIVER_NOT_FOUND')
+  }
+
+  const email = clerkUser.emailAddresses?.[0]?.emailAddress || ''
+  const name = [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ').trim() || email || 'Conductor'
+
+  // 3. Check if a driver with this email already exists (e.g. created by admin/webhook)
+  const byEmail = await db.execute({
+    sql: `SELECT d.* FROM drivers d WHERE d.email = ?`,
+    args: [email],
+  })
+
+  if (byEmail.rows.length > 0) {
+    // Link existing driver record to this Clerk user
+    await db.execute({
+      sql: `UPDATE drivers SET clerk_user_id = ?, updated_at = datetime('now') WHERE id = ?`,
+      args: [clerkId, (byEmail.rows[0] as any).id],
+    })
+    console.log(`[Driver Auth] Linked existing driver (${email}) to Clerk user ${clerkId}`)
+    // Ensure Clerk metadata has driver role
+    ensureClerkRole(clerkId, 'driver')
+    const linked = await db.execute({
+      sql: `SELECT d.* FROM drivers d WHERE d.clerk_user_id = ?`,
+      args: [clerkId],
+    })
+    return linked.rows[0] as unknown as DriverProfile
+  }
+
+  // 4. No existing record — create new
+  const result = await db.execute({
+    sql: `INSERT INTO drivers (
+      clerk_user_id, name, email, phone, vehicle, plate, category,
+      status, rating, languages, experience_level, profile_complete,
+      created_at, updated_at
+    ) VALUES (
+      ?, ?, ?, NULL, 'Sin asignar', 'Sin asignar', 'standard',
+      'inactive', 5.0, 'Spanish', 'Standard', 0,
+      datetime('now'), datetime('now')
+    )`,
+    args: [clerkId, name, email],
+  })
+
+  const driverId = Number(result.lastInsertRowid)
+  console.log(`[Driver Auth] Auto-created driver profile: ${name} (${email}) id=${driverId}`)
+
+  // Ensure Clerk metadata has driver role
+  ensureClerkRole(clerkId, 'driver')
+
+  const newDriver = await db.execute({
+    sql: `SELECT d.* FROM drivers d WHERE d.id = ?`,
+    args: [driverId],
+  })
+
+  return newDriver.rows[0] as unknown as DriverProfile
+}

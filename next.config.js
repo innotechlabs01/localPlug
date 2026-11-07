@@ -1,15 +1,66 @@
 /** @type {import('next').NextConfig} */
+const path = require('path')
 const nextConfig = {
-  output: 'standalone',
+  typescript: { ignoreBuildErrors: false },
+  transpilePackages: ['@lp/shared', '@lp/config', '@lp/auth', '@lp/validation', '@lp/types', '@lp/db', '@lp/domains', '@lp/domains/*', '@lp/events', '@lp/communication'],
+  webpack: (config) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@lp/shared': path.resolve(__dirname, 'packages/shared/src'),
+      '@lp/config': path.resolve(__dirname, 'packages/config/src'),
+      '@lp/auth': path.resolve(__dirname, 'packages/auth/src'),
+      '@lp/validation': path.resolve(__dirname, 'packages/validation/src'),
+      '@lp/types': path.resolve(__dirname, 'packages/types/src'),
+      '@lp/db': path.resolve(__dirname, 'packages/db/src'),
+      '@lp/domains': path.resolve(__dirname, 'packages/domains/_services/src'),
+      '@lp/domains/*': path.resolve(__dirname, 'packages/domains/_services/src/*'),
+      '@lp/events': path.resolve(__dirname, 'packages/events/src'),
+      '@lp/communication': path.resolve(__dirname, 'packages/communication/src'),
+    }
+    return config
+  },
+  async redirects() {
+    return [
+      {
+        source: '/admin/logistics',
+        destination: '/admin/fleet',
+        permanent: true,
+      },
+      {
+        source: '/admin/grid',
+        destination: '/admin/payments',
+        permanent: true,
+      },
+      {
+        source: '/admin/team',
+        destination: '/admin/employees',
+        permanent: true,
+      },
+      {
+        source: '/admin/support',
+        destination: '/admin/ia-chat',
+        permanent: true,
+      },
+    ]
+  },
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'X-XSS-Protection', value: '1; mode=block' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+          { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://*.clerk.accounts.dev https://*.clerk.com https://cdn.paddle.com https://*.paddle.com https://vercel.live; style-src 'self' 'unsafe-inline' https://sandbox-cdn.paddle.com https://cdn.paddle.com https://*.clerk.com https://*.clerk.accounts.dev; img-src 'self' data: https: blob:; font-src 'self'; connect-src 'self' https://api.clerk.com https://*.clerk.accounts.dev https://*.clerk.com https://*.turso.io https://api-message.innotechlabssas.lat https://api.upstash.com https://api.paddle.com https://sandbox-api.paddle.com https://sandbox-checkout-service.paddle.com https://clerk-telemetry.com https://analytics.paddle.com https://cdn.paddle.com; worker-src 'self' blob:; frame-src 'self' https://challenges.cloudflare.com https://*.accounts.dev https://*.clerk.accounts.dev https://*.clerk.com https://sandbox-checkout.paddle.com https://checkout.paddle.com https://sandbox-buy.paddle.com https://vercel.live; frame-ancestors 'none'; form-action 'self'; base-uri 'self'; object-src 'none'" },
+        ],
+      },
+    ]
+  },
   images: {
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [32, 48, 64, 96, 128, 256, 384],
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
-      },
-    ],
   },
 }
 

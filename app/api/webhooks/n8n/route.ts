@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
+import { timingSafeEqual } from '@/lib/string-utils'
+import { emitEvent } from '@/lib/events-outbox'
 
 interface N8nWebhookEvent {
   event: string
@@ -13,6 +15,13 @@ interface N8nWebhookEvent {
  */
 export async function POST(request: Request) {
   try {
+    const signature = request.headers.get('x-n8n-signature')
+    const secret = process.env.N8N_WEBHOOK_SECRET
+    if (!signature || !secret || !timingSafeEqual(signature, secret)) {
+      console.error('[n8n Webhook] Invalid or missing signature')
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
+    }
+
     const body: N8nWebhookEvent = await request.json()
     const { event, data, timestamp } = body
 
@@ -39,7 +48,15 @@ export async function POST(request: Request) {
           messageLength: message?.length,
           confidence,
           timestamp,
+          dataKeys: Object.keys(data),
+          fullData: JSON.stringify(data).slice(0, 500),
         })
+
+        if (!conversationId) {
+          console.error('[n8n Webhook] MISSING conversationId in ai-chat-response callback! n8n workflow must include conversationId in the callback data payload.')
+          console.error('[n8n Webhook] Configure n8n to either: (A) add Respond to Webhook node returning { message, confidence }, or (B) include conversationId in the callback: { conversationId, message, confidence }')
+          break
+        }
 
         if (conversationId && message) {
           await db.execute({
@@ -55,7 +72,7 @@ export async function POST(request: Request) {
 
           if (confidence && confidence < 0.5) {
             await db.execute({
-              sql: `UPDATE conversations SET status = 'escalated', updated_at = datetime('now') WHERE id = ? AND status = 'ai_active'`,
+              sql: `UPDATE conversations SET status = 'human_active', updated_at = datetime('now') WHERE id = ? AND status = 'ai_active'`,
               args: [conversationId],
             })
           }
@@ -192,7 +209,7 @@ export async function POST(request: Request) {
 
         if (escConvId) {
           await db.execute({
-            sql: `UPDATE conversations SET status = 'escalated', updated_at = datetime('now') WHERE id = ?`,
+            sql: `UPDATE conversations SET status = 'human_active', updated_at = datetime('now') WHERE id = ?`,
             args: [escConvId],
           })
 
@@ -206,27 +223,38 @@ export async function POST(request: Request) {
         break
       }
 
-      case 'whatsapp-ai-response': {
-        const { conversationId: aiConvId, message: aiMsg, confidence: aiConf } = data as {
-          conversationId: number
-          message: string
-          confidence: number
-        }
+       case 'whatsapp-ai-response': {
+         const { conversationId: aiConvId, message: aiMsg, confidence: aiConf } = data as {
+           conversationId: number
+           message: string
+           confidence: number
+         }
+ 
+         if (aiConvId && aiMsg) {
+           await db.execute({
+             sql: `INSERT INTO messages (conversation_id, sender_type, content, message_type, metadata)
+                   VALUES (?, 'ai', ?, 'text', ?)`,
+             args: [aiConvId, aiMsg, JSON.stringify({ confidence: aiConf, source: 'n8n-whatsapp' })],
+           })
+ 
+           await db.execute({
+             sql: `UPDATE conversations SET ai_confidence = ?, last_message_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`,
+             args: [aiConf || 1.0, aiConvId],
+           })
 
-        if (aiConvId && aiMsg) {
-          await db.execute({
-            sql: `INSERT INTO messages (conversation_id, sender_type, content, message_type, metadata)
-                  VALUES (?, 'ai', ?, 'text', ?)`,
-            args: [aiConvId, aiMsg, JSON.stringify({ confidence: aiConf, source: 'n8n-whatsapp' })],
-          })
-
-          await db.execute({
-            sql: `UPDATE conversations SET ai_confidence = ?, last_message_at = datetime('now'), updated_at = datetime('now') WHERE id = ?`,
-            args: [aiConf || 1.0, aiConvId],
-          })
-        }
-        break
-      }
+           emitEvent('ai.response.generated', { conversation_id: aiConvId, content: aiMsg, source: 'n8n-whatsapp' }, { correlationId: String(aiConvId) }).catch(() => {})
+ 
+           // If confidence is low, escalate the conversation
+           if (aiConf && aiConf < 0.5) {
+             await db.execute({
+            sql: `UPDATE conversations SET status = 'human_active', updated_at = datetime('now') WHERE id = ? AND status = 'ai_active'`,
+               args: [aiConvId],
+             })
+             emitEvent('conversation.escalated', { conversation_id: aiConvId, reason: 'low_ai_confidence' }, { correlationId: String(aiConvId) }).catch(() => {})
+           }
+         }
+         break
+       }
 
       case 'whatsapp-sent': {
         const { conversationId: sentConvId, whatsappMessageId: sentMsgId, status: sentStatus } = data as {
@@ -267,11 +295,4 @@ export async function POST(request: Request) {
   }
 }
 
-// Verify n8n webhook signature (optional security)
-export async function GET() {
-  return NextResponse.json({
-    status: 'ok',
-    endpoint: 'n8n-webhook',
-    timestamp: new Date().toISOString(),
-  })
-}
+

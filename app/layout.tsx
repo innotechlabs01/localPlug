@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
+import { cookies } from 'next/headers'
+import { ClerkProvider } from '@clerk/nextjs'
 import { Playfair_Display, Plus_Jakarta_Sans } from 'next/font/google'
-import { I18nProvider } from '@/lib/i18n'
-import ChatWidget from '@/app/components/chat/ChatWidget'
+import { I18nProvider, type Lang } from '@/lib/i18n'
 import './globals.css'
 
 const playfairDisplay = Playfair_Display({
@@ -24,6 +25,10 @@ export const metadata: Metadata = {
   description:
     'Premium airport transfers, personalized concierge, and unforgettable experiences across the most vibrant city in Colombia.',
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
+  icons: {
+    icon: '/icon/icon.png',
+    apple: '/icon/icon.png',
+  },
   openGraph: {
     type: 'website',
     locale: 'en_US',
@@ -70,22 +75,26 @@ const jsonLd = {
   ],
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const cookieStore = await cookies()
+  const initialLang = (cookieStore.get('localplug-lang')?.value === 'es' ? 'es' : 'en') as Lang
+
   return (
-    <html lang="en" className={`${playfairDisplay.variable} ${plusJakartaSans.variable}`}>
+    <html lang={initialLang} suppressHydrationWarning className={`${playfairDisplay.variable} ${plusJakartaSans.variable}`}>
       <body className="min-h-screen bg-bg-dark font-body antialiased">
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
-        <I18nProvider>
-          {children}
-          <ChatWidget />
-        </I18nProvider>
+        <ClerkProvider>
+          <I18nProvider initialLang={initialLang}>
+            {children}
+          </I18nProvider>
+        </ClerkProvider>
       </body>
     </html>
   )
