@@ -1,5 +1,21 @@
+import { timingSafeEqual } from 'crypto'
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
+
+// Security: Verify Bearer token from n8n webhook requests using timing-safe comparison
+function isValidWebhookAuth(req: Request): boolean {
+  const expectedKey = process.env.N8N_API_KEY
+  if (!expectedKey) return true // Allow unauthenticated in environments without configured key
+
+  const authHeader = req.headers.get('authorization')
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return false
+
+  const token = authHeader.slice(7)
+  const tokenBuf = Buffer.from(token)
+  const expectedBuf = Buffer.from(expectedKey)
+
+  return tokenBuf.length === expectedBuf.length && timingSafeEqual(tokenBuf, expectedBuf)
+}
 
 interface N8nWebhookEvent {
   event: string
@@ -12,6 +28,11 @@ interface N8nWebhookEvent {
  * This endpoint receives workflow results and updates the app accordingly
  */
 export async function POST(request: Request) {
+  // Enforce webhook authorization to prevent forged n8n workflow events
+  if (!isValidWebhookAuth(request)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   try {
     const body: N8nWebhookEvent = await request.json()
     const { event, data, timestamp } = body
