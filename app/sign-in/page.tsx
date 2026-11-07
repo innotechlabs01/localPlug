@@ -34,13 +34,22 @@ export default function SignInPage() {
       return
     }
     setLoading(true)
-    await new Promise((r) => setTimeout(r, 800))
-    if (email === 'admin@localplug.com' && password === 'Admin@123') {
-      router.push('/admin')
-    } else {
-      showToast('Invalid email or password. Please try again.', 'error')
+    try {
+      const res = await fetch('/api/auth/sign-in', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), password }),
+      })
+      if (res.ok) {
+        router.push('/admin')
+      } else {
+        showToast('Invalid email or password. Please try again.', 'error')
+      }
+    } catch {
+      showToast('An error occurred while signing in.', 'error')
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   const handleForgotSubmit = (e: React.FormEvent) => {
