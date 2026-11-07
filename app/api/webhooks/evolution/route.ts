@@ -1,9 +1,25 @@
+import { timingSafeEqual } from 'crypto'
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { sendWhatsAppDirect, sendOrQueueWhatsApp } from '@/lib/n8n/client'
 import { generateOpenAIResponse } from '@/lib/services/openai-service'
 import { generateOllamaResponse } from '@/lib/services/ollama-service'
 import { timingSafeEqual } from '@/lib/string-utils'
+
+// Security: Verify Bearer token from Evolution API webhook requests using timing-safe comparison
+function isValidWebhookAuth(req: Request): boolean {
+  const expectedKey = process.env.EVOLUTION_API_KEY
+  if (!expectedKey) return true // Allow unauthenticated in environments without configured key
+
+  const authHeader = req.headers.get('authorization')
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return false
+
+  const token = authHeader.slice(7)
+  const tokenBuf = Buffer.from(token)
+  const expectedBuf = Buffer.from(expectedKey)
+
+  return tokenBuf.length === expectedBuf.length && timingSafeEqual(tokenBuf, expectedBuf)
+}
 
 interface EvolutionEvent {
   event: string
@@ -42,6 +58,11 @@ function normalizePhone(jid: string): string {
 }
 
 export async function POST(req: Request) {
+  // Enforce webhook authorization to prevent forged incoming WhatsApp events
+  if (!isValidWebhookAuth(req)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   try {
     const signature = req.headers.get('x-evolution-signature')
     const secret = process.env.EVOLUTION_WEBHOOK_SECRET
