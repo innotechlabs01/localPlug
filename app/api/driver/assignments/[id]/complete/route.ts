@@ -65,32 +65,52 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const orderId = orderIdRow
     const proofUrl = airportParking ? parkingProofUrl : existingProof
 
-    await db.execute({
+    const outboxCompletedPayload = {
+      order_id: orderId,
+      driver_id: driverId,
+      assignment_id: assignmentId,
+      airport_parking: airportParking,
+      timestamp: new Date().toISOString(),
+    }
+
+    const updateAssignmentStmt = {
       sql: `UPDATE assignments
             SET status = 'completed', completed_at = datetime('now'), block_until = NULL, updated_at = datetime('now')
             WHERE id = ? AND driver_id = ? AND status IN ('accepted', 'confirmed_to_client', 'en_route')`,
       args: [assignmentId, driverId],
-    })
-
-    await db.execute({
+    }
+    const updateOrderStmt = {
       sql: `UPDATE orders
             SET airport_parking = ?, parking_proof_url = ?, parking_proof_status = ?, dispatch_status = 'completed', updated_at = datetime('now')
             WHERE id = ?`,
       args: [airportParking ? 1 : 0, proofUrl, airportParking ? 'pending' : 'approved', orderId],
-    })
-
-    await db.execute({
+    }
+    const updateDriverStmt = {
       sql: `UPDATE drivers SET status = 'available', updated_at = datetime('now') WHERE id = ?`,
       args: [driverId],
-    })
+    }
+    const outboxStmt = {
+      sql: `INSERT INTO events_outbox (type, payload, correlation_id, status, max_retries)
+            VALUES ('driver.trip_completed', ?, ?, 'pending', 5)`,
+      args: [JSON.stringify(outboxCompletedPayload), String(orderId)],
+    }
+
+    if (typeof db.batch === 'function') {
+      await db.batch([updateAssignmentStmt, updateOrderStmt, updateDriverStmt, outboxStmt])
+    } else {
+      await db.execute(updateAssignmentStmt)
+      await db.execute(updateOrderStmt)
+      await db.execute(updateDriverStmt)
+      try {
+        await db.execute(outboxStmt)
+      } catch {}
+    }
 
     // Milestone: record driver payout liability (category fare snapshot).
     await accrueDriverPayout(orderId, driverId).catch(err => {
       console.error('[driver complete-trip] payout accrual failed:', err)
     })
 
-    // Realtime outbox — trip completed.
-    emitEvent('driver.trip_completed', { order_id: orderId, driver_id: driverId }, { correlationId: String(orderId) }).catch(() => {})
     // Realtime outbox — parking proof submitted (needs admin review).
     if (airportParking) {
       emitEvent('parking_proof.submitted', { order_id: orderId, driver_id: driverId, status: 'pending' }, { correlationId: String(orderId) }).catch(() => {})

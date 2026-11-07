@@ -72,8 +72,17 @@ const DDL: string[] = [
     type TEXT NOT NULL,
     payload TEXT NOT NULL,
     correlation_id TEXT,
+    status TEXT NOT NULL DEFAULT 'published',
+    retry_count INTEGER NOT NULL DEFAULT 0,
+    max_retries INTEGER NOT NULL DEFAULT 5,
+    error_message TEXT,
+    processed_at TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
+  `CREATE INDEX IF NOT EXISTS idx_events_outbox_status
+    ON events_outbox(status, created_at)`,
+  `CREATE INDEX IF NOT EXISTS idx_events_outbox_correlation
+    ON events_outbox(correlation_id)`,
 ]
 
 async function ensureColumns(db: DatabaseClient, columnSql: Array<{ table: string; add: string }>): Promise<void> {
@@ -98,6 +107,21 @@ export async function ensureRuntimeSchema(db: DatabaseClient): Promise<void> {
   }
   await ensureColumns(db, [
     { table: 'drivers', add: 'vehicle_category_id INTEGER' },
+    { table: 'events_outbox', add: "status TEXT NOT NULL DEFAULT 'published'" },
+    { table: 'events_outbox', add: 'retry_count INTEGER NOT NULL DEFAULT 0' },
+    { table: 'events_outbox', add: 'max_retries INTEGER NOT NULL DEFAULT 5' },
+    { table: 'events_outbox', add: 'error_message TEXT' },
+    { table: 'events_outbox', add: 'processed_at TEXT' },
+    { table: 'payments', add: 'provider_transaction_id TEXT' },
+    { table: 'payments', add: 'provider_webhook_event_id TEXT' },
   ])
+  try {
+    await db.execute(`
+      UPDATE payments
+      SET provider_transaction_id = COALESCE(provider_transaction_id, paddle_transaction_id),
+          provider_webhook_event_id = COALESCE(provider_webhook_event_id, paddle_webhook_event_id)
+      WHERE provider_transaction_id IS NULL OR provider_webhook_event_id IS NULL
+    `)
+  } catch {}
   _ensured = true
 }

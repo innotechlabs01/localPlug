@@ -7,6 +7,8 @@ export interface PaymentRecord {
   status: 'pending' | 'completed' | 'failed' | 'refunded';
   paddle_transaction_id: string;
   paddle_webhook_event_id: string;
+  provider_transaction_id?: string;
+  provider_webhook_event_id?: string;
   customer_email: string;
   customer_name: string;
   customer_phone: string;

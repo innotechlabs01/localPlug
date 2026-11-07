@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { getDriverFromSession } from '@/lib/driver/auth'
 import { recordMetric } from '@lp/events'
-import { emitEvent } from '@/lib/events-outbox'
 
 export const dynamic = 'force-dynamic'
 
@@ -87,32 +86,47 @@ export async function POST(
     const storedStatus = nextStatus === 'pickedup' ? 'in_progress' : 'en_route'
     const timestampCol = nextStatus === 'pickedup' ? 'in_progress_at' : 'en_route_at'
     const orderDispatchStatus = nextStatus === 'pickedup' ? 'in_progress' : 'en_route'
+    const eventType = nextStatus === 'pickedup' ? 'trip.pickedup' : 'driver.en_route'
 
-    await db.execute({
-      sql: `UPDATE assignments
-            SET status = ?, ${timestampCol} = datetime('now'), updated_at = datetime('now')
-            WHERE id = ? AND driver_id = ?`,
-      args: [storedStatus, assignmentId, driverId],
-    })
-
-    await db.execute({
-      sql: `UPDATE orders SET dispatch_status = ?, updated_at = datetime('now') WHERE id = ?`,
-      args: [orderDispatchStatus, orderId],
-    })
-
-    recordMetric('driver_trip_status_change', 1, {
-      from: currentStatus,
-      to: nextStatus,
-    })
-
-    // Realtime outbox — live trip stage transition.
-    emitEvent(nextStatus === 'pickedup' ? 'trip.pickedup' : 'driver.en_route', {
+    const outboxPayload = {
       assignment_id: assignmentId,
       order_id: orderId,
       driver_id: driverId,
       status: storedStatus,
       from: currentStatus,
-    }, { correlationId: String(assignmentId) }).catch(() => {})
+      timestamp: new Date().toISOString(),
+    }
+
+    const updateAssignmentStmt = {
+      sql: `UPDATE assignments
+            SET status = ?, ${timestampCol} = datetime('now'), updated_at = datetime('now')
+            WHERE id = ? AND driver_id = ?`,
+      args: [storedStatus, assignmentId, driverId],
+    }
+    const updateOrderStmt = {
+      sql: `UPDATE orders SET dispatch_status = ?, updated_at = datetime('now') WHERE id = ?`,
+      args: [orderDispatchStatus, orderId],
+    }
+    const outboxStmt = {
+      sql: `INSERT INTO events_outbox (type, payload, correlation_id, status, max_retries)
+            VALUES (?, ?, ?, 'pending', 5)`,
+      args: [eventType, JSON.stringify(outboxPayload), String(assignmentId)],
+    }
+
+    if (typeof db.batch === 'function') {
+      await db.batch([updateAssignmentStmt, updateOrderStmt, outboxStmt])
+    } else {
+      await db.execute(updateAssignmentStmt)
+      await db.execute(updateOrderStmt)
+      try {
+        await db.execute(outboxStmt)
+      } catch {}
+    }
+
+    recordMetric('driver_trip_status_change', 1, {
+      from: currentStatus,
+      to: nextStatus,
+    })
 
     return NextResponse.json({
       success: true,
