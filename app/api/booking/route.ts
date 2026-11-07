@@ -175,52 +175,77 @@ export async function POST(request: Request) {
       )
     }
 
-    await db.execute({
-      sql: `INSERT INTO orders (
-        order_number, booking_reference, customer_name, customer_email, customer_phone,
-        customer_country, customer_notes, return_date, return_time,
-        package_id, package_name, package_price, currency,
-        flight_number, airline, arrival_date, arrival_time,
-        destination_address, destination_has_place, additional_trips,
-        traveler_profile, status, dispatch_status, payment_status,
-        hotel_id, room_id, num_nights, is_hotel_booking, hotel_commission_rate,
-        num_people
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: [
-        orderNumber,
-        bookingRef,
-        customer.name || null,
-        customer.email || null,
-        customer.phone || null,
-        customer.country || null,
-        customer.notes || null,
-        flight.returnDate || null,
-        flight.returnTime || null,
-        pkg,
-        packageName,
-        packagePrice,
-        'usd',
-        flight.flightNumber || null,
-        flight.airline || null,
-        flight.arrivalDate || null,
-        flight.arrivalTime || null,
-        dest.address || null,
-        dest.hasPlace ? 1 : 0,
-        additionalTrips.length > 0 ? JSON.stringify(additionalTrips) : null,
-        body.profile || null,
-        'new',
-        'pending',
-        'pending',
-        hotelId,
-        roomId,
-        numNights,
-        isHotelBooking,
-        hotelCommissionRate,
-        numPeople,
-      ],
-    })
+    // Transactional Outbox Pattern: Insert Order AND Outbox Event atomically
+    const orderCreatedEventPayload = {
+      booking_reference: bookingRef,
+      order_number: orderNumber,
+      customer_name: customer.name || '',
+      customer_email: customer.email || '',
+      customer_phone: customer.phone || '',
+      package_name: packageName || body.package || '',
+      package_price: packagePrice,
+      flight_number: flight.flightNumber || null,
+      arrival_date: flight.arrivalDate || null,
+      arrival_time: flight.arrivalTime || null,
+      destination_address: dest.address || null,
+      status: 'new',
+      created_at: new Date().toISOString(),
+    }
 
-    console.log('[Booking] Order created:', orderNumber)
+    // Batch insert: order + transactional outbox event
+    await db.batch([
+      {
+        sql: `INSERT INTO orders (
+          order_number, booking_reference, customer_name, customer_email, customer_phone,
+          customer_country, customer_notes, return_date, return_time,
+          package_id, package_name, package_price, currency,
+          flight_number, airline, arrival_date, arrival_time,
+          destination_address, destination_has_place, additional_trips,
+          traveler_profile, status, dispatch_status, payment_status,
+          hotel_id, room_id, num_nights, is_hotel_booking, hotel_commission_rate,
+          num_people
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [
+          orderNumber,
+          bookingRef,
+          customer.name || null,
+          customer.email || null,
+          customer.phone || null,
+          customer.country || null,
+          customer.notes || null,
+          flight.returnDate || null,
+          flight.returnTime || null,
+          pkg,
+          packageName,
+          packagePrice,
+          'usd',
+          flight.flightNumber || null,
+          flight.airline || null,
+          flight.arrivalDate || null,
+          flight.arrivalTime || null,
+          dest.address || null,
+          dest.hasPlace ? 1 : 0,
+          additionalTrips.length > 0 ? JSON.stringify(additionalTrips) : null,
+          body.profile || null,
+          'new',
+          'pending',
+          'pending',
+          hotelId,
+          roomId,
+          numNights,
+          isHotelBooking,
+          hotelCommissionRate,
+          numPeople,
+        ],
+      },
+      {
+        sql: `INSERT INTO events_outbox (type, payload, correlation_id, status, max_retries)
+              VALUES ('booking.created', ?, ?, 'pending', 5)`,
+        args: [JSON.stringify(orderCreatedEventPayload), bookingRef],
+      },
+    ])
+
+    console.log('[Booking] Order and Outbox event created atomically:', orderNumber)
 
     // Create room_bookings record and update room availability
     if (isHotelBooking && roomId && hotelId && flight.arrivalDate) {
@@ -295,16 +320,6 @@ export async function POST(request: Request) {
       })
       console.log('[Booking] Order auto-confirmed from existing completed payment', { bookingReference: bookingRef })
     }
-
-    // Realtime outbox — notify admin/frontends a new booking landed.
-    await emitEvent('booking.created', {
-      booking_reference: bookingRef,
-      order_number: orderNumber,
-      customer_name: customer.name || '',
-      package_name: body.package || '',
-      status: 'confirmed',
-      created_at: new Date().toISOString(),
-    }, { correlationId: bookingRef }).catch(() => {})
 
     return NextResponse.json(
       { status: 'success', message: 'Booking confirmed. We will contact you via WhatsApp within 2 hours.', orderNumber },

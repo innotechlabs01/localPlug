@@ -17,58 +17,91 @@ function createRedisClient() {
 }
 
 let _healthCheckTimer: ReturnType<typeof setInterval> | null = null
+let _lastRedisCheckTime = 0
 
 function startRedisHealthCheck() {
   if (_healthCheckTimer || !_redisClient) return
   _healthCheckTimer = setInterval(async () => {
-    try {
-      const response = await fetch(`${_redisClient!.url}/ping`, {
-        method: 'GET',
-        headers: { Authorization: `Bearer ${_redisClient!.token}` },
-      })
-      if (response.ok) {
-        if (_redisFailed) {
-          console.log('[RateLimit] Redis recovered, resetting fallback')
-          _redisFailed = false
-        }
-      } else if (!_redisFailed) {
-        _redisFailed = true
+    await probeRedisHealth()
+  }, 15_000)
+}
+
+async function probeRedisHealth(): Promise<boolean> {
+  if (!_redisClient) return false
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 3000)
+    const response = await fetch(`${_redisClient.url}/ping`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${_redisClient.token}` },
+      signal: controller.signal,
+    })
+    clearTimeout(timeout)
+    if (response.ok) {
+      if (_redisFailed) {
+        console.log('[RateLimit] Redis connection recovered, resetting fallback to distributed mode')
+        _redisFailed = false
       }
-    } catch {
-      if (!_redisFailed) {
-        console.error('[RateLimit] Redis health check failed, falling back to in-memory')
-        _redisFailed = true
-      }
+      return true
+    } else {
+      _redisFailed = true
+      return false
     }
-  }, 30_000)
+  } catch {
+    if (!_redisFailed) {
+      console.warn('[RateLimit] Redis unreachable, falling back safely to in-memory rate limiting')
+    }
+    _redisFailed = true
+    return false
+  }
 }
 
 async function redisIncr(key: string, ttlMs: number): Promise<number> {
-  if (_redisFailed || !_redisClient) return -1
+  if (!_redisClient) return -1
+
+  // Periodic passive probe if failed, so serverless environments also self-heal
+  const now = Date.now()
+  if (_redisFailed) {
+    if (now - _lastRedisCheckTime > 15_000) {
+      _lastRedisCheckTime = now
+      const recovered = await probeRedisHealth()
+      if (!recovered) return -1
+    } else {
+      return -1
+    }
+  }
+
   try {
     const ttl = Math.ceil(ttlMs / 1000)
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 2000)
+
     const response = await fetch(
       `${_redisClient.url}/incr/${encodeURIComponent(key)}`,
       {
         method: 'GET',
         headers: { Authorization: `Bearer ${_redisClient.token}` },
+        signal: controller.signal,
       },
     )
+    clearTimeout(timeout)
+
     if (!response.ok) throw new Error(`Upstash HTTP ${response.status}`)
     const data = await response.json() as { result: number }
     if (data.result === 1) {
-      await fetch(
+      fetch(
         `${_redisClient.url}/expire/${encodeURIComponent(key)}/${ttl}`,
         {
           method: 'GET',
           headers: { Authorization: `Bearer ${_redisClient.token}` },
         },
-      )
+      ).catch(() => {})
     }
     return data.result
   } catch (err) {
     console.error('[RateLimit] Redis error, falling back to in-memory:', err)
     _redisFailed = true
+    _lastRedisCheckTime = now
     return -1
   }
 }
