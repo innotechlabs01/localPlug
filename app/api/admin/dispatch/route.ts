@@ -160,28 +160,64 @@ export async function PUT(req: Request) {
 
     const durationStr = `${durationMinutes}min`
 
-    const assignmentResult = await db.execute({
+    const outboxPayload = {
+      order_id: orderId,
+      driver_id: driverId,
+      booking_reference: orderData.booking_reference as string,
+      customer_name: orderData.customer_name as string,
+      driver_name: driverData.name as string,
+      pickup_date: pDate,
+      pickup_time: pTime,
+      timestamp: new Date().toISOString(),
+    }
+
+    const insertAssignmentStmt = {
       sql: `INSERT INTO assignments (order_id, driver_id, status, service_type, pickup_location, destination, pickup_date, pickup_time, estimated_duration, observations, notified_driver_at, created_at, updated_at)
             VALUES (?, ?, 'pending_acceptance', ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'), datetime('now'))`,
       args: [
         orderId,
         driverId,
         dropoff ? 'dropoff' : 'pickup',
-        orderData.destination_address as string || '',
+        (orderData.destination_address as string) || '',
         (orderData.destination_address as string) || '',
         pDate,
         pTime,
         durationStr,
         (orderData.customer_notes as string) || '',
       ],
-    })
+    }
+    const updateOrderStmt = {
+      sql: "UPDATE orders SET assigned_to = ?, dispatch_status = 'assigned', assigned_at = datetime('now'), updated_at = datetime('now') WHERE id = ?",
+      args: [driverId, orderId],
+    }
+    const updateDriverStmt = {
+      sql: "UPDATE drivers SET status = 'busy', updated_at = datetime('now') WHERE id = ?",
+      args: [driverId],
+    }
+    const outboxStmt = {
+      sql: `INSERT INTO events_outbox (type, payload, correlation_id, status, max_retries)
+            VALUES ('driver.assigned', ?, ?, 'pending', 5)`,
+      args: [JSON.stringify(outboxPayload), String(orderId)],
+    }
 
-    const assignmentId = Number(assignmentResult.lastInsertRowid)
-
-await db.execute({
-        sql: "UPDATE orders SET dispatch_status = 'assigned', updated_at = datetime('now') WHERE id = ?",
-        args: [orderId],
-      })
+    let assignmentId = 0
+    if (typeof db.batch === 'function') {
+      const batchResult = await db.batch([
+        insertAssignmentStmt,
+        updateOrderStmt,
+        updateDriverStmt,
+        outboxStmt,
+      ])
+      assignmentId = Number(batchResult[0]?.lastInsertRowid || 0)
+    } else {
+      const res = await db.execute(insertAssignmentStmt)
+      assignmentId = Number(res.lastInsertRowid || 0)
+      await db.execute(updateOrderStmt)
+      await db.execute(updateDriverStmt)
+      try {
+        await db.execute(outboxStmt)
+      } catch {}
+    }
 
     try {
       triggerDriverNewAssignment({
@@ -206,17 +242,8 @@ await db.execute({
     } catch (n8nErr) {
       console.error('[Dispatch] Failed to prepare n8n trigger:', n8nErr)
     }
-
-    await db.execute({
-        sql: "UPDATE orders SET assigned_to = ?, dispatch_status = 'assigned', assigned_at = datetime('now'), updated_at = datetime('now') WHERE id = ?",
-        args: [driverId, orderId],
-      })
-      await db.execute({
-        sql: "UPDATE drivers SET status = 'busy', updated_at = datetime('now') WHERE id = ?",
-        args: [driverId],
-      })
       
-      return NextResponse.json({ success: true, action: 'assigned', assignmentId, status: 'assigned' })
+    return NextResponse.json({ success: true, action: 'assigned', assignmentId, status: 'assigned' })
   }
 
   if (action === 'unassign') {

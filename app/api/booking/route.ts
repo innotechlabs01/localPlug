@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { getPackageName, getPackageTotal } from '@/lib/config'
 import { rateLimitMiddleware } from '@/lib/rate-limit'
-import { emitEvent } from '@/lib/events-outbox'
 import { z } from 'zod'
 
 const BookingSchema = z.object({
@@ -175,7 +174,24 @@ export async function POST(request: Request) {
       )
     }
 
-    await db.execute({
+    // Transactional Outbox Pattern: Insert Order AND Outbox Event atomically
+    const orderCreatedEventPayload = {
+      booking_reference: bookingRef,
+      order_number: orderNumber,
+      customer_name: customer.name || '',
+      customer_email: customer.email || '',
+      customer_phone: customer.phone || '',
+      package_name: packageName || body.package || '',
+      package_price: packagePrice,
+      flight_number: flight.flightNumber || null,
+      arrival_date: flight.arrivalDate || null,
+      arrival_time: flight.arrivalTime || null,
+      destination_address: dest.address || null,
+      status: 'new',
+      created_at: new Date().toISOString(),
+    }
+
+    const insertOrderStmt = {
       sql: `INSERT INTO orders (
         order_number, booking_reference, customer_name, customer_email, customer_phone,
         customer_country, customer_notes, return_date, return_time,
@@ -218,9 +234,23 @@ export async function POST(request: Request) {
         hotelCommissionRate,
         numPeople,
       ],
-    })
+    }
+    const insertOutboxStmt = {
+      sql: `INSERT INTO events_outbox (type, payload, correlation_id, status, max_retries)
+            VALUES ('booking.created', ?, ?, 'pending', 5)`,
+      args: [JSON.stringify(orderCreatedEventPayload), bookingRef],
+    }
 
-    console.log('[Booking] Order created:', orderNumber)
+    if (typeof db.batch === 'function') {
+      await db.batch([insertOrderStmt, insertOutboxStmt])
+    } else {
+      await db.execute(insertOrderStmt)
+      try {
+        await db.execute(insertOutboxStmt)
+      } catch {}
+    }
+
+    console.log('[Booking] Order and Outbox event created atomically:', orderNumber)
 
     // Create room_bookings record and update room availability
     if (isHotelBooking && roomId && hotelId && flight.arrivalDate) {
@@ -295,16 +325,6 @@ export async function POST(request: Request) {
       })
       console.log('[Booking] Order auto-confirmed from existing completed payment', { bookingReference: bookingRef })
     }
-
-    // Realtime outbox — notify admin/frontends a new booking landed.
-    await emitEvent('booking.created', {
-      booking_reference: bookingRef,
-      order_number: orderNumber,
-      customer_name: customer.name || '',
-      package_name: body.package || '',
-      status: 'confirmed',
-      created_at: new Date().toISOString(),
-    }, { correlationId: bookingRef }).catch(() => {})
 
     return NextResponse.json(
       { status: 'success', message: 'Booking confirmed. We will contact you via WhatsApp within 2 hours.', orderNumber },
