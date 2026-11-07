@@ -112,6 +112,16 @@ export async function ensureRuntimeSchema(db: DatabaseClient): Promise<void> {
     { table: 'events_outbox', add: 'max_retries INTEGER NOT NULL DEFAULT 5' },
     { table: 'events_outbox', add: 'error_message TEXT' },
     { table: 'events_outbox', add: 'processed_at TEXT' },
+    { table: 'payments', add: 'provider_transaction_id TEXT' },
+    { table: 'payments', add: 'provider_webhook_event_id TEXT' },
   ])
+  try {
+    await db.execute(`
+      UPDATE payments
+      SET provider_transaction_id = COALESCE(provider_transaction_id, paddle_transaction_id),
+          provider_webhook_event_id = COALESCE(provider_webhook_event_id, paddle_webhook_event_id)
+      WHERE provider_transaction_id IS NULL OR provider_webhook_event_id IS NULL
+    `)
+  } catch {}
   _ensured = true
 }
