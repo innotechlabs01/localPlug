@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { processOutboxEvents } from '@/lib/events-outbox'
-import { timingSafeEqual } from '@/lib/string-utils'
+import { timingSafeEqual } from 'crypto'
 
 /**
  * Background outbox processor endpoint.
@@ -22,7 +22,9 @@ async function handleProcess(req: Request) {
 
     if (cronSecret) {
       const token = authHeader?.replace(/^Bearer\s+/i, '') || ''
-      if (!timingSafeEqual(token, cronSecret)) {
+      const a = Buffer.from(token)
+      const b = Buffer.from(cronSecret)
+      if (a.length !== b.length || !timingSafeEqual(a, b)) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
       }
     }

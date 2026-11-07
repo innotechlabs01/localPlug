@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { getDriverFromSession } from '@/lib/driver/auth'
 import { recordMetric } from '@lp/events'
-import { emitEvent } from '@/lib/events-outbox'
 
 export const dynamic = 'force-dynamic'
 
@@ -98,24 +97,29 @@ export async function POST(
       timestamp: new Date().toISOString(),
     }
 
-    // Atomic Transactional Outbox Batch
-    await db.batch([
-      {
-        sql: `UPDATE assignments
-              SET status = ?, ${timestampCol} = datetime('now'), updated_at = datetime('now')
-              WHERE id = ? AND driver_id = ?`,
-        args: [storedStatus, assignmentId, driverId],
-      },
-      {
-        sql: `UPDATE orders SET dispatch_status = ?, updated_at = datetime('now') WHERE id = ?`,
-        args: [orderDispatchStatus, orderId],
-      },
-      {
-        sql: `INSERT INTO events_outbox (type, payload, correlation_id, status, max_retries)
-              VALUES (?, ?, ?, 'pending', 5)`,
-        args: [eventType, JSON.stringify(outboxPayload), String(assignmentId)],
-      },
-    ])
+    const updateAssignmentStmt = {
+      sql: `UPDATE assignments
+            SET status = ?, ${timestampCol} = datetime('now'), updated_at = datetime('now')
+            WHERE id = ? AND driver_id = ?`,
+      args: [storedStatus, assignmentId, driverId],
+    }
+    const updateOrderStmt = {
+      sql: `UPDATE orders SET dispatch_status = ?, updated_at = datetime('now') WHERE id = ?`,
+      args: [orderDispatchStatus, orderId],
+    }
+    const outboxStmt = {
+      sql: `INSERT INTO events_outbox (type, payload, correlation_id, status, max_retries)
+            VALUES (?, ?, ?, 'pending', 5)`,
+      args: [eventType, JSON.stringify(outboxPayload), String(assignmentId)],
+    }
+
+    if (typeof db.batch === 'function') {
+      await db.batch([updateAssignmentStmt, updateOrderStmt, outboxStmt])
+    } else {
+      await db.execute(updateAssignmentStmt)
+      await db.execute(updateOrderStmt)
+      await db.execute(outboxStmt).catch(() => {})
+    }
 
     recordMetric('driver_trip_status_change', 1, {
       from: currentStatus,

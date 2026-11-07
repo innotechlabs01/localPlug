@@ -3,8 +3,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useI18n } from '@/lib/i18n'
 import { adminFetch } from '@/lib/admin/admin-fetch'
-import { RealtimeProvider } from '@/lib/admin/realtime-context'
-import { useEventStream } from '@/lib/use-event-stream'
 import ReservationKPIs from './components/ReservationKPIs'
 import ReservationFilters from './components/ReservationFilters'
 import ReservationTable from './components/ReservationTable'
@@ -46,21 +44,6 @@ export default function AdminReservations() {
     const interval = setInterval(loadReservations, 30000)
     return () => clearInterval(interval)
   }, [])
-
-  // Realtime outbox event streaming — instantly refresh list without waiting for 30s polling
-  useEventStream(
-    {
-      'booking.created': () => { loadReservations() },
-      'payment.completed': () => { loadReservations() },
-      'payment.refunded': () => { loadReservations() },
-      'driver.assigned': () => { loadReservations() },
-      'driver.trip_completed': () => { loadReservations() },
-      'driver.en_route': () => { loadReservations() },
-      'trip.pickedup': () => { loadReservations() },
-      'hotel.room_booked': () => { loadReservations() },
-    },
-    { pollMs: 5000 },
-  )
 
   const loadReservations = useCallback(async () => {
     try {

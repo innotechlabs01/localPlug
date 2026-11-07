@@ -41,7 +41,7 @@ export async function POST(req: Request) {
     const db = getDb()
     const amenitiesJson = amenities ? JSON.stringify(amenities) : '[]'
 
-    await db.execute({
+    const insertStmt = {
       sql: `INSERT INTO rooms (hotel_id, name, description, capacity, price_per_night, amenities, beds, breakfast_included, status, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'available', datetime('now'), datetime('now'))`,
       args: [
@@ -54,7 +54,23 @@ export async function POST(req: Request) {
         beds || capacity || 1,
         breakfast_included ? 1 : 0,
       ],
-    })
+    }
+
+    const outboxStmt = {
+      sql: `INSERT INTO events_outbox (type, payload, correlation_id, status, max_retries)
+            VALUES ('hotel.room_created', ?, ?, 'pending', 5)`,
+      args: [
+        JSON.stringify({ hotel_id: result.hotel.id, room_name: name, price_per_night, capacity }),
+        String(result.hotel.id),
+      ],
+    }
+
+    if (typeof db.batch === 'function') {
+      await db.batch([insertStmt, outboxStmt])
+    } else {
+      await db.execute(insertStmt)
+      await db.execute(outboxStmt).catch(() => {})
+    }
 
     return NextResponse.json({ success: true })
   } catch (err) {
@@ -90,7 +106,7 @@ export async function PUT(req: Request) {
 
     const amenitiesJson = amenities ? JSON.stringify(amenities) : undefined
 
-    await db.execute({
+    const updateStmt = {
       sql: `UPDATE rooms SET
         name = ?, description = ?, capacity = ?, price_per_night = ?,
         amenities = ?, beds = ?, breakfast_included = ?, status = ?,
@@ -108,7 +124,23 @@ export async function PUT(req: Request) {
         id,
         result.hotel.id,
       ],
-    })
+    }
+
+    const outboxStmt = {
+      sql: `INSERT INTO events_outbox (type, payload, correlation_id, status, max_retries)
+            VALUES ('hotel.room_updated', ?, ?, 'pending', 5)`,
+      args: [
+        JSON.stringify({ hotel_id: result.hotel.id, room_id: id, status: status || 'available' }),
+        String(result.hotel.id),
+      ],
+    }
+
+    if (typeof db.batch === 'function') {
+      await db.batch([updateStmt, outboxStmt])
+    } else {
+      await db.execute(updateStmt)
+      await db.execute(outboxStmt).catch(() => {})
+    }
 
     return NextResponse.json({ success: true })
   } catch (err) {
@@ -131,10 +163,26 @@ export async function DELETE(req: Request) {
     }
 
     const db = getDb()
-    await db.execute({
+    const deleteStmt = {
       sql: `DELETE FROM rooms WHERE id = ? AND hotel_id = ?`,
       args: [Number(roomId), result.hotel.id],
-    })
+    }
+
+    const outboxStmt = {
+      sql: `INSERT INTO events_outbox (type, payload, correlation_id, status, max_retries)
+            VALUES ('hotel.room_deleted', ?, ?, 'pending', 5)`,
+      args: [
+        JSON.stringify({ hotel_id: result.hotel.id, room_id: Number(roomId) }),
+        String(result.hotel.id),
+      ],
+    }
+
+    if (typeof db.batch === 'function') {
+      await db.batch([deleteStmt, outboxStmt])
+    } else {
+      await db.execute(deleteStmt)
+      await db.execute(outboxStmt).catch(() => {})
+    }
 
     return NextResponse.json({ success: true })
   } catch (err) {

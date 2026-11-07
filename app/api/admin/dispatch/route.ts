@@ -171,39 +171,51 @@ export async function PUT(req: Request) {
       timestamp: new Date().toISOString(),
     }
 
-    // Atomic Batch: Create Assignment, Update Order, Update Driver, Emit Transactional Outbox Event
-    const batchResult = await db.batch([
-      {
-        sql: `INSERT INTO assignments (order_id, driver_id, status, service_type, pickup_location, destination, pickup_date, pickup_time, estimated_duration, observations, notified_driver_at, created_at, updated_at)
-              VALUES (?, ?, 'pending_acceptance', ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'), datetime('now'))`,
-        args: [
-          orderId,
-          driverId,
-          dropoff ? 'dropoff' : 'pickup',
-          (orderData.destination_address as string) || '',
-          (orderData.destination_address as string) || '',
-          pDate,
-          pTime,
-          durationStr,
-          (orderData.customer_notes as string) || '',
-        ],
-      },
-      {
-        sql: "UPDATE orders SET assigned_to = ?, dispatch_status = 'assigned', assigned_at = datetime('now'), updated_at = datetime('now') WHERE id = ?",
-        args: [driverId, orderId],
-      },
-      {
-        sql: "UPDATE drivers SET status = 'busy', updated_at = datetime('now') WHERE id = ?",
-        args: [driverId],
-      },
-      {
-        sql: `INSERT INTO events_outbox (type, payload, correlation_id, status, max_retries)
-              VALUES ('driver.assigned', ?, ?, 'pending', 5)`,
-        args: [JSON.stringify(outboxPayload), String(orderId)],
-      },
-    ])
+    const insertAssignmentStmt = {
+      sql: `INSERT INTO assignments (order_id, driver_id, status, service_type, pickup_location, destination, pickup_date, pickup_time, estimated_duration, observations, notified_driver_at, created_at, updated_at)
+            VALUES (?, ?, 'pending_acceptance', ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'), datetime('now'))`,
+      args: [
+        orderId,
+        driverId,
+        dropoff ? 'dropoff' : 'pickup',
+        (orderData.destination_address as string) || '',
+        (orderData.destination_address as string) || '',
+        pDate,
+        pTime,
+        durationStr,
+        (orderData.customer_notes as string) || '',
+      ],
+    }
+    const updateOrderStmt = {
+      sql: "UPDATE orders SET assigned_to = ?, dispatch_status = 'assigned', assigned_at = datetime('now'), updated_at = datetime('now') WHERE id = ?",
+      args: [driverId, orderId],
+    }
+    const updateDriverStmt = {
+      sql: "UPDATE drivers SET status = 'busy', updated_at = datetime('now') WHERE id = ?",
+      args: [driverId],
+    }
+    const outboxStmt = {
+      sql: `INSERT INTO events_outbox (type, payload, correlation_id, status, max_retries)
+            VALUES ('driver.assigned', ?, ?, 'pending', 5)`,
+      args: [JSON.stringify(outboxPayload), String(orderId)],
+    }
 
-    const assignmentId = Number(batchResult[0]?.lastInsertRowid || 0)
+    let assignmentId = 0
+    if (typeof db.batch === 'function') {
+      const batchResult = await db.batch([
+        insertAssignmentStmt,
+        updateOrderStmt,
+        updateDriverStmt,
+        outboxStmt,
+      ])
+      assignmentId = Number(batchResult[0]?.lastInsertRowid || 0)
+    } else {
+      const res = await db.execute(insertAssignmentStmt)
+      assignmentId = Number(res.lastInsertRowid || 0)
+      await db.execute(updateOrderStmt)
+      await db.execute(updateDriverStmt)
+      await db.execute(outboxStmt).catch(() => {})
+    }
 
     try {
       triggerDriverNewAssignment({
