@@ -245,7 +245,9 @@ export async function POST(request: Request) {
       await db.batch([insertOrderStmt, insertOutboxStmt])
     } else {
       await db.execute(insertOrderStmt)
-      await db.execute(insertOutboxStmt).catch(() => {})
+      try {
+        await db.execute(insertOutboxStmt)
+      } catch {}
     }
 
     console.log('[Booking] Order and Outbox event created atomically:', orderNumber)

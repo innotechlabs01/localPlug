@@ -118,7 +118,9 @@ export async function POST(
     } else {
       await db.execute(updateAssignmentStmt)
       await db.execute(updateOrderStmt)
-      await db.execute(outboxStmt).catch(() => {})
+      try {
+        await db.execute(outboxStmt)
+      } catch {}
     }
 
     recordMetric('driver_trip_status_change', 1, {

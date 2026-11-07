@@ -69,7 +69,9 @@ export async function POST(req: Request) {
       await db.batch([insertStmt, outboxStmt])
     } else {
       await db.execute(insertStmt)
-      await db.execute(outboxStmt).catch(() => {})
+      try {
+        await db.execute(outboxStmt)
+      } catch {}
     }
 
     return NextResponse.json({ success: true })
@@ -139,7 +141,9 @@ export async function PUT(req: Request) {
       await db.batch([updateStmt, outboxStmt])
     } else {
       await db.execute(updateStmt)
-      await db.execute(outboxStmt).catch(() => {})
+      try {
+        await db.execute(outboxStmt)
+      } catch {}
     }
 
     return NextResponse.json({ success: true })
@@ -181,7 +185,9 @@ export async function DELETE(req: Request) {
       await db.batch([deleteStmt, outboxStmt])
     } else {
       await db.execute(deleteStmt)
-      await db.execute(outboxStmt).catch(() => {})
+      try {
+        await db.execute(outboxStmt)
+      } catch {}
     }
 
     return NextResponse.json({ success: true })

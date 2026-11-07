@@ -101,7 +101,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       await db.execute(updateAssignmentStmt)
       await db.execute(updateOrderStmt)
       await db.execute(updateDriverStmt)
-      await db.execute(outboxStmt).catch(() => {})
+      try {
+        await db.execute(outboxStmt)
+      } catch {}
     }
 
     // Milestone: record driver payout liability (category fare snapshot).

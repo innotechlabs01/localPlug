@@ -214,7 +214,9 @@ export async function PUT(req: Request) {
       assignmentId = Number(res.lastInsertRowid || 0)
       await db.execute(updateOrderStmt)
       await db.execute(updateDriverStmt)
-      await db.execute(outboxStmt).catch(() => {})
+      try {
+        await db.execute(outboxStmt)
+      } catch {}
     }
 
     try {
