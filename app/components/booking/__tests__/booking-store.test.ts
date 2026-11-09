@@ -75,4 +75,34 @@ describe('bookingStore', () => {
     bookingStore.clear()
     expect(bookingStore.count()).toBe(0)
   })
+
+  it('returns isolated arrays so mutating results does not mutate internal store', () => {
+    bookingStore.add(makeBooking())
+    const results = bookingStore.search('American Airlines', 'AA1123')
+    expect(results).toHaveLength(1)
+    results.pop()
+    expect(bookingStore.search('American Airlines', 'AA1123')).toHaveLength(1)
+  })
+
+  it('efficiently indexes and retrieves across many distinct flight entries', () => {
+    const total = 5000
+    for (let i = 0; i < total; i++) {
+      bookingStore.add(
+        makeBooking({
+          id: `booking-${i}`,
+          flight: {
+            airline: `Airline-${i % 50}`,
+            flightNumber: `FL${i % 50}`,
+            arrivalDate: '2026-07-01',
+            arrivalTime: '14:00',
+          },
+        }),
+      )
+    }
+
+    expect(bookingStore.count()).toBe(total)
+    const targetResults = bookingStore.search('Airline-10', 'FL10')
+    expect(targetResults.length).toBe(100) // 5000 total / 50 keys = 100 entries per key
+    expect(targetResults.every((b) => b.flight.airline === 'Airline-10' && b.flight.flightNumber === 'FL10')).toBe(true)
+  })
 })
