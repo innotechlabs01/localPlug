@@ -34,6 +34,8 @@ export default function ChatWidget() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const wasOpenRef = useRef(false)
   const userId = useRef(generateUserId())
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -121,6 +123,22 @@ export default function ChatWidget() {
       setTimeout(() => inputRef.current?.focus(), 300)
     }
   }, [isOpen, messages, scrollToBottom])
+
+  useEffect(() => {
+    if (isOpen) {
+      const handleEscape = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          setIsOpen(false)
+          triggerRef.current?.focus()
+        }
+      }
+      window.addEventListener('keydown', handleEscape)
+      return () => window.removeEventListener('keydown', handleEscape)
+    } else if (wasOpenRef.current) {
+      triggerRef.current?.focus()
+    }
+    wasOpenRef.current = isOpen
+  }, [isOpen])
 
   const sendMessage = useCallback(async (content: string) => {
     if (!content.trim() || isLoading) return
@@ -242,7 +260,12 @@ export default function ChatWidget() {
 
       <div className={`fixed bottom-4 right-4 z-50 flex flex-col transition-all duration-300 ${isOpen ? 'sm:bottom-20 sm:right-6' : ''}`}>
         {isOpen && (
-          <div className="bg-white rounded-2xl shadow-level-3 border border-cool-slate-200 w-[calc(100vw-2rem)] sm:w-96 mb-3 flex flex-col overflow-hidden animate-slide-up max-h-[70vh] sm:max-h-[600px]">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="chat-widget-title"
+            className="bg-white rounded-2xl shadow-level-3 border border-cool-slate-200 w-[calc(100vw-2rem)] sm:w-96 mb-3 flex flex-col overflow-hidden animate-slide-up max-h-[70vh] sm:max-h-[600px]"
+          >
             <div className="bg-[var(--bg-dark)] text-white px-4 py-3 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-full bg-mountain-emerald flex items-center justify-center">
@@ -251,13 +274,13 @@ export default function ChatWidget() {
                   </svg>
                 </div>
                 <div>
-                  <p className="text-label-md font-semibold">{t.chatWidget.title}</p>
+                  <p id="chat-widget-title" className="text-label-md font-semibold">{t.chatWidget.title}</p>
                   <p className="text-label-sm text-cool-slate-400">{t.chatWidget.subtitle}</p>
                 </div>
               </div>
               <button
                 onClick={() => setIsOpen(false)}
-                className="text-cool-slate-400 hover:text-white p-1"
+                className="text-cool-slate-400 hover:text-white p-1 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-gold)]"
                 aria-label={t.chatWidget.close}
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -267,7 +290,7 @@ export default function ChatWidget() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[300px] max-h-[400px]">
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[300px] max-h-[400px]" aria-live="polite">
               {initialLoading ? (
                 <div className="text-center text-cool-slate-400 py-8">{t.common.loading}</div>
               ) : messages.map((msg, i) => (
@@ -379,8 +402,11 @@ export default function ChatWidget() {
         )}
 
         <button
+          ref={triggerRef}
           onClick={() => setIsOpen(!isOpen)}
-          className={`w-14 h-14 rounded-full shadow-level-3 flex items-center justify-center transition-all duration-300 ${
+          aria-expanded={isOpen}
+          aria-haspopup="dialog"
+          className={`w-14 h-14 rounded-full shadow-level-3 flex items-center justify-center transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-gold)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-dark)] ${
             isOpen ? 'bg-red-500 rotate-90' : 'bg-[var(--accent-gold)]'
           } text-white hover:scale-105 active:scale-95`}
           aria-label={isOpen ? t.chatWidget.close : t.chatWidget.open}
