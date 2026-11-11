@@ -11,6 +11,24 @@ const nextConfig = {
       },
     ],
   },
+  // Security headers to enforce browser protections globally
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          // Prevent clickjacking by disallowing framing
+          { key: 'X-Frame-Options', value: 'DENY' },
+          // Prevent MIME-type sniffing
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          // Restrict referrer leakage to cross-origin targets
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          // Restrict access to sensitive device APIs
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+        ],
+      },
+    ]
+  },
 }
 
 module.exports = nextConfig
