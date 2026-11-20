@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import { createPolar } from '@polar-sh/sdk/2026-04'
 import { getConfigPackageGrandTotalCents, getConfigPackageName } from '@/lib/pricing'
 import { getDefaultCurrency } from '@/lib/config'
@@ -93,9 +94,15 @@ export async function POST(req: Request) {
     const productId = getProductId()
 
     const polar = getPolarClient()
+    let clerkUserId = ''
+    try {
+      const session = await auth()
+      clerkUserId = session?.userId || ''
+    } catch {}
 
     const metadata: Record<string, string | number | boolean> = {
       booking_reference: bookingReference,
+      clerk_user_id: clerkUserId,
       package_id: packageId,
       package_name: packageName,
       customer_name: customerName,

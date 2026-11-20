@@ -63,7 +63,7 @@ export default function ConfirmationPage() {
             {t.booking.confirmation.bookAnother}
           </Link>
           <Link
-            href="/driver/page"
+            href="/mis-reservas"
             className="flex-1 flex-col sm:flex-row items-center justify-center py-3 px-6 bg-[var(--bg-elevated)] text-[var(--text-primary)] rounded-xl border border-[var(--border)] font-semibold hover:bg-[var(--bg-elevated)/50] transition-colors"
           >
             Ver mis reservas

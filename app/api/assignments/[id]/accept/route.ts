@@ -77,24 +77,30 @@ export async function POST(
     d.setMinutes(d.getMinutes() + blockMinutes)
     const blockUntil = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 
-    await db.execute({
-      sql: `UPDATE assignments
-            SET status = 'accepted', driver_accepted_at = ?, block_until = ?, updated_at = ?
-            WHERE id = ?`,
-      args: [now, blockUntil, now, assignmentId],
-    })
+    const batchRes = await db.batch([
+      {
+        sql: `UPDATE assignments
+              SET status = 'accepted', driver_accepted_at = ?, block_until = ?, updated_at = ?
+              WHERE id = ? AND status = 'pending_acceptance'`,
+        args: [now, blockUntil, now, assignmentId],
+      },
+      {
+        sql: `UPDATE orders
+              SET assigned_to = ?, dispatch_status = 'assigned', assigned_at = ?, updated_at = ?
+              WHERE id = ?`,
+        args: [assignment.driver_id, now, now, assignment.order_id],
+      },
+      {
+        sql: "UPDATE drivers SET status = 'busy', updated_at = ? WHERE id = ?",
+        args: [now, assignment.driver_id],
+      },
+    ])
 
-    await db.execute({
-      sql: `UPDATE orders
-            SET assigned_to = ?, dispatch_status = 'assigned', assigned_at = ?, updated_at = ?
-            WHERE id = ?`,
-      args: [assignment.driver_id, now, now, assignment.order_id],
-    })
-
-    await db.execute({
-      sql: "UPDATE drivers SET status = 'busy', updated_at = ? WHERE id = ?",
-      args: [now, assignment.driver_id],
-    })
+    if (batchRes[0].rowsAffected === 0) {
+      return NextResponse.json({
+        error: 'Assignment was already accepted or declined.',
+      }, { status: 409 })
+    }
 
     try {
       triggerClientDriverConfirmed({

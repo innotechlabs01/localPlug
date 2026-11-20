@@ -163,7 +163,8 @@ export async function GET(req: Request) {
         h.name as hotel_name,
         h.address as hotel_address,
         r.name as room_name, r.type as room_type, r.price_per_night, r.status as room_status,
-        p.amount as payment_amount, p.currency as payment_currency, p.method as payment_method, p.transaction_id as payment_txn
+        p.amount as payment_amount, p.currency as payment_currency,
+        COALESCE(p.provider_transaction_id, p.polar_transaction_id, p.paddle_transaction_id) as payment_txn
       FROM orders o
       LEFT JOIN drivers d ON o.assigned_to = d.id
       LEFT JOIN payments p ON o.booking_reference = p.booking_reference
@@ -171,8 +172,13 @@ export async function GET(req: Request) {
       LEFT JOIN rooms r ON o.room_id = r.id
       ${whereSql}
       ORDER BY o.arrival_date DESC, o.arrival_time DESC
+      LIMIT ? OFFSET ?
     `,
-      args,
+      args: [
+        ...args,
+        Math.min(500, Math.max(1, parseInt(searchParams.get('limit') || '200', 10) || 200)),
+        Math.max(0, parseInt(searchParams.get('offset') || '0', 10) || 0),
+      ],
     })
 
     const reservations = (result.rows || [])
@@ -245,7 +251,7 @@ export async function POST(req: Request) {
         traveler_profile, status, dispatch_status, payment_status,
         hotel_id, room_id, num_nights, is_hotel_booking, hotel_commission_rate,
         num_people
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
         orderNumber,
         bookingRef,

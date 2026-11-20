@@ -13,6 +13,9 @@ export interface HotelDashboardMetrics {
   activeServices: number
   totalRevenue: number
   commissionEarned: number
+  availablePayoutUsd?: number
+  requestedPayoutUsd?: number
+  paidPayoutUsd?: number
   recentReservations: Array<{
     id: number
     customerName: string
@@ -112,19 +115,32 @@ export async function getHotelDashboardMetrics(hotelId: number): Promise<HotelDa
     packagePrice: r.package_price || 0,
   }))
 
+  const payoutResult = await db.execute({
+    sql: `SELECT
+            COALESCE(SUM(CASE WHEN status = 'available' THEN amount_usd ELSE 0 END), 0) AS available_usd,
+            COALESCE(SUM(CASE WHEN status = 'requested' THEN amount_usd ELSE 0 END), 0) AS requested_usd,
+            COALESCE(SUM(CASE WHEN status = 'paid' THEN amount_usd ELSE 0 END), 0) AS paid_usd
+          FROM payout_ledger
+          WHERE payee_type = 'hotel' AND payee_id = ?`,
+    args: [hotelId],
+  }).catch(() => ({ rows: [{ available_usd: 0, requested_usd: 0, paid_usd: 0 }] }))
+
   return {
     totalReservations: totalRes,
-    pendingReservations: resMap['pending'] || 0,
-    confirmedReservations: resMap['confirmed'] || 0,
-    completedReservations: resMap['completed'] || 0,
+    pendingReservations: (resMap['pending'] || 0) + (resMap['new'] || 0),
+    confirmedReservations: (resMap['confirmed'] || 0) + (resMap['accepted'] || 0) + (resMap['checked_in'] || 0),
+    completedReservations: (resMap['completed'] || 0) + (resMap['checked_out'] || 0),
     cancelledReservations: resMap['cancelled'] || 0,
     totalRooms,
     availableRooms: roomMap['available'] || 0,
-    bookedRooms: roomMap['occupied'] || 0,
+    bookedRooms: (roomMap['occupied'] || 0) + (roomMap['booked'] || 0),
     totalServices,
     activeServices,
     totalRevenue,
     commissionEarned,
+    availablePayoutUsd: Number(payoutResult.rows[0]?.available_usd || 0),
+    requestedPayoutUsd: Number(payoutResult.rows[0]?.requested_usd || 0),
+    paidPayoutUsd: Number(payoutResult.rows[0]?.paid_usd || 0),
     recentReservations,
   }
 }

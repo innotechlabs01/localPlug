@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { listEventsSince, getLatestEventId } from '@/lib/events-outbox'
 import { auth } from '@clerk/nextjs/server'
+import { canAccessRealtimeOutbox } from '@/lib/realtime-auth'
 
 export const dynamic = 'force-dynamic'
 
@@ -11,6 +12,9 @@ export const dynamic = 'force-dynamic'
 export async function GET(req: Request) {
   const { userId } = await auth()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!(await canAccessRealtimeOutbox(userId))) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   const { searchParams } = new URL(req.url)
   const since = Number(searchParams.get('since') || 0)

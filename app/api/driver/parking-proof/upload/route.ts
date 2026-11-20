@@ -23,7 +23,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
-    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
+    const ALLOWED_MIME_TO_EXT: Record<string, string> = {
+      'image/jpeg': 'jpg',
+      'image/jpg': 'jpg',
+      'image/png': 'png',
+      'image/webp': 'webp',
+      'application/pdf': 'pdf',
+    }
+    const MAX_BYTES = 5 * 1024 * 1024 // 5 MB
+
+    const ext = ALLOWED_MIME_TO_EXT[file.type.toLowerCase()]
+    if (!ext) {
+      return NextResponse.json({ error: 'Unsupported file type. Allowed: JPEG, PNG, WebP, PDF' }, { status: 400 })
+    }
+    if (file.size > MAX_BYTES) {
+      return NextResponse.json({ error: 'File too large (max 5 MB)' }, { status: 400 })
+    }
+
     const name = `parking/${driverId}/${Date.now()}_${crypto.randomUUID().slice(0, 8)}.${ext}`
     const { url } = await put(name, file, { access: 'public', token: BLOB_TOKEN })
 

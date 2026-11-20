@@ -1,21 +1,19 @@
 import { NextResponse } from 'next/server'
-import { auth } from '@clerk/nextjs/server'
 import { getDb } from '@/lib/db'
 import { getDriverFromSession } from '@/lib/driver/auth'
 import { recordAudit } from '@/lib/driver/audit'
+import { accrueDriverPayout } from '@/lib/payout'
 import { emitEvent } from '@/lib/events-outbox'
-import { sendBookingNotification } from '@/lib/notifications/booking'
 
 export const dynamic = 'force-dynamic'
 
 // Allowed driver-initiated transitions: from -> [allowed to]
 const TRANSITIONS: Record<string, string[]> = {
   pending_acceptance: ['accepted', 'declined', 'cancelled'],
-  accepted: ['en_route', 'completed', 'cancelled'],
-  confirmed_to_client: ['en_route', 'completed', 'cancelled'],
-  en_route: ['pickedup', 'completed', 'cancelled'],
-  // reschedule_request returns to pending_acceptance so another driver can be offered
-  en_route_reschedule: ['pending_acceptance'],
+  accepted: ['en_route', 'in_progress', 'completed', 'cancelled', 'pending_acceptance'],
+  confirmed_to_client: ['en_route', 'in_progress', 'completed', 'cancelled', 'pending_acceptance'],
+  en_route: ['in_progress', 'completed', 'cancelled', 'pending_acceptance'],
+  in_progress: ['completed', 'cancelled'],
 }
 
 const ACTION_TO_STATUS: Record<string, string> = {
@@ -121,22 +119,86 @@ export async function POST(
 
     // Special: reschedule_request keeps assignment pending_acceptance for re-offer
     const updateStatus = action === 'reschedule_request' ? 'pending_acceptance' : toStatus
+    const airportParking = Boolean(metadata?.airport_parking)
+    const proofUrl = typeof metadata?.parking_proof_url === 'string' && metadata.parking_proof_url.trim()
+      ? metadata.parking_proof_url.trim()
+      : null
 
-    await db.execute({
+    const assignmentExtras =
+      updateStatus === 'completed'
+        ? `, completed_at = datetime('now'), block_until = NULL`
+        : updateStatus === 'declined'
+          ? `, driver_declined_at = datetime('now'), decline_reason = ?, block_until = NULL`
+          : updateStatus === 'accepted'
+            ? `, driver_accepted_at = datetime('now')`
+            : updateStatus === 'en_route'
+              ? `, en_route_at = datetime('now')`
+              : updateStatus === 'in_progress'
+                ? `, in_progress_at = datetime('now')`
+                : ''
+
+    const assignmentArgs =
+      updateStatus === 'declined'
+        ? [updateStatus, reason || '', assignmentId, driverId, fromStatus]
+        : [updateStatus, assignmentId, driverId, fromStatus]
+
+    const updateRes = await db.execute({
       sql: `UPDATE assignments
-            SET status = ?, updated_at = datetime('now')
-            WHERE id = ? AND driver_id = ?`,
-      args: [updateStatus, assignmentId, driverId],
+            SET status = ?${assignmentExtras}, updated_at = datetime('now')
+            WHERE id = ? AND driver_id = ? AND status = ?`,
+      args: assignmentArgs,
     })
 
-    // Mirror to orders.dispatch_status for admin/dispatch visibility
-    const orderDispatch = toStatus === 'in_progress' ? 'in_progress' : toStatus
-    await db.execute({
-      sql: `UPDATE orders
-            SET dispatch_status = ?, updated_at = datetime('now')
-            WHERE id = ?`,
-      args: [orderDispatch, orderId],
-    })
+    if (updateRes.rowsAffected === 0) {
+      return NextResponse.json(
+        { error: 'Assignment state changed concurrently, please refresh' },
+        { status: 409 },
+      )
+    }
+
+    // Mirror to orders.dispatch_status and handle milestone side-effects
+    if (updateStatus === 'completed') {
+      await db.batch([
+        {
+          sql: `UPDATE orders
+                SET airport_parking = ?, parking_proof_url = ?, parking_proof_status = ?,
+                    dispatch_status = 'completed', updated_at = datetime('now')
+                WHERE id = ?`,
+          args: [airportParking ? 1 : 0, proofUrl, airportParking ? 'pending' : 'approved', orderId],
+        },
+        {
+          sql: `UPDATE drivers SET status = 'available', updated_at = datetime('now') WHERE id = ?`,
+          args: [driverId],
+        },
+      ])
+
+      await accrueDriverPayout(orderId, driverId).catch(err => {
+        console.error('[driver action] payout accrual failed:', err)
+      })
+
+      if (airportParking) {
+        emitEvent('parking_proof.submitted', { order_id: orderId, driver_id: driverId, status: 'pending' }, { correlationId: String(orderId) }).catch(() => {})
+      }
+    } else if (updateStatus === 'declined') {
+      await db.execute({
+        sql: `UPDATE orders SET dispatch_status = 'pending', assigned_to = NULL, assigned_at = NULL, updated_at = datetime('now') WHERE id = ?`,
+        args: [orderId],
+      })
+    } else {
+      const orderDispatch = updateStatus === 'accepted' ? 'assigned' : updateStatus
+      await db.execute({
+        sql: `UPDATE orders
+              SET dispatch_status = ?, updated_at = datetime('now')
+              WHERE id = ?`,
+        args: [orderDispatch, orderId],
+      })
+      if (updateStatus === 'accepted') {
+        await db.execute({
+          sql: `UPDATE drivers SET status = 'busy', updated_at = datetime('now') WHERE id = ?`,
+          args: [driverId],
+        })
+      }
+    }
 
     // ---- Audit log (append-only, immutable) ----
     await recordAudit({
@@ -144,7 +206,6 @@ export async function POST(
       orderId,
       driverId,
       actorType: 'driver',
-      actorId: clerkId ? Number(clerkId) : undefined,
       actorName: driverName,
       action: action as any,
       fromStatus,

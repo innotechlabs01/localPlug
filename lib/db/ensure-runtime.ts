@@ -34,7 +34,7 @@ const DDL: string[] = [
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
-  `CREATE INDEX IF NOT EXISTS idx_payout_ledger_unique
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_payout_ledger_unique
     ON payout_ledger(booking_reference, payee_type, payee_id)`,
   `CREATE INDEX IF NOT EXISTS idx_payout_ledger_payee
     ON payout_ledger(payee_type, payee_id, settlement_period)`,

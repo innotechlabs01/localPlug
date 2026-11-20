@@ -141,6 +141,10 @@ if (typeof setInterval !== 'undefined') {
 }
 
 export function extractIp(req: Request): string {
+  const vercelIp = req.headers.get('x-vercel-forwarded-for')?.split(',')[0]?.trim()
+  if (vercelIp) return vercelIp
+  const realIp = req.headers.get('x-real-ip')?.trim()
+  if (realIp) return realIp
   const forwarded = req.headers.get('x-forwarded-for')
   return forwarded?.split(',')[0]?.trim() || '127.0.0.1'
 }

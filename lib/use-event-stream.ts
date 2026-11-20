@@ -34,6 +34,11 @@ export function useEventStream(
       if (typeof document !== 'undefined' && document.hidden) return
       try {
         const res = await fetch(`/api/realtime/events?since=${cursor}`, { cache: 'no-store' })
+        if (res.status === 401 || res.status === 403) {
+          disposed = true
+          clearInterval(timer)
+          return
+        }
         if (!res.ok) return
         const data = await res.json()
         // On first connect, jump to the current tail so we only receive NEW
@@ -58,9 +63,18 @@ export function useEventStream(
 
     poll()
     const timer = setInterval(poll, pollMs)
+    const onVisibility = () => {
+      if (!document.hidden && !disposed) poll()
+    }
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', onVisibility)
+    }
     return () => {
       disposed = true
       clearInterval(timer)
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', onVisibility)
+      }
     }
   }, [pollMs])
 }

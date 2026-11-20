@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server'
 import { getDb } from '@/lib/db'
 import { resolveHotelContext } from '@/lib/admin/hotel-auth'
 import { recordHotelAudit } from '@/lib/hotel/audit'
+import { accrueHotelPayout } from '@/lib/payout'
 import { emitEvent } from '@/lib/events-outbox'
 import { sendEmail } from '@/lib/email'
 
@@ -10,10 +11,11 @@ export const dynamic = 'force-dynamic'
 
 // Allowed hotel-initiated transitions: from -> [allowed to]
 const TRANSITIONS: Record<string, string[]> = {
-  pending: ['confirm_room', 'decline_room', 'cancelled'],
-  confirm_room: ['check_in', 'cancelled', 'reschedule_requested'],
-  check_in: ['check_out'],
-  reschedule_requested: ['confirm_room', 'cancelled'],
+  new: ['confirmed', 'cancelled', 'pending'],
+  pending: ['confirmed', 'cancelled'],
+  confirmed: ['checked_in', 'cancelled', 'pending'],
+  accepted: ['checked_in', 'cancelled', 'pending'],
+  checked_in: ['checked_out'],
 }
 
 const ACTION_TO_STATUS: Record<string, string> = {
@@ -106,7 +108,7 @@ export async function POST(
       return NextResponse.json({ error: 'Forbidden: not your hotel order' }, { status: 403 })
     }
 
-    const fromStatus = order.dispatch_status || order.status || 'pending'
+    const fromStatus = order.status || 'pending'
     const toStatus = ACTION_TO_STATUS[action]
 
     // Validate transition
@@ -122,15 +124,40 @@ export async function POST(
       )
     }
 
-    // Build update for orders.dispatch_status
-    const newDispatchStatus = toStatus
+    const newHotelStatus = toStatus
 
     await db.execute({
       sql: `UPDATE orders
-            SET dispatch_status = ?, updated_at = datetime('now')
+            SET status = ?, updated_at = datetime('now')
             WHERE id = ?`,
-      args: [newDispatchStatus, orderId],
+      args: [newHotelStatus, orderId],
     })
+
+    // Keep room_bookings & rooms in sync + accrue hotel payout at check-in
+    if (order.room_id) {
+      if (newHotelStatus === 'checked_in') {
+        await db.batch([
+          { sql: `UPDATE room_bookings SET status = 'checked_in', updated_at = datetime('now') WHERE order_id = ?`, args: [orderId] },
+          { sql: `UPDATE rooms SET status = 'occupied', current_order_id = ?, updated_at = datetime('now') WHERE id = ?`, args: [orderId, order.room_id] },
+        ]).catch(() => {})
+        if (order.hotel_id) {
+          await accrueHotelPayout(orderId, Number(order.hotel_id)).catch(err => {
+            console.error('[hotel reservation action] payout accrual failed:', err)
+          })
+        }
+      } else if (newHotelStatus === 'checked_out' || newHotelStatus === 'cancelled') {
+        const rbStatus = newHotelStatus === 'checked_out' ? 'checked_out' : 'cancelled'
+        await db.batch([
+          { sql: `UPDATE room_bookings SET status = ?, updated_at = datetime('now') WHERE order_id = ?`, args: [rbStatus, orderId] },
+          { sql: `UPDATE rooms SET status = 'available', available_from = NULL, current_order_id = NULL, updated_at = datetime('now') WHERE id = ? AND (current_order_id = ? OR current_order_id IS NULL)`, args: [order.room_id, orderId] },
+        ]).catch(() => {})
+      } else if (newHotelStatus === 'confirmed') {
+        await db.execute({
+          sql: `UPDATE room_bookings SET status = 'confirmed', updated_at = datetime('now') WHERE order_id = ? AND status = 'pending'`,
+          args: [orderId],
+        }).catch(() => {})
+      }
+    }
 
     // ---- Audit log (append-only, immutable) ----
     await recordHotelAudit({
@@ -138,11 +165,10 @@ export async function POST(
       hotelId: order.hotel_id,
       roomId: order.room_id ?? null,
       actorType: ctx.isAdmin ? 'admin' : 'hotel',
-      actorId: clerkId ? Number(clerkId) : undefined,
       actorName: ctx.isAdmin ? 'Admin' : 'Hotel Manager',
       action: action as any,
       fromStatus,
-      toStatus: newDispatchStatus,
+      toStatus: newHotelStatus,
       reason,
       metadata,
     }).catch(() => {})
@@ -156,7 +182,7 @@ export async function POST(
       actor_type: ctx.isAdmin ? 'admin' : 'hotel',
       actor_name: ctx.isAdmin ? 'Admin' : 'Hotel Manager',
       from: fromStatus,
-      to: newDispatchStatus,
+      to: newHotelStatus,
       action,
       reason,
       ...(metadata || {}),
@@ -185,12 +211,12 @@ export async function POST(
                 <p><strong>Huésped:</strong> ${order.customer_name || '—'}</p>
                 <p><strong>Acción:</strong> ${action}</p>
                 <p><strong>Estado anterior:</strong> ${fromStatus}</p>
-                <p><strong>Estado nuevo:</strong> ${newDispatchStatus}</p>
+                <p><strong>Estado nuevo:</strong> ${newHotelStatus}</p>
                 ${reason ? `<p><strong>Motivo:</strong> ${reason}</p>` : ''}
                 <p><strong>Fecha:</strong> ${new Date().toLocaleString('es-CO')}</p>
               </div>
             `,
-            text: `Acción de hotel ${action} en orden ${order.order_number}. Estado: ${fromStatus} → ${newDispatchStatus}`,
+            text: `Acción de hotel ${action} en orden ${order.order_number}. Estado: ${fromStatus} → ${newHotelStatus}`,
             bookingReference: order.booking_reference,
           }).catch(() => {})
         }
@@ -205,7 +231,7 @@ export async function POST(
       bookingReference: order.booking_reference,
       action,
       from: fromStatus,
-      to: newDispatchStatus,
+      to: newHotelStatus,
     })
   } catch (err) {
     console.error('[hotel reservation action]', err)

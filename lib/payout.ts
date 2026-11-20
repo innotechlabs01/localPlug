@@ -248,7 +248,7 @@ export async function createPayoutRequest(
   try {
     const batchRes = await db.batch([
       { sql: `INSERT INTO payout_requests (payee_type, payee_id, period, amount_usd) VALUES (?, ?, ?, ?)`, args: [payeeType, payeeId, period, amount] },
-      { sql: `UPDATE payout_ledger SET status = 'requested', requested_at = datetime('now'), updated_at = datetime('now') WHERE id IN (${placeholders})`, args: ids },
+      { sql: `UPDATE payout_ledger SET status = 'requested', requested_at = datetime('now'), updated_at = datetime('now') WHERE id IN (${placeholders}) AND status = 'available'`, args: ids },
     ])
     requestId = Number(batchRes[0].lastInsertRowid)
   } catch (err: unknown) {
@@ -323,9 +323,9 @@ export async function settlePayoutRequest(
   if (!request) return { ok: false, error: 'Request not found' }
   if (request.status === 'paid') return { ok: false, error: 'Request already paid' }
 
-  await db.batch([
+  const batchRes = await db.batch([
     {
-      sql: `UPDATE payout_requests SET status = 'paid', paid_at = datetime('now'), method = ?, reference = ?, reviewed_by = ?, updated_at = datetime('now') WHERE id = ?`,
+      sql: `UPDATE payout_requests SET status = 'paid', paid_at = datetime('now'), method = ?, reference = ?, reviewed_by = ?, updated_at = datetime('now') WHERE id = ? AND status = 'requested'`,
       args: [method, reference, actor, requestId],
     },
     {
@@ -334,6 +334,9 @@ export async function settlePayoutRequest(
       args: [method, request.payee_type, request.payee_id, request.period],
     },
   ])
+  if (batchRes[0].rowsAffected === 0) {
+    return { ok: false, error: 'Request already paid or cancelled' }
+  }
 
   emitEvent('payout.settled', {
     payee_type: request.payee_type,

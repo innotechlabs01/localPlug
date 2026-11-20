@@ -48,26 +48,28 @@ export default function HotelReservationsPage() {
   const [activeTab, setActiveTab] = useState<Tab>('pending')
   const [actionLoading, setActionLoading] = useState<number | null>(null)
 
-  const fetchReservations = useCallback(async () => {
+  const fetchReservations = useCallback(async (silent = false) => {
     try {
-      setLoading(true)
+      if (!silent) setLoading(true)
       const res = await fetch('/api/hotel/reservations')
       if (res.ok) {
         const data = await res.json()
         setReservations(data.reservations || [])
-      } else {
+      } else if (!silent) {
         showToast('No se pudieron cargar las reservas')
       }
     } catch {
-      showToast('Error de red cargando reservas')
+      if (!silent) showToast('Error de red cargando reservas')
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [showToast])
 
   useEffect(() => {
     fetchReservations()
-    const interval = setInterval(fetchReservations, 15000)
+    const interval = setInterval(() => {
+      if (!document.hidden) fetchReservations(true)
+    }, 15000)
     return () => clearInterval(interval)
   }, [fetchReservations])
 

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { timingSafeEqual } from 'crypto'
 import { processQueue } from '@/lib/queue/whatsapp-worker'
 import { getQueueStats, requeueDeadMessages } from '@/lib/queue/message-queue'
 import { getAllCircuitStats } from '@/lib/resilience/circuit-breaker'
@@ -25,12 +26,17 @@ async function pruneEventsOutbox(): Promise<number> {
 }
 
 function verifyAuth(req: Request): boolean {
-  if (req.headers.get('x-vercel-cron') === '1') return true
+  const secret = process.env.CRON_SECRET
+  if (!secret) return false
 
-  const token = process.env.CRON_SECRET
-  if (token && req.headers.get('x-cron-secret') === token) return true
+  const authHeader = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '') || ''
+  const headerSecret = req.headers.get('x-cron-secret') || ''
+  const candidate = authHeader || headerSecret
+  if (!candidate) return false
 
-  return false
+  const a = Buffer.from(candidate)
+  const b = Buffer.from(secret)
+  return a.length === b.length && timingSafeEqual(a, b)
 }
 
 export async function GET(req: Request) {

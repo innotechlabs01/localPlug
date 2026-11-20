@@ -43,9 +43,10 @@ export async function setPayment(record: PaymentRecord): Promise<void> {
   await db.execute({
     sql: `INSERT OR REPLACE INTO payments 
       (booking_reference, package_id, package_name, amount, currency, status, 
+       polar_transaction_id, polar_webhook_event_id,
        paddle_transaction_id, paddle_webhook_event_id, provider_transaction_id, provider_webhook_event_id,
        customer_email, customer_name, customer_phone, error_message, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       record.booking_reference,
       record.package_id,
@@ -53,6 +54,8 @@ export async function setPayment(record: PaymentRecord): Promise<void> {
       record.amount,
       record.currency,
       record.status,
+      record.polar_transaction_id || txnId,
+      record.polar_webhook_event_id || webhookId,
       txnId,
       webhookId,
       txnId,
@@ -65,11 +68,11 @@ export async function setPayment(record: PaymentRecord): Promise<void> {
       record.updated_at,
     ],
   }).catch(async () => {
-    // Fallback if provider_* columns have not been migrated on an old SQLite instance
+    // Fallback if polar_* or provider_* columns are not all present on an older SQLite instance
     await db.execute({
       sql: `INSERT OR REPLACE INTO payments
         (booking_reference, package_id, package_name, amount, currency, status,
-         paddle_transaction_id, paddle_webhook_event_id, customer_email, customer_name,
+         polar_transaction_id, polar_webhook_event_id, customer_email, customer_name,
          customer_phone, error_message, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
@@ -79,8 +82,8 @@ export async function setPayment(record: PaymentRecord): Promise<void> {
         record.amount,
         record.currency,
         record.status,
-        txnId,
-        webhookId,
+        record.polar_transaction_id || txnId,
+        record.polar_webhook_event_id || webhookId,
         record.customer_email,
         record.customer_name,
         record.customer_phone || null,
@@ -88,6 +91,30 @@ export async function setPayment(record: PaymentRecord): Promise<void> {
         record.created_at,
         record.updated_at,
       ],
+    }).catch(async () => {
+      await db.execute({
+        sql: `INSERT OR REPLACE INTO payments
+          (booking_reference, package_id, package_name, amount, currency, status,
+           paddle_transaction_id, paddle_webhook_event_id, customer_email, customer_name,
+           customer_phone, error_message, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [
+          record.booking_reference,
+          record.package_id,
+          record.package_name,
+          record.amount,
+          record.currency,
+          record.status,
+          txnId,
+          webhookId,
+          record.customer_email,
+          record.customer_name,
+          record.customer_phone || null,
+          record.error_message || null,
+          record.created_at,
+          record.updated_at,
+        ],
+      })
     })
   })
 }

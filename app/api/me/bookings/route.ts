@@ -46,8 +46,8 @@ export async function GET() {
           o.created_at,
           o.updated_at,
           p.amount as payment_amount,
-          p.method as payment_method,
-          p.transaction_id as payment_transaction_id
+          p.status as payment_record_status,
+          COALESCE(p.provider_transaction_id, p.polar_transaction_id, p.paddle_transaction_id) as payment_transaction_id
         FROM orders o
         LEFT JOIN payments p ON o.booking_reference = p.booking_reference
         WHERE o.clerk_user_id = ?

@@ -12,6 +12,9 @@ export interface DriverDashboardMetrics {
   tripCompensation: number
   driverEarnings: number
   platformTake: number
+  availablePayoutUsd?: number
+  requestedPayoutUsd?: number
+  paidPayoutUsd?: number
   recentTrips: Array<{
     id: number
     orderId: number
@@ -105,10 +108,25 @@ export async function getDriverDashboardMetrics(driverId: number): Promise<Drive
     createdAt: r.created_at || new Date().toISOString(),
   }))
 
+  // Payout ledger summary (actual accrued/requested/paid earnings)
+  const payoutResult = await db.execute({
+    sql: `SELECT
+            COALESCE(SUM(CASE WHEN status = 'available' THEN amount_usd ELSE 0 END), 0) AS available_usd,
+            COALESCE(SUM(CASE WHEN status = 'requested' THEN amount_usd ELSE 0 END), 0) AS requested_usd,
+            COALESCE(SUM(CASE WHEN status = 'paid' THEN amount_usd ELSE 0 END), 0) AS paid_usd
+          FROM payout_ledger
+          WHERE payee_type = 'driver' AND payee_id = ?`,
+    args: [driverId],
+  }).catch(() => ({ rows: [{ available_usd: 0, requested_usd: 0, paid_usd: 0 }] }))
+
+  const availablePayoutUsd = Number(payoutResult.rows[0]?.available_usd || 0)
+  const requestedPayoutUsd = Number(payoutResult.rows[0]?.requested_usd || 0)
+  const paidPayoutUsd = Number(payoutResult.rows[0]?.paid_usd || 0)
+
   return {
     totalTrips,
     pendingTrips: (tripMap['pending_acceptance'] || 0) + (tripMap['offered'] || 0),
-    activeTrips: (tripMap['accepted'] || 0) + (tripMap['confirmed'] || 0) + (tripMap['en_route'] || 0),
+    activeTrips: (tripMap['accepted'] || 0) + (tripMap['confirmed'] || 0) + (tripMap['confirmed_to_client'] || 0) + (tripMap['en_route'] || 0) + (tripMap['in_progress'] || 0),
     completedTrips,
     cancelledTrips: (tripMap['cancelled'] || 0) + (tripMap['declined'] || 0),
     totalEarnings,
@@ -116,6 +134,9 @@ export async function getDriverDashboardMetrics(driverId: number): Promise<Drive
     tripCompensation,
     driverEarnings,
     platformTake,
+    availablePayoutUsd,
+    requestedPayoutUsd,
+    paidPayoutUsd,
     recentTrips,
   }
 }

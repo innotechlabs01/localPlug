@@ -78,7 +78,17 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
   // Register PWA service worker (driver portal)
   useEffect(() => {
     if ('serviceWorker' in navigator && typeof window !== 'undefined') {
-      navigator.serviceWorker.register('/sw.js', { scope: '/driver' }).catch(() => {})
+      navigator.serviceWorker.register('/sw.js', { scope: '/driver' }).then((reg) => {
+        reg.addEventListener('updatefound', () => {
+          const next = reg.installing
+          if (!next) return
+          next.addEventListener('statechange', () => {
+            if (next.state === 'installed' && navigator.serviceWorker.controller) {
+              next.postMessage({ type: 'SKIP_WAITING' })
+            }
+          })
+        })
+      }).catch(() => {})
     }
     // Ensure the manifest link exists for installability
     if (!document.querySelector('link[rel="manifest"]')) {
@@ -253,7 +263,15 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
 
         <div style={{ padding: '12px 8px', borderTop: '1px solid var(--border)' }}>
           <button
-            onClick={() => signOut({ redirectUrl: '/sign-in/driver' })}
+            onClick={async () => {
+              if ('caches' in window) {
+                try {
+                  const keys = await caches.keys()
+                  await Promise.all(keys.map((k) => caches.delete(k)))
+                } catch {}
+              }
+              signOut({ redirectUrl: '/sign-in/driver' })
+            }}
             style={{
               display: 'flex',
               alignItems: 'center',

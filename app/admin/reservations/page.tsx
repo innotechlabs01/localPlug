@@ -42,13 +42,15 @@ export default function AdminReservations() {
 
   useEffect(() => {
     loadReservations()
-    const interval = setInterval(loadReservations, 30000)
+    const interval = setInterval(() => {
+      if (!document.hidden) loadReservations(true)
+    }, 30000)
     return () => clearInterval(interval)
   }, [])
 
-  const loadReservations = useCallback(async () => {
+  const loadReservations = useCallback(async (silent = false) => {
     try {
-      setLoading(true)
+      if (!silent) setLoading(true)
       setError(null)
       const res = await adminFetch('/api/admin/reservations')
       const data = await res.json()
@@ -57,7 +59,7 @@ export default function AdminReservations() {
       setError('Failed to load reservations. Please try again.')
       console.error('Error fetching reservations:', err)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [])
 
@@ -192,7 +194,7 @@ export default function AdminReservations() {
         <div className="bg-[var(--danger-soft)] border border-[var(--danger)] rounded-lg px-6 py-4 max-w-xl">
           <h3 className="text-sm font-medium text-[var(--danger)]">{d.errorTitle || 'Error loading reservations'}</h3>
           <div className="mt-2 text-sm text-[var(--fg-secondary)]">{error}</div>
-          <button onClick={loadReservations} className="mt-4 bg-[var(--accent)] text-white font-medium py-1.5 px-4 rounded-[var(--radius-sm)] text-sm hover:opacity-90">
+          <button onClick={() => loadReservations()} className="mt-4 bg-[var(--accent)] text-white font-medium py-1.5 px-4 rounded-[var(--radius-sm)] text-sm hover:opacity-90">
             {d.retry || 'Retry'}
           </button>
         </div>

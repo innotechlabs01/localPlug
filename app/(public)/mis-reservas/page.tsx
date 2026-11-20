@@ -204,10 +204,10 @@ export default function MisReservasPage() {
                 <p className="text-white/60 mt-1">Consulta nuestros términos, política de privacidad y política de reembolsos.</p>
               </div>
               <div className="flex flex-wrap gap-3">
-                <Link href="/terminos-y-condiciones" className="px-4 py-2 rounded-xl border border-[var(--border)] text-white/80 hover:text-white hover:bg-white/5 transition-colors text-sm">Términos y condiciones</Link>
-                <Link href="/politica-de-privacidad" className="px-4 py-2 rounded-xl border border-[var(--border)] text-white/80 hover:text-white hover:bg-white/5 transition-colors text-sm">Política de privacidad</Link>
-                <Link href="/politica-de-reembolsos" className="px-4 py-2 rounded-xl border border-[var(--border)] text-white/80 hover:text-white hover:bg-white/5 transition-colors text-sm">Política de reembolsos</Link>
-                <Link href="/faq" className="px-4 py-2 rounded-xl border border-[var(--border)] text-white/80 hover:text-white hover:bg-white/5 transition-colors text-sm">Preguntas frecuentes</Link>
+                <Link href="/terms" className="px-4 py-2 rounded-xl border border-[var(--border)] text-white/80 hover:text-white hover:bg-white/5 transition-colors text-sm">Términos y condiciones</Link>
+                <Link href="/privacy" className="px-4 py-2 rounded-xl border border-[var(--border)] text-white/80 hover:text-white hover:bg-white/5 transition-colors text-sm">Política de privacidad</Link>
+                <Link href="/refund-policy" className="px-4 py-2 rounded-xl border border-[var(--border)] text-white/80 hover:text-white hover:bg-white/5 transition-colors text-sm">Política de reembolsos</Link>
+                <Link href="/#faq" className="px-4 py-2 rounded-xl border border-[var(--border)] text-white/80 hover:text-white hover:bg-white/5 transition-colors text-sm">Preguntas frecuentes</Link>
               </div>
             </div>
           </div>

@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { Webhooks } from '@polar-sh/nextjs'
 import { getDb } from '@/lib/db'
 import { logger } from '@/lib/logger'
@@ -6,7 +6,7 @@ import { triggerPaymentConfirmation } from '@/lib/n8n/client'
 import { processBookingRefund } from '@/lib/payout'
 import { emitEvent } from '@/lib/events-outbox'
 
-export const POST = Webhooks({
+const polarHandler = Webhooks({
   webhookSecret: process.env.POLAR_WEBHOOK_SECRET || '',
   onOrderPaid: async (payload) => {
     try {
@@ -61,7 +61,7 @@ export const POST = Webhooks({
       // Update payment status. Splits (platform fee / hotel payout / driver fare)
       // are NO LONGER computed here — payout liabilities accrue separately in the
       // payout ledger at their milestone (driver on trip complete, hotel on check-in).
-      await db.execute({
+      const updatePaymentResult = await db.execute({
         sql: `UPDATE payments SET
           status = 'completed',
           polar_webhook_event_id = ?,
@@ -73,6 +73,16 @@ export const POST = Webhooks({
           bookingReference,
         ],
       })
+      if (updatePaymentResult.rowsAffected === 0) {
+        const alreadyCompleted = await db.execute({
+          sql: `SELECT 1 FROM payments WHERE booking_reference = ? AND status = 'completed' LIMIT 1`,
+          args: [bookingReference],
+        })
+        if (alreadyCompleted.rows.length > 0) {
+          logger.info('[Polar Webhook] Payment already completed, skipping duplicate', { bookingReference, webhookEventId })
+          return
+        }
+      }
 
       // Create order if it doesn't exist yet (race condition: webhook fires before POST /api/booking)
       const existingOrder = await db.execute({
@@ -87,17 +97,18 @@ export const POST = Webhooks({
         const customerCountry = (metadata.customer_country as string) || null
         await db.execute({
           sql: `INSERT INTO orders (
-            order_number, booking_reference, customer_name, customer_email,
+            order_number, booking_reference, clerk_user_id, customer_name, customer_email,
             customer_phone, customer_country, customer_notes,
             package_id, package_name, package_price, currency,
             status, payment_status, dispatch_status,
             flight_number, airline, arrival_date, arrival_time,
             destination_address, additional_trips, num_people,
             return_date, return_time
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           args: [
             orderNumber,
             bookingReference,
+            metadata.clerk_user_id || null,
             metadata.customer_name || ((order.customer as Record<string, unknown>)?.name as string) || null,
             metadata.customer_email || ((order.customer as Record<string, unknown>)?.email as string) || null,
             customerPhone,
@@ -124,7 +135,7 @@ export const POST = Webhooks({
         logger.info('[Polar Webhook] Order created from webhook', { bookingReference, orderNumber })
       } else {
         // Order exists — confirm it and BACKFILL fields the webhook can contribute
-        // when the race left them empty (package_price 0, missing phone/country).
+        // when the race left them empty (package_price 0, missing phone/country/clerk_user_id).
         // Do NOT overwrite values POST /api/booking already wrote correctly.
         const customerPhone = metadata?.customer_phone || storedPhone || null
         const invoicePriceUsd = totalAmount > 0 ? totalAmount / 100 : null
@@ -132,6 +143,9 @@ export const POST = Webhooks({
           sql: `UPDATE orders SET
             status = 'confirmed',
             payment_status = 'paid',
+            clerk_user_id = CASE
+              WHEN clerk_user_id IS NULL OR clerk_user_id = '' THEN ?
+              ELSE clerk_user_id END,
             package_price = CASE
               WHEN package_price IS NULL OR package_price = 0 THEN ?
               ELSE package_price END,
@@ -147,6 +161,7 @@ export const POST = Webhooks({
             updated_at = ?
           WHERE booking_reference = ?`,
           args: [
+            metadata?.clerk_user_id || null,
             invoicePriceUsd,
             customerPhone,
             (metadata?.customer_country as string) || null,
@@ -272,3 +287,11 @@ export const POST = Webhooks({
     logger.info('[Polar Webhook] Event received', { type: payload.type, id: (payload.data as Record<string, unknown>)?.id as string })
   },
 })
+
+export async function POST(req: NextRequest) {
+  if (!process.env.POLAR_WEBHOOK_SECRET) {
+    logger.error('[Polar Webhook] POLAR_WEBHOOK_SECRET is not configured')
+    return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 })
+  }
+  return polarHandler(req)
+}

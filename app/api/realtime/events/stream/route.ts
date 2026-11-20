@@ -1,5 +1,6 @@
 import { listEventsSince } from '@/lib/events-outbox'
 import { auth } from '@clerk/nextjs/server'
+import { canAccessRealtimeOutbox } from '@/lib/realtime-auth'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -15,6 +16,9 @@ const MAX_STREAM_MS = 55_000 // stay under proxy/Vercel limits; client reconnect
 export async function GET(req: Request) {
   const { userId } = await auth()
   if (!userId) return new Response('Unauthorized', { status: 401 })
+  if (!(await canAccessRealtimeOutbox(userId))) {
+    return new Response('Forbidden', { status: 403 })
+  }
 
   const url = new URL(req.url)
   let cursor = Number(url.searchParams.get('since') || 0) || 0

@@ -29,7 +29,7 @@ function mockRequest(url: string) {
 describe('GET /api/chat/messages', () => {
   it('returns messages for valid conversationId (web channel)', async () => {
     mockExecute
-      .mockResolvedValueOnce({ rows: [{ channel: 'web', status: 'active' }] })
+      .mockResolvedValueOnce({ rows: [{ channel: 'web', status: 'active', user_identifier: 'test_user_id' }] })
       .mockResolvedValueOnce({
         rows: [
           { id: 1, conversation_id: 1, sender_type: 'ai', content: 'Hello!', message_type: 'text', created_at: '2026-01-01T00:00:00Z' },
@@ -37,7 +37,7 @@ describe('GET /api/chat/messages', () => {
         ],
       })
 
-    const req = mockRequest('http://localhost:3000/api/chat/messages?conversationId=1')
+    const req = mockRequest('http://localhost:3000/api/chat/messages?conversationId=1&userIdentifier=test_user_id')
     const res = await GET(req)
     expect(res.status).toBe(200)
     const json = await res.json()
