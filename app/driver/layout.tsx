@@ -226,7 +226,7 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
               borderRadius: 8,
               fontSize: 13,
               fontWeight: 500,
-              color: driverStatus === 'available' ? '#4ade80' : 'var(--text-muted)',
+              color: driverStatus === 'available' ? 'var(--ui-accent)' : 'var(--ui-fg-muted)',
               background: driverStatus === 'available' ? 'rgba(74,222,128,0.1)' : 'transparent',
               border: `1px solid ${driverStatus === 'available' ? 'rgba(74,222,128,0.2)' : 'var(--border)'}`,
               cursor: toggling ? 'wait' : 'pointer',
@@ -237,7 +237,7 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
             <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{
                 width: 8, height: 8, borderRadius: '50%',
-                background: driverStatus === 'available' ? '#4ade80' : 'var(--text-muted)',
+                background: driverStatus === 'available' ? 'var(--ui-accent)' : 'var(--ui-fg-muted)',
                 boxShadow: driverStatus === 'available' ? '0 0 8px rgba(74,222,128,0.5)' : 'none',
               }} />
               {driverStatus === 'available' ? 'Activo' : 'Inactivo'}
@@ -327,9 +327,9 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
             <div
               style={{
                 width: 36, height: 36, borderRadius: '50%',
-                background: 'linear-gradient(135deg, var(--accent-gold), var(--accent-gold-dark, #b8956a))',
+                background: 'linear-gradient(135deg, var(--ui-accent-gold), var(--ui-gold))',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: '#fff', fontWeight: 600, fontSize: 13,
+                color: 'var(--ui-bg)', fontWeight: 600, fontSize: 13,
                 cursor: 'pointer',
                 transition: 'opacity 200ms cubic-bezier(0.4, 0, 0.2, 1)',
               }}

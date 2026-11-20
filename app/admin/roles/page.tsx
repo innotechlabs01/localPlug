@@ -19,10 +19,10 @@ interface Perms {
 type PermMap = Record<string, Record<string, Perms>>
 
 const actions = [
-  { key: 'can_view' as const, label: 'View', color: '#3b82f6' },
-  { key: 'can_create' as const, label: 'Create', color: '#10b981' },
-  { key: 'can_update' as const, label: 'Update', color: '#f59e0b' },
-  { key: 'can_delete' as const, label: 'Delete', color: '#ef4444' },
+  { key: 'can_view' as const, label: 'View', color: 'var(--ui-info)' },
+  { key: 'can_create' as const, label: 'Create', color: 'var(--ui-accent)' },
+  { key: 'can_update' as const, label: 'Update', color: 'var(--ui-warning)' },
+  { key: 'can_delete' as const, label: 'Delete', color: 'var(--ui-danger)' },
 ]
 
 const theme = {

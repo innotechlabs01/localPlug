@@ -140,7 +140,7 @@ export default function DriverSettingsPage() {
         <div style={{
           position: 'fixed', top: 24, right: 24, padding: '16px 24px', borderRadius: 14,
           background: toast.type === 'success' ? 'var(--accent)' : 'var(--danger)',
-          color: '#fff', zIndex: 1000, boxShadow: 'var(--shadow-elevated)',
+          color: 'var(--ui-bg)', zIndex: 1000, boxShadow: 'var(--shadow-elevated)',
         }}>{toast.message}</div>
       )}
 
@@ -241,7 +241,7 @@ export default function DriverSettingsPage() {
             style={{
               padding: '14px 32px', borderRadius: 14, border: 'none',
               background: saving ? 'var(--text-muted)' : 'var(--accent-gold)',
-              color: '#fff', fontSize: 16, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer',
+              color: 'var(--ui-bg)', fontSize: 16, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer',
               opacity: saving ? 0.7 : 1,
             }}
           >

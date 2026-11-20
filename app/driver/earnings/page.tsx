@@ -307,8 +307,8 @@ export default function DriverEarningsPage() {
         {requestMsg && (
           <div style={{
             marginTop: 12, padding: '10px 14px', borderRadius: 10, fontSize: 13,
-            background: requestMsg.ok ? 'rgba(74, 222, 128, 0.12)' : 'rgba(248, 113, 113, 0.12)',
-            color: requestMsg.ok ? '#4ade80' : '#f87171',
+            background: requestMsg.ok ? 'var(--ui-accent-soft)' : 'var(--ui-danger-soft)',
+            color: requestMsg.ok ? 'var(--ui-accent)' : 'var(--ui-danger)',
           }}>
             {requestMsg.text}
           </div>
@@ -476,8 +476,8 @@ export default function DriverEarningsPage() {
                   <span style={{
                     fontSize: 12, fontWeight: 500,
                     padding: '4px 10px', borderRadius: 12,
-                    background: trip.status === 'completed' ? 'rgba(74, 222, 128, 0.12)' : 'rgba(250, 204, 21, 0.12)',
-                    color: trip.status === 'completed' ? '#4ade80' : '#facc15',
+                    background: trip.status === 'completed' ? 'var(--ui-accent-soft)' : 'var(--ui-warning-soft)',
+                    color: trip.status === 'completed' ? 'var(--ui-accent)' : 'var(--ui-warning)',
                   }}>
                     {trip.status === 'completed' ? 'Completado' : 'Pendiente'}
                   </span>

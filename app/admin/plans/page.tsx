@@ -70,7 +70,9 @@ export default function PlansPage() {
         const data = await res.json()
         setPackages(data.packages || [])
       }
-    } catch (e) { console.error('Failed to fetch packages', e) }
+    } catch (e) {
+      console.error('Failed to fetch packages', e)
+    }
     setLoading(false)
   }, [])
 
@@ -162,7 +164,6 @@ export default function PlansPage() {
     const temp = sorted[idx].sort_order
     sorted[idx] = { ...sorted[idx], sort_order: sorted[swapIdx].sort_order }
     sorted[swapIdx] = { ...sorted[swapIdx], sort_order: temp }
-    // Save each package with its new sort_order
     for (const pkg of sorted) {
       await adminFetch('/api/admin/packages', {
         method: 'PUT',
@@ -247,7 +248,7 @@ export default function PlansPage() {
   }
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64"><div className="text-[#646880]">Loading packages...</div></div>
+    return <div className="flex items-center justify-center h-64"><div className="text-[var(--ui-fg-muted)]">Loading packages...</div></div>
   }
 
   return (
@@ -255,13 +256,13 @@ export default function PlansPage() {
       {/* ── HEADER ── */}
       <div className="drivers-hero">
         <div>
-          <h1 className="text-[24px] font-bold tracking-tighter text-fg">{t.admin.plans.title}</h1>
-          <p className="mt-2 text-[13px] text-fg-muted max-w-[760px] leading-[1.55]">
+          <h1 className="text-[24px] font-bold tracking-tighter text-[var(--ui-fg)]">{t.admin.plans.title}</h1>
+          <p className="mt-2 text-[13px] text-[var(--ui-fg-secondary)] max-w-[760px] leading-[1.55]">
             {t.admin.plans.subtitle}
           </p>
         </div>
         <div className="drivers-toolbar flex items-center gap-2.5 flex-wrap">
-          <button className="px-4 py-2 bg-accent text-white text-[13px] font-medium rounded-md hover:bg-[#059669] transition-all" onClick={openCreatePkg}>
+          <button className="px-4 py-2 bg-[var(--ui-accent)] text-white text-[13px] font-medium rounded-md hover:bg-[#059669] transition-all" onClick={openCreatePkg}>
             + Add Package
           </button>
         </div>
@@ -297,20 +298,20 @@ export default function PlansPage() {
 
           <div className="driver-grid">
             {packages.length === 0 ? (
-              <p className="text-fg-muted text-center py-12" style={{ gridColumn: '1/-1' }}>No packages yet. Click "+ Add Package" to create the first one.</p>
+              <p className="text-[var(--ui-fg-secondary)] text-center py-12" style={{ gridColumn: '1/-1' }}>No packages yet. Click "+ Add Package" to create the first one.</p>
             ) : [...packages].sort((a, b) => a.sort_order - b.sort_order).map((p, idx) => (
               <div key={p.id} className={`driver-card ${selectedId === p.id ? 'active' : ''}`}
                 onClick={() => { setSelectedId(p.id); setTab('features') }}>
                 <div className="driver-head">
                   <div className="driver-person">
                     <div className="driver-avatar" style={{
-                      background: p.is_popular ? 'linear-gradient(135deg, #f59e0b, #f97316)' : 'linear-gradient(135deg, var(--accent), #059669)',
+                      background: p.is_popular ? 'linear-gradient(135deg, var(--ui-warning), var(--ui-bg))' : 'linear-gradient(135deg, var(--ui-accent), var(--ui-bg))',
                       fontSize: 18, fontWeight: 700,
                     }}>{p.name.charAt(0)}</div>
                     <div>
                       <div className="driver-name">
                         {p.name}
-                        {p.is_popular && <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#f59e0b] text-white">Popular</span>}
+                        {p.is_popular && <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[var(--ui-warning)] text-white">Popular</span>}
                       </div>
                       <div className="driver-meta">
                         ${Number(p.base_price_usd).toFixed(0)} · {p.description?.slice(0, 40) || 'No description'}
@@ -328,7 +329,7 @@ export default function PlansPage() {
 
                 <div className="flex gap-1.5 flex-wrap mt-2">
                   <button className="btn btn-sm btn-secondary" onClick={e => { e.stopPropagation(); openEditPkg(p) }}>Edit</button>
-                  <button className="btn btn-sm btn-secondary" onClick={e => { e.stopPropagation(); deletePkg(p.id) }} style={{ color: '#ef4444' }}>Delete</button>
+                  <button className="btn btn-sm btn-secondary" onClick={e => { e.stopPropagation(); deletePkg(p.id) }} style={{ color: 'var(--ui-danger)' }}>Delete</button>
                   <button className="btn btn-sm btn-secondary" onClick={e => { e.stopPropagation(); movePkg(p.id, 'up') }} disabled={idx === 0}>↑</button>
                   <button className="btn btn-sm btn-secondary" onClick={e => { e.stopPropagation(); movePkg(p.id, 'down') }} disabled={idx === packages.length - 1}>↓</button>
                 </div>
@@ -340,23 +341,23 @@ export default function PlansPage() {
         {/* ── RIGHT: DETAIL PANEL ── */}
         <aside className="side-stack">
           <div className="panel">
-            <div className="panel-header"><span className="panel-title font-medium text-fg">Package Details</span></div>
+            <div className="panel-header"><span className="panel-title font-medium text-[var(--ui-fg)]">Package Details</span></div>
             <div className="panel-body p-4">
               {!selected ? (
-                <p className="text-fg-muted text-center py-8">Select a package to manage</p>
+                <p className="text-[var(--ui-fg-secondary)] text-center py-8">Select a package to manage</p>
               ) : (
                 <div>
                   <div className="profile-top">
                     <div className="profile-photo" style={{
-                      background: selected.is_popular ? 'linear-gradient(135deg, #f59e0b, #f97316)' : 'linear-gradient(135deg, var(--accent), #059669)',
+                      background: selected.is_popular ? 'linear-gradient(135deg, var(--ui-warning), var(--ui-bg))' : 'linear-gradient(135deg, var(--ui-accent), var(--ui-bg))',
                       fontSize: 28, fontWeight: 700,
                     }}>{selected.name.charAt(0)}</div>
                     <div>
-                      <h2 className="text-[18px] font-bold text-fg">{selected.name}</h2>
+                      <h2 className="text-[18px] font-bold text-[var(--ui-fg)]">{selected.name}</h2>
                       <div className="sub">{selected.description || 'No description'}</div>
                       <div className="flex gap-1.5 flex-wrap mt-2">
                         <span className={selected.is_active ? 'badge badge-accent' : 'badge'}>{selected.is_active ? 'Active' : 'Inactive'}</span>
-                        {selected.is_popular && <span className="badge" style={{ background: '#f59e0b', color: '#fff' }}>Popular</span>}
+                        {selected.is_popular && <span className="badge" style={{ background: 'var(--ui-warning)', color: 'var(--ui-bg)' }}>Popular</span>}
                         <span className="badge badge-info">${Number(selected.base_price_usd).toFixed(2)}</span>
                       </div>
                     </div>
@@ -389,9 +390,9 @@ export default function PlansPage() {
                     <button key={key} onClick={() => setTab(key as 'features' | 'tours')} style={{
                       padding: '8px 16px', borderRadius: '6px 6px 0 0', border: 'none', cursor: 'pointer',
                       fontSize: 13, fontWeight: 600,
-                      background: tab === key ? 'var(--surface)' : 'transparent',
-                      color: tab === key ? 'var(--fg)' : 'var(--fg-muted)',
-                      borderBottom: tab === key ? '2px solid var(--accent)' : '2px solid transparent',
+                      background: tab === key ? 'var(--ui-surface)' : 'transparent',
+                      color: tab === key ? 'var(--ui-fg)' : 'var(--ui-fg-muted)',
+                      borderBottom: tab === key ? '2px solid var(--ui-accent)' : '2px solid transparent',
                     }}>{label}</button>
                   ))}
                 </div>
@@ -402,14 +403,14 @@ export default function PlansPage() {
 
               <div className="panel-body p-4">
                 {tab === 'features' && (
-                  !selected.features?.length ? <p className="text-fg-muted text-center py-6">No features yet</p> : (
+                  !selected.features?.length ? <p className="text-[var(--ui-fg-secondary)] text-center py-6">No features yet</p> : (
                     <div className="flex flex-col gap-2">
                       {selected.features.sort((a, b) => a.sort_order - b.sort_order).map(f => (
-                        <div key={f.id} className="flex items-center justify-between p-3 rounded-lg" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
-                          <div className="font-medium text-fg text-[14px]">{f.text}</div>
+                        <div key={f.id} className="flex items-center justify-between p-3 rounded-lg" style={{ background: 'var(--ui-surface)', border: '1px solid var(--ui-border)' }}>
+                          <div className="font-medium text-[var(--ui-fg)] text-[14px]">{f.text}</div>
                           <div className="flex gap-1.5">
                             <button className="btn btn-sm btn-secondary" onClick={() => openEditFeature(f)}>Edit</button>
-                            <button className="btn btn-sm btn-secondary" onClick={() => deleteFeature(f.id)} style={{ color: '#ef4444' }}>Del</button>
+                            <button className="btn btn-sm btn-secondary" onClick={() => deleteFeature(f.id)} style={{ color: 'var(--ui-danger)' }}>Del</button>
                           </div>
                         </div>
                       ))}
@@ -418,20 +419,20 @@ export default function PlansPage() {
                 )}
 
                 {tab === 'tours' && (
-                  !selected.tours?.length ? <p className="text-fg-muted text-center py-6">No tours yet</p> : (
+                  !selected.tours?.length ? <p className="text-[var(--ui-fg-secondary)] text-center py-6">No tours yet</p> : (
                     <div className="flex flex-col gap-2">
                       {selected.tours.sort((a, b) => a.sort_order - b.sort_order).map(tour => (
-                        <div key={tour.id} className="flex items-center justify-between p-3 rounded-lg" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                        <div key={tour.id} className="flex items-center justify-between p-3 rounded-lg" style={{ background: 'var(--ui-surface)', border: '1px solid var(--ui-border)' }}>
                           <div>
-                            <div className="font-medium text-fg text-[14px]">{tour.name}</div>
-                            <div className="text-fg-muted text-[12px]">
+                            <div className="font-medium text-[var(--ui-fg)] text-[14px]">{tour.name}</div>
+                            <div className="text-[var(--ui-fg-secondary)] text-[12px]">
                               ${Number(tour.price_per_person_usd).toFixed(2)}/person · {tour.vehicle_type?.toUpperCase()} · {tour.duration_hours}h
                             </div>
-                            {tour.description && <div className="text-fg-muted text-[11px] mt-1">{tour.description}</div>}
+                            {tour.description && <div className="text-[var(--ui-fg-secondary)] text-[11px] mt-1">{tour.description}</div>}
                           </div>
                           <div className="flex gap-1.5">
                             <button className="btn btn-sm btn-secondary" onClick={() => openEditTour(tour)}>Edit</button>
-                            <button className="btn btn-sm btn-secondary" onClick={() => deleteTour(tour.id)} style={{ color: '#ef4444' }}>Del</button>
+                            <button className="btn btn-sm btn-secondary" onClick={() => deleteTour(tour.id)} style={{ color: 'var(--ui-danger)' }}>Del</button>
                           </div>
                         </div>
                       ))}
@@ -464,7 +465,7 @@ export default function PlansPage() {
             </ModalField>
           </div>
 
-          <div className="mt-4 mb-2 text-[11px] font-semibold text-fg-secondary uppercase tracking-wide">Services Included</div>
+          <div className="mt-4 mb-2 text-[11px] font-semibold text-[var(--ui-fg-secondary)] uppercase tracking-wide">Services Included</div>
           <div className="grid grid-cols-2 gap-2">
             {[
               ['includes_pickup', 'Airport Pickup'],
@@ -473,8 +474,8 @@ export default function PlansPage() {
               ['includes_round_trip', 'Round-trip Transfer'],
               ['includes_concierge', '24/7 Concierge'],
             ].map(([key, label]) => (
-              <label key={key} className="flex items-center gap-2 text-[13px] text-fg cursor-pointer">
-                <input type="checkbox" checked={!!pkgForm[key]} onChange={e => setPkgForm(p => ({ ...p, [key]: e.target.checked }))} className="accent-[var(--accent)]" />
+              <label key={key} className="flex items-center gap-2 text-[13px] text-[var(--ui-fg)] cursor-pointer">
+                <input type="checkbox" checked={!!pkgForm[key]} onChange={e => setPkgForm(p => ({ ...p, [key]: e.target.checked }))} className="accent-[var(--ui-accent)]" />
                 {label}
               </label>
             ))}
@@ -509,8 +510,8 @@ export default function PlansPage() {
           </div>
 
           <div className="flex items-center gap-4 mt-3">
-            <label className="flex items-center gap-2 text-[13px] text-fg cursor-pointer">
-              <input type="checkbox" checked={!!pkgForm.is_popular} onChange={e => setPkgForm(p => ({ ...p, is_popular: e.target.checked }))} className="accent-[#f59e0b]" />
+            <label className="flex items-center gap-2 text-[13px] text-[var(--ui-fg)] cursor-pointer">
+              <input type="checkbox" checked={!!pkgForm.is_popular} onChange={e => setPkgForm(p => ({ ...p, is_popular: e.target.checked }))} className="accent-[var(--ui-warning)]" />
               Mark as Popular
             </label>
           </div>
@@ -566,8 +567,8 @@ export default function PlansPage() {
             </ModalField>
           </div>
           <div className="flex items-center gap-4 mt-3">
-            <label className="flex items-center gap-2 text-[13px] text-fg cursor-pointer">
-              <input type="checkbox" checked={!!tourForm.is_active} onChange={e => setTourForm(p => ({ ...p, is_active: e.target.checked }))} className="accent-[var(--accent)]" />
+            <label className="flex items-center gap-2 text-[13px] text-[var(--ui-fg)] cursor-pointer">
+              <input type="checkbox" checked={!!tourForm.is_active} onChange={e => setTourForm(p => ({ ...p, is_active: e.target.checked }))} className="accent-[var(--ui-accent)]" />
               Active
             </label>
           </div>
@@ -585,10 +586,10 @@ export default function PlansPage() {
 function Modal({ children, onClose, title }: { children: React.ReactNode; onClose: () => void; title: string }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.62)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '80px 24px', zIndex: 500 }} onClick={onClose}>
-      <div style={{ width: 'min(600px, 100%)', maxHeight: '80vh', overflow: 'auto', borderRadius: 16, background: 'var(--bg)', border: '1px solid var(--border)' }} onClick={e => e.stopPropagation()}>
-        <div style={{ padding: '18px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h2 style={{ fontSize: 18, margin: 0, fontWeight: 700, color: 'var(--fg)' }}>{title}</h2>
-          <button style={{ color: 'var(--fg-secondary)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 22 }} onClick={onClose}>&times;</button>
+      <div style={{ width: 'min(600px, 100%)', maxHeight: '80vh', overflow: 'auto', borderRadius: 16, background: 'var(--ui-bg)', border: '1px solid var(--ui-border)' }} onClick={e => e.stopPropagation()}>
+        <div style={{ padding: '18px 20px', borderBottom: '1px solid var(--ui-border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <h2 style={{ fontSize: 18, margin: 0, fontWeight: 700, color: 'var(--ui-fg)' }}>{title}</h2>
+          <button style={{ color: 'var(--ui-fg-secondary)', background: 'none', border: 'none', cursor: 'pointer', fontSize: 22 }} onClick={onClose}>&times;</button>
         </div>
         <div style={{ padding: 20 }}>{children}</div>
       </div>
@@ -598,11 +599,9 @@ function Modal({ children, onClose, title }: { children: React.ReactNode; onClos
 
 function ModalField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="mb-3">
-      <label style={{ display: 'block', fontSize: 11, color: 'var(--fg-secondary)', marginBottom: 6, fontWeight: 600 }}>{label}</label>
-      <div className="[&>input]:w-full [&>input]:px-3 [&>input]:py-2 [&>input]:rounded-lg [&>input]:bg-[var(--bg-dark)] [&>input]:border [&>input]:border-[var(--border)] [&>input]:text-[var(--fg)] [&>input]:text-[13px] [&>input]:outline-none [&>input]:focus:border-[var(--accent-gold)] [&>input]:transition-colors [&>textarea]:w-full [&>textarea]:px-3 [&>textarea]:py-2 [&>textarea]:rounded-lg [&>textarea]:bg-[var(--bg-dark)] [&>textarea]:border [&>textarea]:border-[var(--border)] [&>textarea]:text-[var(--fg)] [&>textarea]:text-[13px] [&>textarea]:outline-none [&>textarea]:focus:border-[var(--accent-gold)] [&>textarea]:transition-colors [&>select]:w-full [&>select]:px-3 [&>select]:py-2 [&>select]:rounded-lg [&>select]:bg-[var(--bg-dark)] [&>select]:border [&>select]:border-[var(--border)] [&>select]:text-[var(--fg)] [&>select]:text-[13px] [&>select]:outline-none [&>select]:focus:border-[var(--accent-gold)] [&>select]:transition-colors">
-        {children}
-      </div>
+    <div className="space-y-1 mb-3">
+      <label className="text-[11px] font-semibold text-[var(--ui-fg-secondary)] uppercase tracking-wide">{label}</label>
+      {children}
     </div>
   )
 }

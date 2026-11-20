@@ -14,7 +14,7 @@ export default function BookingConfirmation({ onReset, bookingReference }: Booki
 
   return (
     <div className="text-center py-12 max-w-md mx-auto">
-      <div className="w-[100px] h-[100px] rounded-full bg-gradient-to-br from-[var(--success)] to-[#059669] flex items-center justify-center mx-auto mb-6">
+      <div className="w-[100px] h-[100px] rounded-full bg-gradient-to-br from-[var(--success)] to-[var(--success)] flex items-center justify-center mx-auto mb-6">
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--bg-dark)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="9 11 12 14 22 4" />
           <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />

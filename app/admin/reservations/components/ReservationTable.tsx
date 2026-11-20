@@ -134,7 +134,7 @@ function getPaymentBadgeClass(status: string): string {
 }
 
 function getAvatarColor(letter: string): string {
-  const colors = ['var(--warning)', 'var(--accent)', 'var(--info)', '#8b5cf6', '#14b8a6', '#64748b', 'var(--danger)', '#f97316', '#84cc16', '#06b6d4']
+  const colors = ['var(--warning)', 'var(--accent)', 'var(--info)', 'var(--satisfaction)', 'var(--ui-surface-active)', 'var(--danger)', 'var(--warning)', 'var(--info-soft)', 'var(--accent-soft)', 'var(--info)']
   return colors[letter.charCodeAt(0) % colors.length]
 }
 

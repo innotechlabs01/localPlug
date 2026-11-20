@@ -11,8 +11,8 @@ export async function getPayment(bookingReference: string): Promise<PaymentRecor
   if (result.rows.length === 0) return null
 
   const row = result.rows[0]
-  const txnId = (row.provider_transaction_id as string) || (row.paddle_transaction_id as string) || (row.transaction_id as string) || ''
-  const webhookEventId = (row.provider_webhook_event_id as string) || (row.paddle_webhook_event_id as string) || (row.webhook_event_id as string) || ''
+  const txnId = (row.provider_transaction_id as string) || (row.polar_transaction_id as string) || (row.paddle_transaction_id as string) || (row.transaction_id as string) || ''
+  const webhookEventId = (row.provider_webhook_event_id as string) || (row.polar_webhook_event_id as string) || (row.paddle_webhook_event_id as string) || (row.webhook_event_id as string) || ''
   return {
     booking_reference: row.booking_reference as string,
     package_id: row.package_id as string,
@@ -22,6 +22,8 @@ export async function getPayment(bookingReference: string): Promise<PaymentRecor
     status: row.status as PaymentRecord['status'],
     paddle_transaction_id: txnId,
     paddle_webhook_event_id: webhookEventId,
+    polar_transaction_id: (row.polar_transaction_id as string) || txnId,
+    polar_webhook_event_id: (row.polar_webhook_event_id as string) || webhookEventId,
     provider_transaction_id: txnId,
     provider_webhook_event_id: webhookEventId,
     customer_email: row.customer_email as string,
@@ -35,8 +37,8 @@ export async function getPayment(bookingReference: string): Promise<PaymentRecor
 
 export async function setPayment(record: PaymentRecord): Promise<void> {
   const db = getDb()
-  const txnId = record.provider_transaction_id || record.paddle_transaction_id
-  const webhookId = record.provider_webhook_event_id || record.paddle_webhook_event_id || null
+  const txnId = record.provider_transaction_id || record.polar_transaction_id || record.paddle_transaction_id || ''
+  const webhookId = record.provider_webhook_event_id || record.polar_webhook_event_id || record.paddle_webhook_event_id || null
 
   await db.execute({
     sql: `INSERT OR REPLACE INTO payments 

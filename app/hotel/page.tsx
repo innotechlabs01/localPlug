@@ -204,7 +204,7 @@ export default function HotelPage() {
               </thead>
               <tbody>
                 {filteredOrders.map((o, idx) => {
-                  const b = ORDER_STATUS[o.status] || { bg: 'rgba(100,100,100,0.12)', fg: '#9ca3af', label: o.status }
+                  const b = ORDER_STATUS[o.status] || { bg: 'rgba(100,100,100,0.12)', fg: 'var(--ui-fg-secondary)', label: o.status }
                   const next = getNextAction(o.status)
                   return (
                     <tr key={o.id} style={{ background: idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)', transition: 'background 200ms' }}
@@ -236,7 +236,7 @@ export default function HotelPage() {
                           )}
                           {(o.status === 'new' || o.status === 'accepted' || o.status === 'pending' || o.status === 'confirmed') && (
                             <button onClick={() => { if (confirm('¿Cancelar esta reserva?')) handleOrderAction(o.id, 'cancel') }} disabled={actionLoading === o.id}
-                              style={{ ...badge('rgba(248,113,113,0.1)', '#f87171'), cursor: 'pointer', border: '1px solid #f87171', fontSize: '11px', padding: '2px 8px', opacity: actionLoading === o.id ? 0.5 : 1 }}>
+                              style={{ ...badge('var(--ui-danger-soft)', 'var(--ui-danger)'), cursor: 'pointer', border: '1px solid var(--ui-danger)', fontSize: '11px', padding: '2px 8px', opacity: actionLoading === o.id ? 0.5 : 1 }}>
                               Cancelar
                             </button>
                           )}

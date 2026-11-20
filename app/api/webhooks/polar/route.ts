@@ -25,7 +25,7 @@ export const POST = Webhooks({
       // Deduplication: skip if this webhook event was already processed
       if (webhookEventId) {
         const existingEvent = await db.execute({
-          sql: `SELECT 1 FROM payments WHERE paddle_webhook_event_id = ? AND status = 'completed' LIMIT 1`,
+          sql: `SELECT 1 FROM payments WHERE polar_webhook_event_id = ? AND status = 'completed' LIMIT 1`,
           args: [webhookEventId],
         })
         if (existingEvent.rows.length > 0) {
@@ -64,7 +64,7 @@ export const POST = Webhooks({
       await db.execute({
         sql: `UPDATE payments SET
           status = 'completed',
-          paddle_webhook_event_id = ?,
+          polar_webhook_event_id = ?,
           updated_at = ?
         WHERE booking_reference = ? AND status = 'pending'`,
         args: [

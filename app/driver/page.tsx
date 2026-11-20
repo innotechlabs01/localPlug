@@ -62,15 +62,15 @@ interface Assignment {
 type Tab = 'pending' | 'active' | 'history'
 
 const STATUS_STYLES: Record<string, { label: string; bg: string; fg: string; border: string }> = {
-  pending: { label: 'Pendiente', bg: 'rgba(250, 204, 21, 0.12)', fg: '#facc15', border: 'rgba(250, 204, 21, 0.25)' },
-  pending_acceptance: { label: 'Pendiente aceptación', bg: 'rgba(250, 204, 21, 0.12)', fg: '#facc15', border: 'rgba(250, 204, 21, 0.25)' },
-  offered: { label: 'Ofrecido', bg: 'rgba(96, 165, 250, 0.12)', fg: '#60a5fa', border: 'rgba(96, 165, 250, 0.25)' },
-  accepted: { label: 'Aceptado', bg: 'rgba(74, 222, 128, 0.12)', fg: '#4ade80', border: 'rgba(74, 222, 128, 0.25)' },
-  confirmed: { label: 'Confirmado', bg: 'rgba(74, 222, 128, 0.12)', fg: '#4ade80', border: 'rgba(74, 222, 128, 0.25)' },
-  completed: { label: 'Completado', bg: 'rgba(100, 100, 100, 0.12)', fg: '#9ca3af', border: 'rgba(100, 100, 100, 0.25)' },
-  cancelled: { label: 'Cancelado', bg: 'rgba(248, 113, 113, 0.12)', fg: '#f87171', border: 'rgba(248, 113, 113, 0.25)' },
-  expired: { label: 'Expirado', bg: 'rgba(248, 113, 113, 0.12)', fg: '#f87171', border: 'rgba(248, 113, 113, 0.25)' },
-  declined: { label: 'Rechazado', bg: 'rgba(248, 113, 113, 0.12)', fg: '#f87171', border: 'rgba(248, 113, 113, 0.25)' },
+  pending: { label: 'Pendiente', bg: 'var(--ui-warning-soft)', fg: 'var(--ui-warning)', border: 'rgba(250, 204, 21, 0.25)' },
+  pending_acceptance: { label: 'Pendiente aceptación', bg: 'var(--ui-warning-soft)', fg: 'var(--ui-warning)', border: 'rgba(250, 204, 21, 0.25)' },
+  offered: { label: 'Ofrecido', bg: 'var(--ui-info-soft)', fg: 'var(--ui-info)', border: 'rgba(96, 165, 250, 0.25)' },
+  accepted: { label: 'Aceptado', bg: 'var(--ui-accent-soft)', fg: 'var(--ui-accent)', border: 'rgba(74, 222, 128, 0.25)' },
+  confirmed: { label: 'Confirmado', bg: 'var(--ui-accent-soft)', fg: 'var(--ui-accent)', border: 'rgba(74, 222, 128, 0.25)' },
+  completed: { label: 'Completado', bg: 'rgba(100, 100, 100, 0.12)', fg: 'var(--ui-fg-secondary)', border: 'rgba(100, 100, 100, 0.25)' },
+  cancelled: { label: 'Cancelado', bg: 'var(--ui-danger-soft)', fg: 'var(--ui-danger)', border: 'rgba(248, 113, 113, 0.25)' },
+  expired: { label: 'Expirado', bg: 'var(--ui-danger-soft)', fg: 'var(--ui-danger)', border: 'rgba(248, 113, 113, 0.25)' },
+  declined: { label: 'Rechazado', bg: 'var(--ui-danger-soft)', fg: 'var(--ui-danger)', border: 'rgba(248, 113, 113, 0.25)' },
 }
 
 export default function DriverPage() {
@@ -230,7 +230,7 @@ export default function DriverPage() {
     return (
       <div style={{ padding: 24 }}>
         <div style={{ maxWidth: 800, margin: '0 auto', textAlign: 'center', padding: '80px 0' }}>
-          <div style={{ fontSize: 18, marginBottom: 16, color: isNotFound ? '#facc15' : '#f87171' }}>
+          <div style={{ fontSize: 18, marginBottom: 16, color: isNotFound ? 'var(--warning)' : 'var(--danger)' }}>
             {isNotFound
               ? 'No se encontró tu perfil de conductor. Contacte al administrador para que te registre.'
               : error}
@@ -240,7 +240,7 @@ export default function DriverPage() {
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 8,
               padding: '10px 20px', borderRadius: 8,
-              background: 'var(--accent-gold)', color: '#000',
+              background: 'var(--accent-gold)', color: 'var(--bg-dark)',
               border: 'none', fontSize: 14, fontWeight: 600,
               cursor: 'pointer',
               transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
@@ -414,7 +414,7 @@ export default function DriverPage() {
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 8,
                   padding: '10px 20px', borderRadius: 8,
-                  background: 'var(--accent-gold)', color: '#000',
+                  background: 'var(--accent-gold)', color: 'var(--bg-dark)',
                   border: 'none', fontSize: 14, fontWeight: 600,
                   cursor: saving ? 'not-allowed' : 'pointer',
                   opacity: saving ? 0.6 : 1,
@@ -560,7 +560,7 @@ export default function DriverPage() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {filteredAssignments.map(a => {
-                  const statusInfo = STATUS_STYLES[a.status] || { label: a.status, bg: 'rgba(100,100,100,0.12)', fg: '#9ca3af', border: 'rgba(100,100,100,0.25)' }
+                  const statusInfo = STATUS_STYLES[a.status] || { label: a.status, bg: 'rgba(100,100,100,0.12)', fg: 'var(--ui-fg-secondary)', border: 'rgba(100,100,100,0.25)' }
                   return (
                     <div
                       key={a.id}
@@ -602,13 +602,13 @@ export default function DriverPage() {
                                 style={{
                                   padding: '5px 12px', borderRadius: 6,
                                   fontSize: 12, fontWeight: 500,
-                                  background: 'var(--accent)', color: '#fff',
+                                  background: 'var(--ui-accent)', color: 'var(--ui-bg)',
                                   border: 'none', cursor: 'pointer',
                                   opacity: actionLoading === a.id ? 0.5 : 1,
                                   transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
                                 }}
-                                onMouseEnter={(e) => { if (actionLoading !== a.id) e.currentTarget.style.background = '#059669' }}
-                                onMouseLeave={(e) => { if (actionLoading !== a.id) e.currentTarget.style.background = 'var(--accent)' }}
+                                onMouseEnter={(e) => { if (actionLoading !== a.id) e.currentTarget.style.background = 'var(--ui-accent)' }}
+                                onMouseLeave={(e) => { if (actionLoading !== a.id) e.currentTarget.style.background = 'var(--ui-accent)' }}
                               >
                                 {actionLoading === a.id ? '...' : 'Aceptar'}
                               </button>
@@ -618,9 +618,9 @@ export default function DriverPage() {
                                 style={{
                                   padding: '5px 12px', borderRadius: 6,
                                   fontSize: 12, fontWeight: 500,
-                                  background: 'var(--danger-soft, rgba(248, 113, 113, 0.12))',
-                                  color: '#f87171',
-                                  border: '1px solid var(--danger-soft, rgba(248, 113, 113, 0.2))',
+                                  background: 'var(--ui-danger-soft)',
+                                  color: 'var(--ui-danger)',
+                                  border: '1px solid var(--ui-danger-soft)',
                                   cursor: 'pointer',
                                   opacity: actionLoading === a.id ? 0.5 : 1,
                                   transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
