@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Webhooks } from '@polar-sh/nextjs'
 import { getDb } from '@/lib/db'
 import { logger } from '@/lib/logger'
-import { triggerPaymentConfirmation } from '@/lib/n8n/client'
 import { processBookingRefund } from '@/lib/payout'
 import { emitEvent } from '@/lib/events-outbox'
 
@@ -179,32 +178,24 @@ const polarHandler = Webhooks({
         totalAmount,
       })
 
-      // Realtime outbox — payment completed.
+      // Decoupled outbox event — payment completed (triggers WhatsApp confirmation + CRM sync asynchronously).
+      const customerName = metadata?.customer_name || ((order.customer as Record<string, unknown>)?.name as string) || ''
+      const customerEmail = metadata?.customer_email || ((order.customer as Record<string, unknown>)?.email as string) || ''
+      const customerPhone = (metadata?.customer_phone as string) || storedPhone || ''
+
       emitEvent('payment.completed', {
         booking_reference: bookingReference,
         amount_usd: Math.round((totalAmount / 100) * 100) / 100,
+        amount_cents: totalAmount,
+        customer_name: customerName,
+        customer_email: customerEmail,
+        customer_phone: customerPhone,
+        package_name: metadata?.package_name || '',
+        flight_number: metadata?.flight_number || '',
+        airline: metadata?.airline || '',
+        arrival_date: metadata?.arrival_date || '',
+        arrival_time: metadata?.arrival_time || '',
       }, { correlationId: bookingReference }).catch(() => {})
-
-      // Send WhatsApp confirmation to customer
-      const customerName = metadata.customer_name || ((order.customer as Record<string, unknown>)?.name as string) || ''
-      const customerEmail = metadata.customer_email || ((order.customer as Record<string, unknown>)?.email as string) || ''
-      const customerPhone = metadata.customer_phone as string || ''
-      const packageName = metadata.package_name || ''
-
-      if (customerPhone) {
-        triggerPaymentConfirmation({
-          bookingReference,
-          customerName,
-          customerEmail,
-          customerPhone,
-          packageName,
-          amount: totalAmount,
-          flightNumber: metadata.flight_number || '',
-          airline: metadata.airline || '',
-          arrivalDate: metadata.arrival_date || '',
-          arrivalTime: metadata.arrival_time || '',
-        }).catch(err => logger.error('[Polar Webhook] WhatsApp notification failed', err instanceof Error ? err : undefined))
-      }
     } catch (err) {
       logger.error('[Polar Webhook] order.paid failed', err instanceof Error ? err : undefined)
     }

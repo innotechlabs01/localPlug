@@ -1,5 +1,7 @@
 import { getDb } from '@/lib/db'
 import { registerOutboxConsumer, runIdempotentConsumer } from '@/lib/events-outbox'
+import { sendOrQueueWhatsApp, triggerPaymentConfirmation } from '@/lib/n8n/client'
+import { sendEmail } from '@/lib/email'
 
 let _registered = false
 
@@ -30,6 +32,79 @@ export function registerDefaultOutboxConsumers(): void {
         ],
       }).catch(() => {})
     })
+
+    // 1b. Decoupled WhatsApp & Email confirmation for booking.created
+    await runIdempotentConsumer(event.id, 'booking-created-notifications', async () => {
+      const p = event.payload
+      const customerName = String(p.customer_name || '')
+      const customerEmail = String(p.customer_email || '')
+      const customerPhone = String(p.customer_phone || '')
+      const orderNumber = String(p.order_number || '')
+      const bookingRef = String(p.booking_reference || '')
+      const packageName = String(p.package_name || '')
+      const packagePrice = Number(p.package_price || 0)
+      const arrivalDate = String(p.arrival_date || '-')
+      const arrivalTime = String(p.arrival_time || '')
+      const flightNumber = String(p.flight_number || '-')
+      const destAddress = String(p.destination_address || '-')
+      const lang = String(p.customer_language || 'es').toLowerCase()
+
+      const msgEs = `Hola ${customerName}! Reserva ${orderNumber} creada.\nPaquete: ${packageName}\nLlegada: ${arrivalDate} ${arrivalTime}\nVuelo: ${flightNumber}\nDestino: ${destAddress}\nPrecio: ${packagePrice.toFixed(2)} USD\nRef: ${bookingRef}\nVer: https://www.medellinpremium.com/mis-reservas\nTe contactamos para confirmar pago.`
+      const msgEn = `Hi ${customerName}! Booking ${orderNumber} created.\nPackage: ${packageName}\nArrival: ${arrivalDate} ${arrivalTime}\nFlight: ${flightNumber}\nDestination: ${destAddress}\nPrice: ${packagePrice.toFixed(2)} USD\nRef: ${bookingRef}\nView: https://www.medellinpremium.com/mis-reservas\nWe'll contact you to confirm payment.`
+
+      if (customerPhone && customerName) {
+        await sendOrQueueWhatsApp({
+          number: customerPhone,
+          message: lang.startsWith('en') ? msgEn : msgEs,
+        }).catch((err) => {
+          console.error('[EventConsumer:booking.created] WhatsApp failed:', err)
+        })
+      }
+
+      if (customerEmail) {
+        const subjectEs = `Confirmación de reserva ${orderNumber} - Medellín Premium`
+        const subjectEn = `Booking confirmation ${orderNumber} - Medellín Premium`
+        const htmlEs = `
+          <h2>¡Reserva creada con éxito!</h2>
+          <p>Hola <strong>${customerName}</strong>,</p>
+          <p>Tu reserva ha sido registrada en Medellín Premium.</p>
+          <ul>
+            <li><strong>Referencia:</strong> ${bookingRef} (${orderNumber})</li>
+            <li><strong>Paquete:</strong> ${packageName}</li>
+            <li><strong>Llegada:</strong> ${arrivalDate} ${arrivalTime}</li>
+            <li><strong>Vuelo:</strong> ${flightNumber}</li>
+            <li><strong>Destino:</strong> ${destAddress}</li>
+            <li><strong>Precio:</strong> ${packagePrice.toFixed(2)} USD</li>
+          </ul>
+          <p>Te contactaremos por WhatsApp para confirmar el pago y los detalles de tu llegada.</p>
+          <p><a href="https://www.medellinpremium.com/mis-reservas">Ver mis reservas</a></p>
+        `
+        const htmlEn = `
+          <h2>Booking created successfully!</h2>
+          <p>Hi <strong>${customerName}</strong>,</p>
+          <p>Your booking has been registered with Medellín Premium.</p>
+          <ul>
+            <li><strong>Reference:</strong> ${bookingRef} (${orderNumber})</li>
+            <li><strong>Package:</strong> ${packageName}</li>
+            <li><strong>Arrival:</strong> ${arrivalDate} ${arrivalTime}</li>
+            <li><strong>Flight:</strong> ${flightNumber}</li>
+            <li><strong>Destination:</strong> ${destAddress}</li>
+            <li><strong>Price:</strong> ${packagePrice.toFixed(2)} USD</li>
+          </ul>
+          <p>We will contact you via WhatsApp to confirm payment and arrival details.</p>
+          <p><a href="https://www.medellinpremium.com/mis-reservas">View my bookings</a></p>
+        `
+        await sendEmail({
+          to: customerEmail,
+          subject: lang.startsWith('en') ? subjectEn : subjectEs,
+          html: lang.startsWith('en') ? htmlEn : htmlEs,
+          text: lang.startsWith('en') ? msgEn : msgEs,
+          bookingReference: bookingRef,
+        }).catch((err) => {
+          console.error('[EventConsumer:booking.created] Email failed:', err)
+        })
+      }
+    })
   })
 
   // 2. Customer lifetime value update on payment completed
@@ -55,6 +130,61 @@ export function registerDefaultOutboxConsumers(): void {
                 updated_at = datetime('now')`,
         args: [String(order.customer_name || 'Guest'), email, order.customer_phone || null, amountUsd],
       }).catch(() => {})
+    })
+
+    // 2b. Decoupled WhatsApp payment confirmation
+    await runIdempotentConsumer(event.id, 'payment-completed-notifications', async () => {
+      const p = event.payload
+      const bookingReference = typeof p.booking_reference === 'string' ? p.booking_reference : ''
+      if (!bookingReference) return
+
+      let customerName = String(p.customer_name || '')
+      let customerEmail = String(p.customer_email || '')
+      let customerPhone = String(p.customer_phone || '')
+      let packageName = String(p.package_name || '')
+      let amountCents = Number(p.amount_cents || Math.round(Number(p.amount_usd || 0) * 100))
+      let flightNumber = String(p.flight_number || '')
+      let airline = String(p.airline || '')
+      let arrivalDate = String(p.arrival_date || '')
+      let arrivalTime = String(p.arrival_time || '')
+
+      if (!customerPhone) {
+        const db = getDb()
+        const orderRes = await db.execute({
+          sql: `SELECT customer_name, customer_email, customer_phone, package_name, package_price, flight_number, airline, arrival_date, arrival_time
+                FROM orders WHERE booking_reference = ? LIMIT 1`,
+          args: [bookingReference],
+        })
+        const row = orderRes.rows[0] as any
+        if (row) {
+          customerName = customerName || String(row.customer_name || '')
+          customerEmail = customerEmail || String(row.customer_email || '')
+          customerPhone = String(row.customer_phone || '')
+          packageName = packageName || String(row.package_name || '')
+          if (!amountCents && row.package_price) amountCents = Math.round(Number(row.package_price) * 100)
+          flightNumber = flightNumber || String(row.flight_number || '')
+          airline = airline || String(row.airline || '')
+          arrivalDate = arrivalDate || String(row.arrival_date || '')
+          arrivalTime = arrivalTime || String(row.arrival_time || '')
+        }
+      }
+
+      if (customerPhone) {
+        await triggerPaymentConfirmation({
+          bookingReference,
+          customerName,
+          customerEmail,
+          customerPhone,
+          packageName,
+          amount: amountCents,
+          flightNumber,
+          airline,
+          arrivalDate,
+          arrivalTime,
+        }).catch((err) => {
+          console.error('[EventConsumer:payment.completed] WhatsApp failed:', err)
+        })
+      }
     })
   })
 
