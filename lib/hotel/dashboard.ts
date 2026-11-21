@@ -82,7 +82,8 @@ export async function getHotelDashboardMetrics(hotelId: number): Promise<HotelDa
             COALESCE(SUM(CASE WHEN status = 'completed' THEN package_price ELSE 0 END), 0) AS completed_revenue
           FROM orders
           WHERE hotel_id = ?
-            AND payment_status IN ('paid', 'completed')`,
+            AND payment_status IN ('paid', 'completed')
+            AND (status IS NULL OR status != 'cancelled')`,
     args: [hotelId],
   })
 

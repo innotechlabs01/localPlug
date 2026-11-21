@@ -30,30 +30,47 @@ async function syncCustomersFromOrders(db: any) {
 
   const orders = await db.execute(`
     SELECT 
-      customer_email, customer_name, customer_phone, customer_country,
-      package_price, status, created_at
+      LOWER(customer_email) as email,
+      customer_name as name,
+      customer_phone as phone,
+      customer_country as country,
+      COUNT(CASE WHEN status != 'cancelled' THEN 1 END) as trips,
+      COALESCE(SUM(CASE WHEN status != 'cancelled' THEN package_price ELSE 0 END), 0) as ltv,
+      MAX(CASE WHEN status != 'cancelled' THEN created_at END) as last_trip,
+      MIN(CASE WHEN status != 'cancelled' THEN created_at END) as first_trip,
+      MIN(created_at) as created_at
     FROM orders 
     WHERE customer_email IS NOT NULL AND customer_email != ''
-    GROUP BY customer_email
+    GROUP BY LOWER(customer_email)
     ORDER BY MIN(created_at) ASC
   `)
 
-  for (const row of (orders.rows || [])) {
-    const tripStats = await db.execute({
-      sql: `SELECT COUNT(*) as trips, SUM(package_price) as ltv, MAX(created_at) as last_trip, MIN(created_at) as first_trip
-            FROM orders WHERE customer_email = ? AND status != 'cancelled'`,
-      args: [row.customer_email],
-    })
-    const s = tripStats.rows?.[0] || {}
-    await db.execute({
-      sql: `INSERT OR IGNORE INTO customers (email, name, phone, country, languages, total_trips, lifetime_value, last_trip_date, first_trip_date, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')), datetime('now'))`,
-      args: [
-        row.customer_email, row.customer_name, row.customer_phone || '', row.customer_country || '',
-        '', s.trips || 0, s.ltv || 0,
-        s.last_trip || null, s.first_trip || null, row.created_at,
-      ],
-    })
+  const rows = orders.rows || []
+  if (rows.length === 0) return
+
+  const statements = rows.map((row: any) => ({
+    sql: `INSERT OR IGNORE INTO customers (email, name, phone, country, languages, total_trips, lifetime_value, last_trip_date, first_trip_date, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')), datetime('now'))`,
+    args: [
+      row.email,
+      row.name || 'Unknown',
+      row.phone || '',
+      row.country || '',
+      '',
+      Number(row.trips) || 0,
+      Number(row.ltv) || 0,
+      row.last_trip || null,
+      row.first_trip || null,
+      row.created_at,
+    ],
+  }))
+
+  if (typeof db.batch === 'function') {
+    await db.batch(statements)
+  } else {
+    for (const stmt of statements) {
+      await db.execute(stmt)
+    }
   }
 }
 

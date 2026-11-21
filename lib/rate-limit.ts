@@ -299,7 +299,7 @@ export async function checkRateLimit(
 
   const key = userId ? `rate:user:${userId}` : `rate:ip:${ip}`
 
-  if (_redisClient && !_redisFailed) {
+  if (_redisClient) {
     const count = await redisIncr(key, _windowMs)
     if (count >= 0) {
       const remaining = maxReqs - count
@@ -371,8 +371,6 @@ export async function rateLimitMiddleware(
     )
   }
 
-  const response = new Response(null, { status: 204 })
-  response.headers.set('X-RateLimit-Remaining', String(result.remaining))
   return null
 }
 

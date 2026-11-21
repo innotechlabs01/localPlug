@@ -158,7 +158,7 @@ export async function accrueHotelPayout(orderId: number, hotelId: number): Promi
   const price = Number(row?.package_price) || 0
   const rate = Number(row?.rate) || 0
   if (!bookingReference || price <= 0 || rate <= 0) return
-  const amount = Math.round(price * rate * 100) / 100
+  const amount = Math.round((price * rate / (1 + rate)) * 100) / 100
 
   await db.execute({
     sql: `INSERT OR IGNORE INTO payout_ledger
@@ -396,37 +396,133 @@ export async function processBookingRefund(args: {
     }
   }
 
-  await db.execute({
-    sql: `UPDATE payments SET status = 'refunded', updated_at = datetime('now')
-          WHERE booking_reference = ? AND status = 'completed'`,
+  const linesRes = await db.execute({
+    sql: `SELECT id, payee_type, payee_id, amount_usd, status, settlement_period, category_snapshot
+          FROM payout_ledger
+          WHERE booking_reference = ? AND status != 'written_off'`,
     args: [args.bookingReference],
   })
+  const lines = (linesRes.rows || []) as unknown as Array<{
+    id: number
+    payee_type: string
+    payee_id: number
+    amount_usd: number
+    status: string
+    settlement_period: string
+    category_snapshot: string | null
+  }>
 
-  const lines = await db.execute({
-    sql: `SELECT COUNT(*) AS c FROM payout_ledger WHERE booking_reference = ? AND status != 'written_off'`,
-    args: [args.bookingReference],
-  })
-  const reached = Number(lines.rows[0]?.c || 0) > 0
+  const stmts: Parameters<typeof db.batch>[0] = [
+    {
+      sql: `UPDATE payments SET status = 'refunded', updated_at = datetime('now')
+            WHERE booking_reference = ? AND status = 'completed'`,
+      args: [args.bookingReference],
+    },
+  ]
 
-  if (reached) {
-    await db.execute({
-      sql: `UPDATE payout_ledger SET status = 'written_off', writeoff_reason = ?, updated_at = datetime('now')
-            WHERE booking_reference = ? AND status IN ('available', 'requested')`,
-      args: [args.reason || 'refund/dispute after milestone', args.bookingReference],
-    })
-    await db.execute({
+  if (lines.length > 0) {
+    const hasOpenLines = lines.some(l => l.status === 'available' || l.status === 'requested')
+    if (hasOpenLines) {
+      stmts.push({
+        sql: `UPDATE payout_ledger SET status = 'written_off', writeoff_reason = ?, updated_at = datetime('now')
+              WHERE booking_reference = ? AND status IN ('available', 'requested')`,
+        args: [args.reason || 'refund/dispute after milestone', args.bookingReference],
+      })
+    }
+
+    // Recalculate or cancel affected payout_requests when 'requested' lines are written off
+    const requestedGroups = new Map<string, { payee_type: string; payee_id: number; period: string; sum: number }>()
+    for (const line of lines) {
+      if (line.status !== 'requested') continue
+      const key = `${line.payee_type}:${line.payee_id}:${line.settlement_period}`
+      const existingGroup = requestedGroups.get(key)
+      if (existingGroup) {
+        existingGroup.sum += Number(line.amount_usd || 0)
+      } else {
+        requestedGroups.set(key, {
+          payee_type: line.payee_type,
+          payee_id: Number(line.payee_id),
+          period: line.settlement_period,
+          sum: Number(line.amount_usd || 0),
+        })
+      }
+    }
+
+    for (const group of requestedGroups.values()) {
+      const reqRes = await db.execute({
+        sql: `SELECT id, amount_usd FROM payout_requests
+              WHERE payee_type = ? AND payee_id = ? AND period = ? AND status = 'requested'
+              LIMIT 1`,
+        args: [group.payee_type, group.payee_id, group.period],
+      })
+      const reqRow = reqRes.rows[0]
+      if (reqRow) {
+        const reqId = Number(reqRow.id)
+        const remaining = Math.round((Number(reqRow.amount_usd || 0) - group.sum) * 100) / 100
+        if (remaining <= 0) {
+          stmts.push({
+            sql: `UPDATE payout_requests SET amount_usd = 0, status = 'cancelled', updated_at = datetime('now')
+                  WHERE id = ? AND status = 'requested'`,
+            args: [reqId],
+          })
+        } else {
+          stmts.push({
+            sql: `UPDATE payout_requests SET amount_usd = ?, updated_at = datetime('now')
+                  WHERE id = ? AND status = 'requested'`,
+            args: [remaining, reqId],
+          })
+        }
+      }
+    }
+
+    // Create negative clawback adjustment in payout_ledger for lines already 'paid'
+    const now = new Date()
+    for (const line of lines) {
+      if (line.status !== 'paid') continue
+      const clawbackAmount = -Math.abs(Math.round(Number(line.amount_usd || 0) * 100) / 100)
+      if (clawbackAmount === 0) continue
+      const period = line.payee_type === 'driver' ? weeklyPeriod(now) : monthlyPeriod(now)
+      stmts.push({
+        sql: `INSERT OR IGNORE INTO payout_ledger
+              (booking_reference, payee_type, payee_id, amount_usd, status, earned_at, settlement_period, category_snapshot, writeoff_reason)
+              VALUES (?, ?, ?, ?, 'available', datetime('now'), ?, ?, ?)`,
+        args: [
+          `${args.bookingReference}:clawback`,
+          line.payee_type,
+          Number(line.payee_id),
+          clawbackAmount,
+          period,
+          line.category_snapshot || null,
+          args.reason || 'clawback: refund/dispute after payout',
+        ],
+      })
+    }
+
+    stmts.push({
       sql: `INSERT INTO refunds_disputes (booking_reference, provider_event_id, type, amount_usd, status, resolution, reason)
             VALUES (?, ?, 'refund', ?, 'resolved', 'write_off', ?)`,
       args: [args.bookingReference, args.providerEventId, args.amountUsd, args.reason || null],
     })
+
+    if (typeof db.batch === 'function') {
+      await db.batch(stmts)
+    } else {
+      for (const stmt of stmts) await db.execute(stmt)
+    }
     return { resolution: 'write_off', duplicate: false }
   }
 
-  await db.execute({
+  stmts.push({
     sql: `INSERT INTO refunds_disputes (booking_reference, provider_event_id, type, amount_usd, status, resolution, reason)
           VALUES (?, ?, 'refund', ?, 'resolved', 'pre_milestone', ?)`,
     args: [args.bookingReference, args.providerEventId, args.amountUsd, args.reason || null],
   })
+
+  if (typeof db.batch === 'function') {
+    await db.batch(stmts)
+  } else {
+    for (const stmt of stmts) await db.execute(stmt)
+  }
   return { resolution: 'pre_milestone', duplicate: false }
 }
 // ─── Statement (state of account) per period ────────────────────────────────

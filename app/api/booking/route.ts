@@ -280,17 +280,50 @@ export async function POST(request: Request) {
         const pricePerNight = Number(roomPriceResult.rows[0]?.price_per_night) || 0
         const totalAmount = pricePerNight * numNights
 
-        await db.batch([
+        const batchRes = await db.batch([
           {
             sql: `INSERT INTO room_bookings (order_id, room_id, hotel_id, check_in, check_out, nights, price_per_night, total_amount, guest_name, guest_email, status)
-                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed')`,
-            args: [orderId, roomId, hotelId, checkIn, checkOut, numNights, pricePerNight, totalAmount, customer.name || '', customer.email || ''],
+                  SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmed'
+                  WHERE NOT EXISTS (
+                    SELECT 1 FROM room_bookings
+                    WHERE room_id = ? AND status IN ('confirmed', 'checked_in')
+                      AND check_in < ? AND check_out > ?
+                  )`,
+            args: [
+              orderId,
+              roomId,
+              hotelId,
+              checkIn,
+              checkOut,
+              numNights,
+              pricePerNight,
+              totalAmount,
+              customer.name || '',
+              customer.email || '',
+              roomId,
+              checkOut,
+              checkIn,
+            ],
           },
           {
             sql: `UPDATE rooms SET status = 'occupied', available_from = ?, current_order_id = ?, updated_at = datetime('now') WHERE id = ? AND status = 'available'`,
             args: [checkOut, orderId, roomId],
           },
         ])
+
+        const bookingAffected = Number(batchRes[0]?.rowsAffected ?? 0)
+        const roomAffected = Number(batchRes[1]?.rowsAffected ?? 0)
+        if (bookingAffected === 0 || roomAffected === 0) {
+          await db.batch([
+            { sql: `DELETE FROM room_bookings WHERE order_id = ?`, args: [orderId] },
+            { sql: `DELETE FROM events_outbox WHERE correlation_id = ?`, args: [bookingRef] },
+            { sql: `DELETE FROM orders WHERE id = ?`, args: [orderId] },
+          ])
+          return NextResponse.json(
+            { status: 'error', message: 'La habitación ya no está disponible para esas fechas.' },
+            { status: 409 },
+          )
+        }
       }
     }
 

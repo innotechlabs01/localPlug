@@ -90,7 +90,7 @@ export async function GET(req: Request) {
     })
   } catch (err) {
     console.error('[dispatch GET]', err)
-    return NextResponse.json({ error: 'Internal server error', detail: String(err) }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
@@ -261,22 +261,27 @@ export async function PUT(req: Request) {
     }
 
     const driverId = order.rows[0].assigned_to as number | null
+    const stmts: Parameters<typeof db.batch>[0] = [
+      {
+        sql: `UPDATE orders SET assigned_to = NULL, dispatch_status = 'pending', assigned_at = NULL, updated_at = datetime('now') WHERE id = ?`,
+        args: [orderId],
+      },
+      {
+        sql: "UPDATE assignments SET status = 'cancelled', cancelled_at = datetime('now'), block_until = NULL, updated_at = datetime('now') WHERE order_id = ? AND status IN ('pending_acceptance', 'accepted')",
+        args: [orderId],
+      },
+    ]
     if (driverId) {
-      await db.execute({
+      stmts.unshift({
         sql: `UPDATE drivers SET status = 'available', updated_at = datetime('now') WHERE id = ?`,
         args: [driverId],
       })
     }
-
-    await db.execute({
-      sql: `UPDATE orders SET assigned_to = NULL, dispatch_status = 'pending', assigned_at = NULL, updated_at = datetime('now') WHERE id = ?`,
-      args: [orderId],
-    })
-
-    await db.execute({
-      sql: "UPDATE assignments SET status = 'cancelled', cancelled_at = datetime('now'), block_until = NULL, updated_at = datetime('now') WHERE order_id = ? AND status IN ('pending_acceptance', 'accepted')",
-      args: [orderId],
-    })
+    if (typeof db.batch === 'function') {
+      await db.batch(stmts)
+    } else {
+      for (const stmt of stmts) await db.execute(stmt)
+    }
 
     return NextResponse.json({ success: true, action: 'unassigned' })
   }
@@ -300,26 +305,35 @@ export async function PUT(req: Request) {
       const roomId = orderRow.rows[0]?.room_id as number | null
       const isHotelBooking = Number(orderRow.rows[0]?.is_hotel_booking) === 1
 
-      await db.execute({
-        sql: `UPDATE orders SET status = 'cancelled', dispatch_status = 'cancelled', updated_at = datetime('now') WHERE id = ?`,
-        args: [orderId],
-      })
+      const stmts: Parameters<typeof db.batch>[0] = [
+        {
+          sql: `UPDATE orders SET status = 'cancelled', dispatch_status = 'cancelled', updated_at = datetime('now') WHERE id = ?`,
+          args: [orderId],
+        },
+        {
+          sql: "UPDATE assignments SET status = 'cancelled', cancelled_at = datetime('now'), block_until = NULL, updated_at = datetime('now') WHERE order_id = ? AND status IN ('pending_acceptance', 'accepted', 'confirmed_to_client', 'en_route')",
+          args: [orderId],
+        },
+      ]
 
       if (isHotelBooking && roomId) {
-        await db.execute({
-          sql: `UPDATE rooms SET status = 'available', available_from = datetime('now'), current_order_id = NULL, updated_at = datetime('now') WHERE id = ?`,
-          args: [roomId],
-        })
-        await db.execute({
-          sql: `UPDATE room_bookings SET status = 'cancelled', updated_at = datetime('now') WHERE order_id = ?`,
-          args: [orderId],
-        })
+        stmts.push(
+          {
+            sql: `UPDATE rooms SET status = 'available', available_from = datetime('now'), current_order_id = NULL, updated_at = datetime('now') WHERE id = ?`,
+            args: [roomId],
+          },
+          {
+            sql: `UPDATE room_bookings SET status = 'cancelled', updated_at = datetime('now') WHERE order_id = ?`,
+            args: [orderId],
+          },
+        )
       }
 
-      await db.execute({
-        sql: "UPDATE assignments SET status = 'cancelled', cancelled_at = datetime('now'), block_until = NULL, updated_at = datetime('now') WHERE order_id = ? AND status IN ('pending_acceptance', 'accepted', 'confirmed_to_client', 'en_route')",
-        args: [orderId],
-      })
+      if (typeof db.batch === 'function') {
+        await db.batch(stmts)
+      } else {
+        for (const stmt of stmts) await db.execute(stmt)
+      }
 
       return NextResponse.json({ success: true, action: 'status_updated', newStatus: status })
     }
@@ -360,6 +374,6 @@ export async function PUT(req: Request) {
   return NextResponse.json({ error: 'Unknown action. Use: assign, unassign, status' }, { status: 400 })
   } catch (err) {
     console.error('[dispatch PUT]', err)
-    return NextResponse.json({ error: 'Internal server error', detail: String(err) }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
