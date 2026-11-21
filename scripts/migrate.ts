@@ -62,16 +62,49 @@ async function applyMigration(filePath: string): Promise<boolean> {
   return true
 }
 
+async function ensureMigrationsTable() {
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS _migrations (
+      filename TEXT PRIMARY KEY,
+      applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `)
+}
+
+async function getAppliedMigrations(): Promise<Set<string>> {
+  await ensureMigrationsTable()
+  const res = await db.execute('SELECT filename FROM _migrations')
+  return new Set(res.rows.map(r => String(r.filename)))
+}
+
 async function main() {
-  const mode = process.argv[2] || 'apply'
+  const args = process.argv.slice(2)
+  const mode = args.find(a => !a.startsWith('--')) || 'apply'
+  const fromArg = args.find(a => a.startsWith('--from='))?.split('=')[1]
+  const onlyArg = args.find(a => a.startsWith('--only='))?.split('=')[1]
+  const toArg = args.find(a => a.startsWith('--to='))?.split('=')[1]
 
   if (mode === 'status') {
-    // Show available migrations
-    const files = await getMigrationFiles()
-    console.log('Available migrations:')
+    const [files, applied] = await Promise.all([getMigrationFiles(), getAppliedMigrations()])
+    console.log('Migrations status:')
     for (const f of files) {
-      console.log(`  ${f}`)
+      console.log(`  [${applied.has(f) ? '✓' : ' '}] ${f}`)
     }
+    await db.close()
+    return
+  }
+
+  if (mode === 'baseline') {
+    const files = await getMigrationFiles()
+    await ensureMigrationsTable()
+    let count = 0
+    for (const f of files) {
+      if (toArg && f.localeCompare(toArg) > 0 && !f.startsWith(toArg)) continue
+      await db.execute({ sql: 'INSERT OR IGNORE INTO _migrations (filename) VALUES (?)', args: [f] })
+      count++
+    }
+    console.log(`✓ Marked ${count} migrations as baseline in _migrations`)
+    await db.close()
     return
   }
 
@@ -142,13 +175,21 @@ async function main() {
     return
   }
 
-  // Default: apply all migrations
-  const files = await getMigrationFiles()
-  console.log(`Found ${files.length} migrations`)
+  // Default: apply only pending migrations (unless --only or --from is specified)
+  const [files, applied] = await Promise.all([getMigrationFiles(), getAppliedMigrations()])
+  const pending = files.filter(f => {
+    if (onlyArg) return f.startsWith(onlyArg) || f === onlyArg
+    if (applied.has(f)) return false
+    if (fromArg && f < fromArg) return false
+    return true
+  })
 
-  for (const file of files) {
+  console.log(`Found ${files.length} migrations (${applied.size} already applied, ${pending.length} pending)`)
+
+  for (const file of pending) {
     console.log(`Applying ${file}...`)
     await applyMigration(join(MIGRATIONS_DIR, file))
+    await db.execute({ sql: 'INSERT OR IGNORE INTO _migrations (filename) VALUES (?)', args: [file] })
     console.log(`✓ ${file}`)
   }
 
