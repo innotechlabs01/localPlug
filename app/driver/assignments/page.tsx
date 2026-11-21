@@ -123,13 +123,17 @@ export default function DriverAssignmentsPage() {
     if (!completingId) return
     setActionLoading(completingId)
     try {
-      let url: string | null = null
+      let url: string | null = proofUrl
       if (parkingAnswer === 'yes') {
-        if (!proofFile) {
+        if (!proofFile && !proofUrl) {
           showToast('Debe cargar la foto del parqueadero')
           return
         }
         if (!proofUrl) {
+          if (!proofFile) {
+            showToast('Debe cargar la foto del parqueadero')
+            return
+          }
           setUploadingProof(true)
           const form = new FormData()
           form.append('file', proofFile)

@@ -179,6 +179,10 @@ function BookingFormInner() {
             !!flightData.arrivalDate &&
             !!flightData.arrivalTime
           if (!fieldsFilled) return false
+          if (flightData.needReturn) {
+            if (!flightData.returnDate || !flightData.returnTime) return false
+            if (flightData.returnDate < flightData.arrivalDate) return false
+          }
           const today = new Date()
           const target = new Date(today.getFullYear(), today.getMonth(), today.getDate())
           target.setDate(target.getDate() + (bookingConfig?.advanceBookingDays ?? CONFIG_DEFAULTS.advanceBookingDays))
@@ -191,7 +195,7 @@ function BookingFormInner() {
           if (destination.hasPlace) {
             return !!destination.address.trim()
           }
-          return true
+          return !!destination.selectedHotelId && !!destination.selectedRoomId
          case 3:
           // Must select a package and specify at least 1 traveler.
           return !!selectedPackage && (destination.numPeople && destination.numPeople >= 1)
@@ -489,6 +493,7 @@ function BookingFormInner() {
                     flightData={flightData}
                     destinationAddress={destination.address}
                     needReturn={flightData.needReturn}
+                    travelerProfile={profile}
                     onPaymentSuccess={handlePaymentSuccess}
                     onPaymentError={(message) => {
                       showToast({ type: 'error', message })

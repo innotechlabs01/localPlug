@@ -9,7 +9,7 @@ import { RealtimeProvider, useRealtime } from '@/lib/admin/realtime-context'
 import { InactivityGuard } from '@/app/admin/components/InactivityGuard'
 import { ToastProvider, useToast } from '@/lib/admin/toast-context'
 import { DateFilterProvider, useDateFilter } from '@/lib/admin/date-filter-context'
-import '@/admin/ui.css'
+import './ui.css'
 
 interface NavItem {
   labelKey?: string
@@ -41,7 +41,6 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
             <circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
           </svg>
         ),
-        badge: '0',
       },
     ],
   },
@@ -95,7 +94,6 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
           </svg>
         ),
-        badge: '3',
       },
       {
         label: 'Auditoría',
@@ -510,9 +508,16 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
                   >
                     {item.icon}
                     <span>{item.label || (t.admin.nav[item.labelKey as keyof typeof t.admin.nav] as string)}</span>
-                    {item.badge !== undefined && (
-                      <span className="admin-nav-badge">{item.href === '/admin/dispatch' ? stats.pending_dispatch : item.href === '/admin/ia-chat' ? stats.pending_user_reply : item.badge}</span>
-                    )}
+                    {(() => {
+                      const dynamicBadge = item.href === '/admin/dispatch'
+                        ? (stats.pending_dispatch > 0 ? stats.pending_dispatch : null)
+                        : item.href === '/admin/ia-chat'
+                        ? (stats.pending_user_reply > 0 ? stats.pending_user_reply : null)
+                        : (item.badge && item.badge !== '0' ? item.badge : null)
+                      return dynamicBadge != null ? (
+                        <span className="admin-nav-badge">{dynamicBadge}</span>
+                      ) : null
+                    })()}
                   </Link>
                 )
               })}

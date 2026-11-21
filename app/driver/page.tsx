@@ -67,6 +67,9 @@ const STATUS_STYLES: Record<string, { label: string; bg: string; fg: string; bor
   offered: { label: 'Ofrecido', bg: 'var(--ui-info-soft)', fg: 'var(--ui-info)', border: 'rgba(96, 165, 250, 0.25)' },
   accepted: { label: 'Aceptado', bg: 'var(--ui-accent-soft)', fg: 'var(--ui-accent)', border: 'rgba(74, 222, 128, 0.25)' },
   confirmed: { label: 'Confirmado', bg: 'var(--ui-accent-soft)', fg: 'var(--ui-accent)', border: 'rgba(74, 222, 128, 0.25)' },
+  confirmed_to_client: { label: 'Confirmada', bg: 'var(--ui-accent-soft)', fg: 'var(--ui-accent)', border: 'rgba(74, 222, 128, 0.25)' },
+  en_route: { label: 'En camino', bg: 'var(--ui-info-soft)', fg: 'var(--ui-info)', border: 'rgba(96, 165, 250, 0.25)' },
+  in_progress: { label: 'En progreso', bg: 'var(--ui-accent-soft)', fg: 'var(--ui-accent)', border: 'rgba(74, 222, 128, 0.25)' },
   completed: { label: 'Completado', bg: 'rgba(100, 100, 100, 0.12)', fg: 'var(--ui-fg-secondary)', border: 'rgba(100, 100, 100, 0.25)' },
   cancelled: { label: 'Cancelado', bg: 'var(--ui-danger-soft)', fg: 'var(--ui-danger)', border: 'rgba(248, 113, 113, 0.25)' },
   expired: { label: 'Expirado', bg: 'var(--ui-danger-soft)', fg: 'var(--ui-danger)', border: 'rgba(248, 113, 113, 0.25)' },
@@ -182,7 +185,11 @@ export default function DriverPage() {
       const endpoint = action === 'accept'
         ? `/api/assignments/${assignmentId}/accept`
         : `/api/assignments/${assignmentId}/decline`
-      await fetch(endpoint, { method: 'POST' })
+      const res = await fetch(endpoint, { method: 'POST' })
+      if (!res.ok) {
+        console.error(`Failed to ${action}`)
+        return
+      }
       await fetchAssignments()
       fetchMetrics()
     } catch (err) {
@@ -194,13 +201,13 @@ export default function DriverPage() {
 
   const filteredAssignments = assignments.filter(a => {
     if (activeTab === 'pending') return ['pending_acceptance', 'offered'].includes(a.status)
-    if (activeTab === 'active') return ['accepted', 'confirmed'].includes(a.status)
+    if (activeTab === 'active') return ['accepted', 'confirmed', 'confirmed_to_client', 'en_route', 'in_progress'].includes(a.status)
     return ['declined', 'completed', 'cancelled', 'expired'].includes(a.status)
   })
 
   const tabCounts = {
     pending: assignments.filter(a => ['pending_acceptance', 'offered'].includes(a.status)).length,
-    active: assignments.filter(a => ['accepted', 'confirmed'].includes(a.status)).length,
+    active: assignments.filter(a => ['accepted', 'confirmed', 'confirmed_to_client', 'en_route', 'in_progress'].includes(a.status)).length,
     history: assignments.filter(a => ['declined', 'completed', 'cancelled', 'expired'].includes(a.status)).length,
   }
 

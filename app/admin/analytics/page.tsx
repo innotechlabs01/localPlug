@@ -10,14 +10,14 @@ interface AnalyticsResponse {
     totalRevenue: number
     totalBookings: number
     avgBookingValue: number
-    cac: number
-    ltv: number
+    cac: number | null
+    ltv: number | null
     conversionRate: string
     revenueGrowth: string
     bookingGrowth: string
     avgGrowth: string
-    cacChange: string
-    ltvGrowth: string
+    cacChange: string | null
+    ltvGrowth: string | null
     conversionGrowth: string
     uniqueCustomers: number
     totalPayments: number
@@ -262,12 +262,12 @@ export default function AnalyticsPage() {
               </div>
             </div>
             <div className="kpi-label text-[11px] font-medium text-[var(--fg-secondary)] mb-0.5">{d.customerAcqCost || 'Customer Acq. Cost'}</div>
-            <div className="kpi-value text-[24px] font-bold text-[var(--fg)] leading-[1.1]">{formatCurrency(kpis?.cac || 0)}</div>
+            <div className="kpi-value text-[24px] font-bold text-[var(--fg)] leading-[1.1]">{kpis?.cac != null ? formatCurrency(kpis.cac) : '—'}</div>
             <div className="kpi-sub down flex items-center gap-1 mt-1.5 text-[12px] font-medium text-[var(--danger)]">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="6 9 12 15 18 9" />
               </svg>
-              {kpis?.cacChange || '0'}%
+              {kpis?.cacChange != null ? `${kpis.cacChange}%` : '—'}
             </div>
           </div>
 
@@ -282,12 +282,12 @@ export default function AnalyticsPage() {
               </div>
             </div>
             <div className="kpi-label text-[11px] font-medium text-[var(--fg-secondary)] mb-0.5">{d.customerLTV || 'Customer LTV'}</div>
-            <div className="kpi-value text-[24px] font-bold text-[var(--fg)] leading-[1.1]">{formatCurrency(kpis?.ltv || 0)}</div>
+            <div className="kpi-value text-[24px] font-bold text-[var(--fg)] leading-[1.1]">{kpis?.ltv != null ? formatCurrency(kpis.ltv) : '—'}</div>
             <div className="kpi-sub up flex items-center gap-1 mt-1.5 text-[12px] font-medium text-[var(--accent)]">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="18 15 12 9 6 15" />
               </svg>
-              {kpis?.ltvGrowth || '0'}%
+              {kpis?.ltvGrowth != null ? `${kpis.ltvGrowth}%` : '—'}
             </div>
           </div>
 

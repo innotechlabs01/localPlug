@@ -94,6 +94,14 @@ const polarHandler = Webhooks({
         const orderNumber = `ORD-${Date.now().toString(36).toUpperCase()}`
         const customerPhone = metadata.customer_phone || storedPhone || null
         const customerCountry = (metadata.customer_country as string) || null
+        const hotelId = metadata.hotel_id ? parseInt(metadata.hotel_id, 10) : null
+        const roomId = metadata.room_id ? parseInt(metadata.room_id, 10) : null
+        const numNights = metadata.num_nights ? parseInt(metadata.num_nights, 10) : 0
+        const isHotelBooking = hotelId ? 1 : 0
+        const destinationHasPlace = metadata.destination_has_place !== undefined
+          ? (metadata.destination_has_place === 'true' || metadata.destination_has_place === '1' ? 1 : 0)
+          : 1
+        const travelerProfile = metadata.traveler_profile || null
         await db.execute({
           sql: `INSERT INTO orders (
             order_number, booking_reference, clerk_user_id, customer_name, customer_email,
@@ -101,9 +109,10 @@ const polarHandler = Webhooks({
             package_id, package_name, package_price, currency,
             status, payment_status, dispatch_status,
             flight_number, airline, arrival_date, arrival_time,
-            destination_address, additional_trips, num_people,
-            return_date, return_time
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            destination_address, destination_has_place, additional_trips,
+            traveler_profile, hotel_id, room_id, num_nights, is_hotel_booking,
+            num_people, return_date, return_time
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           args: [
             orderNumber,
             bookingReference,
@@ -125,7 +134,13 @@ const polarHandler = Webhooks({
             metadata.arrival_date || null,
             metadata.arrival_time || null,
             metadata.destination_address || null,
+            destinationHasPlace,
             metadata.tour_ids || null,
+            travelerProfile,
+            hotelId,
+            roomId,
+            numNights,
+            isHotelBooking,
             parseInt(metadata.num_people || '1', 10),
             metadata.return_date || null,
             metadata.return_time || null,
@@ -157,6 +172,9 @@ const polarHandler = Webhooks({
             customer_notes = CASE
               WHEN customer_notes IS NULL OR customer_notes = '' THEN ?
               ELSE customer_notes END,
+            traveler_profile = CASE
+              WHEN traveler_profile IS NULL OR traveler_profile = '' THEN ?
+              ELSE traveler_profile END,
             updated_at = ?
           WHERE booking_reference = ?`,
           args: [
@@ -165,6 +183,7 @@ const polarHandler = Webhooks({
             customerPhone,
             (metadata?.customer_country as string) || null,
             (metadata?.customer_notes as string) || null,
+            metadata?.traveler_profile || null,
             now,
             bookingReference,
           ],

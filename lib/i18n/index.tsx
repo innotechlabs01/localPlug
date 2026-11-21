@@ -44,7 +44,11 @@ export function I18nProvider({ children, initialLang }: { children: ReactNode; i
     } catch {
       // localStorage unavailable
     }
-    localStorage.setItem(STORAGE_KEY, lang)
+    try {
+      localStorage.setItem(STORAGE_KEY, lang)
+    } catch {
+      // localStorage unavailable
+    }
     setLangCookie(lang)
   }, [])
 

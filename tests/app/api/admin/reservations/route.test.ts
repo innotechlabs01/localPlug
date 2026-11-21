@@ -1,11 +1,16 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { GET, POST, PUT, DELETE } from '@/app/api/admin/reservations/route'
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { requirePermission } from '@/lib/admin/permissions'
+import { resolveHotelContext } from '@/lib/admin/hotel-auth'
 
 vi.mock('@/lib/admin/permissions', () => ({
   requirePermission: vi.fn(() => Promise.resolve(undefined)),
+}))
+
+vi.mock('@/lib/admin/hotel-auth', () => ({
+  resolveHotelContext: vi.fn(async () => ({ isAdmin: true, hotelId: null, error: null })),
 }))
 
 vi.mock('@/lib/db', async () => {
@@ -23,6 +28,14 @@ vi.mock('@clerk/nextjs/server', () => ({
 }))
 
 describe('admin reservations API', () => {
+  beforeEach(() => {
+    vi.mocked(requirePermission).mockResolvedValue(undefined as any)
+    vi.mocked(resolveHotelContext).mockResolvedValue({ isAdmin: true, hotelId: null, roleName: 'admin', error: undefined })
+    vi.mocked(getDb).mockReturnValue({
+      execute: vi.fn().mockResolvedValue({ rows: [] }),
+    } as any)
+  })
+
   afterEach(() => {
     vi.resetAllMocks()
   })
@@ -104,7 +117,7 @@ describe('admin reservations API', () => {
 
     it('creates a reservation with validation', async () => {
       const mockExecute = vi.fn()
-        .mockResolvedValueOnce({ lastInsertRowid: 1 })
+        .mockResolvedValueOnce({ rows: [{ id: 1 }], lastInsertRowid: 1 })
       vi.mocked(getDb).mockReturnValue({ execute: mockExecute } as any)
 
       const res = await POST(new NextRequest('http://localhost:3000/api/admin/reservations', {
@@ -143,7 +156,7 @@ describe('admin reservations API', () => {
   describe('PUT', () => {
     it('updates reservation fields', async () => {
       const mockExecute = vi.fn()
-        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValue({ rows: [{ id: 1, status: 'pending', hotel_id: null }] })
       vi.mocked(getDb).mockReturnValue({ execute: mockExecute } as any)
 
       const res = await PUT(new NextRequest('http://localhost:3000/api/admin/reservations', {

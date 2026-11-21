@@ -7,9 +7,10 @@ import { sendBookingNotification } from '@/lib/notifications/booking'
 
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const { userId: clerkId } = await auth()
     if (!clerkId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -31,7 +32,7 @@ export async function PUT(
     const driverName = driverRes.rows[0].name as string
     const driverPhone = driverRes.rows[0].phone as string | null
 
-    const assignmentId = Number(params.id)
+    const assignmentId = Number(id)
     if (Number.isNaN(assignmentId)) {
       return NextResponse.json({ error: 'Invalid assignment id' }, { status: 400 })
     }

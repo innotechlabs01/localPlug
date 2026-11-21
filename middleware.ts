@@ -20,6 +20,7 @@ const isPublicRoute = createRouteMatcher([
   '/privacy',
   '/refund-policy',
   '/feedback',
+  '/driver/offline',
   '/api/booking',
   '/api/flights/validate',
   '/api/webhooks/(.*)',

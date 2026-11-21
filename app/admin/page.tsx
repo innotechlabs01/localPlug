@@ -41,7 +41,7 @@ async function fetchReservations(): Promise<Booking[]> {
     driver: r.driverAssigned?.name,
     status: r.status,
     created_at: r.createdAt,
-    returnTransport: false,
+    returnTransport: Boolean(r.returnDate),
   }))
 }
 

@@ -1,10 +1,11 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useI18n } from '@/lib/i18n'
 
-export default function ConfirmationPage() {
+function ConfirmationContent() {
   const { t } = useI18n()
   const searchParams = useSearchParams()
   const reference = searchParams.get('ref') || ''
@@ -58,13 +59,13 @@ export default function ConfirmationPage() {
         <div className="flex flex-col sm:flex-row gap-3">
           <Link
             href="/"
-            className="flex-1 flex-col md:flex-row items-center justify-center py-3 px-6 bg-accent text-white rounded-xl font-semibold hover:bg-[var(--accent-gold-light)] transition-colors"
+            className="flex-1 flex flex-col md:flex-row items-center justify-center py-3 px-6 bg-accent text-white rounded-xl font-semibold hover:bg-[var(--accent-gold-light)] transition-colors"
           >
             {t.booking.confirmation.bookAnother}
           </Link>
           <Link
             href="/mis-reservas"
-            className="flex-1 flex-col sm:flex-row items-center justify-center py-3 px-6 bg-[var(--bg-elevated)] text-[var(--text-primary)] rounded-xl border border-[var(--border)] font-semibold hover:bg-[var(--bg-elevated)/50] transition-colors"
+            className="flex-1 flex flex-col sm:flex-row items-center justify-center py-3 px-6 bg-[var(--bg-elevated)] text-[var(--text-primary)] rounded-xl border border-[var(--border)] font-semibold hover:bg-[var(--bg-elevated)/50] transition-colors"
           >
             Ver mis reservas
           </Link>
@@ -78,5 +79,21 @@ export default function ConfirmationPage() {
         </p>
       </div>
     </main>
+  )
+}
+
+export default function ConfirmationPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-dvh bg-bg-dark flex items-center justify-center px-4">
+          <div className="max-w-lg w-full bg-bg-card rounded-2xl p-8 text-center space-y-6">
+            <div className="text-white/60">Cargando confirmación...</div>
+          </div>
+        </main>
+      }
+    >
+      <ConfirmationContent />
+    </Suspense>
   )
 }

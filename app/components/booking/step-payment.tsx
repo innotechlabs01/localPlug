@@ -18,6 +18,7 @@ interface StepPaymentProps {
   flightData: FlightData
   destinationAddress: string
   needReturn?: boolean
+  travelerProfile?: string
   onPaymentSuccess: () => void
   onPaymentError: (message: string) => void
   config?: BookingConfig | null
@@ -51,6 +52,8 @@ interface FlightData {
   arrivalDate: string
   arrivalTime: string
   needReturn?: boolean
+  returnDate?: string
+  returnTime?: string
 }
 
 export default function StepPayment({
@@ -64,6 +67,7 @@ export default function StepPayment({
   flightData,
   destinationAddress,
   needReturn,
+  travelerProfile,
   onPaymentSuccess,
   onPaymentError,
   config,
@@ -82,6 +86,20 @@ export default function StepPayment({
     setError(null)
 
     try {
+      const hotelId = destination?.selectedHotelId ?? null
+      const roomId = destination?.selectedRoomId ?? null
+      let numNights = 0
+      if (hotelId) {
+        if (flightData.arrivalDate && flightData.returnDate) {
+          const arr = new Date(flightData.arrivalDate)
+          const ret = new Date(flightData.returnDate)
+          const diffMs = ret.getTime() - arr.getTime()
+          numNights = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)))
+        } else {
+          numNights = 1
+        }
+      }
+
       const res = await fetch('/api/checkout/polar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -101,8 +119,13 @@ export default function StepPayment({
           arrivalDate: flightData.arrivalDate,
           arrivalTime: flightData.arrivalTime,
           destinationAddress,
-          returnDate: (destination as unknown as Record<string, string>)?.returnDate || '',
-          returnTime: (destination as unknown as Record<string, string>)?.returnTime || '',
+          returnDate: flightData.returnDate || '',
+          returnTime: flightData.returnTime || '',
+          hotelId,
+          roomId,
+          numNights,
+          travelerProfile: travelerProfile || '',
+          destinationHasPlace: destination?.hasPlace ?? true,
           consents: {
             terms: consents.terms,
             privacy: consents.privacy,
@@ -135,7 +158,7 @@ export default function StepPayment({
       setError(t.booking.steps.payment.serviceUnreachable)
       setPhase('ready')
     }
-  }, [bookingReference, packageId, customerEmail, customerName, customerPhone, customerCountry, customerNotes, needReturn, flightData, destination, t])
+  }, [bookingReference, packageId, customerEmail, customerName, customerPhone, customerCountry, customerNotes, needReturn, flightData, destination, destinationAddress, travelerProfile, consents, t])
 
   const hasReturn = needReturn ?? flightData.needReturn ?? false
   const packageName = t.booking.steps.packages.packages[packageId as keyof typeof t.booking.steps.packages.packages]?.name || packageId

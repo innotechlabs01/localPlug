@@ -305,7 +305,7 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
         </div>
       </aside>
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', marginLeft: 'var(--nav-width)' }}>
+      <div className="driver-main" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <header
           style={{
             display: 'flex',
@@ -370,6 +370,9 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
       <InactivityGuard signOutRedirectUrl="/sign-in/driver" />
 
       <style>{`
+        .driver-main {
+          margin-left: var(--nav-width);
+        }
         @media (max-width: 1023px) {
           .driver-sidebar {
             transform: translateX(-100%) !important;
@@ -379,6 +382,9 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
           }
           .driver-mobile-menu-btn {
             display: flex !important;
+          }
+          .driver-main {
+            margin-left: 0 !important;
           }
         }
       `}</style>

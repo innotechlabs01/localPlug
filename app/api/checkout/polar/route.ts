@@ -46,6 +46,11 @@ export async function POST(req: Request) {
       destinationAddress,
       returnDate,
       returnTime,
+      hotelId,
+      roomId,
+      numNights,
+      travelerProfile,
+      destinationHasPlace,
     } = body as {
       bookingReference: string
       packageId: string
@@ -64,6 +69,11 @@ export async function POST(req: Request) {
       destinationAddress?: string
       returnDate?: string
       returnTime?: string
+      hotelId?: number | null
+      roomId?: number | null
+      numNights?: number
+      travelerProfile?: string
+      destinationHasPlace?: boolean
     }
 
     if (!bookingReference || !customerEmail || !customerName || !packageId) {
@@ -113,6 +123,7 @@ export async function POST(req: Request) {
       need_return: String(!!needReturn),
       tour_ids: JSON.stringify(tour_ids),
       num_people: String(num_people),
+      destination_has_place: String(destinationHasPlace ?? true),
     }
     for (const [key, value] of Object.entries({
       flight_number: body.flightNumber,
@@ -122,8 +133,14 @@ export async function POST(req: Request) {
       destination_address: body.destinationAddress,
       return_date: body.returnDate,
       return_time: body.returnTime,
+      traveler_profile: travelerProfile,
     })) {
       if (value) metadata[key] = value
+    }
+    if (hotelId) metadata.hotel_id = String(hotelId)
+    if (roomId) metadata.room_id = String(roomId)
+    if (numNights !== undefined && numNights !== null && Number(numNights) > 0) {
+      metadata.num_nights = String(numNights)
     }
 
     const checkout = await polar.checkouts.create({

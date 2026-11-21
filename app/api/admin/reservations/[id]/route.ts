@@ -5,14 +5,14 @@ import { sendEmail } from '@/lib/email'
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authError = await requirePermission('reservations', 'view')
     if (authError) return authError
 
     const db = getDb()
-    const id = params.id
+    const { id } = await params
 
     const orderRes = await db.execute({
       sql: `
@@ -58,14 +58,14 @@ export async function GET(
 
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const authError = await requirePermission('reservations', 'update')
     if (authError) return authError
 
     const db = getDb()
-    const id = params.id
+    const { id } = await params
     const body = await req.json()
     const { status, payment_status, dispatch_status, internal_notes, assigned_to } = body
 
