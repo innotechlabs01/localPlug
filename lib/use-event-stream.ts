@@ -86,16 +86,34 @@ export function useEventStream(
 
         if (disposed) return
         es = new EventSource(`/api/realtime/events/stream?since=${cursor}`)
-        es.onmessage = (msg) => {
+
+        const handleIncoming = (raw: string) => {
           if (disposed) return
           sseErrors = 0
           try {
-            const ev = JSON.parse(msg.data) as StreamEvent
+            const ev = JSON.parse(raw) as StreamEvent
             if (ev && typeof ev.id === 'number') {
               dispatchEvents([ev])
             }
           } catch {}
         }
+
+        // Default message events (without custom `event:` field)
+        es.onmessage = (msg) => handleIncoming(msg.data)
+
+        // Named events emitted by /api/realtime/events/stream (`event: <ev.type>`)
+        for (const eventType of Object.keys(handlersRef.current)) {
+          es.addEventListener(eventType, (msg) => handleIncoming((msg as MessageEvent).data))
+        }
+
+        // Server intentionally closes stream after ~55s (`event: done`); reconnect cleanly
+        es.addEventListener('done', () => {
+          if (disposed) return
+          es?.close()
+          es = null
+          connectSse()
+        })
+
         es.onerror = () => {
           sseErrors++
           if (sseErrors >= 3) {
