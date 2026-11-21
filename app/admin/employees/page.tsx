@@ -48,7 +48,7 @@ export default function EmployeesPage() {
     try {
       const [empRes, roleRes] = await Promise.all([
         adminFetch('/api/admin/employees'),
-        adminFetch('/api/admin/team'),
+        adminFetch('/api/admin/team/roles'),
       ])
       if (empRes.ok) {
         const data = await empRes.json()

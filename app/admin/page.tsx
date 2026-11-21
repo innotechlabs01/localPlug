@@ -95,11 +95,20 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [configValues, setConfigValues] = useState({ returnTripCharge: 48, hotelRevenuePerNight: 85 })
   const [income, setIncome] = useState<any>(null)
+  const [globalStats, setGlobalStats] = useState<{
+    total?: number; new?: number; inProgress?: number; urgent?: number; completed?: number;
+    revenueUsd?: number; todayRevenueUsd?: number;
+    availablePayoutsUsd?: number; requestedPayoutsUsd?: number; paidPayoutsUsd?: number;
+  } | null>(null)
 
   useEffect(() => {
     adminFetch('/api/admin/income-summary', { cache: 'no-store' })
       .then(r => (r.ok ? r.json() : null))
       .then(data => setIncome(data))
+      .catch(() => {})
+    adminFetch('/api/admin/stats', { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => setGlobalStats(data))
       .catch(() => {})
   }, [])
 
@@ -272,6 +281,31 @@ export default function AdminDashboard() {
           </div>
         ))}
       </div>
+
+      {globalStats && (
+        <div className="admin-grid-4 admin-mb-4">
+          <div className="admin-kpi-card">
+            <div className="admin-kpi-label">Ingresos Cobrados (Total)</div>
+            <div className="admin-kpi-value">${Number(globalStats.revenueUsd || 0).toLocaleString()}</div>
+            <div className="admin-kpi-sub gold">Hoy: ${Number(globalStats.todayRevenueUsd || 0).toLocaleString()}</div>
+          </div>
+          <div className="admin-kpi-card">
+            <div className="admin-kpi-label">Órdenes Históricas</div>
+            <div className="admin-kpi-value">{Number(globalStats.total || 0)}</div>
+            <div className="admin-kpi-sub blue">{Number(globalStats.completed || 0)} completadas · {Number(globalStats.urgent || 0)} urgentes</div>
+          </div>
+          <div className="admin-kpi-card">
+            <div className="admin-kpi-label">Payouts por Pagar</div>
+            <div className="admin-kpi-value">${(Number(globalStats.availablePayoutsUsd || 0) + Number(globalStats.requestedPayoutsUsd || 0)).toFixed(2)}</div>
+            <div className="admin-kpi-sub amber">Solicitados: ${Number(globalStats.requestedPayoutsUsd || 0).toFixed(2)}</div>
+          </div>
+          <div className="admin-kpi-card">
+            <div className="admin-kpi-label">Payouts Liquidados</div>
+            <div className="admin-kpi-value">${Number(globalStats.paidPayoutsUsd || 0).toFixed(2)}</div>
+            <div className="admin-kpi-sub green">Drivers &amp; Hoteles</div>
+          </div>
+        </div>
+      )}
 
       {/* ── TODAY'S BOOKINGS ── */}
       <section className="admin-card">

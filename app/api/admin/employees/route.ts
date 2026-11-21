@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { clerkClient } from '@clerk/nextjs/server'
 import { getDb, buildSafeUpdate } from '@/lib/db'
 import { requirePermission } from '@/lib/admin/permissions'
 
@@ -62,13 +63,13 @@ export async function POST(req: Request) {
       sql: `INSERT INTO users (
         name, email, phone, role_id,
         vehicle_info, license_number, vehicle_plate,
-        employee_status, verification_status, status,
+        employee_status, verification_status, notes, status,
         created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', datetime('now'), datetime('now'))`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', datetime('now'), datetime('now'))`,
       args: [
-        name, email, phone || null, role_id,
+        name, email.trim().toLowerCase(), phone || null, Number(role_id),
         vehicle_info || null, license_number || null, vehicle_plate || null,
-        employee_status || 'active', verification_status || 'pending',
+        employee_status || 'active', verification_status || 'pending', notes || null,
       ],
     })
 
@@ -112,6 +113,22 @@ export async function PUT(req: Request) {
       sql: `UPDATE users SET ${setClauses.join(', ')} WHERE id = ?`,
       args,
     })
+
+    if (updates.role_id) {
+      const userRow = await db.execute({
+        sql: `SELECT u.clerk_id, r.name as role_name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE u.id = ?`,
+        args: [id],
+      })
+      const clerkId = userRow.rows[0]?.clerk_id as string | undefined
+      const roleName = userRow.rows[0]?.role_name as string | undefined
+      if (clerkId && roleName) {
+        const clerkRole = roleName === 'hotel_manager' ? 'hotel_manager' : roleName === 'viewer' ? 'viewer' : 'admin'
+        try {
+          const client = await clerkClient()
+          await client.users.updateUserMetadata(clerkId, { privateMetadata: { role: clerkRole } })
+        } catch {}
+      }
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {

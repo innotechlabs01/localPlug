@@ -106,6 +106,15 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
           </svg>
         ),
       },
+      {
+        label: 'Event Queue',
+        href: '/admin/outbox',
+        icon: (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+          </svg>
+        ),
+      },
     ],
   },
   {
@@ -444,6 +453,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
       '/admin/payments': t.admin.nav.payments as string,
       '/admin/parking-proofs': t.admin.nav.parking as string,
       '/admin/auditoria': 'Auditoría',
+      '/admin/outbox': 'Event Queue & Outbox',
       '/admin/agenda': 'Agenda',
       '/admin/cases': 'Cases',
       '/admin/roles': t.admin.nav.roles as string,

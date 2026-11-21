@@ -12,12 +12,21 @@ export type ModulePermissions = Record<string, {
   can_delete: boolean
 }>
 
+const BUILTIN_SUPER_ADMINS = ['anthonyrivera51@gmail.com']
+
+function isSuperAdminEmail(email: string): boolean {
+  const normalized = email.trim().toLowerCase()
+  return BUILTIN_SUPER_ADMINS.includes(normalized)
+}
+
 function isAdminEmail(email: string): boolean {
+  const normalized = email.trim().toLowerCase()
+  if (BUILTIN_SUPER_ADMINS.includes(normalized)) return true
   const adminEmails = (process.env.ADMIN_EMAILS || '')
     .split(',')
     .map(e => e.trim().toLowerCase())
     .filter(Boolean)
-  return adminEmails.includes(email.toLowerCase())
+  return adminEmails.includes(normalized)
 }
 
 export async function getUserPermissions(clerkId: string): Promise<ModulePermissions | null> {
@@ -47,13 +56,30 @@ export async function getUserPermissions(clerkId: string): Promise<ModulePermiss
       email = clerkUser.primaryEmailAddress?.emailAddress || ''
     } catch { /* clerk fetch may fail */ }
 
-    const roleId = isAdminEmail(email) ? 1 : viewerRoleId
+    const targetRoleName = isSuperAdminEmail(email) ? 'super_admin' : isAdminEmail(email) ? 'admin' : 'viewer'
+    const targetRoleRes = await db.execute({ sql: 'SELECT id FROM roles WHERE name = ? LIMIT 1', args: [targetRoleName] })
+    const roleId = (targetRoleRes.rows[0]?.id as number | undefined) ?? (isAdminEmail(email) ? 1 : viewerRoleId)
 
-    await db.execute({
-      sql: `INSERT OR IGNORE INTO users (clerk_id, name, email, password_hash, role_id, status, created_at, updated_at)
-            VALUES (?, ?, ?, '', ?, 'active', datetime('now'), datetime('now'))`,
-      args: [clerkId, name, email, roleId],
-    })
+    // Link pre-created employee record by email if present (preserves role assigned by Super Admin)
+    const preCreated = email
+      ? await db.execute({
+          sql: 'SELECT id, role_id FROM users WHERE LOWER(email) = ? LIMIT 1',
+          args: [email.trim().toLowerCase()],
+        })
+      : { rows: [] }
+
+    if (preCreated.rows.length > 0) {
+      await db.execute({
+        sql: `UPDATE users SET clerk_id = ?, name = COALESCE(NULLIF(name, ''), ?), updated_at = datetime('now') WHERE id = ?`,
+        args: [clerkId, name, preCreated.rows[0].id as number],
+      })
+    } else {
+      await db.execute({
+        sql: `INSERT OR IGNORE INTO users (clerk_id, name, email, password_hash, role_id, status, created_at, updated_at)
+              VALUES (?, ?, ?, '', ?, 'active', datetime('now'), datetime('now'))`,
+        args: [clerkId, name, email, roleId],
+      })
+    }
 
     const newUser = await db.execute({
       sql: 'SELECT id FROM users WHERE clerk_id = ?',
@@ -94,9 +120,10 @@ export async function getUserPermissions(clerkId: string): Promise<ModulePermiss
   const currentRoleId = userRow.role_id as number
   const userEmail = userRow.email as string
 
-  // Promote to admin if email matches ADMIN_EMAILS and not already admin
-  const adminRole = await db.execute({ sql: "SELECT id FROM roles WHERE name = 'admin' LIMIT 1", args: [] })
-  const adminRoleId = adminRole.rows[0]?.id || 1
+  // Promote to super_admin / admin if email matches BUILTIN_SUPER_ADMINS or ADMIN_EMAILS
+  const desiredRoleName = isSuperAdminEmail(userEmail) ? 'super_admin' : 'admin'
+  const adminRole = await db.execute({ sql: 'SELECT id FROM roles WHERE name = ? LIMIT 1', args: [desiredRoleName] })
+  const adminRoleId = (adminRole.rows[0]?.id as number | undefined) || 1
 
   if (isAdminEmail(userEmail) && currentRoleId !== adminRoleId) {
     await db.execute({
@@ -112,10 +139,10 @@ export async function getUserPermissions(clerkId: string): Promise<ModulePermiss
         })
       } catch { /* non-critical */ }
     }
-    console.log(`[Permissions] Promoted user to ADMIN: ${userEmail}`)
+    console.log(`[Permissions] Promoted user to ${desiredRoleName.toUpperCase()}: ${userEmail}`)
   }
 
-  if (roleName === 'admin' || isAdminEmail(userEmail)) {
+  if (roleName === 'super_admin' || roleName === 'admin' || isAdminEmail(userEmail)) {
     const allModules = await db.execute(
       'SELECT slug FROM modules ORDER BY sort_order'
     )
