@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest'
-// @ts-expect-error next.config.js is commonjs
 import nextConfig from '../next.config.js'
 
 describe('Security Headers Configuration', () => {
@@ -15,7 +14,7 @@ describe('Security Headers Configuration', () => {
     expect(globalRouteConfig).toBeDefined()
 
     const headersMap = new Map(
-      globalRouteConfig.headers.map((h: { key: string; value: string }) => [
+      globalRouteConfig!.headers.map((h: { key: string; value: string }) => [
         h.key.toLowerCase(),
         h.value,
       ]),

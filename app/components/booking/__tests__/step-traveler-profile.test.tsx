@@ -18,6 +18,10 @@ describe('StepTravelerProfile Accessibility and Interactions', () => {
     onNameChange: vi.fn(),
     phone: '+57 300 123 4567',
     onPhoneChange: vi.fn(),
+    country: 'CO',
+    onCountryChange: vi.fn(),
+    language: 'en',
+    onLanguageChange: vi.fn(),
   }
 
   it('renders a radiogroup with radio buttons for each traveler profile', () => {
