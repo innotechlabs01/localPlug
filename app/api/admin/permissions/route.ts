@@ -1,12 +1,22 @@
 import { NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import { getDb } from '@/lib/db'
-import { requirePermission } from '@/lib/admin/permissions'
+import { requirePermission, requireSuperAdmin, isSuperAdminClerkUser } from '@/lib/admin/permissions'
 
 export async function GET() {
   const authError = await requirePermission('roles', 'view')
   if (authError) return authError
 
+  const { userId: clerkId } = await auth()
+  const isSuperAdmin = clerkId ? await isSuperAdminClerkUser(clerkId) : false
+
   const db = getDb()
+
+  // Ensure 'events' sidebar module exists in modules table
+  await db.execute({
+    sql: `INSERT OR IGNORE INTO modules (name, slug, icon, sort_order) VALUES ('Events', 'events', 'calendar', 25)`,
+    args: [],
+  }).catch(() => {})
 
   const roles = await db.execute('SELECT id, name, description FROM roles ORDER BY id')
   const modules = await db.execute('SELECT id, name, slug FROM modules ORDER BY sort_order')
@@ -32,11 +42,12 @@ export async function GET() {
     roles: roles.rows,
     modules: modules.rows,
     permissions: permMap,
+    isSuperAdmin,
   })
 }
 
 export async function PUT(req: Request) {
-  const authError = await requirePermission('roles', 'update')
+  const authError = await requireSuperAdmin()
   if (authError) return authError
 
   const body = await req.json()
@@ -85,12 +96,13 @@ export async function PUT(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const authError = await requirePermission('roles', 'create')
+  const authError = await requireSuperAdmin()
   if (authError) return authError
 
   const body = await req.json()
   const rawName = String(body.name || '').trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '_')
   const description = String(body.description || '').trim()
+  const allowedModules: string[] = Array.isArray(body.allowedModules) ? body.allowedModules : []
 
   if (!rawName) {
     return NextResponse.json({ error: 'Role name is required' }, { status: 400 })
@@ -108,13 +120,14 @@ export async function POST(req: Request) {
   })
   const roleId = Number(res.lastInsertRowid)
 
-  // Initialize module permissions row for each module (view-only by default if requested, else 0)
-  const mods = await db.execute('SELECT id FROM modules')
+  // Initialize module permissions row for each module
+  const mods = await db.execute('SELECT id, slug FROM modules')
   for (const mod of mods.rows) {
+    const enabled = allowedModules.includes(String(mod.slug)) ? 1 : 0
     await db.execute({
       sql: `INSERT OR IGNORE INTO role_permissions (role_id, module_id, can_view, can_create, can_update, can_delete)
-            VALUES (?, ?, 0, 0, 0, 0)`,
-      args: [roleId, mod.id as number],
+            VALUES (?, ?, ?, ?, ?, 0)`,
+      args: [roleId, mod.id as number, enabled, enabled, enabled],
     })
   }
 
@@ -122,7 +135,7 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  const authError = await requirePermission('roles', 'delete')
+  const authError = await requireSuperAdmin()
   if (authError) return authError
 
   const { searchParams } = new URL(req.url)

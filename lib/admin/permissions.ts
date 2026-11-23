@@ -12,11 +12,49 @@ export type ModulePermissions = Record<string, {
   can_delete: boolean
 }>
 
-const BUILTIN_SUPER_ADMINS = ['anthonyrivera51@gmail.com']
+// TODO: Remove hardcoded super-admin email once ADMIN_EMAILS is configured across all environments.
+export const BUILTIN_SUPER_ADMINS = ['anthonyrivera51@gmail.com']
 
-function isSuperAdminEmail(email: string): boolean {
+export function isSuperAdminEmail(email: string): boolean {
   const normalized = email.trim().toLowerCase()
   return BUILTIN_SUPER_ADMINS.includes(normalized)
+}
+
+export async function isSuperAdminClerkUser(clerkId: string): Promise<boolean> {
+  await ensureSchema()
+  const db = getDb()
+  const res = await db.execute({
+    sql: `SELECT u.email, r.name as role_name
+          FROM users u LEFT JOIN roles r ON u.role_id = r.id
+          WHERE u.clerk_id = ? AND u.status = 'active' LIMIT 1`,
+    args: [clerkId],
+  })
+  if (res.rows.length > 0) {
+    const email = String(res.rows[0].email || '')
+    if (isSuperAdminEmail(email)) return true
+  }
+  try {
+    const client = await clerkClient()
+    const clerkUser = await client.users.getUser(clerkId)
+    const email = clerkUser.primaryEmailAddress?.emailAddress || ''
+    return isSuperAdminEmail(email)
+  } catch {
+    return false
+  }
+}
+
+export async function requireSuperAdmin(): Promise<NextResponse | undefined> {
+  const { userId: clerkId } = await auth()
+  if (!clerkId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  const ok = await isSuperAdminClerkUser(clerkId)
+  if (!ok) {
+    return NextResponse.json(
+      { error: 'Forbidden: Only Super Admin (anthonyrivera51@gmail.com) can manage roles and permissions' },
+      { status: 403 },
+    )
+  }
 }
 
 function isAdminEmail(email: string): boolean {
@@ -153,6 +191,16 @@ export async function getUserPermissions(clerkId: string): Promise<ModulePermiss
         can_create: true,
         can_update: true,
         can_delete: true,
+      }
+    }
+    // Guarantee core admin modules even if the modules table is not yet seeded
+    for (const coreSlug of [
+      'dashboard', 'dispatch', 'reservations', 'drivers', 'fleet', 'customers',
+      'support', 'audit', 'queue', 'employees', 'analytics', 'payments',
+      'payouts', 'parking_proofs', 'plans', 'hotels', 'events', 'roles', 'settings', 'orders',
+    ]) {
+      if (!result[coreSlug]) {
+        result[coreSlug] = { can_view: true, can_create: true, can_update: true, can_delete: true }
       }
     }
     return result

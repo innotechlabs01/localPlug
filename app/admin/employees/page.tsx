@@ -15,6 +15,12 @@ interface Role {
   id: number; name: string; description: string
 }
 
+interface PermModule {
+  id: number; name: string; slug: string
+}
+
+type RolePermMap = Record<string, Record<string, { can_view: number; can_create: number; can_update: number; can_delete: number }>>
+
 const statusLabels: Record<string, string> = {
   active: 'Activo', inactive: 'Inactivo', on_route: 'En Ruta', suspended: 'Suspendido', leave: 'Ausente', pending: 'Pendiente', needs_review: 'Revisar'
 }
@@ -39,6 +45,9 @@ export default function EmployeesPage() {
   const [search, setSearch] = useState('')
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [roles, setRoles] = useState<Role[]>([])
+  const [modules, setModules] = useState<PermModule[]>([])
+  const [rolePerms, setRolePerms] = useState<RolePermMap>({})
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [editEmp, setEditEmp] = useState<Employee | null>(null)
   const [form, setForm] = useState<Record<string, string>>({})
@@ -46,9 +55,10 @@ export default function EmployeesPage() {
 
   const fetchEmployees = useCallback(async () => {
     try {
-      const [empRes, roleRes] = await Promise.all([
+      const [empRes, roleRes, permRes] = await Promise.all([
         adminFetch('/api/admin/employees'),
         adminFetch('/api/admin/team/roles'),
+        adminFetch('/api/admin/permissions').catch(() => null),
       ])
       if (empRes.ok) {
         const data = await empRes.json()
@@ -57,6 +67,12 @@ export default function EmployeesPage() {
       if (roleRes.ok) {
         const data = await roleRes.json()
         setRoles(data.roles || data || [])
+      }
+      if (permRes && permRes.ok) {
+        const data = await permRes.json()
+        setModules(data.modules || [])
+        setRolePerms(data.permissions || {})
+        setIsSuperAdmin(Boolean(data.isSuperAdmin))
       }
     } catch (err) {
       console.error('Failed to fetch employees', err)
@@ -68,14 +84,48 @@ export default function EmployeesPage() {
 
   const selected = useMemo(() => employees.find(e => e.id === selectedId), [employees, selectedId])
 
-  const stats = useMemo(() => ({
-    total: employees.length,
-    active: employees.filter(e => e.employee_status === 'active').length,
-    onRoute: employees.filter(e => e.employee_status === 'on_route').length,
-    avgRating: employees.length ? (employees.reduce((s, e) => s + (e.rating || 0), 0) / employees.filter(e => e.rating).length).toFixed(1) : '0',
-    totalTrips: employees.reduce((s, e) => s + (e.total_trips || 0), 0),
-    expiringDocs: 0,
-  }), [employees])
+  const stats = useMemo(() => {
+    const rated = employees.filter(e => typeof e.rating === 'number' && e.rating > 0)
+    return {
+      total: employees.length,
+      active: employees.filter(e => e.employee_status === 'active').length,
+      onRoute: employees.filter(e => e.employee_status === 'on_route').length,
+      avgRating: rated.length ? (rated.reduce((s, e) => s + (e.rating || 0), 0) / rated.length).toFixed(1) : '—',
+      totalTrips: employees.reduce((s, e) => s + (e.total_trips || 0), 0),
+      expiringDocs: 0,
+    }
+  }, [employees])
+
+  const selectedFormRole = useMemo(
+    () => roles.find(r => String(r.id) === String(form.role_id)),
+    [roles, form.role_id],
+  )
+
+  const toggleRoleMenu = async (roleId: number, moduleId: number, currentView: boolean) => {
+    if (!isSuperAdmin) return
+    const rId = String(roleId)
+    const mId = String(moduleId)
+    const prev = rolePerms[rId]?.[mId] || { can_view: 0, can_create: 0, can_update: 0, can_delete: 0 }
+    const nextVal = currentView ? 0 : 1
+    setRolePerms(p => ({
+      ...p,
+      [rId]: { ...(p[rId] || {}), [mId]: { ...prev, can_view: nextVal } },
+    }))
+    try {
+      const res = await fetch('/api/admin/permissions', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role_id: roleId, module_id: moduleId, can_view: Boolean(nextVal) }),
+      })
+      if (!res.ok) throw new Error()
+    } catch {
+      setRolePerms(p => ({
+        ...p,
+        [rId]: { ...(p[rId] || {}), [mId]: prev },
+      }))
+      showToast('Error actualizando permiso de menú')
+    }
+  }
 
   const filtered = useMemo(() => employees.filter(e => {
     const q = search.toLowerCase()
@@ -142,7 +192,9 @@ export default function EmployeesPage() {
       <section className="admin-section-header">
         <div>
           <h1 className="admin-page-title">{d.title || 'Empleados'}</h1>
-          <p className="admin-section-desc">{d.subtitle || `Gestiona tu equipo — ${stats.total} miembros`}</p>
+          <p className="admin-section-desc">
+            {(d.subtitle || `Gestiona tu equipo — ${stats.total} miembros`).replace('{count}', String(stats.total))}
+          </p>
         </div>
         <div className="admin-flex-between" style={{ gap: 8 }}>
           <button onClick={() => showToast('Exportación encolada')} className="admin-btn admin-btn-secondary admin-btn-sm">{d.export_ || 'Exportar'}</button>
@@ -224,7 +276,7 @@ export default function EmployeesPage() {
                       <td style={{ textAlign: 'center' }}>
                         <div className="admin-flex-between" style={{ justifyContent: 'center', gap: 6 }}>
                           <button className="admin-btn admin-btn-ghost admin-btn-sm" onClick={(e) => { e.stopPropagation(); showToast('Registro de auditoría abierto') }} title="Registro">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 12H2l2 3-7-3z"/><path d="M18 13l3 3 4-4V3l-3-3-4 4z"/></svg>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
                           </button>
                           <button className="admin-btn admin-btn-ghost admin-btn-sm" onClick={(e) => { e.stopPropagation(); openEdit(emp) }} title="Editar">{d.edit || 'Editar'}</button>
                         </div>
@@ -345,6 +397,48 @@ export default function EmployeesPage() {
                     </select>
                   </div>
                 </div>
+                {selectedFormRole && modules.length > 0 && (
+                  <div style={{ marginTop: 14, padding: 12, borderRadius: 'var(--ui-radius-sm)', border: '1px solid var(--ui-border)', background: 'var(--ui-surface)' }}>
+                    <div className="admin-flex-between" style={{ marginBottom: 8 }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ui-fg)' }}>
+                        Configuración de Menú ({selectedFormRole.name})
+                      </span>
+                      {(selectedFormRole.name === 'super_admin' || selectedFormRole.name === 'admin') ? (
+                        <span className="admin-badge accent" style={{ fontSize: 10 }}>Todos los menús activos</span>
+                      ) : (
+                        <span style={{ fontSize: 11, color: 'var(--ui-fg-muted)' }}>
+                          {isSuperAdmin ? 'Haz clic para activar/desactivar' : 'Solo Super Admin puede editar'}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, maxHeight: 140, overflowY: 'auto' }}>
+                      {modules.map(m => {
+                        const isFull = selectedFormRole.name === 'super_admin' || selectedFormRole.name === 'admin'
+                        const isActive = isFull || Boolean(rolePerms[String(selectedFormRole.id)]?.[String(m.id)]?.can_view)
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            disabled={!isSuperAdmin || isFull}
+                            onClick={() => toggleRoleMenu(selectedFormRole.id, m.id, isActive)}
+                            style={{
+                              padding: '4px 9px',
+                              borderRadius: 6,
+                              fontSize: 11,
+                              fontWeight: 500,
+                              cursor: (!isSuperAdmin || isFull) ? 'default' : 'pointer',
+                              border: `1px solid ${isActive ? 'var(--ui-accent)' : 'var(--ui-border)'}`,
+                              background: isActive ? 'var(--ui-accent-soft)' : 'transparent',
+                              color: isActive ? 'var(--ui-accent)' : 'var(--ui-fg-muted)',
+                            }}
+                          >
+                            {isActive ? '✓ ' : ''}{m.name}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
                 <div className="admin-modal-footer">
                   <button type="button" className="admin-btn admin-btn-secondary admin-btn-sm" onClick={() => setModalOpen(false)}>{d.cancel || 'Cancelar'}</button>
                   <button type="submit" className="admin-btn admin-btn-primary admin-btn-sm">{editEmp ? d.saveChanges || 'Actualizar' : d.modalAdd || 'Crear'}</button>

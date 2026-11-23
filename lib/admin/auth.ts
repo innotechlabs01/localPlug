@@ -7,7 +7,7 @@ import { getDb } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { ensureSchema } from '@/lib/db/migrate-auto'
 
-export type RoleName = 'admin' | 'manager' | 'concierge' | 'viewer'
+export type RoleName = 'super_admin' | 'admin' | 'manager' | 'concierge' | 'viewer'
 
 async function autoRegisterUser(clerkId: string): Promise<{ roleId: number; roleName: string } | null> {
   const db = getDb()
@@ -69,7 +69,7 @@ export async function requireRole(allowedRoles: RoleName[]) {
   }
 
   const roleName = user.rows[0].role_name as string
-  if (!allowedRoles.includes(roleName as RoleName)) {
+  if (roleName !== 'super_admin' && !allowedRoles.includes(roleName as RoleName)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 }

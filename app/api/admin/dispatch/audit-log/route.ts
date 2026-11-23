@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requirePermission } from '@/lib/admin/permissions'
 import { getDb } from '@/lib/db'
+import { ensureSchema } from '@/lib/db/migrate-auto'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,6 +10,7 @@ export async function GET(req: Request) {
     const authError = await requirePermission('dispatch', 'view')
     if (authError) return authError
 
+    await ensureSchema()
     const db = getDb()
     const { searchParams } = new URL(req.url)
     const assignmentId = searchParams.get('assignment_id')

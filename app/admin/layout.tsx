@@ -15,6 +15,7 @@ interface NavItem {
   labelKey?: string
   label?: string
   href: string
+  moduleSlug: string
   icon: React.ReactNode
   badge?: string
 }
@@ -26,6 +27,7 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
       {
         labelKey: 'dashboard',
         href: '/admin',
+        moduleSlug: 'dashboard',
         icon: (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
@@ -36,6 +38,7 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
       {
         labelKey: 'dispatch',
         href: '/admin/dispatch',
+        moduleSlug: 'dispatch',
         icon: (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
@@ -50,6 +53,7 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
       {
         labelKey: 'reservations',
         href: '/admin/reservations',
+        moduleSlug: 'reservations',
         icon: (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M8 2v4M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="2"/>
@@ -60,6 +64,7 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
       {
         labelKey: 'drivers',
         href: '/admin/drivers',
+        moduleSlug: 'drivers',
         icon: (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
@@ -70,6 +75,7 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
       {
         labelKey: 'fleet',
         href: '/admin/fleet',
+        moduleSlug: 'fleet',
         icon: (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M5 17h14M5 17a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2M8 21h8"/>
@@ -80,6 +86,7 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
       {
         labelKey: 'customers',
         href: '/admin/customers',
+        moduleSlug: 'customers',
         icon: (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
@@ -89,6 +96,7 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
       {
         labelKey: 'support',
         href: '/admin/ia-chat',
+        moduleSlug: 'support',
         icon: (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
@@ -98,6 +106,7 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
       {
         label: 'Auditoría',
         href: '/admin/auditoria',
+        moduleSlug: 'audit',
         icon: (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="21"/>
@@ -107,6 +116,7 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
       {
         label: 'Event Queue',
         href: '/admin/outbox',
+        moduleSlug: 'queue',
         icon: (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
@@ -121,6 +131,7 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
       {
         labelKey: 'employees',
         href: '/admin/employees',
+        moduleSlug: 'employees',
         icon: (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
@@ -131,6 +142,7 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
       {
         labelKey: 'analytics',
         href: '/admin/analytics',
+        moduleSlug: 'analytics',
         icon: (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
@@ -140,6 +152,7 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
       {
         labelKey: 'payments',
         href: '/admin/payments',
+        moduleSlug: 'payments',
         icon: (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <line x1="12" y1="1" x2="12" y2="23"/>
@@ -150,6 +163,7 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
       {
         labelKey: 'settlements',
         href: '/admin/settlements',
+        moduleSlug: 'payouts',
         icon: (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M12 1v22"/>
@@ -160,6 +174,7 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
       {
         labelKey: 'parking',
         href: '/admin/parking-proofs',
+        moduleSlug: 'parking_proofs',
         icon: (          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
             <path d="M2 12h6"/>
@@ -170,6 +185,7 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
       {
         labelKey: 'plans',
         href: '/admin/plans',
+        moduleSlug: 'plans',
         icon: (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
@@ -185,6 +201,7 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
       {
         labelKey: 'hotels',
         href: '/admin/hotels',
+        moduleSlug: 'hotels',
         icon: (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M3 21h18"/>
@@ -205,6 +222,7 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
       {
         labelKey: 'events',
         href: '/admin/events',
+        moduleSlug: 'events',
         icon: (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <rect x="3" y="4" width="18" height="18" rx="2"/>
@@ -361,13 +379,43 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const { signOut } = useClerk()
   const pathname = usePathname()
   const router = useRouter()
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [isMobile, setIsMobile] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const [accessDenied, setAccessDenied] = useState(false)
   const [permsLoading, setPermsLoading] = useState(true)
+  const [userPerms, setUserPerms] = useState<Record<string, { can_view?: boolean }>>({})
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const { t, lang, setLang } = useI18n()
   const { notifications, unreadCount, markAsRead, markAllAsRead, stats } = useRealtime()
+
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth <= 768
+      setIsMobile(mobile)
+      if (mobile) setSidebarOpen(false)
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  useEffect(() => {
+    setNotifOpen(false)
+    setProfileOpen(false)
+  }, [pathname])
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setNotifOpen(false)
+        setProfileOpen(false)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
 
   useEffect(() => {
     fetch('/api/admin/permissions/mine')
@@ -382,6 +430,8 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
       .then(data => {
         if (!data) return
         const perms = data.permissions || {}
+        setUserPerms(perms)
+        setIsSuperAdmin(Boolean(data.isSuperAdmin))
         if (Object.keys(perms).length === 0) {
           setAccessDenied(true)
         }
@@ -392,7 +442,27 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
       .finally(() => setPermsLoading(false))
   }, [])
 
-  const filteredNavSections = navSections // Admin sees all menu items
+  const filteredNavSections = navSections
+    .map(s => {
+      const items = [...s.items]
+      if (s.labelKey === 'sectionManagement' && isSuperAdmin) {
+        items.push({
+          labelKey: 'roles',
+          href: '/admin/roles',
+          moduleSlug: 'roles',
+          icon: (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+          ),
+        })
+      }
+      const visibleItems = isSuperAdmin
+        ? items
+        : items.filter(item => Boolean(userPerms[item.moduleSlug]?.can_view))
+      return { ...s, items: visibleItems }
+    })
+    .filter(s => s.items.length > 0)
 
   if (isLoaded && !isSignedIn) {
     router.push('/sign-in')
@@ -456,6 +526,11 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
       '/admin/cases': 'Cases',
       '/admin/roles': t.admin.nav.roles as string,
       '/admin/reservations': t.admin.nav.reservations as string,
+      '/admin/plans': (t.admin.nav.plans as string) || 'Plans',
+      '/admin/hotels': (t.admin.nav.hotels as string) || 'Hotels',
+      '/admin/events': (t.admin.nav.events as string) || 'Events',
+      '/admin/settlements': (t.admin.nav.settlements as string) || 'Settlements',
+      '/admin/settings': 'Settings',
     }
     return titleMap[pathname] || t.admin.dashboard.title as string
   }
@@ -463,7 +538,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   return (
     <div className="admin-app admin-layout">
       {/* Mobile overlay */}
-      {sidebarOpen && (
+      {isMobile && sidebarOpen && (
         <div className="admin-sidebar-overlay open" onClick={() => setSidebarOpen(false)} />
       )}
 
@@ -478,36 +553,24 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="admin-sidebar-nav">
-          {filteredNavSections.map(s => {
-            const section = { ...s, items: [...s.items] }
-            if (section.labelKey === 'sectionManagement') {
-              section.items.push({
-                labelKey: 'roles',
-                href: '/admin/roles',
-                icon: (
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                  </svg>
-                ),
-              })
-            }
-            return section
-          }).map((section) => (
+          {filteredNavSections.map((section) => (
             <div key={section.labelKey}>
               <div className="admin-nav-section-label">
                 {t.admin.nav[section.labelKey as keyof typeof t.admin.nav] as string}
               </div>
               {section.items.map((item) => {
                 const isActive = pathname === item.href
+                const itemLabel = item.label || (t.admin.nav[item.labelKey as keyof typeof t.admin.nav] as string)
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
-                    onClick={() => setSidebarOpen(false)}
+                    title={!sidebarOpen ? itemLabel : undefined}
+                    onClick={() => { if (isMobile) setSidebarOpen(false) }}
                     className={`admin-nav-item ${isActive ? 'active' : ''}`}
                   >
                     {item.icon}
-                    <span>{item.label || (t.admin.nav[item.labelKey as keyof typeof t.admin.nav] as string)}</span>
+                    <span>{itemLabel}</span>
                     {(() => {
                       const dynamicBadge = item.href === '/admin/dispatch'
                         ? (stats.pending_dispatch > 0 ? stats.pending_dispatch : null)
@@ -526,12 +589,12 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="admin-sidebar-footer">
-          <button onClick={() => signOut({ redirectUrl: '/sign-in/admin' })} className="nav-item" style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', textAlign: 'left' }}>
+          <button onClick={() => signOut({ redirectUrl: '/sign-in/admin' })} title={!sidebarOpen ? (t.admin.nav.signOut as string) : undefined} className="admin-nav-item" style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', textAlign: 'left' }}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
               <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
             </svg>
-            {t.admin.nav.signOut as string}
+            <span className="admin-sidebar-footer-label">{t.admin.nav.signOut as string}</span>
           </button>
         </div>
       </aside>
@@ -542,7 +605,8 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
           <div className="admin-topbar-left">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="admin-menu-btn md:hidden"
+              className="admin-menu-btn"
+              aria-label="Toggle sidebar"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>
@@ -572,7 +636,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
               <option value="en">EN</option>
               <option value="es">ES</option>
             </select>
-            <button className="icon-btn relative" onClick={() => setNotifOpen(!notifOpen)}>
+            <button className="icon-btn relative" onClick={() => { setNotifOpen(v => !v); setProfileOpen(false) }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
               </svg>
@@ -618,7 +682,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
             )}
             <div className="relative">
               <button
-                onClick={() => setProfileOpen(!profileOpen)}
+                onClick={() => { setProfileOpen(v => !v); setNotifOpen(false) }}
                 className="avatar"
               >
                 {user?.firstName?.charAt(0) || 'A'}{user?.lastName?.charAt(0) || 'D'}

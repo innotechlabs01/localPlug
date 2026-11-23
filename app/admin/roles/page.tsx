@@ -19,11 +19,13 @@ interface Perms {
 type PermMap = Record<string, Record<string, Perms>>
 
 const actions = [
-  { key: 'can_view' as const, label: 'View', color: 'var(--ui-info)' },
+  { key: 'can_view' as const, label: 'Menu/View', color: 'var(--ui-info)' },
   { key: 'can_create' as const, label: 'Create', color: 'var(--ui-accent)' },
   { key: 'can_update' as const, label: 'Update', color: 'var(--ui-warning)' },
   { key: 'can_delete' as const, label: 'Delete', color: 'var(--ui-danger)' },
 ]
+
+const CORE_ROLES = ['super_admin', 'admin', 'viewer']
 
 const theme = {
   bg: 'var(--bg)', surface: 'var(--surface)', surfaceHover: 'var(--surface-hover)',
@@ -57,11 +59,13 @@ export default function RolesPage() {
   const [roles, setRoles] = useState<Role[]>([])
   const [modules, setModules] = useState<Module[]>([])
   const [perms, setPerms] = useState<PermMap>({})
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState<string | null>(null)
   const [newRoleOpen, setNewRoleOpen] = useState(false)
   const [newRoleName, setNewRoleName] = useState('')
   const [newRoleDesc, setNewRoleDesc] = useState('')
+  const [newRoleModules, setNewRoleModules] = useState<string[]>(['dispatch'])
   const { showToast } = useToast()
 
   const fetchData = useCallback(async () => {
@@ -71,6 +75,7 @@ export default function RolesPage() {
       setRoles(data.roles || [])
       setModules(data.modules || [])
       setPerms(data.permissions || {})
+      setIsSuperAdmin(Boolean(data.isSuperAdmin))
     } catch {
       showToast?.('Failed to load permissions')
     } finally {
@@ -122,6 +127,10 @@ export default function RolesPage() {
   }
 
   const handleCreateRole = async () => {
+    if (!isSuperAdmin) {
+      showToast?.('Only Super Admin can create roles')
+      return
+    }
     if (!newRoleName.trim()) {
       showToast?.('Role name is required')
       return
@@ -130,7 +139,11 @@ export default function RolesPage() {
       const res = await fetch('/api/admin/permissions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newRoleName, description: newRoleDesc }),
+        body: JSON.stringify({
+          name: newRoleName,
+          description: newRoleDesc,
+          allowedModules: newRoleModules,
+        }),
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({}))
@@ -139,11 +152,29 @@ export default function RolesPage() {
       }
       setNewRoleName('')
       setNewRoleDesc('')
+      setNewRoleModules(['dispatch'])
       setNewRoleOpen(false)
       showToast?.('Role created')
       fetchData()
     } catch {
       showToast?.('Failed to create role')
+    }
+  }
+
+  const handleDeleteRole = async (role: Role) => {
+    if (!isSuperAdmin) return
+    if (!confirm(`Delete role "${role.name}"?`)) return
+    try {
+      const res = await fetch(`/api/admin/permissions?id=${role.id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        showToast?.(err.error || 'Failed to delete role')
+        return
+      }
+      showToast?.(`Role "${role.name}" deleted`)
+      fetchData()
+    } catch {
+      showToast?.('Failed to delete role')
     }
   }
 
@@ -164,24 +195,32 @@ export default function RolesPage() {
             Configure module-level permissions for each role. Click a checkbox to toggle.
           </p>
         </div>
-        <button
-          onClick={() => setNewRoleOpen(v => !v)}
-          style={{
-            padding: '9px 16px',
-            borderRadius: theme.radiusSm,
-            border: 'none',
-            background: theme.accent,
-            color: '#fff',
-            fontWeight: 600,
-            fontSize: 13,
-            cursor: 'pointer',
-          }}
-        >
-          + New Role
-        </button>
+        {isSuperAdmin && (
+          <button
+            onClick={() => setNewRoleOpen(v => !v)}
+            style={{
+              padding: '9px 16px',
+              borderRadius: theme.radiusSm,
+              border: 'none',
+              background: theme.accent,
+              color: '#fff',
+              fontWeight: 600,
+              fontSize: 13,
+              cursor: 'pointer',
+            }}
+          >
+            + New Role
+          </button>
+        )}
       </div>
 
-      {newRoleOpen && (
+      {!isSuperAdmin && (
+        <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: theme.radiusSm, background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', color: 'var(--ui-warning)', fontSize: 13 }}>
+          Solo el Super Admin (anthonyrivera51@gmail.com) puede crear roles, asignar permisos y configurar la visibilidad del menú.
+        </div>
+      )}
+
+      {newRoleOpen && isSuperAdmin && (
         <div style={{
           marginBottom: 20,
           padding: 16,
@@ -189,28 +228,49 @@ export default function RolesPage() {
           border: `1px solid ${theme.border}`,
           background: theme.surface,
           display: 'flex',
+          flexDirection: 'column',
           gap: 12,
-          flexWrap: 'wrap',
-          alignItems: 'center',
         }}>
-          <input
-            value={newRoleName}
-            onChange={e => setNewRoleName(e.target.value)}
-            placeholder="Role slug (e.g. dispatcher, accountant)"
-            style={{ padding: '8px 12px', borderRadius: 6, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.fg, minWidth: 220 }}
-          />
-          <input
-            value={newRoleDesc}
-            onChange={e => setNewRoleDesc(e.target.value)}
-            placeholder="Description"
-            style={{ padding: '8px 12px', borderRadius: 6, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.fg, flex: 1, minWidth: 220 }}
-          />
-          <button
-            onClick={handleCreateRole}
-            style={{ padding: '8px 16px', borderRadius: 6, border: 'none', background: theme.accent, color: '#fff', fontWeight: 600, cursor: 'pointer' }}
-          >
-            Save Role
-          </button>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            <input
+              value={newRoleName}
+              onChange={e => setNewRoleName(e.target.value)}
+              placeholder="Role slug (e.g. dispatch, accountant)"
+              style={{ padding: '8px 12px', borderRadius: 6, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.fg, minWidth: 220 }}
+            />
+            <input
+              value={newRoleDesc}
+              onChange={e => setNewRoleDesc(e.target.value)}
+              placeholder="Description"
+              style={{ padding: '8px 12px', borderRadius: 6, border: `1px solid ${theme.border}`, background: 'transparent', color: theme.fg, flex: 1, minWidth: 220 }}
+            />
+            <button
+              onClick={handleCreateRole}
+              style={{ padding: '8px 16px', borderRadius: 6, border: 'none', background: theme.accent, color: '#fff', fontWeight: 600, cursor: 'pointer' }}
+            >
+              Save Role
+            </button>
+          </div>
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: theme.fgSecondary, marginBottom: 8 }}>
+              Menús activos para este rol (Menu/View):
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {modules.map(m => {
+                const checked = newRoleModules.includes(m.slug)
+                return (
+                  <label key={m.slug} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 6, border: `1px solid ${checked ? theme.accent : theme.border}`, background: checked ? theme.accentSoft : 'transparent', fontSize: 12, cursor: 'pointer', color: theme.fg }}>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => setNewRoleModules(prev => checked ? prev.filter(s => s !== m.slug) : [...prev, m.slug])}
+                    />
+                    {m.name}
+                  </label>
+                )
+              })}
+            </div>
+          </div>
         </div>
       )}
 
@@ -227,8 +287,19 @@ export default function RolesPage() {
                 Module
               </th>
               {roles.map(role => (
-                <th key={role.id} style={{ textAlign: 'center', padding: '14px 8px', borderBottom: `1px solid ${theme.border}`, borderLeft: `1px solid ${theme.border}`, minWidth: 140 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: theme.fg }}>{role.name}</div>
+                <th key={role.id} style={{ textAlign: 'center', padding: '14px 8px', borderBottom: `1px solid ${theme.border}`, borderLeft: `1px solid ${theme.border}`, minWidth: 160 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: theme.fg }}>{role.name}</span>
+                    {isSuperAdmin && !CORE_ROLES.includes(role.name) && (
+                      <button
+                        onClick={() => handleDeleteRole(role)}
+                        title="Delete role"
+                        style={{ background: 'none', border: 'none', color: 'var(--ui-danger)', cursor: 'pointer', fontSize: 12, padding: '0 4px' }}
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
                   <div style={{ fontSize: 11, color: theme.fgSecondary, marginTop: 2 }}>{role.description}</div>
                 </th>
               ))}
@@ -250,20 +321,20 @@ export default function RolesPage() {
                   {roles.map(role => {
                     const rId = String(role.id)
                     const mId = String(mod.id)
-                    const p = perms[rId]?.[mId]
-                    const isAdmin = role.name === 'admin'
+                    const p = perms[rId]?.[mId] || { can_view: 0, can_create: 0, can_update: 0, can_delete: 0 }
+                    const isFullAccess = role.name === 'super_admin' || role.name === 'admin'
 
                     return (
                       <td key={`${role.id}-${mod.id}`} style={{
                         padding: '10px 8px', borderLeft: `1px solid ${theme.border}`,
                         verticalAlign: 'middle',
                       }}>
-                        {isAdmin ? (
+                        {isFullAccess ? (
                           <div style={{ textAlign: 'center', fontSize: 11, color: theme.accent, fontWeight: 500 }}>
                             Full Access
                           </div>
-                        ) : p ? (
-                          <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                        ) : (
+                          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', opacity: isSuperAdmin ? 1 : 0.6, pointerEvents: isSuperAdmin ? 'auto' : 'none' }}>
                             {actions.map(a => (
                               <div key={a.key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
                                 <Checkbox
@@ -274,10 +345,6 @@ export default function RolesPage() {
                                 <span style={{ fontSize: 9, color: theme.fgSecondary }}>{a.label}</span>
                               </div>
                             ))}
-                          </div>
-                        ) : (
-                          <div style={{ textAlign: 'center', fontSize: 11, color: theme.fgSecondary }}>
-                            No permissions
                           </div>
                         )}
                       </td>
