@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import StepProgress from './step-progress'
 import StepFlightLogistics from './step-flight-logistics'
@@ -9,6 +9,7 @@ import StepDestination from './step-destination'
 import StepPackages from './step-packages'
 import StepPayment from './step-payment'
 import BookingConfirmation from './booking-confirmation'
+import { BookingSummarySidebar, MobileStickyBar } from './booking-summary'
 import Button from '@/app/components/ui/button'
 import LangToggle from '@/app/components/ui/lang-toggle'
 import { ToastProvider, useToast } from './lib/toast'
@@ -17,6 +18,7 @@ import { createPersistence } from './lib/persistence'
 import { useI18n } from '@/lib/i18n'
 import type { Booking, DestinationData } from './lib/types'
 import { logBookingEvent, logBookingError } from './lib/logger'
+import { CONFIG_DEFAULTS } from './lib/config-defaults'
 
 type Step = 0 | 1 | 2 | 3 | 4
 
@@ -99,6 +101,39 @@ function DesktopStepProgress({ currentStep, stepDetails }: { currentStep: number
 
 function BookingFormInner() {
   const { t } = useI18n()
+
+  interface BookingConfig {
+    packages: Record<string, {
+      name: string
+      base_price_usd?: number
+      price?: number
+      service_fee_flat?: number
+      features?: string[]
+      tours?: Array<{ id: number; name: string; description: string; price_per_person_usd: number; vehicle_type: string; duration_hours: number }>
+      is_popular?: boolean
+    }>
+    returnTripCharge: number
+    serviceFee: number
+    taxRate: number
+    currency: string
+    advanceBookingDays: number
+    trm?: number
+    brandName?: string
+  }
+
+  const [bookingConfig, setBookingConfig] = useState<BookingConfig | null>(null)
+  const [configError, setConfigError] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/config')
+      .then(r => {
+        if (!r.ok) throw new Error(`Config fetch failed: ${r.status}`)
+        return r.json()
+      })
+      .then(cfg => setBookingConfig(cfg))
+      .catch(() => setConfigError(true))
+  }, [])
+
   const stepDetails = getStepDetails(t)
   const [step, setStep] = useState<Step>(0)
   const [flightData, setFlightData] = useState({
@@ -114,11 +149,15 @@ function BookingFormInner() {
   const [customerEmail, setCustomerEmail] = useState('')
   const [customerName, setCustomerName] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
+  const [customerCountry, setCustomerCountry] = useState('')
+  const [customerLanguage, setCustomerLanguage] = useState('')
+  const [customerNotes, setCustomerNotes] = useState('')
   const [destination, setDestination] = useState<DestinationData>({
     hasPlace: true,
     address: '',
     wantsGuatape: false,
     additionalTrips: [],
+    numPeople: 1,
   })
   const [selectedPackage, setSelectedPackage] = useState('')
   const [bookingReference] = useState(() =>
@@ -128,29 +167,33 @@ function BookingFormInner() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { showToast, dismissToast } = useToast()
 
-  const canProceed = () => {
-    switch (step) {
-      case 0: {
-        const fieldsFilled =
-          !!flightData.flightNumber.trim() &&
-          !!flightData.airline.trim() &&
-          !!flightData.arrivalDate &&
-          !!flightData.arrivalTime
-        if (!fieldsFilled) return false
-        const today = new Date()
-        const target = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-        target.setDate(target.getDate() + 10)
-        const minDateStr = target.toISOString().split('T')[0]
-        return flightData.arrivalDate >= minDateStr
+    const canProceed = () => {
+      switch (step) {
+        case 0: {
+          const fieldsFilled =
+            !!flightData.flightNumber.trim() &&
+            !!flightData.airline.trim() &&
+            !!flightData.arrivalDate &&
+            !!flightData.arrivalTime
+          if (!fieldsFilled) return false
+          const today = new Date()
+          const target = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+          target.setDate(target.getDate() + (bookingConfig?.advanceBookingDays ?? CONFIG_DEFAULTS.advanceBookingDays))
+          const minDateStr = target.toISOString().split('T')[0]
+          return flightData.arrivalDate >= minDateStr
+        }
+        case 1:
+          return !!profile && !!customerEmail.trim() && !!customerName.trim() && !!customerPhone.trim()
+        case 2:
+          if (destination.hasPlace) {
+            return !!destination.address.trim()
+          }
+          return true
+         case 3:
+          // Must select a package and specify at least 1 traveler.
+          return !!selectedPackage && (destination.numPeople && destination.numPeople >= 1)
       }
-      case 1:
-        return !!profile && !!customerEmail.trim() && !!customerName.trim() && !!customerPhone.trim()
-      case 2:
-        return true
-      case 3:
-        return !!selectedPackage
     }
-  }
 
   const nextStep = () => {
     if (step < TOTAL_STEPS - 1) setStep((step + 1) as Step)
@@ -160,11 +203,9 @@ function BookingFormInner() {
     if (step > 0) setStep((step - 1) as Step)
   }
 
-  const handleConfirm = async () => {
-    setIsSubmitting(true)
-
+  const handlePaymentSuccess = async () => {
     const booking = {
-      id: crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      id: bookingReference,
       flight: flightData,
       profile,
       destination,
@@ -172,6 +213,55 @@ function BookingFormInner() {
       status: 'submitted' as const,
       createdAt: new Date().toISOString(),
       submittedAt: new Date().toISOString(),
+      customer: {
+        name: customerName,
+        email: customerEmail,
+        phone: customerPhone,
+        country: customerCountry,
+        language: customerLanguage,
+        notes: customerNotes,
+      },
+    }
+
+    logBookingEvent('Submitting booking after payment', { id: booking.id })
+
+    try {
+      await persistence.submit(booking)
+      logBookingEvent('Booking confirmed after payment', { id: booking.id })
+      setSubmitted(true)
+    } catch (err) {
+      logBookingError('Payment submission', err)
+      const toastId = showToast({
+        type: 'warning',
+        message: t.booking.toast.offline,
+        action: {
+          label: t.common.dismiss,
+          onClick: () => dismissToast(toastId),
+        },
+      })
+    }
+  }
+
+  const handleConfirm = async () => {
+    setIsSubmitting(true)
+
+    const booking = {
+      id: bookingReference,
+      flight: flightData,
+      profile,
+      destination,
+      package: selectedPackage,
+      status: 'submitted' as const,
+      createdAt: new Date().toISOString(),
+      submittedAt: new Date().toISOString(),
+      customer: {
+        name: customerName,
+        email: customerEmail,
+        phone: customerPhone,
+        country: customerCountry,
+        language: customerLanguage,
+        notes: customerNotes,
+      },
     }
 
     logBookingEvent('Submitting booking', { id: booking.id })
@@ -200,8 +290,6 @@ function BookingFormInner() {
           onClick: () => dismissToast(toastId),
         },
       })
-
-      setSubmitted(true)
     } finally {
       setIsSubmitting(false)
     }
@@ -209,12 +297,12 @@ function BookingFormInner() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-bg-dark flex flex-col">
+      <div className="min-h-dvh bg-bg-dark flex flex-col">
         <header className="bg-[var(--bg-card)] border-b border-[var(--border)]">
           <div className="mx-auto max-w-container px-4 md:px-12 py-4 flex items-center justify-between">
             <Link href="/" className="font-display text-2xl font-semibold text-white no-underline tracking-tight">
-              Medellín{' '}
-              <span className="text-[var(--accent-gold)]">Premium</span>
+              {bookingConfig?.brandName?.split(' ')[0] || 'Medellín'}{' '}
+              <span className="text-[var(--accent-gold)]">{bookingConfig?.brandName?.split(' ').slice(1).join(' ') || 'Premium'}</span>
             </Link>
             <Link
               href="/"
@@ -234,13 +322,39 @@ function BookingFormInner() {
     )
   }
 
+  if (configError) {
+    return (
+      <div className="min-h-dvh bg-bg-dark flex flex-col">
+        <header className="bg-[var(--bg-card)] border-b border-[var(--border)]">
+          <div className="mx-auto max-w-container px-4 md:px-12 py-4 flex items-center justify-between">
+            <Link href="/" className="font-display text-2xl font-semibold text-white no-underline tracking-tight">
+              {bookingConfig?.brandName?.split(' ')[0] || 'Medellín'}{' '}<span className="text-[var(--accent-gold)]">{bookingConfig?.brandName?.split(' ').slice(1).join(' ') || 'Premium'}</span>
+            </Link>
+          </div>
+        </header>
+        <main className="flex-1 flex items-center justify-center px-4">
+          <div className="text-center p-8 max-w-md">
+            <div className="w-16 h-16 rounded-full bg-[rgba(239,68,68,0.12)] flex items-center justify-center mx-auto mb-4">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+            <h2 className="text-display-lg text-white mb-2">Service Temporarily Unavailable</h2>
+            <p className="text-body-md text-[var(--text-secondary)]">We are unable to process bookings at this moment. Please try again shortly.</p>
+            <button onClick={() => window.location.reload()} className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-[var(--radius-md)] bg-gold-gradient text-[var(--bg-dark)] font-bold">
+              Try Again
+            </button>
+          </div>
+        </main>
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-bg-dark flex flex-col">
+    <div className="min-h-dvh bg-bg-dark flex flex-col">
       <header className="bg-[var(--bg-card)] border-b border-[var(--border)]">
         <div className="mx-auto max-w-container px-4 md:px-12 py-4 flex items-center justify-between">
           <Link href="/" className="font-display text-2xl font-semibold text-white no-underline tracking-tight">
-            Medellín{' '}
-            <span className="text-[var(--accent-gold)]">Premium</span>
+            {bookingConfig?.brandName?.split(' ')[0] || 'Medellín'}{' '}
+            <span className="text-[var(--accent-gold)]">{bookingConfig?.brandName?.split(' ').slice(1).join(' ') || 'Premium'}</span>
           </Link>
           <div className="flex items-center gap-3">
             <LangToggle />
@@ -259,16 +373,42 @@ function BookingFormInner() {
 
       <main className="flex-1">
         <div className="mx-auto max-w-container px-4 md:px-12 py-8 md:py-12">
-          <div className="md:grid md:grid-cols-[280px_1fr] md:gap-12 lg:gap-16">
-            <aside className="hidden md:block">
-              <div className="md:sticky md:top-8 pt-8">
-                <DesktopStepProgress currentStep={step} stepDetails={stepDetails} />
-              </div>
-            </aside>
-
-            <div>
-              <div className="md:hidden mb-8">
+          <div className="lg:grid lg:grid-cols-[1fr_360px] lg:gap-10 xl:gap-14 items-start">
+            <div className="min-w-0">
+              <div className="md:hidden mb-6">
                 <StepProgress currentStep={step} totalSteps={TOTAL_STEPS} />
+              </div>
+
+              <div className="hidden md:flex items-center gap-3 mb-8">
+                {stepDetails.map((s, i) => {
+                  const isActive = i === step
+                  const isCompleted = i < step
+                  return (
+                    <div key={s.label} className="flex items-center gap-3">
+                      <div className={`flex items-center gap-2.5 text-[12px] font-medium transition-colors duration-200 ${
+                        isActive ? 'text-[var(--accent-gold)]' : isCompleted ? 'text-[var(--success)]' : 'text-[var(--text-muted)]'
+                      }`}>
+                        <span className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold border-[1.5px] transition-all duration-200 ${
+                          isActive
+                            ? 'bg-[rgba(212,165,116,0.12)] border-[var(--accent-gold)] text-[var(--accent-gold)]'
+                            : isCompleted
+                            ? 'bg-[rgba(34,197,94,0.12)] border-[var(--success)] text-[var(--success)]'
+                            : 'border-[var(--border)]'
+                        }`}>
+                          {isCompleted ? (
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
+                          ) : (
+                            i + 1
+                          )}
+                        </span>
+                        <span className="hidden lg:inline">{s.label}</span>
+                      </div>
+                      {i < stepDetails.length - 1 && (
+                        <div className={`w-6 h-px transition-colors duration-200 ${i < step ? 'bg-[var(--success)]' : 'bg-[var(--border)]'}`} />
+                      )}
+                    </div>
+                  )
+                })}
               </div>
 
               <div className="bg-[var(--bg-card)] rounded-[var(--radius-xl)] p-6 md:p-10 lg:p-12 border border-[var(--border)]">
@@ -276,6 +416,7 @@ function BookingFormInner() {
                   <StepFlightLogistics
                     data={flightData}
                     onChange={setFlightData}
+                    config={bookingConfig}
                   />
                 )}
                 {step === 1 && (
@@ -288,17 +429,30 @@ function BookingFormInner() {
                     onNameChange={setCustomerName}
                     phone={customerPhone}
                     onPhoneChange={setCustomerPhone}
+                    country={customerCountry}
+                    onCountryChange={setCustomerCountry}
+                    language={customerLanguage}
+                    onLanguageChange={setCustomerLanguage}
                   />
                 )}
                 {step === 2 && (
-                  <StepDestination data={destination} onChange={setDestination} />
-                )}
-                {step === 3 && (
-                  <StepPackages
-                    value={selectedPackage}
-                    onChange={setSelectedPackage}
+                  <StepDestination
+                    data={destination}
+                    onChange={setDestination}
+                    customerNotes={customerNotes}
+                    onCustomerNotesChange={setCustomerNotes}
+                    config={bookingConfig}
                   />
                 )}
+                 {step === 3 && (
+                   <StepPackages
+                     value={selectedPackage}
+                     onChange={setSelectedPackage}
+                     destination={destination}
+                     onDestinationChange={setDestination}
+                     config={bookingConfig}
+                   />
+                 )}
 
                 {step === 4 && (
                   <StepPayment
@@ -307,10 +461,17 @@ function BookingFormInner() {
                     customerEmail={customerEmail}
                     customerName={customerName}
                     customerPhone={customerPhone}
+                    customerCountry={customerCountry}
+                    customerNotes={customerNotes}
                     flightData={flightData}
                     destinationAddress={destination.address}
-                    onPaymentSuccess={() => setSubmitted(true)}
-                    onPaymentError={() => {}}
+                    needReturn={flightData.needReturn}
+                    onPaymentSuccess={handlePaymentSuccess}
+                    onPaymentError={(message) => {
+                      showToast({ type: 'error', message })
+                    }}
+                    config={bookingConfig}
+                    destination={destination}
                   />
                 )}
 
@@ -321,6 +482,7 @@ function BookingFormInner() {
                       onClick={prevStep}
                       disabled={step === 0}
                     >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
                       {t.common.back}
                     </Button>
                     <Button
@@ -329,6 +491,7 @@ function BookingFormInner() {
                       disabled={!canProceed()}
                     >
                       {t.common.continue}
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
                     </Button>
                   </div>
                 )}
@@ -339,6 +502,7 @@ function BookingFormInner() {
                       variant="ghost"
                       onClick={prevStep}
                     >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
                       {t.booking.steps.payment.backToPackages}
                     </Button>
                   </div>
@@ -354,9 +518,31 @@ function BookingFormInner() {
                 </div>
               )}
             </div>
+
+            <aside className="hidden lg:block lg:sticky lg:top-[88px]">
+              <BookingSummarySidebar
+                packageId={selectedPackage}
+                needReturn={flightData.needReturn}
+                config={bookingConfig}
+                destination={destination}
+              />
+            </aside>
           </div>
         </div>
       </main>
+
+      {selectedPackage && step < 4 && (
+        <MobileStickyBar
+          packageId={selectedPackage}
+          needReturn={flightData.needReturn}
+          currentStep={step}
+          totalSteps={TOTAL_STEPS}
+          onConfirm={nextStep}
+          isSubmitting={isSubmitting}
+          config={bookingConfig}
+          destination={destination}
+        />
+      )}
 
       <footer className="bg-[var(--bg-card)] border-t border-[var(--border)] py-8">
         <div className="mx-auto max-w-container px-4 md:px-12 text-center">

@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
+import { requirePermission } from '@/lib/admin/permissions'
 
 export async function GET(req: Request) {
+  const authError = await requirePermission('reservations', 'view')
+  if (authError) return authError
   const db = getDb()
   const { searchParams } = new URL(req.url)
 
@@ -9,7 +12,10 @@ export async function GET(req: Request) {
   const priority = searchParams.get('priority')
   const search = searchParams.get('search')
 
-  let sql = 'SELECT * FROM orders WHERE 1=1'
+  let sql = `SELECT o.*, COALESCE(p.status, o.payment_status) as payment_status
+             FROM orders o
+             LEFT JOIN payments p ON o.booking_reference = p.booking_reference
+             WHERE 1=1`
   const args: string[] = []
 
   if (status && status !== 'all') {

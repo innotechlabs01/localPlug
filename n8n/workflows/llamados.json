@@ -1,0 +1,100 @@
+{
+  "name": "Registro de Llamados",
+  "active": false,
+  "nodes": [
+    {
+      "id": "webhook-trigger",
+      "name": "Webhook Llamados",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "llamados-legicon",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "llamados",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "code-validate",
+      "name": "Validar Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst payload = item.body || item;\n\nif (!payload.case_id) {\n  return [{\n    json: { error: 'Falta case_id', status: 400 }\n  }];\n}\n\nconst registro = {\n  case_id: payload.case_id,\n  description: payload.description || 'Llamado registrado via webhook',\n  event_type: payload.event_type || 'llamado'\n};\n\nreturn [{\n  json: registro\n}];"
+      }
+    },
+    {
+      "id": "http-register-llamado",
+      "name": "Registrar en LEGICON",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [650, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:3000/api/events/llamado",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "accept", "value": "application/json"},
+            {"name": "Content-Type", "value": "application/json"}
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"case_id\": \"{{ $json.case_id }}\",\n  \"description\": \"{{ $json.description }}\",\n  \"event_type\": \"{{ $json.event_type }}\"\n}",
+        "options": {
+          "redirect": {
+            "redirect": {}
+          }
+        }
+      }
+    },
+    {
+      "id": "respond-webhook",
+      "name": "Responder",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [850, 300],
+      "parameters": {
+        "responseBody": "={{ $json }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "sticky-note",
+      "name": "Registro de Llamados LEGICON",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [250, 100],
+      "parameters": {
+        "content": "**Registro de Llamados**\n\nWebhook que recibe llamados y los registra en LEGICON.\n\n**POST** `/webhook/llamados`\n\nBody:\n```json\n{\n  \"case_id\": \"...\",\n  \"description\": \"Descripcion del llamado\",\n  \"event_type\": \"llamado\"\n}\n```\n\nURL completa:\n`http://localhost:5678/webhook/llamados`",
+        "color": 3,
+        "height": 220,
+        "width": 320
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Llamados": {
+      "main": [[{"node": "Validar Payload", "type": "main", "index": 0}]]
+    },
+    "Validar Payload": {
+      "main": [[{"node": "Registrar en LEGICON", "type": "main", "index": 0}]]
+    },
+    "Registrar en LEGICON": {
+      "main": [[{"node": "Responder", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "timezone": "America/Bogota",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameFolder"
+  }
+}

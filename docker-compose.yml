@@ -15,6 +15,12 @@ services:
       - NODE_ENV=production
       - HOSTNAME=0.0.0.0
       - PORT=3000
+      - TZ=America/Bogota
+      - N8N_BASE_URL=http://n8n:5678
+      - OLLAMA_BASE_URL=http://ollama:11434
+    depends_on:
+      n8n:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000"]
       interval: 30s
@@ -24,6 +30,138 @@ services:
     networks:
       - localplug-network
 
+  ollama:
+    image: ollama/ollama:latest
+    container_name: localplug-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - localplug-network
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: localplug-n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    env_file:
+      - .env.local
+    volumes:
+      - n8n-data:/home/node/.n8n
+      - ./n8n/workflows:/opt/n8n/workflows
+      - ./n8n/docker-entrypoint.sh:/docker-entrypoint.sh
+    environment:
+      - N8N_ENCRYPTION_KEY=localplug-n8n-encryption-key-2026
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - WEBHOOK_URL=http://localplug:3000
+      - NODE_ENV=production
+      - TZ=America/Bogota
+      - OLLAMA_MODEL=llama3.1:8b
+      - EXECUTIONS_DATA_PRUNE=true
+      - EXECUTIONS_DATA_MAX_AGE=168
+      - N8N_USER_MANAGEMENT_DISABLED=true
+      - N8N_METRICS=false
+    entrypoint: ["/bin/sh", "/docker-entrypoint.sh"]
+    depends_on: {}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - localplug-network
+
+  ollama-setup:
+    image: ollama/ollama:latest
+    container_name: localplug-ollama-setup
+    restart: "no"
+    entrypoint:
+      - sh
+      - -c
+      - |
+        echo "Waiting for Ollama server..."
+        sleep 10
+        echo "Pulling model: ${OLLAMA_MODEL:-llama3.1:8b}"
+        ollama pull ${OLLAMA_MODEL:-llama3.1:8b}
+        echo "Model ready!"
+    depends_on:
+      ollama:
+        condition: service_healthy
+    networks:
+      - localplug-network
+
+  evolution-api:
+    image: evoapicloud/evolution-api:v2.3.7
+    container_name: localplug-evolution
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - SERVER_URL=https://api-message.innotechlabssas.lat
+      - SERVER_PORT=8080
+      - SERVER_TYPE=http
+      - AUTHENTICATION_API_KEY=evo_k1_localplug_2026_secure_key_here
+      - AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true
+      - AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCE=true
+      - DATABASE_ENABLED=true
+      - DATABASE_PROVIDER=postgresql
+      - DATABASE_CONNECTION_URI=postgresql://postgres:postgres@supabase_db_cf-re-app:5432/evolution
+      - DATABASE_SAVE_DATA_INSTANCE=true
+      - DATABASE_SAVE_DATA_NEW_MESSAGE=true
+      - CACHE_REDIS_ENABLED=true
+      - CACHE_REDIS_URI=redis://redis:6379
+      - CACHE_REDIS_SAVE_INSTANCES=true
+      - CONFIG_SESSION_PHONE_CLIENT=LocalPlug Business
+      - CONFIG_SESSION_PHONE_VERSION=2.3000.1028355510
+      - CONFIG_SESSION_PHONE_NAME=Chrome
+      - LOG_LEVEL=SHELL,WEBHOOK,WEBHOOK_BY_EVENTS,EVENTS,ERROR
+      - TZ=America/Bogota
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/manager"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - localplug-network
+      - supabase_network_cf-re-app
+      - evolution-redis-net
+
+  evolution-redis:
+    image: redis:7-alpine
+    container_name: localplug-evolution-redis
+    restart: unless-stopped
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - evolution-redis-net
+
+volumes:
+  ollama-data:
+  n8n-data:
+
 networks:
   localplug-network:
+    driver: bridge
+  supabase_network_cf-re-app:
+    external: true
+  evolution-redis-net:
     driver: bridge

@@ -3,7 +3,6 @@ import type { Booking, PersistenceQueueEntry } from './types'
 const DRAFT_KEY = 'booking_draft'
 const QUEUE_KEY = 'booking_queue'
 const LAST_SUBMITTED_KEY = 'booking_last_submitted'
-const MOCK_FAIL_KEY = '__mock_fail'
 
 const DRAFT_TTL_MS = 24 * 60 * 60 * 1000
 const MAX_QUEUE_SIZE = 10
@@ -42,17 +41,10 @@ function safeRemoveItem(key: string): void {
   }
 }
 
-function isMockFailEnabled(): boolean {
-  return safeGetItem(MOCK_FAIL_KEY) === 'true'
-}
-
 export function createPersistence(options?: PersistenceOptions) {
   const latency = options?.latency ?? DEFAULT_LATENCY
 
   async function saveDraft(booking: Partial<Booking>): Promise<void> {
-    if (isMockFailEnabled()) {
-      throw new Error('Simulated failure')
-    }
     await delay(latency)
     safeSetItem(DRAFT_KEY, JSON.stringify(booking))
   }
@@ -122,10 +114,6 @@ export function createPersistence(options?: PersistenceOptions) {
   }
 
   async function submit(booking: Booking): Promise<{ status: string }> {
-    if (isMockFailEnabled()) {
-      throw new Error('Simulated failure')
-    }
-
     await delay(latency)
     const res = await fetch('/api/booking', {
       method: 'POST',
@@ -148,7 +136,6 @@ export function createPersistence(options?: PersistenceOptions) {
     safeRemoveItem(DRAFT_KEY)
     safeRemoveItem(QUEUE_KEY)
     safeRemoveItem(LAST_SUBMITTED_KEY)
-    safeRemoveItem(MOCK_FAIL_KEY)
   }
 
   return {

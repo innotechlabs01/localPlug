@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
+import { requirePermission } from '@/lib/admin/permissions'
 
 export async function PUT(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authError = await requirePermission('reservations', 'update')
+  if (authError) return authError
   const { id } = await params
   const db = getDb()
   const body = await req.json()

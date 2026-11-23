@@ -9,7 +9,7 @@ specs/002-booking-persistence-mock/plan.md
 For context about flight validation, 15-day date enforcement, and flight-based user tracking, refer to:
 specs/003-flight-validation-tracking/plan.md
 
-For context about Stripe payment gateway integration, webhook-based payment confirmation, and payment record storage, refer to:
+For context about Paddle payment integration, webhook-based payment confirmation, and payment record storage, refer to:
 specs/004-stripe-payment-gateway/plan.md
 
 For context about admin dashboard, order queue, team management, and i18n translations, refer to:
@@ -31,4 +31,22 @@ For context about WhatsApp n8n communication implementation plan, data model, co
 specs/010-whatsapp-n8n-communication/plan.md
 specs/010-whatsapp-n8n-communication/data-model.md
 specs/010-whatsapp-n8n-communication/quickstart.md
+
+For context about admin reservations implementation, refer to:
+specs/011-admin-reservations-functionality/plan.md
+
+For context about return date validation — return date min equals arrival date when return transport is checked, refer to:
+specs/013-return-date-validation/plan.md
+
+For context about diagnosing and fixing Evolution API QR connection failure, refer to:
+specs/014-fix-evolution-qr-connection/plan.md
+
+For context about aligning the admin UI with the HTML reference design, refer to:
+specs/016-admin-ui-alignment/plan.md
+specs/016-admin-ui-alignment/quickstart.md
+specs/016-admin-ui-alignment/research.md
+
+For context about n8n Docker volume naming and SQLITE_READONLY fixes, refer to:
+specs/015-n8n-docker-volume-naming/plan.md
+
 <!-- SPECKIT END -->

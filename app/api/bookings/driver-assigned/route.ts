@@ -4,11 +4,11 @@ import { triggerDriverAssigned } from '@/lib/n8n/client'
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const { bookingReference, customerName, customerPhone, driverName, vehicle, eta } = body
+    const { bookingReference, customerName, customerPhone, driverName, vehicle, licensePlate, eta } = body
 
-    if (!bookingReference || !driverName || !vehicle || !eta) {
+    if (!bookingReference || !driverName || !vehicle || !licensePlate) {
       return NextResponse.json(
-        { error: 'Missing required fields: bookingReference, driverName, vehicle, eta' },
+        { error: 'Missing required fields: bookingReference, driverName, vehicle, licensePlate' },
         { status: 400 },
       )
     }
@@ -21,6 +21,7 @@ export async function POST(req: Request) {
       customerPhone: customerPhone || undefined,
       driverName,
       vehicle,
+      licensePlate,
       eta,
     })
 

@@ -8,3 +8,9 @@ dist/
 .env*.local
 .DS_Store
 coverage/
+
+.next/
+node_modules/
+.env.*
+.vercel
+db.sqlite

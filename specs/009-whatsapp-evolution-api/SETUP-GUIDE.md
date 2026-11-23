@@ -70,11 +70,11 @@ DATABASE_CONNECTION_URI=postgresql://postgres:YOUR_PASSWORD@evolution-db:5432/ev
 CACHE_REDIS_ENABLED=true
 CACHE_REDIS_URI=redis://:YOUR_PASSWORD@evolution-redis:6379
 
-# Webhooks - Send ALL events to your n8n instance
+# Webhooks - Send ALL events to the App (App Direct Architecture)
 WEBHOOK_GLOBAL_ENABLED=true
-WEBHOOK_GLOBAL_URL=https://agent-ia.innotechlabssas.lat/webhook/evolution-events
+WEBHOOK_GLOBAL_URL=https://localplug.vercel.app/api/webhooks/evolution
 WEBHOOK_GLOBAL_WEBHOOK_BY_EVENTS=true
-WEBHOOK_GLOBAL_HEADERS={"Authorization":"Bearer YOUR_N8N_API_KEY"}
+WEBHOOK_GLOBAL_HEADERS={"x-evolution-signature":"YOUR_EVOLUTION_WEBHOOK_SECRET"}
 
 # Instance Settings
 CONFIG_SESSION_PHONE_NUMBER=573001234567
@@ -88,7 +88,7 @@ LOG_LEVEL=WARN,SHELL,WEBHOOK,WEBHOOK_BY_EVENTS
 **IMPORTANT**: Replace:
 - `YOUR_PASSWORD` with the PostgreSQL password from Step 2
 - `YOUR_PASSWORD` with the Redis password from Step 3
-- `YOUR_N8N_API_KEY` with your n8n API key (you'll create this in Part 2)
+- `YOUR_EVOLUTION_WEBHOOK_SECRET` with a secure secret (must match EVOLUTION_WEBHOOK_SECRET in Vercel)
 - `573001234567` with your actual WhatsApp Business number
 
 ### Step 6: Expose Port and Configure Domain

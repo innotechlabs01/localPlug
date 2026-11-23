@@ -1,0 +1,116 @@
+{
+  "name": "BOT Judicial - Escaneo Diario",
+  "active": false,
+  "nodes": [
+    {
+      "id": "schedule-trigger",
+      "name": "Cada 12 horas",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300],
+      "parameters": {
+        "rule": {
+          "interval": [{"field": "hours", "hoursInterval": 12}]
+        }
+      }
+    },
+    {
+      "id": "http-get-cases",
+      "name": "Consultar Casos Activos",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [450, 200],
+      "parameters": {
+        "method": "GET",
+        "url": "http://host.docker.internal:3000/api/cases",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "accept", "value": "application/json"}
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "http-deadline-alerts",
+      "name": "Verificar Alertas Vencimiento",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [450, 400],
+      "parameters": {
+        "method": "GET",
+        "url": "http://host.docker.internal:3000/api/automations/deadline-alerts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {"name": "accept", "value": "application/json"}
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "code-merge-results",
+      "name": "Consolidar Resultados",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 300],
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nconst casesData = items[0]?.json || {};\nconst alertsData = items[1]?.json || {};\n\nconst criticalCount = (alertsData.critical || []).length;\nconst warningCount = (alertsData.warning || []).length;\nconst hearingCount = (alertsData.hearings || []).length;\n\nconst summary = {\n  timestamp: new Date().toISOString(),\n  workflow: 'bot-judicial',\n  totalCases: Array.isArray(casesData) ? casesData.length : 0,\n  criticos: criticalCount,\n  advertencias: warningCount,\n  audiencias: hearingCount,\n  accionRequerida: criticalCount > 0 || warningCount > 0\n};\n\nreturn [{\n  json: summary\n}];"
+      }
+    },
+    {
+      "id": "sticky-note",
+      "name": "BOT Judicial LEGICON",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [250, 100],
+      "parameters": {
+        "content": "**BOT Judicial - Escaneo Diario**\n\nEjecuta cada 12 horas:\n1. Consulta casos activos en LEGICON\n2. Verifica terminos proximos a vencer\n3. Detecta audiencias programadas\n4. Consolida alertas y notificaciones",
+        "color": 5,
+        "height": 140,
+        "width": 300
+      }
+    },
+    {
+      "id": "sticky-url",
+      "name": "Configuracion URL",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [450, 0],
+      "parameters": {
+        "content": "⚙️ **URL de LEGICON**\n\nLocal dev: `http://host.docker.internal:3000`\nProduccion: Reemplazar por la URL real de la API de LEGICON\n\nLos endpoints requieren autenticacion Clerk. Configurar credenciales header.",
+        "color": 1,
+        "height": 100,
+        "width": 360
+      }
+    }
+  ],
+  "connections": {
+    "Cada 12 horas": {
+      "main": [
+        [
+          {"node": "Consultar Casos Activos", "type": "main", "index": 0},
+          {"node": "Verificar Alertas Vencimiento", "type": "main", "index": 0}
+        ]
+      ]
+    },
+    "Consultar Casos Activos": {
+      "main": [[{"node": "Consolidar Resultados", "type": "main", "index": 0}]]
+    },
+    "Verificar Alertas Vencimiento": {
+      "main": [[{"node": "Consolidar Resultados", "type": "main", "index": 1}]]
+    }
+  },
+  "settings": {
+    "timezone": "America/Bogota",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "saveManualExecutions": true
+  }
+}

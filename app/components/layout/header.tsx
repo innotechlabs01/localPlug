@@ -13,9 +13,18 @@ function HeaderInner() {
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 50)
-    window.addEventListener('scroll', onScroll)
+    window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
+
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [mobileOpen])
 
   const navLinks = [
     { label: t.nav.services, href: '#services' },
@@ -33,7 +42,7 @@ function HeaderInner() {
           : 'bg-[rgba(10,10,10,0.85)] backdrop-blur-xl'
       } border-b border-[var(--border)]`}
     >
-      <nav className="mx-auto max-w-container px-4 md:px-12">
+      <nav className="mx-auto max-w-container px-4 md:px-12" aria-label="Main navigation">
         <div className="flex items-center justify-between h-16">
           <a href="/" className="font-display text-2xl font-semibold text-white no-underline whitespace-nowrap tracking-tight">
             Medellín{' '}
@@ -65,8 +74,9 @@ function HeaderInner() {
               onClick={() => setMobileOpen(!mobileOpen)}
               aria-label={mobileOpen ? t.nav.close : 'Open menu'}
               aria-expanded={mobileOpen}
+              aria-controls="mobile-menu"
             >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                 {mobileOpen ? (
                   <path d="M18 6L6 18M6 6l12 12" />
                 ) : (
@@ -78,19 +88,19 @@ function HeaderInner() {
         </div>
 
         {mobileOpen && (
-          <div className="md:hidden pb-4 border-t border-white/10 pt-4">
-            <div className="flex flex-col gap-3">
+          <div id="mobile-menu" className="md:hidden pb-4 border-t border-white/10 pt-4 animate-slide-up">
+            <div className="flex flex-col gap-1">
               {navLinks.map((link) => (
                 <a
                   key={link.href}
                   href={link.href}
-                  className="text-body-md text-[var(--text-secondary)] hover:text-white transition-colors px-2 py-2 min-h-[44px] flex items-center"
+                  className="text-body-md text-[var(--text-secondary)] hover:text-white hover:bg-white/5 transition-colors duration-200 rounded-lg px-3 py-2.5 min-h-[44px] flex items-center"
                   onClick={() => setMobileOpen(false)}
                 >
                   {link.label}
                 </a>
               ))}
-              <Link href="/booking" className="block mt-2">
+              <Link href="/booking" className="block mt-3" onClick={() => setMobileOpen(false)}>
                 <Button size="sm" variant="primary" className="w-full">
                   {t.nav.planMyArrival}
                 </Button>

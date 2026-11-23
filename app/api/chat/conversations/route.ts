@@ -1,16 +1,23 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
+import { auth } from '@clerk/nextjs/server'
 
 export async function GET(request: Request) {
   try {
+    const { userId } = await auth()
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const db = getDb()
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
     const flagged = searchParams.get('flagged')
     const agentId = searchParams.get('agentId')
+    const dateFrom = searchParams.get('dateFrom')
+    const dateTo = searchParams.get('dateTo')
     const limit = parseInt(searchParams.get('limit') || '50', 10)
     const offset = parseInt(searchParams.get('offset') || '0', 10)
-
-    const db = getDb()
 
     let sql = `
       SELECT
@@ -18,7 +25,8 @@ export async function GET(request: Request) {
         sa.name as agent_name,
         sa.email as agent_email,
         (SELECT COUNT(*) FROM messages m WHERE m.conversation_id = c.id) as message_count,
-        (SELECT content FROM messages m WHERE m.conversation_id = c.id ORDER BY m.created_at DESC LIMIT 1) as last_message
+        (SELECT content FROM messages m WHERE m.conversation_id = c.id ORDER BY m.created_at DESC LIMIT 1) as last_message,
+        (SELECT sender_type FROM messages m WHERE m.conversation_id = c.id ORDER BY m.created_at DESC LIMIT 1) as last_sender_type
       FROM conversations c
       LEFT JOIN support_agents sa ON c.assigned_agent_id = sa.id
       WHERE 1=1
@@ -39,6 +47,16 @@ export async function GET(request: Request) {
       args.push(parseInt(agentId, 10))
     }
 
+    if (dateFrom) {
+      sql += ' AND date(c.created_at) >= date(?)'
+      args.push(dateFrom)
+    }
+
+    if (dateTo) {
+      sql += ' AND date(c.created_at) <= date(?)'
+      args.push(dateTo)
+    }
+
     sql += ' ORDER BY c.last_message_at DESC, c.created_at DESC'
     sql += ' LIMIT ? OFFSET ?'
     args.push(limit, offset)
@@ -56,6 +74,16 @@ export async function GET(request: Request) {
 
     if (flagged === 'true') {
       countSql += ' AND flagged = 1'
+    }
+
+    if (dateFrom) {
+      countSql += ' AND date(created_at) >= date(?)'
+      countArgs.push(dateFrom)
+    }
+
+    if (dateTo) {
+      countSql += ' AND date(created_at) <= date(?)'
+      countArgs.push(dateTo)
     }
 
     const countResult = await db.execute({ sql: countSql, args: countArgs })
