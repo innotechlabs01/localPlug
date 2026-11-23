@@ -64,7 +64,7 @@ export async function GET(req: Request) {
     const driverArgs: (string | number)[] = []
 
     if (driverCat !== 'all') {
-      driverSql += ' AND category = ?'
+      driverSql += ' AND LOWER(TRIM(category)) = LOWER(?)'
       driverArgs.push(driverCat)
     }
 
