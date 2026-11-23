@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
-import { auth } from '@clerk/nextjs/server'
+import { requirePermission } from '@/lib/admin/permissions'
 
 export async function POST(req: Request) {
   try {
-    const { userId } = await auth()
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const authError = await requirePermission('cases', 'create')
+    if (authError) return authError
 
     const body = await req.json()
     const { case_id, file_name, file_size, file_type, file_url, uploaded_by } = body
@@ -36,8 +36,8 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const { userId } = await auth()
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const authError = await requirePermission('cases', 'delete')
+    if (authError) return authError
 
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')

@@ -141,6 +141,10 @@ if (typeof setInterval !== 'undefined') {
 }
 
 export function extractIp(req: Request): string {
+  const vercelIp = req.headers.get('x-vercel-forwarded-for')?.split(',')[0]?.trim()
+  if (vercelIp) return vercelIp
+  const realIp = req.headers.get('x-real-ip')?.trim()
+  if (realIp) return realIp
   const forwarded = req.headers.get('x-forwarded-for')
   return forwarded?.split(',')[0]?.trim() || '127.0.0.1'
 }
@@ -295,7 +299,7 @@ export async function checkRateLimit(
 
   const key = userId ? `rate:user:${userId}` : `rate:ip:${ip}`
 
-  if (_redisClient && !_redisFailed) {
+  if (_redisClient) {
     const count = await redisIncr(key, _windowMs)
     if (count >= 0) {
       const remaining = maxReqs - count
@@ -367,8 +371,6 @@ export async function rateLimitMiddleware(
     )
   }
 
-  const response = new Response(null, { status: 204 })
-  response.headers.set('X-RateLimit-Remaining', String(result.remaining))
   return null
 }
 

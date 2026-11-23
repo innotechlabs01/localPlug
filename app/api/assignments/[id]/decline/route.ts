@@ -61,17 +61,24 @@ export async function POST(
 
     const now = new Date().toISOString()
 
-    await db.execute({
-      sql: `UPDATE assignments
-            SET status = 'declined', driver_declined_at = ?, decline_reason = ?, block_until = NULL, updated_at = ?
-            WHERE id = ?`,
-      args: [now, declineReason, now, assignmentId],
-    })
+    const batchRes = await db.batch([
+      {
+        sql: `UPDATE assignments
+              SET status = 'declined', driver_declined_at = ?, decline_reason = ?, block_until = NULL, updated_at = ?
+              WHERE id = ? AND status = 'pending_acceptance'`,
+        args: [now, declineReason, now, assignmentId],
+      },
+      {
+        sql: "UPDATE orders SET dispatch_status = 'pending', assigned_to = NULL, assigned_at = NULL, updated_at = ? WHERE id = ?",
+        args: [now, assignment.order_id],
+      },
+    ])
 
-    await db.execute({
-      sql: "UPDATE orders SET dispatch_status = 'pending', assigned_to = NULL, assigned_at = NULL, updated_at = ? WHERE id = ?",
-      args: [now, assignment.order_id],
-    })
+    if (batchRes[0].rowsAffected === 0) {
+      return NextResponse.json({
+        error: 'Assignment was already accepted or declined.',
+      }, { status: 409 })
+    }
 
     // Notify customer that driver declined — we're finding a new one
     try {
@@ -110,6 +117,6 @@ export async function POST(
     })
   } catch (err) {
     console.error('[assignments decline POST]', err)
-    return NextResponse.json({ error: 'Internal server error', detail: String(err) }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

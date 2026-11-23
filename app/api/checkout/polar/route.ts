@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import { createPolar } from '@polar-sh/sdk/2026-04'
 import { getConfigPackageGrandTotalCents, getConfigPackageName } from '@/lib/pricing'
 import { getDefaultCurrency } from '@/lib/config'
@@ -45,6 +46,11 @@ export async function POST(req: Request) {
       destinationAddress,
       returnDate,
       returnTime,
+      hotelId,
+      roomId,
+      numNights,
+      travelerProfile,
+      destinationHasPlace,
     } = body as {
       bookingReference: string
       packageId: string
@@ -63,6 +69,11 @@ export async function POST(req: Request) {
       destinationAddress?: string
       returnDate?: string
       returnTime?: string
+      hotelId?: number | null
+      roomId?: number | null
+      numNights?: number
+      travelerProfile?: string
+      destinationHasPlace?: boolean
     }
 
     if (!bookingReference || !customerEmail || !customerName || !packageId) {
@@ -93,9 +104,15 @@ export async function POST(req: Request) {
     const productId = getProductId()
 
     const polar = getPolarClient()
+    let clerkUserId = ''
+    try {
+      const session = await auth()
+      clerkUserId = session?.userId || ''
+    } catch {}
 
     const metadata: Record<string, string | number | boolean> = {
       booking_reference: bookingReference,
+      clerk_user_id: clerkUserId,
       package_id: packageId,
       package_name: packageName,
       customer_name: customerName,
@@ -106,6 +123,7 @@ export async function POST(req: Request) {
       need_return: String(!!needReturn),
       tour_ids: JSON.stringify(tour_ids),
       num_people: String(num_people),
+      destination_has_place: String(destinationHasPlace ?? true),
     }
     for (const [key, value] of Object.entries({
       flight_number: body.flightNumber,
@@ -115,8 +133,14 @@ export async function POST(req: Request) {
       destination_address: body.destinationAddress,
       return_date: body.returnDate,
       return_time: body.returnTime,
+      traveler_profile: travelerProfile,
     })) {
       if (value) metadata[key] = value
+    }
+    if (hotelId) metadata.hotel_id = String(hotelId)
+    if (roomId) metadata.room_id = String(roomId)
+    if (numNights !== undefined && numNights !== null && Number(numNights) > 0) {
+      metadata.num_nights = String(numNights)
     }
 
     const checkout = await polar.checkouts.create({
@@ -145,8 +169,8 @@ export async function POST(req: Request) {
       amount: totalAmountCents,
       currency,
       status: 'pending',
-      paddle_transaction_id: checkout.id,
-      paddle_webhook_event_id: '',
+      polar_transaction_id: checkout.id,
+      polar_webhook_event_id: '',
       customer_email: customerEmail,
       customer_name: customerName,
       customer_phone: customerPhone || '',

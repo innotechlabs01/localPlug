@@ -134,10 +134,10 @@ function PaymentsInner() {
   }, [data, filter, search])
 
   const statusColors: Record<string, string> = {
-    completed: 'bg-[rgba(16,185,129,0.12)] text-[#10b981]',
-    pending: 'bg-[rgba(245,158,11,0.12)] text-[#f59e0b]',
-    refunded: 'bg-[rgba(239,68,80,0.12)] text-[#ef4450]',
-    failed: 'bg-[rgba(239,68,80,0.12)] text-[#ef4450]',
+    completed: 'bg-[var(--ui-accent-soft)] text-[var(--ui-accent)]',
+    pending: 'bg-[var(--ui-warning-soft)] text-[var(--ui-warning)]',
+    refunded: 'bg-[var(--ui-danger-soft)] text-[var(--ui-danger)]',
+    failed: 'bg-[var(--ui-danger-soft)] text-[var(--ui-danger)]',
   }
   const statusLabels: Record<string, string> = {
     completed: d.completed || 'Completed',
@@ -146,9 +146,9 @@ function PaymentsInner() {
     failed: d.failed || 'Failed',
   }
   const payoutStatusColors: Record<string, string> = {
-    paid: 'bg-[rgba(16,185,129,0.12)] text-[#10b981]',
-    completed: 'bg-[rgba(16,185,129,0.12)] text-[#10b981]',
-    pending: 'bg-[rgba(245,158,11,0.12)] text-[#f59e0b]',
+    paid: 'bg-[var(--ui-accent-soft)] text-[var(--ui-accent)]',
+    completed: 'bg-[var(--ui-accent-soft)] text-[var(--ui-accent)]',
+    pending: 'bg-[var(--ui-warning-soft)] text-[var(--ui-warning)]',
   }
 
   const openDetail = (tx: PaymentTransaction) => setSelectedTx(tx)
@@ -191,7 +191,7 @@ function PaymentsInner() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-[#646880]">{t.common.loading || 'Loading...'}</div>
+        <div className="text-[var(--ui-fg-secondary)]">{t.common.loading || 'Loading...'}</div>
       </div>
     )
   }
@@ -206,15 +206,15 @@ function PaymentsInner() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-[18px] font-semibold text-[#f0f2f5]">{d.title || 'Payments'}</h1>
-          <p className="text-[13px] text-[#646880] mt-1">{d.subtitle || ''}</p>
+          <h1 className="text-[18px] font-semibold text-[var(--ui-fg)]">{d.title || 'Payments'}</h1>
+          <p className="text-[13px] text-[var(--ui-fg-secondary)] mt-1">{d.subtitle || ''}</p>
         </div>
         <div className="flex items-center gap-3">
           {data.trm && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-[#0b0d14] border border-[#282b38] rounded-[6px]">
-              <span className="text-[11px] text-[#646880]">TRM</span>
-              <span className="text-[13px] font-semibold text-[#10b981]">${data.trm.rate.toLocaleString('es-CO', { minimumFractionDigits: 2 })}</span>
-              <span className="text-[10px] text-[#646880]">COP/USD</span>
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-[var(--ui-bg)] border border-[var(--ui-border)] rounded-[6px]">
+              <span className="text-[11px] text-[var(--ui-fg-secondary)]">TRM</span>
+              <span className="text-[13px] font-semibold text-[var(--ui-accent)]">${data.trm.rate.toLocaleString('es-CO', { minimumFractionDigits: 2 })}</span>
+              <span className="text-[10px] text-[var(--ui-fg-secondary)]">COP/USD</span>
             </div>
           )}
         </div>
@@ -227,26 +227,26 @@ function PaymentsInner() {
             <line x1="12" y1="1" x2="12" y2="23" />
             <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
           </svg>
-          <span className="text-[11px] font-semibold uppercase tracking-[0.8px] text-[#646880]">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.8px] text-[var(--ui-fg-secondary)]">
             {d.financialOverview || 'Financial Overview'}
           </span>
-          <span className="ml-auto text-[10px] font-normal text-[#646880]">
+          <span className="ml-auto text-[10px] font-normal text-[var(--ui-fg-secondary)]">
             {(d.updated || 'Updated {time} ago').replace('{time}', '5 min')}
           </span>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
           {/* Total Revenue */}
-          <div className="bg-[#181b25] border border-[#282b38] rounded-[10px] p-4 hover:border-[#10b981] hover:shadow-[0_0_0_1px_rgba(16,185,129,0.3)] transition-all">
+          <div className="bg-[var(--ui-surface)] border border-[var(--ui-border)] rounded-[10px] p-4 hover:border-[var(--ui-accent)] hover:shadow-[0_0_0_1px_rgba(16,185,129,0.3)] transition-all">
             <div className="flex items-start justify-between mb-2">
-              <div className="w-9 h-9 rounded-[6px] bg-[rgba(16,185,129,0.12)] flex items-center justify-center text-[#10b981]">
+              <div className="w-9 h-9 rounded-[6px] bg-[rgba(16,185,129,0.12)] flex items-center justify-center text-[var(--ui-accent)]">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
                 </svg>
               </div>
             </div>
-            <div className="text-[11px] font-medium text-[#646880] mb-0.5">{d.totalRevenue || 'Total Revenue (All Time)'}</div>
-            <div className="text-[24px] font-bold text-[#f0f2f5] leading-[1.1]">${data.kpis.totalRevenue.toLocaleString()}</div>
-            <div className="flex items-center gap-1 mt-1.5 text-[12px] font-medium text-[#10b981]">
+            <div className="text-[11px] font-medium text-[var(--ui-fg-secondary)] mb-0.5">{d.totalRevenue || 'Total Revenue (All Time)'}</div>
+            <div className="text-[24px] font-bold text-[var(--ui-fg)] leading-[1.1]">${data.kpis.totalRevenue.toLocaleString()}</div>
+            <div className="flex items-center gap-1 mt-1.5 text-[12px] font-medium text-[var(--ui-accent)]">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="18 15 12 9 6 15" />
               </svg>
@@ -255,81 +255,81 @@ function PaymentsInner() {
           </div>
 
           {/* Successful Payments */}
-          <div className="bg-[#181b25] border border-[#282b38] rounded-[10px] p-4 hover:border-[#10b981] hover:shadow-[0_0_0_1px_rgba(16,185,129,0.3)] transition-all">
+          <div className="bg-[var(--ui-surface)] border border-[var(--ui-border)] rounded-[10px] p-4 hover:border-[var(--ui-accent)] hover:shadow-[0_0_0_1px_rgba(16,185,129,0.3)] transition-all">
             <div className="flex items-start justify-between mb-2">
-              <div className="w-9 h-9 rounded-[6px] bg-[rgba(16,185,129,0.12)] flex items-center justify-center text-[#10b981]">
+              <div className="w-9 h-9 rounded-[6px] bg-[rgba(16,185,129,0.12)] flex items-center justify-center text-[var(--ui-accent)]">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
               </div>
             </div>
-            <div className="text-[11px] font-medium text-[#646880] mb-0.5">{d.successfulPayments || 'Successful Payments'}</div>
-            <div className="text-[24px] font-bold text-[#f0f2f5] leading-[1.1]">{data.kpis.successfulCount.toLocaleString()}</div>
-            <div className="flex items-center gap-1 mt-1.5 text-[12px] font-medium text-[#10b981]">
+            <div className="text-[11px] font-medium text-[var(--ui-fg-secondary)] mb-0.5">{d.successfulPayments || 'Successful Payments'}</div>
+            <div className="text-[24px] font-bold text-[var(--ui-fg)] leading-[1.1]">{data.kpis.successfulCount.toLocaleString()}</div>
+            <div className="flex items-center gap-1 mt-1.5 text-[12px] font-medium text-[var(--ui-accent)]">
               {(d.successRate || '{rate}% success rate').replace('{rate}', data.kpis.successfulRate)}
             </div>
           </div>
 
           {/* Failed / Declined */}
-          <div className="bg-[#181b25] border border-[#282b38] rounded-[10px] p-4 hover:border-[#ef4450] hover:shadow-[0_0_0_1px_rgba(239,68,80,0.3)] transition-all">
+          <div className="bg-[var(--ui-surface)] border border-[var(--ui-border)] rounded-[10px] p-4 hover:border-[var(--ui-danger)] hover:shadow-[0_0_0_1px_rgba(239,68,80,0.3)] transition-all">
             <div className="flex items-start justify-between mb-2">
-              <div className="w-9 h-9 rounded-[6px] bg-[rgba(239,68,80,0.12)] flex items-center justify-center text-[#ef4450]">
+              <div className="w-9 h-9 rounded-[6px] bg-[var(--ui-danger-soft)] flex items-center justify-center text-[var(--ui-danger)]">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
               </div>
             </div>
-            <div className="text-[11px] font-medium text-[#646880] mb-0.5">{d.failedDeclined || 'Failed / Declined'}</div>
-            <div className="text-[24px] font-bold text-[#f0f2f5] leading-[1.1]">{data.kpis.failedCount}</div>
-            <div className="flex items-center gap-1 mt-1.5 text-[12px] font-medium text-[#ef4450]">
+            <div className="text-[11px] font-medium text-[var(--ui-fg-secondary)] mb-0.5">{d.failedDeclined || 'Failed / Declined'}</div>
+            <div className="text-[24px] font-bold text-[var(--ui-fg)] leading-[1.1]">{data.kpis.failedCount}</div>
+            <div className="flex items-center gap-1 mt-1.5 text-[12px] font-medium text-[var(--ui-danger)]">
               {(d.failureRate || '{rate}% failure rate').replace('{rate}', data.kpis.failureRate)}
             </div>
           </div>
 
           {/* Pending */}
-          <div className="bg-[#181b25] border border-[#282b38] rounded-[10px] p-4 hover:border-[#f59e0b] hover:shadow-[0_0_0_1px_rgba(245,158,11,0.3)] transition-all">
+          <div className="bg-[var(--ui-surface)] border border-[var(--ui-border)] rounded-[10px] p-4 hover:border-[var(--ui-warning)] hover:shadow-[0_0_0_1px_rgba(245,158,11,0.3)] transition-all">
             <div className="flex items-start justify-between mb-2">
-              <div className="w-9 h-9 rounded-[6px] bg-[rgba(245,158,11,0.12)] flex items-center justify-center text-[#f59e0b]">
+              <div className="w-9 h-9 rounded-[6px] bg-[rgba(245,158,11,0.12)] flex items-center justify-center text-[var(--ui-warning)]">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
                 </svg>
               </div>
             </div>
-            <div className="text-[11px] font-medium text-[#646880] mb-0.5">{d.pending || 'Pending'}</div>
-            <div className="text-[24px] font-bold text-[#f0f2f5] leading-[1.1]">{data.kpis.pendingCount}</div>
-            <div className="flex items-center gap-1 mt-1.5 text-[12px] font-medium text-[#9ca0b0]">
+            <div className="text-[11px] font-medium text-[var(--ui-fg-secondary)] mb-0.5">{d.pending || 'Pending'}</div>
+            <div className="text-[24px] font-bold text-[var(--ui-fg)] leading-[1.1]">{data.kpis.pendingCount}</div>
+            <div className="flex items-center gap-1 mt-1.5 text-[12px] font-medium text-[var(--ui-fg-secondary)]">
               {d.awaitingConfirmation || 'Awaiting confirmation'}
             </div>
           </div>
 
           {/* Driver Payouts */}
-          <div className="bg-[#181b25] border border-[#282b38] rounded-[10px] p-4 hover:border-[#f59e0b] hover:shadow-[0_0_0_1px_rgba(245,158,11,0.3)] transition-all">
+          <div className="bg-[var(--ui-surface)] border border-[var(--ui-border)] rounded-[10px] p-4 hover:border-[var(--ui-warning)] hover:shadow-[0_0_0_1px_rgba(245,158,11,0.3)] transition-all">
             <div className="flex items-start justify-between mb-2">
-              <div className="w-9 h-9 rounded-[6px] bg-[rgba(245,158,11,0.12)] flex items-center justify-center text-[#f59e0b]">
+              <div className="w-9 h-9 rounded-[6px] bg-[rgba(245,158,11,0.12)] flex items-center justify-center text-[var(--ui-warning)]">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
                 </svg>
               </div>
             </div>
-            <div className="text-[11px] font-medium text-[#646880] mb-0.5">{d.driverPayouts || 'Driver Payouts (All Time)'}</div>
-            <div className="text-[24px] font-bold text-[#f0f2f5] leading-[1.1]">${data.kpis.driverPayouts.toLocaleString()}</div>
-            <div className="flex items-center gap-1 mt-1.5 text-[12px] font-medium text-[#9ca0b0]">
+            <div className="text-[11px] font-medium text-[var(--ui-fg-secondary)] mb-0.5">{d.driverPayouts || 'Driver Payouts (All Time)'}</div>
+            <div className="text-[24px] font-bold text-[var(--ui-fg)] leading-[1.1]">${data.kpis.driverPayouts.toLocaleString()}</div>
+            <div className="flex items-center gap-1 mt-1.5 text-[12px] font-medium text-[var(--ui-fg-secondary)]">
               {(d.ofRevenue || '{pct}% of revenue').replace('{pct}', data.kpis.driverPayoutsPct)}
             </div>
           </div>
 
           {/* Platform Balance */}
-          <div className="bg-[#181b25] border border-[#282b38] rounded-[10px] p-4 hover:border-[#14b8a6] hover:shadow-[0_0_0_1px_rgba(20,184,166,0.3)] transition-all">
+          <div className="bg-[var(--ui-surface)] border border-[var(--ui-border)] rounded-[10px] p-4 hover:border-[var(--ui-accent)] hover:shadow-[0_0_0_1px_rgba(20,184,166,0.3)] transition-all">
             <div className="flex items-start justify-between mb-2">
-              <div className="w-9 h-9 rounded-[6px] bg-[rgba(20,184,166,0.12)] flex items-center justify-center text-[#14b8a6]">
+              <div className="w-9 h-9 rounded-[6px] bg-[rgba(20,184,166,0.12)] flex items-center justify-center text-[var(--ui-accent)]">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" />
                 </svg>
               </div>
             </div>
-            <div className="text-[11px] font-medium text-[#646880] mb-0.5">{d.platformBalance || 'Platform Balance'}</div>
-            <div className="text-[24px] font-bold text-[#f0f2f5] leading-[1.1]">${data.kpis.platformBalance.toLocaleString()}</div>
-            <div className="flex items-center gap-1 mt-1.5 text-[12px] font-medium text-[#10b981]">
+            <div className="text-[11px] font-medium text-[var(--ui-fg-secondary)] mb-0.5">{d.platformBalance || 'Platform Balance'}</div>
+            <div className="text-[24px] font-bold text-[var(--ui-fg)] leading-[1.1]">${data.kpis.platformBalance.toLocaleString()}</div>
+            <div className="flex items-center gap-1 mt-1.5 text-[12px] font-medium text-[var(--ui-accent)]">
               {d.availableForPayout || 'Available for payout'}
             </div>
           </div>
@@ -343,7 +343,7 @@ function PaymentsInner() {
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="opacity-60">
               <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
             </svg>
-            <span className="text-[11px] font-semibold uppercase tracking-[0.8px] text-[#646880]">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.8px] text-[var(--ui-fg-secondary)]">
               {d.revenueByService || 'Revenue by Service'}
             </span>
           </div>
@@ -351,15 +351,15 @@ function PaymentsInner() {
             {r.map((item, idx) => {
               const color = getServiceColor(item.package_name)
               return (
-                <div key={idx} className="bg-[#181b25] border border-[#282b38] rounded-[10px] p-5 text-center hover:border-[#10b981] transition-all">
+                <div key={idx} className="bg-[var(--ui-surface)] border border-[var(--ui-border)] rounded-[10px] p-5 text-center hover:border-[var(--ui-accent)] transition-all">
                   <div className="text-[22px] font-bold font-mono leading-[1.1]" style={{ color }}>
                     ${item.amount.toLocaleString()}
                   </div>
                   <div className="text-[18px] font-semibold mt-1" style={{ color: 'var(--accent)' }}>
                     {item.percentage}%
                   </div>
-                  <div className="text-[12px] text-[#646880] mt-1.5 font-medium">{item.package_name}</div>
-                  <div className="mt-3 h-1.5 bg-[#202330] rounded-full overflow-hidden">
+                  <div className="text-[12px] text-[var(--ui-fg-secondary)] mt-1.5 font-medium">{item.package_name}</div>
+                  <div className="mt-3 h-1.5 bg-[var(--ui-surface-hover)] rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full transition-all"
                       style={{ width: `${(Number(item.percentage) / (topRevenue || 1)) * 100}%`, backgroundColor: color }}
@@ -379,15 +379,15 @@ function PaymentsInner() {
             <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" />
             <line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
           </svg>
-          <span className="text-[11px] font-semibold uppercase tracking-[0.8px] text-[#646880]">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.8px] text-[var(--ui-fg-secondary)]">
             {d.paymentTransactions || 'Payment Transactions'}
           </span>
         </div>
         <div className="grid grid-cols-1 xl:grid-cols-[1.5fr_1fr] gap-4">
           {/* Transactions Table */}
-          <div className="bg-[#181b25] border border-[#282b38] rounded-[10px] overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-3 border-b border-[#282b38]">
-              <span className="text-[13px] font-semibold text-[#f0f2f5]">{d.recentTransactions || 'Recent Transactions'}</span>
+          <div className="bg-[var(--ui-surface)] border border-[var(--ui-border)] rounded-[10px] overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-[var(--ui-border)]">
+              <span className="text-[13px] font-semibold text-[var(--ui-fg)]">{d.recentTransactions || 'Recent Transactions'}</span>
               <div className="flex items-center gap-2.5">
                 <div className="flex gap-1">
                   {['all', 'completed', 'pending', 'refunded', 'failed'].map(s => (
@@ -396,8 +396,8 @@ function PaymentsInner() {
                       onClick={() => setFilter(s)}
                       className={`px-3 py-1 rounded-full text-[11px] font-medium whitespace-nowrap transition-all ${
                         filter === s
-                          ? 'bg-[rgba(16,185,129,0.12)] text-[#10b981] border border-[#10b981]'
-                          : 'text-[#646880] border border-[#282b38] hover:border-[#9ca0b0]'
+                          ? 'bg-[rgba(16,185,129,0.12)] text-[var(--ui-accent)] border border-[var(--ui-accent)]'
+                          : 'text-[var(--ui-fg-secondary)] border border-[var(--ui-border)] hover:border-[var(--ui-fg-secondary)]'
                       }`}
                     >
                       {s === 'all' ? (d.all || 'All') : (statusLabels[s] || s)}
@@ -406,7 +406,7 @@ function PaymentsInner() {
                 </div>
                 <button
                   onClick={() => showToast('Export initiated')}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#10b981] text-white text-[12px] font-medium rounded-[6px] hover:bg-[#059669] transition-all"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[var(--ui-accent)] text-white text-[12px] font-medium rounded-[6px] hover:bg-[#059669] transition-all"
                 >
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -416,42 +416,42 @@ function PaymentsInner() {
                 </button>
               </div>
             </div>
-            <div className="px-5 py-3 border-b border-[#282b38]">
+            <div className="px-5 py-3 border-b border-[var(--ui-border)]">
               <input
                 type="text"
                 placeholder={d.searchTransactions || 'Search transactions...'}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="w-full px-3 py-1.5 bg-[#0b0d14] border border-[#282b38] rounded-[6px] text-[13px] text-[#f0f2f5] placeholder:text-[#646880] outline-none focus:border-[#10b981] transition-all"
+                className="w-full px-3 py-1.5 bg-[var(--ui-bg)] border border-[var(--ui-border)] rounded-[6px] text-[13px] text-[var(--ui-fg)] placeholder:text-[var(--ui-fg-secondary)] outline-none focus:border-[var(--ui-accent)] transition-all"
               />
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="bg-[#111318] border-b border-[#282b38]">
-                    <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880] px-5 py-3">{d.transactionId || 'Transaction ID'}</th>
-                    <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880] px-5 py-3">{d.customer || 'Customer'}</th>
-                    <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880] px-5 py-3">{d.package || 'Package'}</th>
-                    <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880] px-5 py-3">{d.amount || 'Amount'}</th>
-                    <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880] px-5 py-3">{d.status || 'Status'}</th>
-                    <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880] px-5 py-3">{d.date || 'Date'}</th>
-                    <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880] px-5 py-3"></th>
+                  <tr className="bg-[var(--ui-bg-secondary)] border-b border-[var(--ui-border)]">
+                    <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[var(--ui-fg-secondary)] px-5 py-3">{d.transactionId || 'Transaction ID'}</th>
+                    <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[var(--ui-fg-secondary)] px-5 py-3">{d.customer || 'Customer'}</th>
+                    <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[var(--ui-fg-secondary)] px-5 py-3">{d.package || 'Package'}</th>
+                    <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[var(--ui-fg-secondary)] px-5 py-3">{d.amount || 'Amount'}</th>
+                    <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[var(--ui-fg-secondary)] px-5 py-3">{d.status || 'Status'}</th>
+                    <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[var(--ui-fg-secondary)] px-5 py-3">{d.date || 'Date'}</th>
+                    <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[var(--ui-fg-secondary)] px-5 py-3"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredTransactions.map((tx, idx) => (
-                    <tr key={idx} className="border-b border-[#282b38] hover:bg-[#202330] transition-colors">
+                    <tr key={idx} className="border-b border-[var(--ui-border)] hover:bg-[var(--ui-surface-hover)] transition-colors">
                       <td className="px-5 py-3.5">
-                        <span className="text-[12px] font-mono text-[#646880]">{tx.booking_reference}</span>
+                        <span className="text-[12px] font-mono text-[var(--ui-fg-secondary)]">{tx.booking_reference}</span>
                       </td>
                       <td className="px-5 py-3.5">
-                        <span className="text-[13px] font-medium text-[#f0f2f5]">{tx.customer_name}</span>
+                        <span className="text-[13px] font-medium text-[var(--ui-fg)]">{tx.customer_name}</span>
                       </td>
                       <td className="px-5 py-3.5">
-                        <span className="text-[13px] text-[#9ca0b0]">{tx.package_name}</span>
+                        <span className="text-[13px] text-[var(--ui-fg-secondary)]">{tx.package_name}</span>
                       </td>
                       <td className="px-5 py-3.5">
-                        <span className="text-[13px] font-semibold font-mono text-[#f0f2f5]">${tx.amount.toFixed(2)}</span>
+                        <span className="text-[13px] font-semibold font-mono text-[var(--ui-fg)]">${tx.amount.toFixed(2)}</span>
                       </td>
                       <td className="px-5 py-3.5">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium ${statusColors[tx.status] || ''}`}>
@@ -459,12 +459,12 @@ function PaymentsInner() {
                         </span>
                       </td>
                       <td className="px-5 py-3.5">
-                        <span className="text-[12px] text-[#646880]">{formatDate(tx.created_at)}</span>
+                        <span className="text-[12px] text-[var(--ui-fg-secondary)]">{formatDate(tx.created_at)}</span>
                       </td>
                       <td className="px-5 py-3.5">
                         <button
                           onClick={() => openDetail(tx)}
-                          className="p-1.5 hover:bg-[#202330] rounded-[4px] text-[#9ca0b0] transition-all"
+                          className="p-1.5 hover:bg-[var(--ui-surface-hover)] rounded-[4px] text-[var(--ui-fg-secondary)] transition-all"
                           title="View details"
                         >
                           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -479,66 +479,66 @@ function PaymentsInner() {
               </table>
             </div>
             {filteredTransactions.length === 0 && (
-              <div className="p-10 text-center text-[#646880] text-[13px]">
+              <div className="p-10 text-center text-[var(--ui-fg-secondary)] text-[13px]">
                 {d.noTransactions || 'No transactions found'}
               </div>
             )}
           </div>
 
-           {/* Paddle Integration Sidebar */}
+           {/* Polar Integration Sidebar */}
           <div className="space-y-4">
-            {/* Paddle Card */}
+            {/* Polar Card */}
             <div className="bg-gradient-to-br from-[rgba(99,102,241,0.08)] to-[rgba(139,92,246,0.06)] border border-[rgba(99,102,241,0.2)] rounded-[10px] p-5">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-10 h-10 rounded-[6px] bg-[rgba(99,102,241,0.12)] flex items-center justify-center">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#818cf8" strokeWidth="2">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ui-info)" strokeWidth="2">
                     <rect x="2" y="5" width="20" height="14" rx="2" /><line x1="2" y1="10" x2="22" y2="10" />
                   </svg>
                 </div>
                 <div className="flex-1">
-                  <div className="text-[14px] font-semibold text-[#f0f2f5]">{d.paddleIntegration || 'Paddle Integration'}</div>
-                  <div className="text-[11px] text-[#646880]">{d.paymentProcessing || 'Payment processing with Paddle'}</div>
+                  <div className="text-[14px] font-semibold text-[var(--ui-fg)]">{d.polarIntegration || 'Polar Integration'}</div>
+                  <div className="text-[11px] text-[var(--ui-fg-secondary)]">{d.paymentProcessing || 'Payment processing with Polar'}</div>
                 </div>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-[rgba(16,185,129,0.12)] text-[#10b981]">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-[rgba(16,185,129,0.12)] text-[var(--ui-accent)]">
                   {d.connected || 'Connected'}
                 </span>
               </div>
               <div className="border-t border-[rgba(99,102,241,0.15)] pt-3.5 space-y-2.5">
                 <div className="flex items-center justify-between text-[13px]">
-                  <span className="text-[#9ca0b0]">{d.connectionStatus || 'Connection Status'}</span>
-                  <span className="font-semibold text-[#10b981]">● {d.connected || 'Connected'}</span>
+                  <span className="text-[var(--ui-fg-secondary)]">{d.connectionStatus || 'Connection Status'}</span>
+                  <span className="font-semibold text-[var(--ui-accent)]">● {d.connected || 'Connected'}</span>
                 </div>
                 <div className="flex items-center justify-between text-[13px]">
-                  <span className="text-[#9ca0b0]">{d.payoutSchedule || 'Payout Schedule'}</span>
-                  <span className="font-semibold text-[#f0f2f5]">{d.dailyAuto || 'Daily (automatic)'}</span>
+                  <span className="text-[var(--ui-fg-secondary)]">{d.payoutSchedule || 'Payout Schedule'}</span>
+                  <span className="font-semibold text-[var(--ui-fg)]">{d.dailyAuto || 'Daily (automatic)'}</span>
                 </div>
                 <div className="flex items-center justify-between text-[13px]">
-                  <span className="text-[#9ca0b0]">{d.pendingPayout || 'Pending Payout'}</span>
-                  <span className="font-semibold font-mono text-[#f59e0b]">${data.summary.pendingPayout.toLocaleString()}</span>
+                  <span className="text-[var(--ui-fg-secondary)]">{d.pendingPayout || 'Pending Payout'}</span>
+                  <span className="font-semibold font-mono text-[var(--ui-warning)]">${data.summary.pendingPayout.toLocaleString()}</span>
                 </div>
                 <div className="flex items-center justify-between text-[13px]">
-                  <span className="text-[#9ca0b0]">{d.lastPayout || 'Last Payout'}</span>
-                  <span className="font-semibold font-mono text-[#f0f2f5]">${data.summary.lastPayout.toLocaleString()}</span>
+                  <span className="text-[var(--ui-fg-secondary)]">{d.lastPayout || 'Last Payout'}</span>
+                  <span className="font-semibold font-mono text-[var(--ui-fg)]">${data.summary.lastPayout.toLocaleString()}</span>
                 </div>
                 <div className="flex items-center justify-between text-[13px]">
-                  <span className="text-[#9ca0b0]">Currency</span>
-                  <span className="font-semibold text-[#f0f2f5]">USD</span>
+                  <span className="text-[var(--ui-fg-secondary)]">Currency</span>
+                  <span className="font-semibold text-[var(--ui-fg)]">USD</span>
                 </div>
               </div>
               <div className="mt-4 flex gap-2">
                 <button
-                  onClick={() => showToast('Opening Paddle dashboard...')}
-                  className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-[#10b981] text-white text-[12px] font-medium rounded-[6px] hover:bg-[#059669] transition-all"
+                  onClick={() => showToast('Opening Polar dashboard...')}
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-[var(--ui-accent)] text-white text-[12px] font-medium rounded-[6px] hover:bg-[#059669] transition-all"
                 >
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
                     <polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
                   </svg>
-                  {d.paddleDashboard || 'Paddle Dashboard'}
+                  {d.polarDashboard || 'Polar Dashboard'}
                 </button>
                 <button
                   onClick={() => showToast('Payout settings')}
-                  className="p-2 bg-[#202330] text-[#9ca0b0] rounded-[6px] hover:bg-[#282b38] transition-all"
+                  className="p-2 bg-[var(--ui-surface-hover)] text-[var(--ui-fg-secondary)] rounded-[6px] hover:bg-[var(--ui-border-light)] transition-all"
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <circle cx="12" cy="12" r="3" />
@@ -549,30 +549,30 @@ function PaymentsInner() {
             </div>
 
             {/* Payment Summary */}
-            <div className="bg-[#181b25] border border-[#282b38] rounded-[10px] overflow-hidden">
-              <div className="px-4 py-3 border-b border-[#282b38]">
-                <span className="text-[13px] font-semibold text-[#f0f2f5]">{d.paymentSummary || 'Payment Summary'}</span>
+            <div className="bg-[var(--ui-surface)] border border-[var(--ui-border)] rounded-[10px] overflow-hidden">
+              <div className="px-4 py-3 border-b border-[var(--ui-border)]">
+                <span className="text-[13px] font-semibold text-[var(--ui-fg)]">{d.paymentSummary || 'Payment Summary'}</span>
               </div>
               <div className="px-4 py-3 space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-[12px] text-[#9ca0b0]">{d.avgTransaction || 'Avg. Transaction'}</span>
-                  <span className="text-[14px] font-semibold font-mono text-[#f0f2f5]">${data.summary.avgTransaction.toFixed(2)}</span>
+                  <span className="text-[12px] text-[var(--ui-fg-secondary)]">{d.avgTransaction || 'Avg. Transaction'}</span>
+                  <span className="text-[14px] font-semibold font-mono text-[var(--ui-fg)]">${data.summary.avgTransaction.toFixed(2)}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-[12px] text-[#9ca0b0]">{d.cardPayments || 'Card Payments'}</span>
-                  <span className="text-[14px] font-semibold font-mono text-[#10b981]">
+                  <span className="text-[12px] text-[var(--ui-fg-secondary)]">{d.cardPayments || 'Card Payments'}</span>
+                  <span className="text-[14px] font-semibold font-mono text-[var(--ui-accent)]">
                     ${data.summary.totalCardPayments.toLocaleString()}
                   </span>
                 </div>
-                <div className="border-t border-[#282b38] pt-2.5 flex items-center justify-between">
-                  <span className="text-[12px] text-[#9ca0b0]">{d.refunds || 'Refunds (All Time)'}</span>
-                  <span className="text-[14px] font-semibold font-mono text-[#ef4450]">
+                <div className="border-t border-[var(--ui-border)] pt-2.5 flex items-center justify-between">
+                  <span className="text-[12px] text-[var(--ui-fg-secondary)]">{d.refunds || 'Refunds (All Time)'}</span>
+                  <span className="text-[14px] font-semibold font-mono text-[var(--ui-danger)]">
                     ${data.summary.refundsTotal.toLocaleString()}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-[12px] text-[#9ca0b0]">{d.chargebacks || 'Chargebacks'}</span>
-                  <span className="text-[14px] font-semibold font-mono text-[#ef4450]">
+                  <span className="text-[12px] text-[var(--ui-fg-secondary)]">{d.chargebacks || 'Chargebacks'}</span>
+                  <span className="text-[14px] font-semibold font-mono text-[var(--ui-danger)]">
                     ${data.summary.chargebacks.toLocaleString()}
                   </span>
                 </div>
@@ -590,42 +590,42 @@ function PaymentsInner() {
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
               <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
             </svg>
-            <span className="text-[11px] font-semibold uppercase tracking-[0.8px] text-[#646880]">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.8px] text-[var(--ui-fg-secondary)]">
               {d.driverPayoutsTitle || 'Driver Payouts'}
             </span>
-            <span className="ml-auto text-[10px] font-normal text-[#646880]">
+            <span className="ml-auto text-[10px] font-normal text-[var(--ui-fg-secondary)]">
               {d.nextPayout || 'Next payout: Tomorrow'}
             </span>
           </div>
-          <div className="bg-[#181b25] border border-[#282b38] rounded-[10px] overflow-hidden">
+          <div className="bg-[var(--ui-surface)] border border-[var(--ui-border)] rounded-[10px] overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="bg-[#111318] border-b border-[#282b38]">
-                    <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880] px-5 py-3">{d.driver || 'Driver'}</th>
-                    <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880] px-5 py-3">{d.trips || 'Trips'}</th>
-                    <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880] px-5 py-3">{d.payoutAmount || 'Payment (COP)'}</th>
-                    <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880] px-5 py-3">{d.payoutAmount || 'Payment (USD)'}</th>
-                    <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880] px-5 py-3">{d.payoutStatus || 'Status'}</th>
-                    <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[#646880] px-5 py-3">{d.payoutDate || 'Date'}</th>
+                  <tr className="bg-[var(--ui-bg-secondary)] border-b border-[var(--ui-border)]">
+                    <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[var(--ui-fg-secondary)] px-5 py-3">{d.driver || 'Driver'}</th>
+                    <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[var(--ui-fg-secondary)] px-5 py-3">{d.trips || 'Trips'}</th>
+                    <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[var(--ui-fg-secondary)] px-5 py-3">{d.payoutAmount || 'Payment (COP)'}</th>
+                    <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[var(--ui-fg-secondary)] px-5 py-3">{d.payoutAmount || 'Payment (USD)'}</th>
+                    <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[var(--ui-fg-secondary)] px-5 py-3">{d.payoutStatus || 'Status'}</th>
+                    <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[var(--ui-fg-secondary)] px-5 py-3">{d.payoutDate || 'Date'}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.payouts.map((p, idx) => {
                     const isCompleted = p.payment_status === 'paid' || p.payment_status === 'completed'
                     return (
-                      <tr key={idx} className="border-b border-[#282b38] hover:bg-[#202330] transition-colors">
+                      <tr key={idx} className="border-b border-[var(--ui-border)] hover:bg-[var(--ui-surface-hover)] transition-colors">
                         <td className="px-5 py-3.5">
-                          <span className="text-[13px] font-medium text-[#f0f2f5]">{p.driver_name || p.customer_name}</span>
+                          <span className="text-[13px] font-medium text-[var(--ui-fg)]">{p.driver_name || p.customer_name}</span>
                         </td>
                         <td className="px-5 py-3.5">
-                          <span className="text-[13px] font-mono text-[#f0f2f5]">{p.driver_name ? p.driver_total_trips : '-'}</span>
+                          <span className="text-[13px] font-mono text-[var(--ui-fg)]">{p.driver_name ? p.driver_total_trips : '-'}</span>
                         </td>
                         <td className="px-5 py-3.5">
-                          <span className="text-[13px] font-semibold font-mono text-[#f0f2f5]">$ {p.driver_payment_cop.toLocaleString()} COP</span>
+                          <span className="text-[13px] font-semibold font-mono text-[var(--ui-fg)]">$ {p.driver_payment_cop.toLocaleString()} COP</span>
                         </td>
                         <td className="px-5 py-3.5">
-                          <span className="text-[13px] font-semibold font-mono text-[#10b981]">${p.driver_payment_usd.toLocaleString()} USD</span>
+                          <span className="text-[13px] font-semibold font-mono text-[var(--ui-accent)]">${p.driver_payment_usd.toLocaleString()} USD</span>
                         </td>
                         <td className="px-5 py-3.5">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium ${isCompleted ? payoutStatusColors.paid : payoutStatusColors.pending}`}>
@@ -633,7 +633,7 @@ function PaymentsInner() {
                           </span>
                         </td>
                         <td className="px-5 py-3.5">
-                          <span className="text-[12px] text-[#646880]">{formatDate(p.created_at)}</span>
+                          <span className="text-[12px] text-[var(--ui-fg-secondary)]">{formatDate(p.created_at)}</span>
                         </td>
                       </tr>
                     )
@@ -649,15 +649,15 @@ function PaymentsInner() {
       {selectedTx && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={closeDetail} />
-          <div className="relative w-full max-w-lg max-h-[90vh] overflow-auto bg-[#181b25] border border-[#282b38] rounded-xl shadow-2xl">
+          <div className="relative w-full max-w-lg max-h-[90vh] overflow-auto bg-[var(--ui-surface)] border border-[var(--ui-border)] rounded-xl shadow-2xl">
             {/* Header */}
-            <div className="flex items-center justify-between p-5 border-b border-[#282b38]">
+            <div className="flex items-center justify-between p-5 border-b border-[var(--ui-border)]">
               <div>
-                <h2 className="text-lg font-semibold text-[#f0f2f5]">{d.transactionDetails || 'Transaction Details'}</h2>
-                <p className="text-[12px] text-[#646880]">{formatDate(selectedTx.created_at)}</p>
+                <h2 className="text-lg font-semibold text-[var(--ui-fg)]">{d.transactionDetails || 'Transaction Details'}</h2>
+                <p className="text-[12px] text-[var(--ui-fg-secondary)]">{formatDate(selectedTx.created_at)}</p>
               </div>
-              <button onClick={closeDetail} className="p-2 hover:bg-[#202330] rounded-lg transition-colors">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9ca0b0" strokeWidth="2">
+              <button onClick={closeDetail} className="p-2 hover:bg-[var(--ui-surface-hover)] rounded-lg transition-colors">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ui-fg-secondary)" strokeWidth="2">
                   <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
               </button>
@@ -667,8 +667,8 @@ function PaymentsInner() {
               {/* Status + ID */}
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-[20px] font-bold text-[#f0f2f5]">{selectedTx.booking_reference}</div>
-                  <div className="text-[12px] text-[#646880]">{selectedTx.customer_name}</div>
+                  <div className="text-[20px] font-bold text-[var(--ui-fg)]">{selectedTx.booking_reference}</div>
+                  <div className="text-[12px] text-[var(--ui-fg-secondary)]">{selectedTx.customer_name}</div>
                 </div>
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium ${statusColors[selectedTx.status] || ''}`}>
                   {statusLabels[selectedTx.status] || selectedTx.status}
@@ -678,55 +678,55 @@ function PaymentsInner() {
               {/* Detail Info Grid */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-[10px] uppercase tracking-[0.3px] font-medium text-[#646880]">{d.customer || 'Customer'}</span>
-                  <span className="text-[13px] font-medium text-[#f0f2f5]">{selectedTx.customer_name}</span>
+                  <span className="text-[10px] uppercase tracking-[0.3px] font-medium text-[var(--ui-fg-secondary)]">{d.customer || 'Customer'}</span>
+                  <span className="text-[13px] font-medium text-[var(--ui-fg)]">{selectedTx.customer_name}</span>
                 </div>
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-[10px] uppercase tracking-[0.3px] font-medium text-[#646880]">{d.contact || 'Contact'}</span>
-                  <span className="text-[13px] font-medium font-mono text-[#f0f2f5]">{selectedTx.customer_email}</span>
+                  <span className="text-[10px] uppercase tracking-[0.3px] font-medium text-[var(--ui-fg-secondary)]">{d.contact || 'Contact'}</span>
+                  <span className="text-[13px] font-medium font-mono text-[var(--ui-fg)]">{selectedTx.customer_email}</span>
                 </div>
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-[10px] uppercase tracking-[0.3px] font-medium text-[#646880]">{d.package || 'Package'}</span>
-                  <span className="text-[13px] font-medium text-[#f0f2f5]">{selectedTx.package_name}</span>
+                  <span className="text-[10px] uppercase tracking-[0.3px] font-medium text-[var(--ui-fg-secondary)]">{d.package || 'Package'}</span>
+                  <span className="text-[13px] font-medium text-[var(--ui-fg)]">{selectedTx.package_name}</span>
                 </div>
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-[10px] uppercase tracking-[0.3px] font-medium text-[#646880]">{d.amount || 'Amount'}</span>
-                  <span className="text-[18px] font-bold font-mono text-[#10b981]">${selectedTx.amount.toFixed(2)}</span>
+                  <span className="text-[10px] uppercase tracking-[0.3px] font-medium text-[var(--ui-fg-secondary)]">{d.amount || 'Amount'}</span>
+                  <span className="text-[18px] font-bold font-mono text-[var(--ui-accent)]">${selectedTx.amount.toFixed(2)}</span>
                 </div>
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-[10px] uppercase tracking-[0.3px] font-medium text-[#646880]">{d.paymentMethod || 'Payment Method'}</span>
-                  <span className="text-[13px] font-medium text-[#f0f2f5]">Paddle</span>
+                  <span className="text-[10px] uppercase tracking-[0.3px] font-medium text-[var(--ui-fg-secondary)]">{d.paymentMethod || 'Payment Method'}</span>
+                  <span className="text-[13px] font-medium text-[var(--ui-fg)]">Polar</span>
                 </div>
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-[10px] uppercase tracking-[0.3px] font-medium text-[#646880]">{d.status || 'Status'}</span>
-                  <span className="text-[13px] font-medium text-[#f0f2f5]">{statusLabels[selectedTx.status] || selectedTx.status}</span>
+                  <span className="text-[10px] uppercase tracking-[0.3px] font-medium text-[var(--ui-fg-secondary)]">{d.status || 'Status'}</span>
+                  <span className="text-[13px] font-medium text-[var(--ui-fg)]">{statusLabels[selectedTx.status] || selectedTx.status}</span>
                 </div>
               </div>
 
               {/* Amount Breakdown */}
-              <div className="p-4 bg-[#0b0d14] rounded-[6px] border border-[#282b38]">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.5px] text-[#646880] mb-2">
+              <div className="p-4 bg-[var(--ui-bg)] rounded-[6px] border border-[var(--ui-border)]">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.5px] text-[var(--ui-fg-secondary)] mb-2">
                   {d.amountBreakdown || 'Amount Breakdown'}
                 </div>
                 <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-[12px] text-[#9ca0b0]">
+                  <div className="flex items-center justify-between text-[12px] text-[var(--ui-fg-secondary)]">
                     <span>{d.subtotal || 'Subtotal'}</span>
                     <span className="font-mono">${selectedTx.amount.toFixed(2)}</span>
                   </div>
-                  <div className="flex items-center justify-between text-[12px] text-[#9ca0b0]">
+                  <div className="flex items-center justify-between text-[12px] text-[var(--ui-fg-secondary)]">
                     <span>{d.processingFee || `Processing Fee (${(platformFee.percent * 100).toFixed(1)}% + $${platformFee.fixed.toFixed(2)})`}</span>
                     <span className="font-mono">${(selectedTx.amount * platformFee.percent + platformFee.fixed).toFixed(2)}</span>
                   </div>
-                  <div className="flex items-center justify-between text-[14px] font-semibold pt-2 border-t border-[#282b38] mt-2">
+                  <div className="flex items-center justify-between text-[14px] font-semibold pt-2 border-t border-[var(--ui-border)] mt-2">
                     <span>{d.totalCharged || 'Total Charged'}</span>
-                    <span className="font-mono text-[#10b981]">${selectedTx.amount.toFixed(2)}</span>
+                    <span className="font-mono text-[var(--ui-accent)]">${selectedTx.amount.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
 
               {/* Payment Timeline */}
               <div>
-                <div className="text-[11px] font-semibold uppercase tracking-[0.5px] text-[#646880] mb-2">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.5px] text-[var(--ui-fg-secondary)] mb-2">
                   {d.paymentTimeline || 'Payment Timeline'}
                 </div>
                 <div className="space-y-2">
@@ -734,7 +734,7 @@ function PaymentsInner() {
                     { dot: 'var(--accent)', title: d.paymentInitiated || 'Payment Initiated', desc: (d.transactionCreated || 'Transaction created and sent to processor'), time: formatDate(selectedTx.created_at) },
                     { dot: 'var(--accent)', title: d.authorized || 'Authorized', desc: d.authorizedDesc || 'Payment authorized by bank', time: formatDate(selectedTx.created_at) },
                     { dot: 'var(--accent)', title: d.captured || 'Captured', desc: d.capturedDesc || 'Funds captured successfully', time: formatDate(selectedTx.created_at) },
-                    { dot: 'var(--accent)', title: d.settled || 'Settled', desc: d.settledDesc || 'Funds settled to Paddle balance', time: formatDate(selectedTx.created_at) },
+                    { dot: 'var(--accent)', title: d.settled || 'Settled', desc: d.settledDesc || 'Funds settled to Polar balance', time: formatDate(selectedTx.created_at) },
                   ] : selectedTx.status === 'pending' ? [
                     { dot: 'var(--accent)', title: d.paymentInitiated || 'Payment Initiated', desc: d.transactionCreated || 'Transaction created', time: formatDate(selectedTx.created_at) },
                     { dot: 'var(--info)', title: d.awaitingConfirmation || 'Awaiting Confirmation', desc: d.awaitingConfirmationDesc || 'Waiting for payment confirmation', time: formatDate(selectedTx.created_at), glow: true },
@@ -758,8 +758,8 @@ function PaymentsInner() {
                         }}
                       />
                       <div className="flex-1 min-w-0">
-                        <div className="text-[12px] font-semibold text-[#f0f2f5]">{step.title}</div>
-                        <div className="text-[11px] text-[#646880]">
+                        <div className="text-[12px] font-semibold text-[var(--ui-fg)]">{step.title}</div>
+                        <div className="text-[11px] text-[var(--ui-fg-secondary)]">
                           {step.desc}{step.time ? ` · ${step.time}` : ''}
                         </div>
                       </div>
@@ -770,14 +770,14 @@ function PaymentsInner() {
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-end gap-2 p-5 border-t border-[#282b38]">
-              <button onClick={closeDetail} className="px-4 py-2 text-[13px] font-medium text-[#9ca0b0] hover:bg-[#202330] rounded-[6px] transition-all">
+            <div className="flex items-center justify-end gap-2 p-5 border-t border-[var(--ui-border)]">
+              <button onClick={closeDetail} className="px-4 py-2 text-[13px] font-medium text-[var(--ui-fg-secondary)] hover:bg-[var(--ui-surface-hover)] rounded-[6px] transition-all">
                 {d.close || 'Close'}
               </button>
               {(selectedTx.status === 'completed' || selectedTx.status === 'pending') && (
                 <button
                   onClick={() => handleRefund(selectedTx.booking_reference)}
-                  className="px-4 py-2 text-[13px] font-medium text-white bg-[rgba(239,68,80,0.2)] text-[#ef4450] rounded-[6px] hover:bg-[rgba(239,68,80,0.3)] transition-all"
+                  className="px-4 py-2 text-[13px] font-medium text-white bg-[rgba(239,68,80,0.2)] text-[var(--ui-danger)] rounded-[6px] hover:bg-[rgba(239,68,80,0.3)] transition-all"
                 >
                   {d.refundPayment || 'Refund Payment'}
                 </button>

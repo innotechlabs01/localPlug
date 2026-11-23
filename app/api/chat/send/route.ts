@@ -70,6 +70,10 @@ export async function POST(request: Request) {
     const db = getDb()
 
     if (senderType === 'agent') {
+      const { requirePermission } = await import('@/lib/admin/permissions')
+      const authError = await requirePermission('support', 'update')
+      if (authError) return authError
+
       let convId = conversationId
       if (!convId) {
         const result = await db.execute({

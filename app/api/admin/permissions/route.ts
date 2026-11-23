@@ -49,18 +49,19 @@ export async function PUT(req: Request) {
   const db = getDb()
 
   const existing = await db.execute({
-    sql: 'SELECT id FROM role_permissions WHERE role_id = ? AND module_id = ?',
+    sql: 'SELECT id, can_view, can_create, can_update, can_delete FROM role_permissions WHERE role_id = ? AND module_id = ?',
     args: [role_id, module_id],
   })
 
   if (existing.rows.length > 0) {
+    const cur = existing.rows[0] as any
     await db.execute({
       sql: `UPDATE role_permissions SET can_view = ?, can_create = ?, can_update = ?, can_delete = ? WHERE role_id = ? AND module_id = ?`,
       args: [
-        can_view ? 1 : 0,
-        can_create ? 1 : 0,
-        can_update ? 1 : 0,
-        can_delete ? 1 : 0,
+        can_view !== undefined ? (can_view ? 1 : 0) : Number(cur.can_view || 0),
+        can_create !== undefined ? (can_create ? 1 : 0) : Number(cur.can_create || 0),
+        can_update !== undefined ? (can_update ? 1 : 0) : Number(cur.can_update || 0),
+        can_delete !== undefined ? (can_delete ? 1 : 0) : Number(cur.can_delete || 0),
         role_id,
         module_id,
       ],
@@ -80,5 +81,66 @@ export async function PUT(req: Request) {
     })
   }
 
+  return NextResponse.json({ success: true })
+}
+
+export async function POST(req: Request) {
+  const authError = await requirePermission('roles', 'create')
+  if (authError) return authError
+
+  const body = await req.json()
+  const rawName = String(body.name || '').trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '_')
+  const description = String(body.description || '').trim()
+
+  if (!rawName) {
+    return NextResponse.json({ error: 'Role name is required' }, { status: 400 })
+  }
+
+  const db = getDb()
+  const dup = await db.execute({ sql: 'SELECT id FROM roles WHERE name = ?', args: [rawName] })
+  if (dup.rows.length > 0) {
+    return NextResponse.json({ error: 'Role already exists' }, { status: 409 })
+  }
+
+  const res = await db.execute({
+    sql: 'INSERT INTO roles (name, description) VALUES (?, ?)',
+    args: [rawName, description || `${rawName} role`],
+  })
+  const roleId = Number(res.lastInsertRowid)
+
+  // Initialize module permissions row for each module (view-only by default if requested, else 0)
+  const mods = await db.execute('SELECT id FROM modules')
+  for (const mod of mods.rows) {
+    await db.execute({
+      sql: `INSERT OR IGNORE INTO role_permissions (role_id, module_id, can_view, can_create, can_update, can_delete)
+            VALUES (?, ?, 0, 0, 0, 0)`,
+      args: [roleId, mod.id as number],
+    })
+  }
+
+  return NextResponse.json({ success: true, role: { id: roleId, name: rawName, description: description || `${rawName} role` } }, { status: 201 })
+}
+
+export async function DELETE(req: Request) {
+  const authError = await requirePermission('roles', 'delete')
+  if (authError) return authError
+
+  const { searchParams } = new URL(req.url)
+  const id = Number(searchParams.get('id'))
+  if (!id) {
+    return NextResponse.json({ error: 'Role id is required' }, { status: 400 })
+  }
+
+  const db = getDb()
+  const roleRes = await db.execute({ sql: 'SELECT name FROM roles WHERE id = ?', args: [id] })
+  if (!roleRes.rows.length) {
+    return NextResponse.json({ error: 'Role not found' }, { status: 404 })
+  }
+  const roleName = String(roleRes.rows[0].name)
+  if (['super_admin', 'admin', 'viewer'].includes(roleName)) {
+    return NextResponse.json({ error: 'Cannot delete core system role' }, { status: 400 })
+  }
+
+  await db.execute({ sql: 'DELETE FROM roles WHERE id = ?', args: [id] })
   return NextResponse.json({ success: true })
 }

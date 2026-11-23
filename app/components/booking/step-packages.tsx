@@ -106,7 +106,7 @@ export default function StepPackages({
                 </span>
               )}
               {isElite && !isPopular && (
-                <span className="absolute -top-[10px] right-3 bg-gradient-to-r from-[var(--accent-gold)] to-[#f5d98a] text-[var(--bg-dark)] text-[9px] font-bold uppercase tracking-[0.5px] px-2.5 py-1 rounded-[10px] z-10">
+                <span className="absolute -top-[10px] right-3 bg-gradient-to-r from-[var(--accent-gold)] to-[var(--ui-gold)] text-[var(--bg-dark)] text-[9px] font-bold uppercase tracking-[0.5px] px-2.5 py-1 rounded-[10px] z-10">
                   Elite VIP
                 </span>
               )}

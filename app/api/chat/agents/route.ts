@@ -1,14 +1,13 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { auth } from '@clerk/nextjs/server'
+import { requirePermission } from '@/lib/admin/permissions'
 
 // GET: List all agents
 export async function GET(request: Request) {
   try {
-    const { userId } = await auth()
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const authError = await requirePermission('support', 'view')
+    if (authError) return authError
 
     const db = getDb()
     const result = await db.execute({
@@ -60,15 +59,8 @@ export async function POST(request: Request) {
     }
 
     const userIdInternal = userResult.rows[0].id
-    const roleId = userResult.rows[0].role_id
-
-    // Check if the user is an agent/admin (has a role_id assigned)
-    if (roleId === null) {
-      return NextResponse.json(
-        { error: 'Forbidden: insufficient permissions' },
-        { status: 403 }
-      )
-    }
+    const authError = await requirePermission('support', 'create')
+    if (authError) return authError
 
     const body = await request.json()
     const { id, name, email, phone, status, maxConversations, specializations } = body
@@ -156,15 +148,8 @@ export async function PATCH(request: Request) {
     }
 
     const userIdInternal = userResult.rows[0].id
-    const roleId = userResult.rows[0].role_id
-
-    // Check if the user is an agent/admin (has a role_id assigned)
-    if (roleId === null) {
-      return NextResponse.json(
-        { error: 'Forbidden: insufficient permissions' },
-        { status: 403 }
-      )
-    }
+    const authError = await requirePermission('support', 'create')
+    if (authError) return authError
 
     const body = await request.json()
     const { agentId, status } = body

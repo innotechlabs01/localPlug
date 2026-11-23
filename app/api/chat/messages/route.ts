@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { auth } from '@clerk/nextjs/server'
+import { requirePermission } from '@/lib/admin/permissions'
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const conversationId = searchParams.get('conversationId')
+    const userIdentifier = searchParams.get('userIdentifier')
     const limit = parseInt(searchParams.get('limit') || '100', 10)
     const before = searchParams.get('before')
 
@@ -18,9 +20,9 @@ export async function GET(request: Request) {
 
     const db = getDb()
 
-    // Check if this is a web channel conversation (public)
+    // Check conversation channel and owner
     const convResult = await db.execute({
-      sql: 'SELECT channel, status FROM conversations WHERE id = ?',
+      sql: 'SELECT channel, status, user_identifier FROM conversations WHERE id = ?',
       args: [parseInt(conversationId, 10)],
     })
 
@@ -34,37 +36,22 @@ export async function GET(request: Request) {
     const conversationRow = convResult.rows[0]
     const channel = conversationRow.channel as string
     const status = conversationRow.status as string
+    const ownerIdentifier = conversationRow.user_identifier as string | null
     const isWebChannel = channel === 'web'
 
-    // Only require Clerk auth for non-web channels
-    if (!isWebChannel) {
+    const matchesUser = Boolean(isWebChannel && userIdentifier && ownerIdentifier && userIdentifier === ownerIdentifier)
+
+    if (!matchesUser) {
       const { userId } = await auth()
-      if (!userId) {
-        return NextResponse.json(
-          { error: 'Unauthorized' },
-          { status: 401 },
-        )
-      }
-
-      const userResult = await db.execute({
-        sql: 'SELECT id, role_id FROM users WHERE clerk_id = ?',
-        args: [userId],
-      })
-
-      if (userResult.rows.length === 0) {
-        return NextResponse.json(
-          { error: 'User not found' },
-          { status: 404 },
-        )
-      }
-
-      const userRow = userResult.rows[0] as unknown as { role_id: number | null }
-    const roleId = userRow.role_id
-      if (roleId === null) {
-        return NextResponse.json(
-          { error: 'Forbidden: insufficient permissions' },
-          { status: 403 },
-        )
+      const matchesClerk = Boolean(isWebChannel && userId && ownerIdentifier && userId === ownerIdentifier)
+      if (!matchesClerk) {
+        const isStaff = userId ? (await requirePermission('support', 'view')) === null : false
+        if (!isStaff) {
+          return NextResponse.json(
+            { error: userId ? 'Forbidden: insufficient permissions' : 'Unauthorized' },
+            { status: userId ? 403 : 401 },
+          )
+        }
       }
     }
 

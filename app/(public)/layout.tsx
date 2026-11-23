@@ -1,4 +1,4 @@
-import ChatWidget from '@/app/components/chat/ChatWidget'
+import LazyChatWidget from '@/app/components/chat/lazy-chat-widget'
 
 export default function PublicLayout({
   children,
@@ -8,7 +8,7 @@ export default function PublicLayout({
   return (
     <>
       {children}
-      <ChatWidget />
+      <LazyChatWidget />
     </>
   )
 }

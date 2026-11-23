@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getDb, buildSafeUpdate } from '@/lib/db'
-import { auth } from '@clerk/nextjs/server'
+import { requirePermission } from '@/lib/admin/permissions'
 
 const ALLOWED_DRIVER_DOC_COLUMNS = ['license_expiry', 'soat_expiry', 'tech_inspection_expiry', 'insurance_expiry']
 
@@ -8,8 +8,8 @@ export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { userId } = await auth()
-  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const authError = await requirePermission('drivers', 'update')
+  if (authError) return authError
 
   const { id } = await params
   const body = await req.json()

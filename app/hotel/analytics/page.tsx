@@ -89,7 +89,7 @@ export default function HotelAnalyticsPage() {
   }, [])
 
   const formatCurrency = (n: number) =>
-    new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(n)
+    new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n)
 
   const kpis: Array<{ label: string; value: string; color: keyof typeof KPI_COLORS }> = [
     { label: 'Reservaciones totales', value: String(data.totalOrders), color: 'accent' },

@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
-import { auth } from '@clerk/nextjs/server'
+import { requirePermission } from '@/lib/admin/permissions'
 
 export async function GET(req: Request) {
   try {
-    const { userId } = await auth()
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const authError = await requirePermission('dashboard', 'view')
+    if (authError) return authError
     const db = getDb()
     const { searchParams } = new URL(req.url)
     const since = searchParams.get('since')
@@ -52,6 +52,6 @@ export async function GET(req: Request) {
     })
   } catch (err) {
     console.error('[realtime GET]', err)
-    return NextResponse.json({ error: 'Internal server error', detail: String(err) }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

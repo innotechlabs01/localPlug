@@ -44,7 +44,11 @@ function createRawClient(): LibSQLClient {
   if (!url || !authToken) {
     throw new Error('TURSO_DATABASE_URL and TURSO_API_KEY must be configured')
   }
-  return createClient({ url, authToken, concurrency: DB_CONCURRENCY })
+  const client = createClient({ url, authToken, concurrency: DB_CONCURRENCY })
+  if (url.startsWith('file:')) {
+    void client.executeMultiple('PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000; PRAGMA foreign_keys = ON;').catch(() => {})
+  }
+  return client
 }
 
 // ---------------------------------------------------------------------------

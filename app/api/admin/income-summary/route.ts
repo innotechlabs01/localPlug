@@ -21,7 +21,7 @@ export async function GET() {
     db.execute("SELECT COUNT(*) as count FROM payments WHERE status = 'completed'"),
   ])
 
-  const totalRevenue = Number(completed.rows[0]?.total || 0)
+  const totalRevenue = Math.round(Number(completed.rows[0]?.total || 0)) / 100
   const successfulPayments = Number(total.rows[0]?.count || 0)
   const failedPayments = Number(failed.rows[0]?.count || 0)
   const pendingPayments = Number(pending.rows[0]?.count || 0)
@@ -47,18 +47,19 @@ export async function GET() {
   })
   const refundsTotal = Math.round(Number(refundsAgg.rows[0]?.total || 0) * 100) / 100
 
-  // Precise net platform margin: gross − driver − hotel − refunds.
+  // Net platform margin: gross (completed payments) − driver − hotel.
+  // Refunded payments have status = 'refunded' and are already excluded from grossRevenue.
   const grossRevenue = totalRevenue
-  const platformTake = Math.round((grossRevenue - driverPayouts - hotelPayouts - refundsTotal) * 100) / 100
+  const platformTake = Math.round((grossRevenue - driverPayouts - hotelPayouts) * 100) / 100
   const driverPayoutsPct = totalRevenue > 0 ? ((driverPayouts / totalRevenue) * 100).toFixed(1) : '0'
   const hotelPayoutsPct = totalRevenue > 0 ? ((hotelPayouts / totalRevenue) * 100).toFixed(1) : '0'
   const refundsPct = totalRevenue > 0 ? ((refundsTotal / totalRevenue) * 100).toFixed(1) : '0'
   const platformTakePct = totalRevenue > 0 ? ((platformTake / totalRevenue) * 100).toFixed(1) : '0'
 
-  // Revenue by source from orders (whole-unit columns)
+  // Revenue by source from orders (whole-unit columns), separating base services vs hotel bookings
   const sourceAgg = await db.execute(
     `SELECT
-       COALESCE(SUM(o.package_price), 0) AS base_services,
+       COALESCE(SUM(CASE WHEN COALESCE(o.is_hotel_booking, 0) = 0 THEN o.package_price ELSE 0 END), 0) AS base_services,
        COALESCE(SUM(o.return_trip_charge), 0) AS return_transport,
        COALESCE(SUM(CASE WHEN o.is_hotel_booking = 1 THEN o.package_price ELSE 0 END), 0) AS hotel
      FROM orders o
@@ -76,7 +77,7 @@ export async function GET() {
   )
   const monthlyRevenue = monthly.rows.map(r => ({
     month: r.month as string,
-    revenue: Number(r.revenue),
+    revenue: Math.round(Number(r.revenue || 0)) / 100,
   }))
 
   // Per-driver payout breakdown from the ledger

@@ -9,24 +9,24 @@ interface Props {
 }
 
 const STATUS_MAP: Record<string, { label: string; bg: string; fg: string }> = {
-  pending: { label: 'Pendiente', bg: 'rgba(250,204,21,0.12)', fg: '#facc15' },
-  confirmed: { label: 'Confirmada', bg: 'rgba(74,222,128,0.12)', fg: '#4ade80' },
-  awaiting_payment: { label: 'Pago Pendiente', bg: 'rgba(96,165,250,0.12)', fg: '#60a5fa' },
-  assigned: { label: 'Asignada', bg: 'rgba(168,85,247,0.12)', fg: '#a855f7' },
-  in_progress: { label: 'En Progreso', bg: 'rgba(96,165,250,0.12)', fg: '#60a5fa' },
-  completed: { label: 'Completada', bg: 'rgba(74,222,128,0.12)', fg: '#4ade80' },
-  cancelled: { label: 'Cancelada', bg: 'rgba(248,113,113,0.12)', fg: '#f87171' },
+  pending: { label: 'Pendiente', bg: 'var(--ui-warning-soft)', fg: 'var(--ui-warning)' },
+  confirmed: { label: 'Confirmada', bg: 'var(--ui-accent-soft)', fg: 'var(--ui-accent)' },
+  awaiting_payment: { label: 'Pago Pendiente', bg: 'var(--ui-info-soft)', fg: 'var(--ui-info)' },
+  assigned: { label: 'Asignada', bg: 'var(--ui-info-soft)', fg: 'var(--ui-info)' },
+  in_progress: { label: 'En Progreso', bg: 'var(--ui-info-soft)', fg: 'var(--ui-info)' },
+  completed: { label: 'Completada', bg: 'var(--ui-accent-soft)', fg: 'var(--ui-accent)' },
+  cancelled: { label: 'Cancelada', bg: 'var(--ui-danger-soft)', fg: 'var(--ui-danger)' },
 }
 
 const PAYMENT_MAP: Record<string, { label: string; bg: string; fg: string }> = {
-  pending: { label: 'Pendiente', bg: 'rgba(250,204,21,0.12)', fg: '#facc15' },
-  paid: { label: 'Pagado', bg: 'rgba(74,222,128,0.12)', fg: '#4ade80' },
-  partial: { label: 'Parcial', bg: 'rgba(96,165,250,0.12)', fg: '#60a5fa' },
-  refunded: { label: 'Reembolsado', bg: 'rgba(248,113,113,0.12)', fg: '#f87171' },
+  pending: { label: 'Pendiente', bg: 'var(--ui-warning-soft)', fg: 'var(--ui-warning)' },
+  paid: { label: 'Pagado', bg: 'var(--ui-accent-soft)', fg: 'var(--ui-accent)' },
+  partial: { label: 'Parcial', bg: 'var(--ui-info-soft)', fg: 'var(--ui-info)' },
+  refunded: { label: 'Reembolsado', bg: 'var(--ui-danger-soft)', fg: 'var(--ui-danger)' },
 }
 
 function Badge({ map, status }: { map: Record<string, { label: string; bg: string; fg: string }>; status: string }) {
-  const b = map[status] || { label: status, bg: 'rgba(100,100,100,0.12)', fg: '#9ca3af' }
+  const b = map[status] || { label: status, bg: 'rgba(100,100,100,0.12)', fg: 'var(--ui-fg-secondary)' }
   return (
     <span style={{
       display: 'inline-flex', padding: '3px 10px', borderRadius: 'var(--radius-sm)',

@@ -1,5 +1,11 @@
 /** @type {import('next').NextConfig} */
 const path = require('path')
+
+const isDev = process.env.NODE_ENV !== 'production'
+const vercelLive = isDev ? ' https://vercel.live' : ''
+
+const cspHeader = `default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://*.clerk.accounts.dev https://*.clerk.com https://cdn.paddle.com https://*.paddle.com${vercelLive}; style-src 'self' 'unsafe-inline' https://sandbox-cdn.paddle.com https://cdn.paddle.com https://*.clerk.com https://*.clerk.accounts.dev; img-src 'self' data: https: blob:; font-src 'self'; connect-src 'self' https://api.clerk.com https://*.clerk.accounts.dev https://*.clerk.com https://*.turso.io https://api-message.innotechlabssas.lat https://api.upstash.com https://api.paddle.com https://sandbox-api.paddle.com https://sandbox-checkout-service.paddle.com https://clerk-telemetry.com https://analytics.paddle.com https://cdn.paddle.com; worker-src 'self' blob:; frame-src 'self' https://challenges.cloudflare.com https://*.accounts.dev https://*.clerk.accounts.dev https://*.clerk.com https://sandbox-checkout.paddle.com https://checkout.paddle.com https://sandbox-buy.paddle.com${vercelLive}; frame-ancestors 'none'; form-action 'self'; base-uri 'self'; object-src 'none'`
+
 const nextConfig = {
   typescript: { ignoreBuildErrors: false },
   transpilePackages: ['@lp/shared', '@lp/config', '@lp/auth', '@lp/validation', '@lp/types', '@lp/db', '@lp/domains', '@lp/domains/*', '@lp/events', '@lp/communication'],
@@ -50,10 +56,10 @@ const nextConfig = {
         headers: [
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'X-Frame-Options', value: 'DENY' },
-          { key: 'X-XSS-Protection', value: '1; mode=block' },
+          { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
-          { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://*.clerk.accounts.dev https://*.clerk.com https://cdn.paddle.com https://*.paddle.com https://vercel.live; style-src 'self' 'unsafe-inline' https://sandbox-cdn.paddle.com https://cdn.paddle.com https://*.clerk.com https://*.clerk.accounts.dev; img-src 'self' data: https: blob:; font-src 'self'; connect-src 'self' https://api.clerk.com https://*.clerk.accounts.dev https://*.clerk.com https://*.turso.io https://api-message.innotechlabssas.lat https://api.upstash.com https://api.paddle.com https://sandbox-api.paddle.com https://sandbox-checkout-service.paddle.com https://clerk-telemetry.com https://analytics.paddle.com https://cdn.paddle.com; worker-src 'self' blob:; frame-src 'self' https://challenges.cloudflare.com https://*.accounts.dev https://*.clerk.accounts.dev https://*.clerk.com https://sandbox-checkout.paddle.com https://checkout.paddle.com https://sandbox-buy.paddle.com https://vercel.live; frame-ancestors 'none'; form-action 'self'; base-uri 'self'; object-src 'none'" },
+          { key: 'Content-Security-Policy', value: cspHeader },
         ],
       },
     ]
@@ -61,6 +67,24 @@ const nextConfig = {
   images: {
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [32, 48, 64, 96, 128, 256, 384],
+  },
+  // Security headers to enforce browser protections globally
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          // Prevent clickjacking by disallowing framing
+          { key: 'X-Frame-Options', value: 'DENY' },
+          // Prevent MIME-type sniffing
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          // Restrict referrer leakage to cross-origin targets
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          // Restrict access to sensitive device APIs
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+        ],
+      },
+    ]
   },
 }
 

@@ -139,15 +139,15 @@ export default function AdminEventsPage() {
   }
 
   if (loading) {
-    return <div style={{ padding: '80px 0', textAlign: 'center', color: 'var(--fg-muted)' }}>Cargando…</div>
+    return <div style={{ padding: '80px 0', textAlign: 'center', color: 'var(--ui-fg-secondary)' }}>Cargando…</div>
   }
 
   return (
     <div className="p-6" style={{ maxWidth: 960, margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
-          <h1 className="text-xl font-semibold">Eventos promocionales</h1>
-          <p className="text-sm" style={{ color: 'var(--fg-muted)' }}>
+          <h1 className="text-xl font-semibold text-[var(--ui-fg)]">Eventos promocionales</h1>
+          <p className="text-sm" style={{ color: 'var(--ui-fg-secondary)' }}>
             Controla banners y secciones del landing sin desplegar.
           </p>
         </div>
@@ -170,23 +170,23 @@ export default function AdminEventsPage() {
               <tbody>
                 {events.length === 0 && (
                   <tr>
-                    <td colSpan={5} style={{ padding: 24, textAlign: 'center', color: 'var(--fg-muted)' }}>
+                    <td colSpan={5} style={{ padding: 24, textAlign: 'center', color: 'var(--ui-fg-secondary)' }}>
                       Sin eventos. Crea uno para mostrarlo en el landing.
                     </td>
                   </tr>
                 )}
                 {events.map(e => (
-                  <tr key={e.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                  <tr key={e.id} style={{ borderBottom: '1px solid var(--ui-border)' }}>
                     <td style={tdStyle}>
                       <strong>{e.title}</strong>
-                      <div style={{ fontSize: 11, color: 'var(--fg-muted)' }}>{e.slug}</div>
+                      <div style={{ fontSize: 11, color: 'var(--ui-fg-secondary)' }}>{e.slug}</div>
                     </td>
                     <td style={tdStyle}>
                       <span className="badge badge-accent" style={{ fontSize: 11 }}>
                         {e.placement === 'hero_banner' ? 'Banner superior' : 'Sección'}
                       </span>
                     </td>
-                    <td style={{ ...tdStyle, color: 'var(--fg-muted)' }}>
+                    <td style={{ ...tdStyle, color: 'var(--ui-fg-secondary)' }}>
                       {e.start_date || '—'} → {e.end_date || '—'}
                     </td>
                     <td style={tdStyle}>
@@ -195,8 +195,8 @@ export default function AdminEventsPage() {
                         style={{
                           display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer',
                           padding: '4px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600,
-                          border: 'none', background: e.active ? 'rgba(74,222,128,0.15)' : 'rgba(100,100,100,0.12)',
-                          color: e.active ? '#2eb872' : 'var(--fg-muted)',
+                          border: 'none', background: e.active ? 'var(--ui-accent-soft)' : 'var(--ui-surface-hover)',
+                          color: e.active ? 'var(--ui-accent)' : 'var(--ui-fg-secondary)',
                         }}
                       >
                         <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'currentColor' }} />
@@ -322,6 +322,6 @@ export default function AdminEventsPage() {
 
 const thStyle: React.CSSProperties = {
   padding: '10px 12px', textAlign: 'left', fontSize: 11, textTransform: 'uppercase',
-  letterSpacing: '0.04em', color: 'var(--fg-muted)', borderBottom: '1px solid var(--border)',
+  letterSpacing: '0.04em', color: 'var(--ui-fg-secondary)', borderBottom: '1px solid var(--ui-border)',
 }
 const tdStyle: React.CSSProperties = { padding: '12px', fontSize: 13 }

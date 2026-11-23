@@ -45,18 +45,43 @@ export async function POST(
       return NextResponse.json({ error: 'Reservation not found' }, { status: 404 })
     }
 
-    // Update order with driver assignment
-    const now = new Date().toISOString()
-    await db.execute({
-      sql: `UPDATE orders 
-            SET assigned_to = ?, 
-                assigned_at = ?,
-                dispatch_status = 'assigned',
-                status = 'assigned',
-                updated_at = datetime('now')
-            WHERE id = ?`,
-      args: [driverId, now, reservationId]
+    const orderRow = reservationCheck.rows[0] as any
+
+    // Prevent double active assignment on the same order
+    const activeAssign = await db.execute({
+      sql: `SELECT id FROM assignments WHERE order_id = ? AND status IN ('pending_acceptance', 'accepted', 'confirmed_to_client', 'en_route', 'in_progress') LIMIT 1`,
+      args: [reservationId],
     })
+    if (activeAssign.rows.length > 0) {
+      return NextResponse.json({ error: 'Order already has an active driver assignment' }, { status: 409 })
+    }
+
+    // Create assignment AND update order atomically
+    const now = new Date().toISOString()
+    await db.batch([
+      {
+        sql: `INSERT INTO assignments (order_id, driver_id, service_type, pickup_location, destination, pickup_date, pickup_time, status, notified_driver_at)
+              VALUES (?, ?, 'airport_pickup', ?, ?, ?, ?, 'pending_acceptance', ?)`,
+        args: [
+          reservationId,
+          driverId,
+          'Aeropuerto MDE',
+          orderRow.destination_address || 'Medellín',
+          orderRow.arrival_date || new Date().toISOString().slice(0, 10),
+          orderRow.arrival_time || '12:00',
+          now,
+        ],
+      },
+      {
+        sql: `UPDATE orders 
+              SET assigned_to = ?, 
+                  assigned_at = ?,
+                  dispatch_status = 'pending_acceptance',
+                  updated_at = datetime('now')
+              WHERE id = ?`,
+        args: [driverId, now, reservationId],
+      },
+    ])
 
     // Get updated reservation info for response
     const updated = await db.execute({

@@ -81,31 +81,22 @@ export default function RatingsProvider({ children }: { children: ReactNode }) {
   }, [fetchRatings, fetchStats])
 
   useEffect(() => {
+    let lastFetch = Date.now()
     fetchAll()
 
-    const ratingsInterval = setInterval(fetchRatings, 15_000)
-    const statsInterval = setInterval(fetchStats, 30_000)
-
-    // Pause polling when tab is hidden
+    // Refresh silently when returning to tab after >= 60s (no unauthenticated /api/realtime/events 401s)
     const handleVisibility = () => {
-      if (document.hidden) {
-        clearInterval(ratingsInterval)
-        clearInterval(statsInterval)
+      if (!document.hidden && Date.now() - lastFetch > 60_000) {
+        lastFetch = Date.now()
+        Promise.all([fetchRatings(), fetchStats()])
       }
     }
     document.addEventListener('visibilitychange', handleVisibility)
 
     return () => {
-      clearInterval(ratingsInterval)
-      clearInterval(statsInterval)
       document.removeEventListener('visibilitychange', handleVisibility)
     }
   }, [fetchAll, fetchRatings, fetchStats])
-
-  // Realtime push — a new rating refreshes the board immediately.
-  useEventStream({
-    'rating.submitted': () => { fetchAll() },
-  }, { pollMs: 12000 })
 
   return (
     <RatingsContext.Provider value={{ ratings, stats, isLoading }}>

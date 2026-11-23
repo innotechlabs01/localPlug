@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import 'leaflet/dist/leaflet.css'
 
 interface LeafletMapProps {
   address: string
@@ -130,14 +131,5 @@ export default function LeafletMap({ address, className }: LeafletMapProps) {
   )
 }
 
-// Add Leaflet CSS once
-let cssAdded = false
-export function addLeafletCss() {
-  if (typeof document !== 'undefined' && !cssAdded) {
-    const link = document.createElement('link')
-    link.rel = 'stylesheet'
-    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
-    document.head.appendChild(link)
-    cssAdded = true
-  }
-}
+// Leaflet CSS is bundled directly via import above
+export function addLeafletCss() {}

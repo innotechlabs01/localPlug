@@ -1,8 +1,15 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
+import { requirePermission } from '@/lib/admin/permissions'
+import { verifyWebhookSecret } from '@/lib/webhook-auth'
 
 export async function POST(request: Request) {
   try {
+    const webhookOk = verifyWebhookSecret(request)
+    if (!webhookOk) {
+      const authError = await requirePermission('support', 'update')
+      if (authError) return authError
+    }
     const body = await request.json()
     const { conversationId, message, confidence } = body
 
