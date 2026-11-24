@@ -465,7 +465,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
     .filter(s => s.items.length > 0)
 
   if (isLoaded && !isSignedIn) {
-    router.push('/sign-in')
+    router.push('/sign-in/admin')
     return null
   }
 

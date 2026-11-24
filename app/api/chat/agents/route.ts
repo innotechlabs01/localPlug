@@ -3,19 +3,61 @@ import { getDb } from '@/lib/db'
 import { auth } from '@clerk/nextjs/server'
 import { requirePermission } from '@/lib/admin/permissions'
 
-// GET: List all agents
+// GET: List all agents (auto-syncing active employees who have support access)
 export async function GET(request: Request) {
   try {
     const authError = await requirePermission('support', 'view')
     if (authError) return authError
 
     const db = getDb()
+
+    // Sync active employees with support permission (or admin/super_admin) into support_agents
+    try {
+      const staffRes = await db.execute({
+        sql: `SELECT DISTINCT u.id, u.name, u.email, u.phone
+              FROM users u
+              JOIN roles r ON u.role_id = r.id
+              LEFT JOIN role_permissions rp ON rp.role_id = r.id
+              LEFT JOIN modules m ON m.id = rp.module_id AND m.slug = 'support'
+              WHERE u.status = 'active'
+                AND u.email IS NOT NULL AND u.email != ''
+                AND (r.name IN ('super_admin', 'admin') OR (m.slug = 'support' AND rp.can_view = 1))`,
+        args: [],
+      })
+      for (const staff of staffRes.rows) {
+        const staffId = Number(staff.id)
+        const staffEmail = String(staff.email || '').trim().toLowerCase()
+        const staffName = String(staff.name || staffEmail || 'Support Agent')
+        const staffPhone = staff.phone ? String(staff.phone) : null
+
+        const existing = await db.execute({
+          sql: `SELECT id, user_id FROM support_agents WHERE user_id = ? OR LOWER(email) = ? LIMIT 1`,
+          args: [staffId, staffEmail],
+        })
+        if (existing.rows.length === 0) {
+          await db.execute({
+            sql: `INSERT INTO support_agents (user_id, name, email, phone, status, max_conversations)
+                  VALUES (?, ?, ?, ?, 'available', 5)`,
+            args: [staffId, staffName, staffEmail, staffPhone],
+          })
+        } else if (!existing.rows[0].user_id) {
+          await db.execute({
+            sql: `UPDATE support_agents SET user_id = ? WHERE id = ?`,
+            args: [staffId, Number(existing.rows[0].id)],
+          })
+        }
+      }
+    } catch (syncErr) {
+      console.warn('[Chat API] Staff sync warning:', syncErr)
+    }
+
     const result = await db.execute({
       sql: `SELECT
-              id, name, email, phone, status, max_conversations,
-              current_conversations, specializations, last_active_at, created_at
-            FROM support_agents
-            ORDER BY name ASC`,
+              sa.id, sa.user_id, sa.name, sa.email, sa.phone, sa.status, sa.max_conversations,
+              (SELECT COUNT(*) FROM conversations c WHERE c.assigned_agent_id = sa.id AND c.status IN ('human_active', 'ai_active')) as current_conversations,
+              sa.specializations, sa.last_active_at, sa.created_at
+            FROM support_agents sa
+            ORDER BY sa.status = 'available' DESC, sa.name ASC`,
       args: [],
     })
 

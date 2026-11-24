@@ -71,15 +71,45 @@ export async function POST(request: Request) {
 
     if (senderType === 'agent') {
       const { requirePermission } = await import('@/lib/admin/permissions')
+      const { auth } = await import('@clerk/nextjs/server')
       const authError = await requirePermission('support', 'update')
       if (authError) return authError
+
+      // Resolve current agent ID (auto-assign to responding call-center agent)
+      let resolvedAgentId = agentId || null
+      if (!resolvedAgentId) {
+        const { userId } = await auth()
+        if (userId) {
+          const uRes = await db.execute({
+            sql: 'SELECT id, name, email, phone FROM users WHERE clerk_id = ? LIMIT 1',
+            args: [userId],
+          })
+          if (uRes.rows.length > 0) {
+            const u = uRes.rows[0] as any
+            const saRes = await db.execute({
+              sql: 'SELECT id FROM support_agents WHERE user_id = ? OR LOWER(email) = LOWER(?) LIMIT 1',
+              args: [Number(u.id), String(u.email || '')],
+            })
+            if (saRes.rows.length > 0) {
+              resolvedAgentId = Number(saRes.rows[0].id)
+            } else {
+              const ins = await db.execute({
+                sql: `INSERT INTO support_agents (user_id, name, email, phone, status, max_conversations)
+                      VALUES (?, ?, ?, ?, 'available', 5)`,
+                args: [Number(u.id), String(u.name || u.email || 'Agent'), String(u.email || ''), u.phone ? String(u.phone) : null],
+              })
+              resolvedAgentId = Number(ins.lastInsertRowid)
+            }
+          }
+        }
+      }
 
       let convId = conversationId
       if (!convId) {
         const result = await db.execute({
-          sql: `INSERT INTO conversations (user_identifier, user_name, user_email, status, channel)
-                VALUES (?, ?, ?, 'human_active', 'web')`,
-          args: [userIdentifier, userName || null, userEmail || null],
+          sql: `INSERT INTO conversations (user_identifier, user_name, user_email, status, channel, assigned_agent_id)
+                VALUES (?, ?, ?, 'human_active', 'web', ?)`,
+          args: [userIdentifier, userName || null, userEmail || null, resolvedAgentId],
         })
         convId = Number(result.lastInsertRowid)
       }
@@ -87,12 +117,18 @@ export async function POST(request: Request) {
       await db.execute({
         sql: `INSERT INTO messages (conversation_id, sender_type, sender_id, content, message_type)
               VALUES (?, 'agent', ?, ?, 'text')`,
-        args: [convId, agentId ? String(agentId) : 'agent', message],
+        args: [convId, resolvedAgentId ? String(resolvedAgentId) : 'agent', message],
       })
 
+      // Auto-assign conversation to the responding agent & switch to human_active
       await db.execute({
-        sql: 'UPDATE conversations SET last_message_at = datetime(\'now\'), updated_at = datetime(\'now\') WHERE id = ?',
-        args: [convId],
+        sql: `UPDATE conversations
+              SET assigned_agent_id = COALESCE(?, assigned_agent_id),
+                  status = CASE WHEN status = 'closed' THEN 'closed' ELSE 'human_active' END,
+                  last_message_at = datetime('now'),
+                  updated_at = datetime('now')
+              WHERE id = ?`,
+        args: [resolvedAgentId, convId],
       })
 
       // Track first agent response time for rating stats
