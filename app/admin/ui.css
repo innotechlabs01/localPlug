@@ -1155,6 +1155,207 @@
 .admin-mb-4 { margin-bottom: 16px; }
 .admin-pb-4 { padding-bottom: 16px; }
 
+/* ── Legacy / Plans & Drivers layout classes ── */
+.drivers-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.drivers-kpis,
+.grid-6 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.stat-card {
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  padding: 16px;
+}
+.stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--ui-fg-muted);
+}
+.stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--ui-fg);
+  margin: 4px 0;
+}
+.stat-change {
+  font-size: 11px;
+  color: var(--ui-fg-secondary);
+}
+.stat-change.up { color: var(--ui-accent); }
+.drivers-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+.panel {
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  overflow: hidden;
+}
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--ui-border);
+}
+.panel-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ui-fg);
+}
+.panel-title .count {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ui-fg-muted);
+  background: var(--ui-bg-secondary);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+.driver-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+  padding: 16px;
+}
+.driver-card {
+  background: var(--ui-bg-secondary);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  padding: 14px;
+  cursor: pointer;
+  transition: border-color var(--ui-transition), background var(--ui-transition);
+}
+.driver-card:hover {
+  border-color: var(--ui-fg-muted);
+  background: var(--ui-surface-hover);
+}
+.driver-card.active {
+  border-color: var(--ui-accent);
+  background: var(--ui-accent-soft);
+}
+.driver-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.driver-person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.driver-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--ui-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  flex-shrink: 0;
+}
+.driver-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ui-fg);
+}
+.driver-meta {
+  font-size: 12px;
+  color: var(--ui-fg-secondary);
+  margin-top: 2px;
+}
+.driver-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 10px 0;
+  border-top: 1px solid var(--ui-border-light);
+  border-bottom: 1px solid var(--ui-border-light);
+}
+.driver-stat {
+  text-align: center;
+}
+.driver-stat strong {
+  display: block;
+  font-size: 14px;
+  color: var(--ui-fg);
+}
+.driver-stat span {
+  font-size: 10px;
+  color: var(--ui-fg-muted);
+  text-transform: uppercase;
+}
+.side-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.profile-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.profile-photo {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--ui-radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  flex-shrink: 0;
+}
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.info-item {
+  background: var(--ui-bg-secondary);
+  border: 1px solid var(--ui-border-light);
+  border-radius: var(--ui-radius-sm);
+  padding: 10px;
+}
+.info-item label {
+  display: block;
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--ui-fg-muted);
+  margin-bottom: 2px;
+}
+.info-item div {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ui-fg);
+}
+@media (max-width: 1024px) {
+  .drivers-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Dispatch responsive layout for medium screens */
 @media (max-width: 1280px) {
   .admin-panel-left {
