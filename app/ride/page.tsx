@@ -83,7 +83,7 @@ export default function RideAppPage() {
 
   const isAirportDestination = AIRPORT_KEYWORDS.test(destination)
 
-  // Load live Super Admin pricing + restore saved active ride from localStorage
+  // Load live Super Admin pricing + restore saved active ride from URL (?ride=&token=) or localStorage
   useEffect(() => {
     fetch('/api/admin/ride-pricing')
       .then(r => r.json())
@@ -91,6 +91,15 @@ export default function RideAppPage() {
       .catch(() => {})
 
     try {
+      const urlParams = new URLSearchParams(window.location.search)
+      const qRide = urlParams.get('ride')
+      const qToken = urlParams.get('token')
+      if (qRide && qToken) {
+        setActiveRideId(Number(qRide))
+        setRideToken(qToken)
+        localStorage.setItem('lp_active_ride', JSON.stringify({ rideId: Number(qRide), rideToken: qToken }))
+        return
+      }
       const saved = localStorage.getItem('lp_active_ride')
       if (saved) {
         const parsed = JSON.parse(saved)
@@ -101,6 +110,26 @@ export default function RideAppPage() {
       }
     } catch { /* ignore */ }
   }, [])
+
+  // Debounced real road distance estimate via OSRM/Nominatim
+  useEffect(() => {
+    if (!destination.trim() || destination.trim().length < 4 || isAirportDestination) return
+    const timer = setTimeout(() => {
+      fetch('/api/rides/estimate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pickupLat: coords.lat, pickupLng: coords.lng, destination: destination.trim() }),
+      })
+        .then(r => r.json())
+        .then(d => {
+          if (d.success && Number.isFinite(Number(d.distanceKm))) {
+            setDistanceKm(Number(d.distanceKm))
+          }
+        })
+        .catch(() => {})
+    }, 700)
+    return () => clearTimeout(timer)
+  }, [destination, coords.lat, coords.lng, isAirportDestination])
 
   useEffect(() => {
     if (typeof window === 'undefined' || !('geolocation' in navigator)) return

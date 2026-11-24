@@ -90,6 +90,17 @@ export async function POST(req: Request) {
         const text = extractMessageText(msg)
         const participant = msg.participant || null
 
+        // Deduplicate retried Evolution webhooks by message_id
+        if (messageId) {
+          const dup = await db.execute({
+            sql: `SELECT 1 FROM whatsapp_events WHERE message_id = ? LIMIT 1`,
+            args: [messageId],
+          })
+          if (dup.rows.length > 0) {
+            break
+          }
+        }
+
         // Only process incoming messages (not from us)
         if (fromMe) {
           // Log outbound message for tracking

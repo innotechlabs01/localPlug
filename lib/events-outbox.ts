@@ -119,6 +119,7 @@ async function dispatchOutboxEvent(event: OutboxEvent): Promise<void> {
         correlation_id: event.correlation_id,
         timestamp: new Date().toISOString(),
       }),
+      signal: AbortSignal.timeout(10000),
     })
     if (!res.ok) {
       throw new Error(`n8n webhook error: HTTP ${res.status}`)
