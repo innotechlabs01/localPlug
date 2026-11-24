@@ -142,29 +142,15 @@ export async function GET(req: Request) {
     const result = await db.execute({
       sql: `
       SELECT 
-        o.id, o.order_number, o.booking_reference, o.clerk_user_id,
-        o.customer_name, o.customer_email, o.customer_phone, o.customer_country,
-        o.customer_language, o.customer_language_code, o.customer_notes,
-        o.package_id, o.package_name, o.package_price, o.currency,
-        o.flight_number, o.airline, o.arrival_date, o.arrival_time,
-        o.return_date, o.return_time,
-        o.destination_address, o.destination_has_place, o.additional_trips,
-        o.traveler_profile, o.num_people,
-        o.hotel_id, o.room_id, o.num_nights, o.is_hotel_booking, o.hotel_commission_rate,
-        o.status, o.dispatch_status,
+        o.*,
         COALESCE(p.status, o.payment_status) as payment_status_live,
-        o.payment_id,
-        o.priority, o.internal_notes,
-        o.assigned_to, o.assigned_at,
-        o.created_at, o.updated_at,
         d.name as driver_name,
         d.phone as driver_phone,
         d.status as driver_status,
         h.name as hotel_name,
         h.address as hotel_address,
         r.name as room_name, r.type as room_type, r.price_per_night, r.status as room_status,
-        p.amount as payment_amount, p.currency as payment_currency,
-        COALESCE(p.provider_transaction_id, p.polar_transaction_id, p.paddle_transaction_id) as payment_txn
+        p.amount as payment_amount, p.currency as payment_currency
       FROM orders o
       LEFT JOIN drivers d ON o.assigned_to = d.id
       LEFT JOIN payments p ON o.booking_reference = p.booking_reference
