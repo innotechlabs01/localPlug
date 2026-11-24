@@ -33,6 +33,8 @@ interface ActiveRide {
   } | null
   distanceKm: number | null
   etaMinutes: number | null
+  queueAttempt?: number
+  waitSeconds?: number
 }
 
 export default function RideAppPage() {
@@ -237,7 +239,14 @@ export default function RideAppPage() {
                   </div>
                 ) : (
                   <div style={{ padding: 16, borderRadius: 12, background: '#181b25', border: '1px solid #282b38', fontSize: 13, color: '#9ca0b0' }}>
-                    Enviamos tu solicitud a los conductores disponibles en línea. Te avisaremos en cuanto uno acepte tu viaje.
+                    <div style={{ fontWeight: 600, color: '#f0f2f5', marginBottom: 4 }}>
+                      {(activeRide?.waitSeconds || 0) >= 25
+                        ? `⏳ Alta demanda en tu zona — consultando conductor #${activeRide?.queueAttempt || 2} en cola...`
+                        : `🔍 Buscando el conductor más cercano en tu zona (cola #${activeRide?.queueAttempt || 1})...`}
+                    </div>
+                    <div>
+                      Si un conductor no responde en 30s, el sistema pasa automáticamente al siguiente conductor cercano para evitar demoras.
+                    </div>
                   </div>
                 )}
 

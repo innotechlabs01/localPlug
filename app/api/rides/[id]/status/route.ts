@@ -51,6 +51,58 @@ export async function GET(
     }
 
     const row = res.rows[0] as any
+
+    // Auto-cascade queue: if still unassigned and last offer is >30s old or declined, offer to next closest driver
+    let queueAttempt = 1
+    let waitSeconds = 0
+    if (!row.assigned_to && row.status !== 'cancelled' && row.status !== 'completed') {
+      try {
+        const offersRes = await db.execute({
+          sql: `SELECT id, driver_id, status, created_at FROM assignments WHERE order_id = ? ORDER BY id DESC`,
+          args: [Number(id)],
+        })
+        const offers = offersRes.rows as any[]
+        queueAttempt = Math.max(1, offers.length)
+        const latest = offers[0]
+        const latestAgeSec = latest?.created_at
+          ? Math.max(0, Math.floor((Date.now() - new Date(String(latest.created_at) + 'Z').getTime()) / 1000))
+          : 0
+        waitSeconds = latestAgeSec
+
+        const needsNextDriver = !latest || latest.status === 'declined' || (latest.status === 'offered' && latestAgeSec >= 30)
+        if (needsNextDriver) {
+          if (latest && latest.status === 'offered' && latestAgeSec >= 30) {
+            await db.execute({ sql: `UPDATE assignments SET status = 'expired' WHERE id = ?`, args: [Number(latest.id)] })
+          }
+          const triedIds = offers.map(o => Number(o.driver_id))
+          const availRes = await db.execute({
+            sql: `SELECT d.id, dl.lat, dl.lng, d.rating
+                  FROM drivers d
+                  LEFT JOIN driver_locations dl ON dl.driver_id = d.id AND dl.gps_consent = 1
+                  WHERE d.status = 'available'`,
+            args: [],
+          })
+          const nextCandidate = (availRes.rows as any[])
+            .filter(d => !triedIds.includes(Number(d.id)))
+            .map(d => ({
+              id: Number(d.id),
+              dist: (d.lat != null && d.lng != null) ? haversineKm(Number(d.lat), Number(d.lng), pickupLat, pickupLng) : 999,
+              rating: Number(d.rating || 0),
+            }))
+            .sort((a, b) => a.dist - b.dist || b.rating - a.rating)[0]
+
+          if (nextCandidate) {
+            queueAttempt = offers.length + 1
+            await db.execute({
+              sql: `INSERT INTO assignments (order_id, driver_id, status, pickup_date, pickup_time, notes, created_at)
+                    VALUES (?, ?, 'offered', date('now'), time('now'), ?, datetime('now'))`,
+              args: [Number(id), nextCandidate.id, `ON-DEMAND · Cola #${queueAttempt} (cascada automática)`],
+            })
+          }
+        }
+      } catch { /* non-critical */ }
+    }
+
     let etaMinutes: number | null = null
     let distanceKm: number | null = null
 
@@ -86,6 +138,8 @@ export async function GET(
           : null,
         distanceKm,
         etaMinutes,
+        queueAttempt,
+        waitSeconds,
       },
     })
   } catch (err) {

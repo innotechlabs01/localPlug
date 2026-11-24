@@ -69,19 +69,31 @@ export async function POST(request: Request) {
     })
     const orderId = Number(orderRes.lastInsertRowid)
 
-    // Offer to first available ONLINE driver (Uber-style dispatch queue)
+    // Offer to closest available ONLINE driver by GPS zone proximity (fallback: rating)
     let offeredDriverId: number | null = null
+    let queueSize = 0
     try {
       const drvRes = await db.execute({
-        sql: `SELECT id FROM drivers WHERE status = 'available' ORDER BY rating DESC LIMIT 1`,
+        sql: `SELECT d.id, dl.lat, dl.lng, d.rating
+              FROM drivers d
+              LEFT JOIN driver_locations dl ON dl.driver_id = d.id AND dl.gps_consent = 1
+              WHERE d.status = 'available'`,
         args: [],
       })
-      if (drvRes.rows.length > 0) {
-        offeredDriverId = Number(drvRes.rows[0].id)
+      const candidates = (drvRes.rows as any[]).map(d => {
+        const dist = (d.lat != null && d.lng != null)
+          ? Math.hypot(Number(d.lat) - pickupLat, Number(d.lng) - pickupLng)
+          : 999
+        return { id: Number(d.id), dist, rating: Number(d.rating || 0) }
+      }).sort((a, b) => a.dist - b.dist || b.rating - a.rating)
+
+      queueSize = candidates.length
+      if (candidates.length > 0) {
+        offeredDriverId = candidates[0].id
         await db.execute({
           sql: `INSERT INTO assignments (order_id, driver_id, status, pickup_date, pickup_time, notes, created_at)
                 VALUES (?, ?, 'offered', date('now'), time('now'), ?, datetime('now'))`,
-          args: [orderId, offeredDriverId, `ON-DEMAND · Recogida: ${pickupAddress}`],
+          args: [orderId, offeredDriverId, `ON-DEMAND · Cola #1/${queueSize} · Recogida: ${pickupAddress}`],
         })
       }
     } catch (e) {
@@ -95,6 +107,7 @@ export async function POST(request: Request) {
       estimatedUsd,
       category: rate.label,
       offeredDriverId,
+      queueSize,
       status: 'searching',
     }, { status: 201 })
   } catch (err) {
