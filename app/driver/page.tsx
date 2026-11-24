@@ -241,7 +241,12 @@ export default function DriverPage() {
     }
   }
 
+  const isLicenseExpired = Boolean(
+    driver?.license_expiry && new Date(driver.license_expiry).getTime() < Date.now(),
+  )
+
   const pendingOffer = assignments.find(a => ['pending_acceptance', 'offered'].includes(a.status)) || null
+  const activeTrip = assignments.find(a => ['accepted', 'confirmed', 'confirmed_to_client', 'en_route', 'in_progress'].includes(a.status)) || null
 
   const handleAction = async (assignmentId: number, action: 'accept' | 'decline') => {
     setActionLoading(assignmentId)
@@ -664,33 +669,100 @@ export default function DriverPage() {
                   </button>
                 </div>
               </div>
+            ) : activeTrip ? (
+              /* Active Trip 1-Thumb Progression Sheet */
+              <div style={{
+                position: 'absolute',
+                left: 14,
+                right: 14,
+                bottom: 14,
+                padding: 16,
+                borderRadius: 14,
+                background: 'rgba(17, 19, 24, 0.96)',
+                border: '1px solid rgba(59, 130, 246, 0.5)',
+                boxShadow: '0 12px 32px rgba(0,0,0,0.55)',
+                color: '#fff',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#60a5fa' }}>
+                    ● Viaje Activo ({activeTrip.status})
+                  </span>
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(activeTrip.destination_address || 'Medellín')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ fontSize: 12, fontWeight: 600, color: '#10b981', textDecoration: 'none' }}
+                  >
+                    Navegar ↗
+                  </a>
+                </div>
+                <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 2 }}>
+                  {activeTrip.customer_name || 'Pasajero'} · {activeTrip.package_name || 'Servicio'}
+                </div>
+                <div style={{ fontSize: 12, color: '#9ca0b0', marginBottom: 12 }}>
+                  📍 {activeTrip.destination_address || 'Destino confirmado'}
+                </div>
+                <a
+                  href="/driver/assignments"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '100%',
+                    height: 48,
+                    borderRadius: 10,
+                    background: '#3b82f6',
+                    color: '#fff',
+                    fontWeight: 700,
+                    fontSize: 14,
+                    textDecoration: 'none',
+                  }}
+                >
+                  Gestionar Estado del Recorrido →
+                </a>
+              </div>
             ) : (
-              /* Central Uber-style INICIAR / STOP button */
+              /* Central Uber-style INICIAR / STOP button (blocked if license expired) */
               <div style={{
                 position: 'absolute',
                 left: 0,
                 right: 0,
                 bottom: 20,
                 display: 'flex',
-                justifyContent: 'center',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 8,
                 pointerEvents: 'none',
               }}>
+                {isLicenseExpired && (
+                  <div style={{
+                    pointerEvents: 'auto',
+                    padding: '6px 14px',
+                    borderRadius: 8,
+                    background: 'rgba(239,68,80,0.92)',
+                    color: '#fff',
+                    fontSize: 12,
+                    fontWeight: 600,
+                  }}>
+                    Licencia vencida — actualiza tus documentos en Configuración para iniciar
+                  </div>
+                )}
                 <button
                   onClick={handleToggleOnline}
-                  disabled={togglingOnline}
+                  disabled={togglingOnline || isLicenseExpired}
                   style={{
                     pointerEvents: 'auto',
                     minWidth: 168,
                     padding: '14px 32px',
                     borderRadius: 999,
-                    border: `2px solid ${isOnline ? '#ef4450' : '#10b981'}`,
-                    background: isOnline ? '#ef4450' : '#10b981',
-                    color: isOnline ? '#fff' : '#0b0d14',
+                    border: `2px solid ${isLicenseExpired ? '#646880' : isOnline ? '#ef4450' : '#10b981'}`,
+                    background: isLicenseExpired ? '#282b38' : isOnline ? '#ef4450' : '#10b981',
+                    color: isLicenseExpired ? '#9ca0b0' : isOnline ? '#fff' : '#0b0d14',
                     fontSize: 16,
                     fontWeight: 800,
                     letterSpacing: 0.8,
-                    boxShadow: isOnline ? '0 8px 28px rgba(239,68,80,0.45)' : '0 8px 28px rgba(16,185,129,0.45)',
-                    cursor: togglingOnline ? 'wait' : 'pointer',
+                    boxShadow: isLicenseExpired ? 'none' : isOnline ? '0 8px 28px rgba(239,68,80,0.45)' : '0 8px 28px rgba(16,185,129,0.45)',
+                    cursor: (togglingOnline || isLicenseExpired) ? 'not-allowed' : 'pointer',
                     transition: 'transform 150ms ease',
                   }}
                 >

@@ -27,6 +27,9 @@ interface PricingRule {
   per_min_usd: number
   min_fare_usd: number
   avg_speed_kmh: number
+  platform_commission_pct: number
+  regulation_ref?: string
+  last_reviewed_at?: string | null
 }
 
 export default function AdminOnDemandRidesPage() {
@@ -58,6 +61,14 @@ export default function AdminOnDemandRidesPage() {
     }
   }, [])
 
+  useEffect(() => {
+    fetchRides()
+    const interval = setInterval(() => {
+      if (!document.hidden) fetchRides()
+    }, 10000)
+    return () => clearInterval(interval)
+  }, [fetchRides])
+
   const updatePricingField = (cat: string, field: keyof PricingRule, val: number) => {
     setPricing(prev => prev.map(p => p.category === cat ? { ...p, [field]: val } : p))
   }
@@ -84,13 +95,24 @@ export default function AdminOnDemandRidesPage() {
     }
   }
 
-  useEffect(() => {
-    fetchRides()
-    const interval = setInterval(() => {
-      if (!document.hidden) fetchRides()
-    }, 10000)
-    return () => clearInterval(interval)
-  }, [fetchRides])
+  const syncRegulationDefaults = async () => {
+    setSavingCat('__sync__')
+    setPricingMsg(null)
+    try {
+      const res = await fetch('/api/admin/ride-pricing', { method: 'POST' })
+      if (res.ok) {
+        const data = await res.json()
+        if (Array.isArray(data.pricing)) setPricing(data.pricing)
+        setPricingMsg('Piso Res. 202650004167 sincronizado ✓')
+      } else {
+        setPricingMsg('Solo Super Admin puede sincronizar tarifas')
+      }
+    } catch {
+      setPricingMsg('Error de red')
+    } finally {
+      setSavingCat(null)
+    }
+  }
 
   return (
     <div className="admin-page space-y-5">
@@ -133,16 +155,25 @@ export default function AdminOnDemandRidesPage() {
         </div>
       </div>
 
-      {/* Super Admin Dynamic Fare Configuration (Base + Km + Minute + Speed) */}
+      {/* Super Admin Dynamic Fare Configuration (Base + Km + Minute + Speed + Commission Split) */}
       <section className="admin-card">
-        <div className="admin-card-header admin-flex-between">
+        <div className="admin-card-header admin-flex-between" style={{ flexWrap: 'wrap', gap: 10 }}>
           <div>
-            <span className="admin-card-title">Tarifas Dinámicas On-Demand (Solo Super Admin)</span>
+            <span className="admin-card-title">Tarifas Dinámicas On-Demand · Regulación Medellín 2026 (Solo Super Admin)</span>
             <p style={{ fontSize: 11, color: 'var(--ui-fg-muted)', marginTop: 2 }}>
-              Fórmula: max(Mínima, Base + km × $/km + min × $/min) · min = (km / velocidad) × 60
+              Referencia: Resolución 202650004167 (revisión mensual recomendada) · Fórmula: max(Mínima, Base + km×$/km + min×$/min)
             </p>
           </div>
-          {pricingMsg && <span className="admin-badge accent">{pricingMsg}</span>}
+          <div className="flex items-center gap-2">
+            {pricingMsg && <span className="admin-badge accent">{pricingMsg}</span>}
+            <button
+              onClick={syncRegulationDefaults}
+              disabled={savingCat === '__sync__'}
+              className="admin-btn admin-btn-secondary admin-btn-sm"
+            >
+              {savingCat === '__sync__' ? 'Sincronizando...' : 'Sincronizar Res. 202650004167'}
+            </button>
+          </div>
         </div>
         <div className="admin-card-body">
           <div className="admin-table-wrap">
@@ -150,12 +181,13 @@ export default function AdminOnDemandRidesPage() {
               <thead>
                 <tr>
                   <th>Categoría</th>
-                  <th>Base (USD)</th>
+                  <th>Base</th>
                   <th>$/km</th>
-                  <th>$/minuto</th>
-                  <th>Mínima (USD)</th>
-                  <th>Vel. prom (km/h)</th>
-                  <th>Ejemplo 6km</th>
+                  <th>$/min</th>
+                  <th>Mínima</th>
+                  <th>Vel (km/h)</th>
+                  <th>Comisión %</th>
+                  <th>Simulador 6km (Cliente / Driver / App)</th>
                   <th>Acción</th>
                 </tr>
               </thead>
@@ -163,15 +195,28 @@ export default function AdminOnDemandRidesPage() {
                 {pricing.map(row => {
                   const exMin = Math.max(4, Math.round((6 / Math.max(10, row.avg_speed_kmh || 28)) * 60))
                   const exTotal = Math.max(row.min_fare_usd, row.base_usd + 6 * row.per_km_usd + exMin * row.per_min_usd)
+                  const commPct = Number(row.platform_commission_pct ?? 20)
+                  const platUsd = exTotal * (commPct / 100)
+                  const driverUsd = exTotal - platUsd
                   return (
                     <tr key={row.category}>
-                      <td style={{ fontWeight: 600 }}>{row.label}</td>
-                      <td><input type="number" step="0.5" className="admin-input" style={{ width: 76, padding: '4px 8px' }} value={row.base_usd} onChange={e => updatePricingField(row.category, 'base_usd', Number(e.target.value))} /></td>
-                      <td><input type="number" step="0.1" className="admin-input" style={{ width: 76, padding: '4px 8px' }} value={row.per_km_usd} onChange={e => updatePricingField(row.category, 'per_km_usd', Number(e.target.value))} /></td>
-                      <td><input type="number" step="0.05" className="admin-input" style={{ width: 76, padding: '4px 8px' }} value={row.per_min_usd} onChange={e => updatePricingField(row.category, 'per_min_usd', Number(e.target.value))} /></td>
-                      <td><input type="number" step="0.5" className="admin-input" style={{ width: 76, padding: '4px 8px' }} value={row.min_fare_usd} onChange={e => updatePricingField(row.category, 'min_fare_usd', Number(e.target.value))} /></td>
-                      <td><input type="number" step="1" className="admin-input" style={{ width: 72, padding: '4px 8px' }} value={row.avg_speed_kmh} onChange={e => updatePricingField(row.category, 'avg_speed_kmh', Number(e.target.value))} /></td>
-                      <td style={{ fontWeight: 600, color: 'var(--ui-accent)' }}>${exTotal.toFixed(2)} (~{exMin}m)</td>
+                      <td>
+                        <div style={{ fontWeight: 600 }}>{row.label}</div>
+                        <div style={{ fontSize: 10, color: 'var(--ui-fg-muted)' }}>{row.regulation_ref || 'Res. 202650004167'}</div>
+                      </td>
+                      <td><input type="number" step="0.25" className="admin-input" style={{ width: 68, padding: '4px 6px' }} value={row.base_usd} onChange={e => updatePricingField(row.category, 'base_usd', Number(e.target.value))} /></td>
+                      <td><input type="number" step="0.05" className="admin-input" style={{ width: 68, padding: '4px 6px' }} value={row.per_km_usd} onChange={e => updatePricingField(row.category, 'per_km_usd', Number(e.target.value))} /></td>
+                      <td><input type="number" step="0.02" className="admin-input" style={{ width: 68, padding: '4px 6px' }} value={row.per_min_usd} onChange={e => updatePricingField(row.category, 'per_min_usd', Number(e.target.value))} /></td>
+                      <td><input type="number" step="0.5" className="admin-input" style={{ width: 68, padding: '4px 6px' }} value={row.min_fare_usd} onChange={e => updatePricingField(row.category, 'min_fare_usd', Number(e.target.value))} /></td>
+                      <td><input type="number" step="1" className="admin-input" style={{ width: 62, padding: '4px 6px' }} value={row.avg_speed_kmh} onChange={e => updatePricingField(row.category, 'avg_speed_kmh', Number(e.target.value))} /></td>
+                      <td><input type="number" step="1" min="0" max="50" className="admin-input" style={{ width: 62, padding: '4px 6px' }} value={commPct} onChange={e => updatePricingField(row.category, 'platform_commission_pct', Number(e.target.value))} /></td>
+                      <td style={{ fontSize: 11.5 }}>
+                        <strong style={{ color: 'var(--ui-fg)' }}>${exTotal.toFixed(2)}</strong>
+                        <span style={{ color: 'var(--ui-fg-muted)' }}> (~{exMin}m) · </span>
+                        <span style={{ color: 'var(--ui-accent)', fontWeight: 600 }}>Driver ${driverUsd.toFixed(2)}</span>
+                        <span style={{ color: 'var(--ui-fg-muted)' }}> · </span>
+                        <span style={{ color: 'var(--ui-info)', fontWeight: 600 }}>App ${platUsd.toFixed(2)}</span>
+                      </td>
                       <td>
                         <button
                           onClick={() => savePricingRow(row)}
