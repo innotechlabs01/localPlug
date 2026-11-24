@@ -86,6 +86,10 @@ export default function DriverPage() {
   const [actionLoading, setActionLoading] = useState<number | null>(null)
   const [editMode, setEditMode] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isOnline, setIsOnline] = useState(false)
+  const [togglingOnline, setTogglingOnline] = useState(false)
+  const [coords, setCoords] = useState<{ lat: number; lng: number }>({ lat: 6.2088, lng: -75.567 })
+  const [gpsStatus, setGpsStatus] = useState<string>('')
 
   const [form, setForm] = useState({
     name: '', phone: '', email: '', vehicle: '', plate: '', category: 'standard',
@@ -105,6 +109,7 @@ export default function DriverPage() {
         }
         const d = data.driver
         setDriver(d)
+        setIsOnline(d.status === 'available' || d.status === 'on_route')
         setForm({
           name: d.name || '', phone: d.phone || '', email: d.email || '',
           vehicle: d.vehicle || '', plate: d.plate || '', category: d.category || 'standard',
@@ -178,6 +183,65 @@ export default function DriverPage() {
       setSaving(false)
     }
   }
+
+  // Live GPS tracking while driver is ONLINE (Uber Driver mode)
+  useEffect(() => {
+    if (!isOnline || typeof window === 'undefined' || !('geolocation' in navigator)) return
+    let lastSent = 0
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const lat = pos.coords.latitude
+        const lng = pos.coords.longitude
+        setCoords({ lat, lng })
+        setGpsStatus('GPS en vivo')
+        const now = Date.now()
+        if (now - lastSent < 8000) return
+        lastSent = now
+        fetch('/api/driver/location', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lat,
+            lng,
+            heading: pos.coords.heading,
+            speed: pos.coords.speed,
+            accuracy: pos.coords.accuracy,
+          }),
+        }).catch(() => {})
+      },
+      (err) => {
+        setGpsStatus(err.code === 1 ? 'Permiso GPS denegado' : 'Buscando señal GPS...')
+      },
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 },
+    )
+    return () => navigator.geolocation.clearWatch(watchId)
+  }, [isOnline])
+
+  const handleToggleOnline = async () => {
+    if (togglingOnline) return
+    setTogglingOnline(true)
+    try {
+      const nextOnline = !isOnline
+      const res = await fetch('/api/driver/status', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: nextOnline ? 'available' : 'inactive' }),
+      })
+      if (res.ok) {
+        setIsOnline(nextOnline)
+        if (!nextOnline) {
+          setGpsStatus('')
+          fetch('/api/driver/location', { method: 'DELETE' }).catch(() => {})
+        }
+      }
+    } catch {
+      // ignore
+    } finally {
+      setTogglingOnline(false)
+    }
+  }
+
+  const pendingOffer = assignments.find(a => ['pending_acceptance', 'offered'].includes(a.status)) || null
 
   const handleAction = async (assignmentId: number, action: 'accept' | 'decline') => {
     setActionLoading(assignmentId)
@@ -461,6 +525,176 @@ export default function DriverPage() {
         </div>
       ) : (
         <>
+          {/* ── UBER DRIVER LIVE MAP HERO ── */}
+          <div style={{
+            position: 'relative',
+            borderRadius: 16,
+            overflow: 'hidden',
+            border: '1px solid var(--border)',
+            height: 440,
+            marginBottom: 24,
+            background: 'var(--bg-secondary)',
+          }}>
+            <iframe
+              title="Uber Driver Live Map"
+              src={`https://www.openstreetmap.org/export/embed.html?bbox=${(coords.lng - 0.025).toFixed(5)},${(coords.lat - 0.025).toFixed(5)},${(coords.lng + 0.025).toFixed(5)},${(coords.lat + 0.025).toFixed(5)}&layer=mapnik&marker=${coords.lat.toFixed(5)},${coords.lng.toFixed(5)}`}
+              style={{ width: '100%', height: '100%', border: 0 }}
+              loading="lazy"
+            />
+
+            {/* Top floating status bar */}
+            <div style={{
+              position: 'absolute',
+              top: 14,
+              left: 14,
+              right: 14,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 10,
+              pointerEvents: 'none',
+            }}>
+              <div style={{
+                pointerEvents: 'auto',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '8px 14px',
+                borderRadius: 999,
+                background: 'rgba(11, 13, 20, 0.88)',
+                border: `1px solid ${isOnline ? 'rgba(16,185,129,0.5)' : 'rgba(255,255,255,0.12)'}`,
+                color: '#fff',
+                fontSize: 12.5,
+                fontWeight: 600,
+                backdropFilter: 'blur(8px)',
+              }}>
+                <span style={{
+                  width: 9,
+                  height: 9,
+                  borderRadius: '50%',
+                  background: isOnline ? '#10b981' : '#9ca3af',
+                  boxShadow: isOnline ? '0 0 10px #10b981' : 'none',
+                }} />
+                {isOnline ? (gpsStatus || 'EN LÍNEA · Listo para servicios') : 'DESCONECTADO'}
+              </div>
+              {stats && (
+                <div style={{
+                  pointerEvents: 'auto',
+                  padding: '8px 14px',
+                  borderRadius: 999,
+                  background: 'rgba(11, 13, 20, 0.88)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  color: '#4ade80',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  backdropFilter: 'blur(8px)',
+                }}>
+                  ${Number(stats.earnings || 0).toFixed(0)}
+                </div>
+              )}
+            </div>
+
+            {/* Incoming Service Offer Bottom Sheet (Uber-style) */}
+            {isOnline && pendingOffer ? (
+              <div style={{
+                position: 'absolute',
+                left: 14,
+                right: 14,
+                bottom: 14,
+                padding: 16,
+                borderRadius: 14,
+                background: 'rgba(17, 19, 24, 0.96)',
+                border: '1px solid rgba(16, 185, 129, 0.5)',
+                boxShadow: '0 12px 32px rgba(0,0,0,0.55)',
+                color: '#fff',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6, color: '#10b981' }}>
+                    ● Nueva Solicitud de Servicio
+                  </span>
+                  <span style={{ fontSize: 11, color: '#9ca0b0' }}>
+                    {pendingOffer.booking_reference || `#${pendingOffer.order_id}`}
+                  </span>
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>
+                  {pendingOffer.customer_name || 'Pasajero'} · {pendingOffer.package_name || 'Traslado'}
+                </div>
+                <div style={{ fontSize: 12.5, color: '#9ca0b0', marginBottom: 12 }}>
+                  📍 {pendingOffer.destination_address || 'Aeropuerto JMC / Medellín'}
+                  {pendingOffer.flight_number ? ` · ✈️ ${pendingOffer.flight_number}` : ''}
+                </div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button
+                    onClick={() => handleAction(pendingOffer.id, 'accept')}
+                    disabled={actionLoading === pendingOffer.id}
+                    style={{
+                      flex: 1,
+                      padding: '11px 16px',
+                      borderRadius: 10,
+                      border: 'none',
+                      background: '#10b981',
+                      color: '#0b0d14',
+                      fontWeight: 700,
+                      fontSize: 14,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {actionLoading === pendingOffer.id ? 'Aceptando...' : 'Aceptar Servicio'}
+                  </button>
+                  <button
+                    onClick={() => handleAction(pendingOffer.id, 'decline')}
+                    disabled={actionLoading === pendingOffer.id}
+                    style={{
+                      padding: '11px 16px',
+                      borderRadius: 10,
+                      border: '1px solid rgba(239,68,80,0.5)',
+                      background: 'rgba(239,68,80,0.12)',
+                      color: '#ef4450',
+                      fontWeight: 600,
+                      fontSize: 13,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Rechazar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* Central Uber-style INICIAR / STOP button */
+              <div style={{
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                bottom: 20,
+                display: 'flex',
+                justifyContent: 'center',
+                pointerEvents: 'none',
+              }}>
+                <button
+                  onClick={handleToggleOnline}
+                  disabled={togglingOnline}
+                  style={{
+                    pointerEvents: 'auto',
+                    minWidth: 168,
+                    padding: '14px 32px',
+                    borderRadius: 999,
+                    border: `2px solid ${isOnline ? '#ef4450' : '#10b981'}`,
+                    background: isOnline ? '#ef4450' : '#10b981',
+                    color: isOnline ? '#fff' : '#0b0d14',
+                    fontSize: 16,
+                    fontWeight: 800,
+                    letterSpacing: 0.8,
+                    boxShadow: isOnline ? '0 8px 28px rgba(239,68,80,0.45)' : '0 8px 28px rgba(16,185,129,0.45)',
+                    cursor: togglingOnline ? 'wait' : 'pointer',
+                    transition: 'transform 150ms ease',
+                  }}
+                >
+                  {togglingOnline ? '...' : isOnline ? '■ STOP' : '▶ INICIAR'}
+                </button>
+              </div>
+            )}
+          </div>
+
           {stats && (
             <div style={{
               display: 'grid',
