@@ -386,7 +386,7 @@ export default function PlansPage() {
             <div className="panel">
               <div className="panel-header" style={{ borderBottom: 'none', paddingBottom: 0 }}>
                 <div style={{ display: 'flex', gap: 4 }}>
-                  {(['features', 'tours'] as const).map(([key, label]) => (
+                  {([['features', 'Features'], ['tours', 'Tours']] as const).map(([key, label]) => (
                     <button key={key} onClick={() => setTab(key as 'features' | 'tours')} style={{
                       padding: '8px 16px', borderRadius: '6px 6px 0 0', border: 'none', cursor: 'pointer',
                       fontSize: 13, fontWeight: 600,

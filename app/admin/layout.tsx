@@ -417,30 +417,59 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
-  useEffect(() => {
-    fetch('/api/admin/permissions/mine')
-      .then(r => {
-        if (r.status === 401 || r.status === 403) {
+  const [permError, setPermError] = useState<string | null>(null)
+
+  const loadPermissions = useCallback(() => {
+    if (!isLoaded || !isSignedIn) return
+    setPermsLoading(true)
+    setAccessDenied(false)
+    setPermError(null)
+    fetch('/api/admin/permissions/mine', { cache: 'no-store' })
+      .then(async r => {
+        if (r.status === 401) {
+          router.push('/sign-in/admin')
+          return null
+        }
+        if (r.status === 403) {
+          const err = await r.json().catch(() => ({}))
+          setPermError(err.error || 'Sin permisos asignados para el panel admin.')
           setAccessDenied(true)
-          setPermsLoading(false)
+          return null
+        }
+        if (!r.ok) {
+          setPermError(`Error ${r.status} verificando permisos.`)
+          setAccessDenied(true)
           return null
         }
         return r.json()
       })
       .then(data => {
         if (!data) return
-        const perms = data.permissions || {}
+        const perms: Record<string, { can_view?: boolean }> = data.permissions || {}
+        const superAdmin = Boolean(data.isSuperAdmin)
         setUserPerms(perms)
-        setIsSuperAdmin(Boolean(data.isSuperAdmin))
-        if (Object.keys(perms).length === 0) {
+        setIsSuperAdmin(superAdmin)
+        const hasAnyView = superAdmin || Object.values(perms).some(p => Boolean(p?.can_view))
+        if (!hasAnyView) {
+          setPermError('Tu rol no tiene módulos activos (Menu/View) en el panel admin.')
           setAccessDenied(true)
         }
       })
       .catch(() => {
+        setPermError('Error de red al verificar permisos.')
         setAccessDenied(true)
       })
       .finally(() => setPermsLoading(false))
-  }, [])
+  }, [isLoaded, isSignedIn, router])
+
+  useEffect(() => {
+    if (!isLoaded) return
+    if (!isSignedIn) {
+      setPermsLoading(false)
+      return
+    }
+    loadPermissions()
+  }, [isLoaded, isSignedIn, user?.id, loadPermissions])
 
   const filteredNavSections = navSections
     .map(s => {
@@ -465,7 +494,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
     .filter(s => s.items.length > 0)
 
   if (isLoaded && !isSignedIn) {
-    router.push('/sign-in')
+    router.push('/sign-in/admin')
     return null
   }
 
@@ -492,17 +521,30 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
             </svg>
           </div>
           <h1 className="text-[20px] font-bold text-white mb-2">Access Restricted</h1>
-          <p className="text-[14px] text-[var(--ui-fg-secondary)] leading-relaxed mb-6">
-            Your account does not have the necessary permissions to access the admin panel. 
-            Please contact the platform administrator to request access.
+          <p className="text-[14px] text-[var(--ui-fg-secondary)] leading-relaxed mb-3">
+            {permError || 'Your account does not have the necessary permissions to access the admin panel.'}
           </p>
-          <button
-            onClick={() => signOut({ redirectUrl: '/sign-in/admin' })}
-            className="px-6 py-2.5 rounded-lg text-[13px] font-medium transition-all"
-            style={{ background: 'rgba(239,68,68,0.15)', color: 'var(--ui-danger)', border: '1px solid var(--ui-danger)' }}
-          >
-            Sign Out
-          </button>
+          {user?.primaryEmailAddress?.emailAddress && (
+            <p className="text-[12px] text-[var(--ui-fg-muted)] mb-6">
+              Cuenta actual: <strong className="text-[var(--ui-fg)]">{user.primaryEmailAddress.emailAddress}</strong>
+            </p>
+          )}
+          <div className="flex items-center justify-center gap-3">
+            <button
+              onClick={loadPermissions}
+              className="px-5 py-2.5 rounded-lg text-[13px] font-medium transition-all"
+              style={{ background: 'var(--ui-surface)', color: 'var(--ui-fg)', border: '1px solid var(--ui-border)' }}
+            >
+              Reintentar
+            </button>
+            <button
+              onClick={() => signOut({ redirectUrl: '/sign-in/admin' })}
+              className="px-6 py-2.5 rounded-lg text-[13px] font-medium transition-all"
+              style={{ background: 'rgba(239,68,68,0.15)', color: 'var(--ui-danger)', border: '1px solid var(--ui-danger)' }}
+            >
+              Sign Out
+            </button>
+          </div>
         </div>
       </div>
     )

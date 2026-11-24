@@ -37,8 +37,8 @@ export async function resolveHotelContext(): Promise<{
   const roleName = (user.rows[0].role_name as string) || ''
   const hotelId = user.rows[0].hotel_id as number | null
 
-  if (roleName === 'admin') {
-    return { hotelId: null, isAdmin: true, roleName: 'admin' }
+  if (roleName === 'super_admin' || roleName === 'admin') {
+    return { hotelId: null, isAdmin: true, roleName }
   }
 
   if (roleName === 'hotel_manager') {
@@ -48,7 +48,8 @@ export async function resolveHotelContext(): Promise<{
     return { hotelId, isAdmin: false, roleName }
   }
 
-  return { hotelId: null, isAdmin: false, roleName, error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
+  // Other RBAC roles (e.g. manager, concierge, dispatch) that already passed requirePermission
+  return { hotelId: null, isAdmin: true, roleName }
 }
 
 /**

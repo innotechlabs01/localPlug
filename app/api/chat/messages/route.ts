@@ -45,7 +45,7 @@ export async function GET(request: Request) {
       const { userId } = await auth()
       const matchesClerk = Boolean(isWebChannel && userId && ownerIdentifier && userId === ownerIdentifier)
       if (!matchesClerk) {
-        const isStaff = userId ? (await requirePermission('support', 'view')) === null : false
+        const isStaff = userId ? !(await requirePermission('support', 'view')) : false
         if (!isStaff) {
           return NextResponse.json(
             { error: userId ? 'Forbidden: insufficient permissions' : 'Unauthorized' },

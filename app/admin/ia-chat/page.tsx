@@ -97,6 +97,9 @@ export default function IaChatPage() {
   const [channelFilter, setChannelFilter] = useState<ChannelFilter>('all')
   const [isTakingOver, setIsTakingOver] = useState(false)
   const [currentAgentId, setCurrentAgentId] = useState<number | null>(null)
+  const [reservations, setReservations] = useState<any[]>([])
+  const [msgPollBlocked, setMsgPollBlocked] = useState(false)
+  const [showRightPanel, setShowRightPanel] = useState(true)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -136,14 +139,38 @@ export default function IaChatPage() {
     setIsLoadingMsg(true)
     try {
       const res = await fetch(`/api/chat/messages?conversationId=${convId}`)
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          setMsgPollBlocked(true)
+        }
+        const errData = await res.json().catch(() => ({}))
+        setError(errData.error || `Error ${res.status} al cargar mensajes`)
+        return
+      }
       const data = await res.json()
       if (data.success) {
         setMessages(data.messages)
+        setError(null)
       }
     } catch (err) {
       console.error('[AdminChat] Fetch messages error:', err)
+      setError('Error de red al cargar mensajes')
     } finally {
       setIsLoadingMsg(false)
+    }
+  }, [])
+
+  const fetchCustomerContext = useCallback(async (convId: number) => {
+    try {
+      const res = await fetch(`/api/chat/context?conversationId=${convId}`)
+      if (res.ok) {
+        const data = await res.json()
+        setReservations(data.reservations || [])
+      } else {
+        setReservations([])
+      }
+    } catch {
+      setReservations([])
     }
   }, [])
 
@@ -202,18 +229,82 @@ export default function IaChatPage() {
 
   useEffect(() => {
     if (selectedConv) {
+      setMsgPollBlocked(false)
       fetchMessages(selectedConv.id)
+      fetchCustomerContext(selectedConv.id)
+    } else {
+      setReservations([])
     }
-  }, [selectedConv, fetchMessages])
+  }, [selectedConv, fetchMessages, fetchCustomerContext])
 
   // Poll for new messages every 5s when a conversation is selected
   useEffect(() => {
-    if (!selectedConv) return
+    if (!selectedConv || msgPollBlocked) return
     const poll = setInterval(() => {
       if (!document.hidden) fetchMessages(selectedConv.id)
     }, 5_000)
     return () => clearInterval(poll)
-  }, [selectedConv, fetchMessages])
+  }, [selectedConv, msgPollBlocked, fetchMessages])
+
+  const handleAssignAgent = useCallback(async (agentIdStr: string) => {
+    if (!selectedConv) return
+    const agentIdNum = agentIdStr ? Number(agentIdStr) : null
+    try {
+      const res = await fetch('/api/chat/context', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversationId: selectedConv.id, assignedAgentId: agentIdNum }),
+      })
+      if (res.ok) {
+        const assigned = agents.find(a => a.id === agentIdNum)
+        setSelectedConv(prev => prev ? {
+          ...prev,
+          assigned_agent_id: agentIdNum,
+          agent_name: assigned?.name || null,
+          status: agentIdNum && prev.status !== 'closed' ? 'human_active' : prev.status,
+        } : null)
+        fetchConversations()
+        fetchAgents()
+      }
+    } catch (err) {
+      console.error('[AdminChat] Assign agent error:', err)
+    }
+  }, [selectedConv, agents, fetchConversations, fetchAgents])
+
+  const handleToggleFlag = useCallback(async () => {
+    if (!selectedConv) return
+    const nextFlagged = selectedConv.flagged === 1 ? 0 : 1
+    try {
+      const res = await fetch('/api/chat/context', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversationId: selectedConv.id, isFlagged: Boolean(nextFlagged) }),
+      })
+      if (res.ok) {
+        setSelectedConv(prev => prev ? { ...prev, flagged: nextFlagged } : null)
+        fetchConversations()
+      }
+    } catch (err) {
+      console.error('[AdminChat] Toggle flag error:', err)
+    }
+  }, [selectedConv, fetchConversations])
+
+  const handleReopen = useCallback(async () => {
+    if (!selectedConv) return
+    try {
+      const res = await fetch('/api/chat/context', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversationId: selectedConv.id, status: 'human_active', assignedAgentId: currentAgentId }),
+      })
+      if (res.ok) {
+        setSelectedConv(prev => prev ? { ...prev, status: 'human_active', assigned_agent_id: currentAgentId } : null)
+        fetchConversations()
+      }
+    } catch (err) {
+      console.error('[AdminChat] Reopen error:', err)
+    }
+  }, [selectedConv, currentAgentId, fetchConversations])
 
   const selectConversation = useCallback((conv: Conversation) => {
     setSelectedConv(conv)
@@ -432,9 +523,9 @@ export default function IaChatPage() {
   })
 
   return (
-    <div className="h-[calc(100vh-8rem)] flex gap-4">
+    <div className="min-h-[calc(100vh-8rem)] lg:h-[calc(100vh-8rem)] flex flex-col lg:flex-row gap-4">
       {/* Conversation List */}
-      <div className="w-80 shrink-0 flex flex-col bg-[var(--ui-surface)] rounded-[var(--ui-radius-md)] border border-[var(--ui-border)] overflow-hidden">
+      <div className="w-full lg:w-72 shrink-0 flex flex-col bg-[var(--ui-surface)] rounded-[var(--ui-radius-md)] border border-[var(--ui-border)] overflow-hidden max-h-[420px] lg:max-h-none">
         <div className="p-3 border-b border-[var(--ui-border)] space-y-2">
           <input
             type="text"
@@ -458,7 +549,7 @@ export default function IaChatPage() {
               </button>
             ))}
           </div>
-          <div className="flex gap-1 overflow-x-auto pb-1">
+          <div className="flex flex-wrap gap-1 pb-1">
             {(['all', 'ai_active', 'human_active', 'closed', 'flagged'] as FilterMode[]).map((f) => (
               <button
                 key={f}
@@ -540,16 +631,18 @@ export default function IaChatPage() {
       </div>
 
       {/* Conversation View */}
-      <div className="flex-1 flex flex-col bg-[var(--ui-surface)] rounded-[var(--ui-radius-md)] border border-[var(--ui-border)] overflow-hidden">
+      <div className="flex-1 min-w-0 flex flex-col bg-[var(--ui-surface)] rounded-[var(--ui-radius-md)] border border-[var(--ui-border)] overflow-hidden min-h-[480px]">
         {!selectedConv ? (
           <div className="flex-1 flex items-center justify-center text-[var(--ui-fg-secondary)]">
-            <div className="text-center">
+            <div className="text-center px-4">
               <div className="w-16 h-16 rounded-full bg-[var(--ui-bg-secondary)] flex items-center justify-center mx-auto mb-4">
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
                 </svg>
               </div>
-              <p className="text-[13px]">{t.admin.chat.noConversations}</p>
+              <p className="text-[13px]">
+                {conversations.length > 0 ? 'Selecciona una conversación para responder' : t.admin.chat.noConversations}
+              </p>
             </div>
           </div>
         ) : (
@@ -576,7 +669,42 @@ export default function IaChatPage() {
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap justify-end">
+                <select
+                  value={selectedConv.assigned_agent_id ? String(selectedConv.assigned_agent_id) : ''}
+                  onChange={(e) => handleAssignAgent(e.target.value)}
+                  title="Asignar agente"
+                  className="px-2 py-1 text-[11px] bg-[var(--ui-bg)] border border-[var(--ui-border)] rounded-[6px] text-[var(--ui-fg)] outline-none"
+                >
+                  <option value="">Sin asignar</option>
+                  {agents.map(a => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={handleToggleFlag}
+                  className={`px-2.5 py-1.5 text-[11px] font-medium rounded-[6px] border transition-all ${
+                    selectedConv.flagged === 1
+                      ? 'bg-[var(--ui-danger-soft)] text-[var(--ui-danger)] border-[var(--ui-danger)]'
+                      : 'border-[var(--ui-border)] text-[var(--ui-fg-secondary)] hover:bg-[var(--ui-surface-hover)]'
+                  }`}
+                >
+                  {selectedConv.flagged === 1 ? 'Quitar Flag' : 'Flag'}
+                </button>
+                {selectedConv.status === 'closed' && (
+                  <button
+                    onClick={handleReopen}
+                    className="px-3 py-1.5 text-[11px] font-medium bg-[var(--ui-info-soft)] text-[var(--ui-info)] border border-[var(--ui-info)] rounded-[6px] transition-all"
+                  >
+                    Reabrir
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowRightPanel(v => !v)}
+                  className="px-2.5 py-1.5 text-[11px] font-medium border border-[var(--ui-border)] text-[var(--ui-fg-secondary)] rounded-[6px] hover:bg-[var(--ui-surface-hover)]"
+                >
+                  {showRightPanel ? 'Ocultar Panel' : 'Info & Cola'}
+                </button>
                 {selectedConv.status === 'ai_active' && selectedConv.channel === 'whatsapp' && (
                   <button
                     onClick={handleTakeOver}
@@ -642,6 +770,11 @@ export default function IaChatPage() {
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {error && (
+                <div className="px-3 py-2 rounded-md bg-[var(--ui-danger-soft)] border border-[var(--ui-danger)] text-[var(--ui-danger)] text-[12px]">
+                  {error}
+                </div>
+              )}
               {isLoadingMsg ? (
                 <div className="text-center text-[var(--ui-fg-secondary)] py-8">{t.common.loading}</div>
               ) : messages.length === 0 ? (
@@ -716,8 +849,58 @@ export default function IaChatPage() {
         )}
       </div>
 
-      {/* Agent Management Sidebar */}
-      <div className="w-64 shrink-0 flex flex-col bg-[var(--ui-surface)] rounded-[10px] border border-[var(--ui-border)] overflow-hidden">
+      {/* Right Sidebar: Reservation Context + Call Center Agents Queue */}
+      {showRightPanel && (
+      <div className="w-full lg:w-72 shrink-0 flex flex-col gap-3 overflow-y-auto">
+        {/* Customer Reservation Context */}
+        {selectedConv && (
+          <div className="bg-[var(--ui-surface)] rounded-[10px] border border-[var(--ui-border)] overflow-hidden shrink-0">
+            <div className="p-3 border-b border-[var(--ui-border)] flex items-center justify-between">
+              <h3 className="text-[12px] font-semibold text-[var(--ui-fg)]">Contexto de Reserva</h3>
+              <span className="text-[10px] text-[var(--ui-fg-muted)]">{reservations.length} encontrada(s)</span>
+            </div>
+            <div className="p-3 space-y-2.5 text-[11px]">
+              {reservations.length === 0 ? (
+                <p className="text-[var(--ui-fg-secondary)]">No se encontraron reservas vinculadas a este email o teléfono.</p>
+              ) : (
+                reservations.slice(0, 2).map((r) => (
+                  <div key={r.id} className="p-2.5 rounded-md bg-[var(--ui-bg-secondary)] border border-[var(--ui-border)] space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-semibold text-[var(--ui-fg)]">{r.booking_reference || r.order_number || `#${r.id}`}</span>
+                      <span className="px-1.5 py-0.5 rounded text-[10px] bg-[var(--ui-accent-soft)] text-[var(--ui-accent)]">{r.status || 'pending'}</span>
+                    </div>
+                    <div className="text-[var(--ui-fg-secondary)]">{r.package_name || 'Servicio'} · ${Number(r.package_price || 0).toFixed(0)} {r.currency || 'USD'}</div>
+                    <div className="text-[var(--ui-fg-muted)]">
+                      Pago: <strong className="text-[var(--ui-fg)]">{r.payment_status || 'pending'}</strong> · Dispatch: <strong className="text-[var(--ui-fg)]">{r.dispatch_status || 'pending'}</strong>
+                    </div>
+                    {(r.flight_number || r.arrival_date) && (
+                      <div className="text-[var(--ui-fg-muted)]">
+                        Vuelo: <strong className="text-[var(--ui-fg)]">{r.airline || ''} {r.flight_number || '—'}</strong> · {r.arrival_date || ''} {r.arrival_time || ''}
+                      </div>
+                    )}
+                    {(r.hotel_name || r.destination_address) && (
+                      <div className="text-[var(--ui-fg-muted)] truncate">
+                        Destino: <strong className="text-[var(--ui-fg)]">{r.hotel_name || r.destination_address}</strong>
+                      </div>
+                    )}
+                    {r.driver_name && (
+                      <div className="text-[var(--ui-fg-muted)]">
+                        Conductor: <strong className="text-[var(--ui-accent)]">{r.driver_name}</strong> {r.driver_phone ? `(${r.driver_phone})` : ''}
+                      </div>
+                    )}
+                    <div className="pt-1 flex gap-2">
+                      <a href="/admin/reservations" className="text-[var(--ui-info)] hover:underline">Ver Reserva →</a>
+                      <a href="/admin/dispatch" className="text-[var(--ui-accent)] hover:underline">Ir a Dispatch →</a>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Agent Management Sidebar */}
+        <div className="flex-1 flex flex-col bg-[var(--ui-surface)] rounded-[10px] border border-[var(--ui-border)] overflow-hidden min-h-[240px]">
         <div className="p-3 border-b border-[var(--ui-border)] flex items-center justify-between">
           <h3 className="text-[13px] font-semibold text-[var(--ui-fg)]">{t.admin.chat.agents.title}</h3>
           <button
@@ -767,6 +950,8 @@ export default function IaChatPage() {
           )}
         </div>
       </div>
+      </div>
+      )}
 
       {/* Escalate Modal */}
       {showEscalateModal && (

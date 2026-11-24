@@ -114,6 +114,7 @@ export default function RolesPage() {
         }),
       })
       if (!res.ok) throw new Error()
+      showToast?.('Permiso actualizado ✓')
     } catch {
       setPerms(prev => {
         const next = { ...prev }
