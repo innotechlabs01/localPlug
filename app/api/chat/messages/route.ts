@@ -8,7 +8,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const conversationId = searchParams.get('conversationId')
     const userIdentifier = searchParams.get('userIdentifier')
-    const limit = parseInt(searchParams.get('limit') || '100', 10)
+    const limit = Math.min(200, Math.max(1, parseInt(searchParams.get('limit') || '100', 10) || 100))
     const before = searchParams.get('before')
 
     if (!conversationId) {
@@ -39,19 +39,15 @@ export async function GET(request: Request) {
     const ownerIdentifier = conversationRow.user_identifier as string | null
     const isWebChannel = channel === 'web'
 
-    const matchesUser = Boolean(isWebChannel && userIdentifier && ownerIdentifier && userIdentifier === ownerIdentifier)
-
-    if (!matchesUser) {
-      const { userId } = await auth()
-      const matchesClerk = Boolean(isWebChannel && userId && ownerIdentifier && userId === ownerIdentifier)
-      if (!matchesClerk) {
-        const isStaff = userId ? !(await requirePermission('support', 'view')) : false
-        if (!isStaff) {
-          return NextResponse.json(
-            { error: userId ? 'Forbidden: insufficient permissions' : 'Unauthorized' },
-            { status: userId ? 403 : 401 },
-          )
-        }
+    const { userId } = await auth()
+    const matchesClerk = Boolean(isWebChannel && userId && ownerIdentifier && userId === ownerIdentifier)
+    if (!matchesClerk) {
+      const isStaff = userId ? !(await requirePermission('support', 'view')) : false
+      if (!isStaff) {
+        return NextResponse.json(
+          { error: userId ? 'Forbidden: insufficient permissions' : 'Unauthorized' },
+          { status: userId ? 403 : 401 },
+        )
       }
     }
 

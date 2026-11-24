@@ -1,6 +1,6 @@
 import { dequeuePendingMessages, markMessageSent, markMessageFailed } from './message-queue'
 import { sendWhatsAppDirect, sendWhatsAppButtons, sendN8nWebhook } from '@/lib/n8n/client'
-import { isCircuitOpen } from '@/lib/resilience/circuit-breaker'
+import { isCircuitOpen, recordFailure, recordSuccess } from '@/lib/resilience/circuit-breaker'
 import { logger } from '@/lib/logger'
 
 const MIN_DELAY_MS = 3000
@@ -42,9 +42,11 @@ export async function processQueue(batchSize = 10): Promise<{ processed: number;
         }
 
         if (result.success) {
+          recordSuccess('evolution-whatsapp')
           await markMessageSent(msg.id)
           processed++
         } else {
+          recordFailure('evolution-whatsapp')
           await markMessageFailed(msg.id, result.error || 'Unknown error')
           failed++
         }
@@ -53,9 +55,11 @@ export async function processQueue(batchSize = 10): Promise<{ processed: number;
         const result = await sendN8nWebhook(msg.recipient, data)
 
         if (result.success) {
+          recordSuccess('evolution-whatsapp')
           await markMessageSent(msg.id)
           processed++
         } else {
+          recordFailure('evolution-whatsapp')
           await markMessageFailed(msg.id, result.error || 'Unknown error')
           failed++
         }
