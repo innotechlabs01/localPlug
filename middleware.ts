@@ -67,13 +67,22 @@ export default clerkMiddleware(
 
   const { pathname } = new URL(req.url)
   if (pathname.startsWith('/api/')) {
-    // Check IP ban first (escalating bans from repeated violations)
-    const ip = extractIp(req)
-    const banResponse = await checkIpBanned(ip)
-    if (banResponse) return banResponse
+    const isOperationalPortalApi =
+      pathname.startsWith('/api/admin/') ||
+      pathname.startsWith('/api/driver/') ||
+      pathname.startsWith('/api/hotel/') ||
+      pathname.startsWith('/api/chat/') ||
+      pathname.startsWith('/api/realtime/')
 
-    const rateLimitRes = await applyRateLimit(req)
-    if (rateLimitRes) return rateLimitRes
+    if (!isOperationalPortalApi) {
+      // Check IP ban first (escalating bans from repeated violations on public APIs)
+      const ip = extractIp(req)
+      const banResponse = await checkIpBanned(ip)
+      if (banResponse) return banResponse
+
+      const rateLimitRes = await applyRateLimit(req)
+      if (rateLimitRes) return rateLimitRes
+    }
 
     if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
       const contentLength = parseInt(req.headers.get('content-length') || '0', 10)

@@ -62,6 +62,8 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [driverStatus, setDriverStatus] = useState<string>('inactive')
   const [toggling, setToggling] = useState(false)
+  const [gpsEnabled, setGpsEnabled] = useState(false)
+  const [gpsError, setGpsError] = useState<string | null>(null)
 
   // Auto-create driver profile + fix role mismatch on first load
   useEffect(() => {
@@ -98,6 +100,53 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
       document.head.appendChild(link)
     }
   }, [])
+
+  // Live GPS sharing when driver accepts tracking
+  useEffect(() => {
+    if (!gpsEnabled || typeof window === 'undefined' || !('geolocation' in navigator)) return
+    let lastSent = 0
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        setGpsError(null)
+        const now = Date.now()
+        if (now - lastSent < 8000) return
+        lastSent = now
+        fetch('/api/driver/location', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            heading: pos.coords.heading,
+            speed: pos.coords.speed,
+            accuracy: pos.coords.accuracy,
+          }),
+        }).catch(() => {})
+      },
+      (err) => {
+        setGpsError(err.code === 1 ? 'Permiso GPS denegado' : 'Sin señal GPS')
+      },
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 },
+    )
+    return () => {
+      navigator.geolocation.clearWatch(watchId)
+    }
+  }, [gpsEnabled])
+
+  const toggleGps = async () => {
+    if (gpsEnabled) {
+      setGpsEnabled(false)
+      setGpsError(null)
+      await fetch('/api/driver/location', { method: 'DELETE' }).catch(() => {})
+    } else {
+      if (!('geolocation' in navigator)) {
+        setGpsError('GPS no soportado en este navegador')
+        return
+      }
+      setGpsError(null)
+      setGpsEnabled(true)
+    }
+  }
 
   const toggleStatus = async () => {
     if (toggling) return
@@ -259,6 +308,34 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
               {driverStatus === 'available' ? '● ONLINE' : '○ OFFLINE'}
             </span>
           </button>
+
+          <button
+            onClick={toggleGps}
+            style={{
+              marginTop: 8,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              width: '100%',
+              padding: '9px 12px',
+              borderRadius: 8,
+              fontSize: 12.5,
+              fontWeight: 500,
+              background: gpsEnabled ? 'rgba(59,130,246,0.14)' : 'var(--bg-secondary)',
+              border: `1px solid ${gpsEnabled ? 'rgba(59,130,246,0.4)' : 'var(--border)'}`,
+              color: gpsEnabled ? '#60a5fa' : 'var(--text-muted)',
+              cursor: 'pointer',
+            }}
+          >
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span>📍</span>
+              {gpsEnabled ? 'GPS en Vivo' : 'Compartir GPS'}
+            </span>
+            <span style={{ fontSize: 10 }}>{gpsEnabled ? 'ON' : 'OFF'}</span>
+          </button>
+          {gpsError && (
+            <div style={{ marginTop: 4, fontSize: 11, color: 'var(--danger)' }}>{gpsError}</div>
+          )}
         </div>
 
         <div style={{ padding: '12px 8px', borderTop: '1px solid var(--border)' }}>
