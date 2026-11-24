@@ -4,11 +4,28 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useAuth, SignInButton } from '@clerk/nextjs'
 
-const CATEGORIES = [
-  { id: 'standard', name: 'Standard', desc: 'Sedán cómodo · 1-3 pax', baseUsd: 8, perKm: 1.2, eta: '4-6 min' },
-  { id: 'suv', name: 'SUV', desc: 'Camioneta amplia · 1-4 pax', baseUsd: 14, perKm: 1.8, eta: '5-8 min' },
-  { id: 'vip', name: 'VIP', desc: 'Ejecutivo premium · 1-4 pax', baseUsd: 22, perKm: 2.5, eta: '6-10 min' },
-  { id: 'luxury', name: 'Luxury', desc: 'Alta gama blindado/VIP', baseUsd: 35, perKm: 3.5, eta: '8-12 min' },
+interface PricingRule {
+  category: string
+  label: string
+  base_usd: number
+  per_km_usd: number
+  per_min_usd: number
+  min_fare_usd: number
+  avg_speed_kmh: number
+}
+
+const FALLBACK_PRICING: PricingRule[] = [
+  { category: 'standard', label: 'Standard', base_usd: 5, per_km_usd: 0.9, per_min_usd: 0.25, min_fare_usd: 8, avg_speed_kmh: 28 },
+  { category: 'suv', label: 'SUV', base_usd: 9, per_km_usd: 1.3, per_min_usd: 0.35, min_fare_usd: 14, avg_speed_kmh: 28 },
+  { category: 'vip', label: 'VIP', base_usd: 15, per_km_usd: 1.9, per_min_usd: 0.5, min_fare_usd: 22, avg_speed_kmh: 30 },
+  { category: 'luxury', label: 'Luxury', base_usd: 25, per_km_usd: 2.8, per_min_usd: 0.75, min_fare_usd: 35, avg_speed_kmh: 30 },
+]
+
+const QUICK_DESTINATIONS = [
+  { label: 'Provenza', km: 5 },
+  { label: 'El Poblado', km: 4 },
+  { label: 'Laureles', km: 7 },
+  { label: 'Envigado', km: 9 },
 ]
 
 const AIRPORT_KEYWORDS = /aeropuerto|airport|jmc|mde|jos[eé]\s*mar[ií]a|c[oó]rdova|rionegro/i
@@ -37,21 +54,52 @@ interface ActiveRide {
   waitSeconds?: number
 }
 
+function calcFare(rule: PricingRule, km: number) {
+  const speed = Math.max(10, Number(rule.avg_speed_kmh) || 28)
+  const mins = Math.max(4, Math.round((km / speed) * 60))
+  const raw = Number(rule.base_usd) + km * Number(rule.per_km_usd) + mins * Number(rule.per_min_usd)
+  const total = Math.round(Math.max(Number(rule.min_fare_usd), raw) * 100) / 100
+  return { total, mins }
+}
+
 export default function RideAppPage() {
-  const { isLoaded, isSignedIn } = useAuth()
+  const { isSignedIn } = useAuth()
   const [activeTab, setActiveTab] = useState<'ride' | 'airport'>('ride')
+  const [pricing, setPricing] = useState<PricingRule[]>(FALLBACK_PRICING)
   const [coords, setCoords] = useState<{ lat: number; lng: number }>({ lat: 6.2088, lng: -75.567 })
   const [gpsReady, setGpsReady] = useState(false)
   const [pickupAddress, setPickupAddress] = useState('Mi ubicación actual (GPS)')
   const [destination, setDestination] = useState('')
   const [category, setCategory] = useState('standard')
   const [distanceKm, setDistanceKm] = useState(6)
+  const [guestName, setGuestName] = useState('')
+  const [guestContact, setGuestContact] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [activeRideId, setActiveRideId] = useState<number | null>(null)
+  const [rideToken, setRideToken] = useState<string | null>(null)
   const [activeRide, setActiveRide] = useState<ActiveRide | null>(null)
 
   const isAirportDestination = AIRPORT_KEYWORDS.test(destination)
+
+  // Load live Super Admin pricing + restore saved active ride from localStorage
+  useEffect(() => {
+    fetch('/api/admin/ride-pricing')
+      .then(r => r.json())
+      .then(d => { if (d.success && Array.isArray(d.pricing) && d.pricing.length) setPricing(d.pricing) })
+      .catch(() => {})
+
+    try {
+      const saved = localStorage.getItem('lp_active_ride')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (parsed?.rideId && parsed?.rideToken) {
+          setActiveRideId(Number(parsed.rideId))
+          setRideToken(String(parsed.rideToken))
+        }
+      }
+    } catch { /* ignore */ }
+  }, [])
 
   useEffect(() => {
     if (typeof window === 'undefined' || !('geolocation' in navigator)) return
@@ -65,9 +113,11 @@ export default function RideAppPage() {
     )
   }, [])
 
-  const pollRideStatus = useCallback(async (rideId: number) => {
+  const pollRideStatus = useCallback(async (id: number, token: string | null) => {
     try {
-      const res = await fetch(`/api/rides/${rideId}/status?lat=${coords.lat}&lng=${coords.lng}`)
+      const qs = new URLSearchParams({ lat: String(coords.lat), lng: String(coords.lng) })
+      if (token) qs.set('token', token)
+      const res = await fetch(`/api/rides/${id}/status?${qs}`)
       if (res.ok) {
         const data = await res.json()
         if (data.ride) setActiveRide(data.ride)
@@ -77,21 +127,26 @@ export default function RideAppPage() {
 
   useEffect(() => {
     if (!activeRideId) return
-    pollRideStatus(activeRideId)
+    pollRideStatus(activeRideId, rideToken)
     const interval = setInterval(() => {
-      if (!document.hidden) pollRideStatus(activeRideId)
+      if (!document.hidden) pollRideStatus(activeRideId, rideToken)
     }, 5000)
     return () => clearInterval(interval)
-  }, [activeRideId, pollRideStatus])
+  }, [activeRideId, rideToken, pollRideStatus])
 
-  const selectedCat = CATEGORIES.find(c => c.id === category) || CATEGORIES[0]
-  const estimatedPrice = (selectedCat.baseUsd + distanceKm * selectedCat.perKm).toFixed(2)
+  const selectedRule = pricing.find(c => c.category === category) || pricing[0]
+  const { total: estimatedPrice, mins: estimatedMinutes } = calcFare(selectedRule, distanceKm)
 
   const handleRequestRide = async () => {
     if (!destination.trim() || isAirportDestination || submitting) return
+    if (!isSignedIn && !guestContact.trim()) {
+      setError('Ingresa tu email o WhatsApp para enviarte el recibo y conectar con el conductor.')
+      return
+    }
     setSubmitting(true)
     setError(null)
     try {
+      const isEmail = guestContact.includes('@')
       const res = await fetch('/api/rides/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -102,6 +157,9 @@ export default function RideAppPage() {
           distanceKm,
           pickupLat: coords.lat,
           pickupLng: coords.lng,
+          guestName: guestName.trim() || undefined,
+          guestEmail: isEmail ? guestContact.trim() : undefined,
+          guestPhone: !isEmail ? guestContact.trim() : undefined,
         }),
       })
       const data = await res.json()
@@ -110,6 +168,10 @@ export default function RideAppPage() {
         return
       }
       setActiveRideId(data.rideId)
+      setRideToken(data.rideToken || null)
+      try {
+        localStorage.setItem('lp_active_ride', JSON.stringify({ rideId: data.rideId, rideToken: data.rideToken }))
+      } catch { /* ignore */ }
     } catch {
       setError('Error de red al solicitar el viaje')
     } finally {
@@ -117,262 +179,250 @@ export default function RideAppPage() {
     }
   }
 
+  const clearRide = () => {
+    setActiveRideId(null)
+    setRideToken(null)
+    setActiveRide(null)
+    try { localStorage.removeItem('lp_active_ride') } catch { /* ignore */ }
+  }
+
   const mapLat = activeRide?.driver?.lat ?? coords.lat
   const mapLng = activeRide?.driver?.lng ?? coords.lng
   const osmUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${(mapLng - 0.025).toFixed(5)},${(mapLat - 0.025).toFixed(5)},${(mapLng + 0.025).toFixed(5)},${(mapLat + 0.025).toFixed(5)}&layer=mapnik&marker=${mapLat.toFixed(5)},${mapLng.toFixed(5)}`
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0b0d14', color: '#f0f2f5', display: 'flex', flexDirection: 'column', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      {/* Top App Bar */}
-      <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', background: '#111318', borderBottom: '1px solid #282b38' }}>
-        <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', color: '#f0f2f5', fontWeight: 700, fontSize: 16 }}>
-          <span style={{ width: 30, height: 30, borderRadius: 8, background: 'linear-gradient(135deg, #e8c99b, #d4a574)', color: '#0b0d14', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>M</span>
-          Medellín Ride
+    <div className="relative h-dvh w-full overflow-hidden bg-[#0b0d14] text-[#f0f2f5] flex flex-col">
+      {/* Full-bleed Map Background */}
+      <div className="absolute inset-0 z-0">
+        <iframe
+          title="Live Ride Map"
+          src={osmUrl}
+          className="w-full h-full border-0"
+          loading="lazy"
+        />
+      </div>
+
+      {/* Floating Glassmorphism Top Bar */}
+      <header className="relative z-20 flex items-center justify-between px-4 pt-3 pb-2 pointer-events-none">
+        <Link
+          href="/"
+          className="pointer-events-auto inline-flex items-center gap-2 px-3 py-2 rounded-full bg-zinc-950/85 backdrop-blur-xl border border-white/10 text-white text-xs font-semibold shadow-lg"
+        >
+          <span className="w-5 h-5 rounded-full bg-gradient-to-br from-[#e8c99b] to-[#b8956a] text-zinc-950 inline-flex items-center justify-center font-bold text-[11px]">M</span>
+          Inicio
         </Link>
-        <div style={{ display: 'flex', gap: 8 }}>
+
+        <div className="pointer-events-auto inline-flex p-1 rounded-full bg-zinc-950/85 backdrop-blur-xl border border-white/10 shadow-lg">
           <button
             onClick={() => setActiveTab('ride')}
-            style={{
-              padding: '7px 14px', borderRadius: 999, border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 600,
-              background: activeTab === 'ride' ? '#10b981' : '#181b25',
-              color: activeTab === 'ride' ? '#0b0d14' : '#9ca0b0',
-            }}
+            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all ${
+              activeTab === 'ride' ? 'bg-emerald-500 text-zinc-950' : 'text-zinc-400 hover:text-white'
+            }`}
           >
-            🚗 Pedir Viaje
+            Ciudad
           </button>
           <button
             onClick={() => setActiveTab('airport')}
-            style={{
-              padding: '7px 14px', borderRadius: 999, border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 600,
-              background: activeTab === 'airport' ? '#d4a84b' : '#181b25',
-              color: activeTab === 'airport' ? '#0b0d14' : '#9ca0b0',
-            }}
+            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all ${
+              activeTab === 'airport' ? 'bg-[#d4a84b] text-zinc-950' : 'text-zinc-400 hover:text-white'
+            }`}
           >
-            ✈️ Aeropuerto
+            Aeropuerto
           </button>
+        </div>
+
+        <div className="pointer-events-auto px-3 py-1.5 rounded-full bg-zinc-950/85 backdrop-blur-xl border border-white/10 text-[11px] text-emerald-400 font-medium shadow-lg">
+          {gpsReady ? '● GPS' : 'Medellín'}
         </div>
       </header>
 
-      {/* Main Content */}
-      {activeTab === 'airport' ? (
-        <main style={{ flex: 1, maxWidth: 680, width: '100%', margin: '32px auto', padding: '0 20px' }}>
-          <div style={{ background: '#181b25', border: '1px solid #282b38', borderRadius: 16, padding: 28, textAlign: 'center' }}>
-            <div style={{ fontSize: 36, marginBottom: 12 }}>✈️</div>
-            <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>Traslados Programados de Aeropuerto (JMC)</h1>
-            <p style={{ fontSize: 14, color: '#9ca0b0', lineHeight: 1.6, marginBottom: 24 }}>
-              Para recogidas o traslados al Aeropuerto José María Córdova (MDE), agenda tu servicio con seguimiento de vuelo,
-              tarifa fija garantizada y conductor asignado con anticipación.
-            </p>
-            <Link
-              href="/booking?plan=smooth-landing"
-              style={{
-                display: 'inline-block', padding: '12px 28px', borderRadius: 10,
-                background: 'linear-gradient(135deg, #e8c99b, #d4a574)', color: '#0b0d14',
-                fontWeight: 700, fontSize: 14, textDecoration: 'none',
-              }}
-            >
-              Agendar Traslado al Aeropuerto →
-            </Link>
-          </div>
-        </main>
-      ) : (
-        <main style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 0 }}>
-          {/* Live Map */}
-          <div style={{ position: 'relative', minHeight: 380, background: '#111318' }}>
-            <iframe
-              title="Live Ride Map"
-              src={osmUrl}
-              style={{ width: '100%', height: '100%', minHeight: 380, border: 0 }}
-              loading="lazy"
-            />
-            <div style={{
-              position: 'absolute', top: 12, left: 12, padding: '6px 12px', borderRadius: 999,
-              background: 'rgba(11,13,20,0.88)', border: '1px solid rgba(255,255,255,0.12)', fontSize: 12,
-            }}>
-              {activeRide?.driver?.lat
-                ? `🚗 Conductor en vivo · ETA ~${activeRide.etaMinutes ?? '—'} min`
-                : gpsReady ? '📍 GPS conectado' : '📍 Medellín'}
+      {/* Bottom Sheet Overlay */}
+      <div className="relative z-20 mt-auto w-full max-w-lg mx-auto px-2 pb-2">
+        <div className="rounded-3xl bg-zinc-950/95 backdrop-blur-2xl border border-white/10 shadow-2xl p-5 max-h-[72dvh] overflow-y-auto space-y-4">
+          {activeTab === 'airport' ? (
+            <div className="text-center py-4 space-y-3">
+              <div className="text-xs font-bold uppercase tracking-widest text-[#d4a84b]">Traslados Aeropuerto JMC</div>
+              <h1 className="text-lg font-bold text-white">Agenda tu traslado con vuelo rastreado</h1>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                Tarifa fija garantizada, monitoreo de llegada de vuelo y conductor VIP esperándote en el aeropuerto.
+              </p>
+              <Link
+                href="/booking?plan=smooth-landing"
+                className="inline-flex items-center justify-center w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#e8c99b] to-[#d4a574] text-zinc-950 font-bold text-sm"
+              >
+                Agendar Traslado al Aeropuerto →
+              </Link>
             </div>
-          </div>
-
-          {/* Ride Request / Live Status Sheet */}
-          <div style={{ padding: 24, background: '#111318', borderLeft: '1px solid #282b38', display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {!isLoaded ? (
-              <p style={{ color: '#9ca0b0' }}>Cargando...</p>
-            ) : !isSignedIn ? (
-              <div style={{ padding: 24, background: '#181b25', borderRadius: 12, border: '1px solid #282b38', textAlign: 'center' }}>
-                <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Inicia sesión para pedir tu viaje</h2>
-                <p style={{ fontSize: 13, color: '#9ca0b0', marginBottom: 16 }}>
-                  Usa tu cuenta para solicitar conductores verificados con pago seguro con tarjeta.
-                </p>
-                <SignInButton mode="modal">
-                  <button style={{ padding: '10px 24px', borderRadius: 8, border: 'none', background: '#10b981', color: '#0b0d14', fontWeight: 700, cursor: 'pointer' }}>
-                    Iniciar Sesión
-                  </button>
-                </SignInButton>
+          ) : activeRideId ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">
+                  ● {activeRide?.driver ? 'Conductor en camino' : 'Buscando conductor'}
+                </span>
+                <span className="text-xs text-zinc-400 font-mono">{activeRide?.bookingReference || `#${activeRideId}`}</span>
               </div>
-            ) : activeRideId ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: '#10b981', textTransform: 'uppercase' }}>
-                    ● {activeRide?.driver ? 'Conductor Asignado' : 'Buscando conductor cercano...'}
-                  </span>
-                  <span style={{ fontSize: 12, color: '#9ca0b0' }}>{activeRide?.bookingReference || `#${activeRideId}`}</span>
-                </div>
 
-                {activeRide?.driver ? (
-                  <div style={{ padding: 16, borderRadius: 12, background: '#181b25', border: '1px solid rgba(16,185,129,0.4)' }}>
-                    <div style={{ fontSize: 17, fontWeight: 700 }}>{activeRide.driver.name}</div>
-                    <div style={{ fontSize: 13, color: '#9ca0b0', marginTop: 2 }}>
-                      {activeRide.driver.vehicle || 'Vehículo'} · Placa <strong>{activeRide.driver.plate || '—'}</strong>
-                    </div>
-                    <div style={{ display: 'flex', gap: 12, marginTop: 12, fontSize: 13 }}>
-                      <span style={{ color: '#10b981', fontWeight: 700 }}>
-                        ETA: {activeRide.etaMinutes != null ? `~${activeRide.etaMinutes} min` : 'Calculando...'}
-                      </span>
-                      {activeRide.driver.phone && (
-                        <a href={`tel:${activeRide.driver.phone}`} style={{ color: '#60a5fa', textDecoration: 'none' }}>
-                          📞 {activeRide.driver.phone}
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ padding: 16, borderRadius: 12, background: '#181b25', border: '1px solid #282b38', fontSize: 13, color: '#9ca0b0' }}>
-                    <div style={{ fontWeight: 600, color: '#f0f2f5', marginBottom: 4 }}>
-                      {(activeRide?.waitSeconds || 0) >= 25
-                        ? `⏳ Alta demanda en tu zona — consultando conductor #${activeRide?.queueAttempt || 2} en cola...`
-                        : `🔍 Buscando el conductor más cercano en tu zona (cola #${activeRide?.queueAttempt || 1})...`}
-                    </div>
+              {activeRide?.driver ? (
+                <div className="p-4 rounded-2xl bg-zinc-900 border border-emerald-500/30 space-y-2">
+                  <div className="flex items-center justify-between">
                     <div>
-                      Si un conductor no responde en 30s, el sistema pasa automáticamente al siguiente conductor cercano para evitar demoras.
+                      <div className="text-base font-bold text-white">{activeRide.driver.name}</div>
+                      <div className="text-xs text-zinc-400">
+                        {activeRide.driver.vehicle || 'Vehículo'} · <strong className="text-white">{activeRide.driver.plate || '—'}</strong>
+                      </div>
+                    </div>
+                    <div className="px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-400 text-xs font-bold">
+                      {activeRide.etaMinutes != null ? `~${activeRide.etaMinutes} min` : 'En camino'}
                     </div>
                   </div>
-                )}
-
-                <div style={{ padding: 14, borderRadius: 10, background: '#181b25', border: '1px solid #282b38', fontSize: 13 }}>
-                  <div style={{ color: '#9ca0b0', fontSize: 11 }}>DESTINO</div>
-                  <div style={{ fontWeight: 600, marginBottom: 8 }}>{activeRide?.destinationAddress || destination}</div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#9ca0b0', fontSize: 12 }}>
-                    <span>{activeRide?.packageName || selectedCat.name}</span>
-                    <strong style={{ color: '#f0f2f5' }}>${Number(activeRide?.price || estimatedPrice).toFixed(2)} USD (Tarjeta)</strong>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => { setActiveRideId(null); setActiveRide(null) }}
-                  style={{ padding: '10px 16px', borderRadius: 8, border: '1px solid #282b38', background: 'transparent', color: '#9ca0b0', cursor: 'pointer', fontSize: 13 }}
-                >
-                  Solicitar otro viaje
-                </button>
-              </div>
-            ) : (
-              <>
-                <h1 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>¿A dónde vas?</h1>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <input
-                    value={pickupAddress}
-                    onChange={e => setPickupAddress(e.target.value)}
-                    placeholder="Punto de recogida (GPS)"
-                    style={{ padding: '11px 14px', borderRadius: 10, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', fontSize: 13.5 }}
-                  />
-                  <input
-                    value={destination}
-                    onChange={e => setDestination(e.target.value)}
-                    placeholder="Ingresa tu destino en Medellín (Ej: Provenza, Laureles...)"
-                    style={{ padding: '11px 14px', borderRadius: 10, border: '1px solid #282b38', background: '#181b25', color: '#f0f2f5', fontSize: 13.5 }}
-                  />
-                </div>
-
-                {/* Smart Airport Guard */}
-                {isAirportDestination && (
-                  <div style={{ padding: 14, borderRadius: 10, background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.45)', fontSize: 13 }}>
-                    <div style={{ fontWeight: 700, color: '#f59e0b', marginBottom: 4 }}>
-                      ✈️ ¿Vas o vienes del Aeropuerto JMC?
-                    </div>
-                    <p style={{ margin: '0 0 10px', color: '#f0f2f5', lineHeight: 1.45 }}>
-                      Los traslados de aeropuerto se agendan desde la pestaña <strong>Aeropuerto</strong> para incluir seguimiento de vuelo y tarifa fija.
-                    </p>
-                    <button
-                      onClick={() => setActiveTab('airport')}
-                      style={{ padding: '7px 14px', borderRadius: 8, border: 'none', background: '#d4a84b', color: '#0b0d14', fontWeight: 700, fontSize: 12, cursor: 'pointer' }}
+                  {activeRide.driver.phone && (
+                    <a
+                      href={`tel:${activeRide.driver.phone}`}
+                      className="inline-flex items-center justify-center w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-semibold text-white transition"
                     >
-                      Ir a pestaña Aeropuerto →
-                    </button>
+                      Llamar al conductor ({activeRide.driver.phone})
+                    </a>
+                  )}
+                </div>
+              ) : (
+                <div className="p-4 rounded-2xl bg-zinc-900 border border-white/10 text-xs text-zinc-300 space-y-1">
+                  <div className="font-semibold text-white">
+                    {(activeRide?.waitSeconds || 0) >= 25
+                      ? `Alta demanda en tu zona — consultando conductor #${activeRide?.queueAttempt || 2} en cola...`
+                      : `Buscando el conductor más cercano en tu zona (cola #${activeRide?.queueAttempt || 1})...`}
                   </div>
-                )}
+                  <p className="text-zinc-400">Si no responde en 30s, pasamos automáticamente al siguiente conductor cercano.</p>
+                </div>
+              )}
 
-                <div>
-                  <div style={{ fontSize: 12, color: '#9ca0b0', marginBottom: 6, display: 'flex', justifyContent: 'space-between' }}>
-                    <span>Distancia estimada</span>
-                    <strong>{distanceKm} km</strong>
-                  </div>
+              <div className="flex items-center justify-between text-xs text-zinc-400 px-1">
+                <span className="truncate max-w-[65%]">{activeRide?.destinationAddress || destination}</span>
+                <strong className="text-white">${Number(activeRide?.price || estimatedPrice).toFixed(2)} USD</strong>
+              </div>
+
+              {!isSignedIn && (
+                <div className="p-3 rounded-xl bg-white/5 border border-white/10 flex items-center justify-between gap-2">
+                  <span className="text-[11px] text-zinc-300">¿Guardar recibo e historial?</span>
+                  <SignInButton mode="modal">
+                    <button className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-[11px] font-semibold text-white">
+                      Crear cuenta
+                    </button>
+                  </SignInButton>
+                </div>
+              )}
+
+              <button
+                onClick={clearRide}
+                className="w-full py-2.5 rounded-xl border border-white/10 text-xs text-zinc-400 hover:text-white transition"
+              >
+                Solicitar otro viaje
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="space-y-2.5">
+                <input
+                  value={pickupAddress}
+                  onChange={e => setPickupAddress(e.target.value)}
+                  placeholder="Punto de recogida (GPS)"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-white/10 text-xs text-zinc-300 outline-none focus:border-emerald-500"
+                />
+                <input
+                  value={destination}
+                  onChange={e => setDestination(e.target.value)}
+                  placeholder="¿A dónde vas? (Ej: Provenza, Laureles...)"
+                  className="w-full px-3.5 py-3 rounded-xl bg-zinc-900 border border-white/15 text-sm text-white placeholder:text-zinc-500 outline-none focus:border-emerald-500"
+                />
+                <div className="flex gap-1.5 flex-wrap">
+                  {QUICK_DESTINATIONS.map(d => (
+                    <button
+                      key={d.label}
+                      type="button"
+                      onClick={() => { setDestination(d.label + ', Medellín'); setDistanceKm(d.km) }}
+                      className="px-2.5 py-1 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] text-zinc-300"
+                    >
+                      {d.label} · {d.km}km
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {isAirportDestination && (
+                <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/40 text-xs space-y-2">
+                  <div className="font-bold text-amber-400">Traslado de Aeropuerto detectado</div>
+                  <p className="text-zinc-300">Agenda los viajes al Aeropuerto JMC desde la pestaña <strong>Aeropuerto</strong> para tarifa fija y seguimiento de vuelo.</p>
+                  <button
+                    onClick={() => setActiveTab('airport')}
+                    className="px-3 py-1.5 rounded-lg bg-[#d4a84b] text-zinc-950 font-bold text-xs"
+                  >
+                    Cambiar a Aeropuerto →
+                  </button>
+                </div>
+              )}
+
+              {/* Vehicle Categories with Dynamic Pricing (Base + Km + Min) */}
+              <div className="grid grid-cols-2 gap-2">
+                {pricing.map(rule => {
+                  const { total, mins } = calcFare(rule, distanceKm)
+                  const active = category === rule.category
+                  return (
+                    <button
+                      key={rule.category}
+                      type="button"
+                      onClick={() => setCategory(rule.category)}
+                      className={`text-left p-3 rounded-2xl border transition-all ${
+                        active ? 'bg-emerald-500/12 border-emerald-500' : 'bg-zinc-900 border-white/10 hover:border-white/20'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between text-xs font-bold">
+                        <span className="text-white">{rule.label}</span>
+                        <span className="text-emerald-400">${total.toFixed(0)}</span>
+                      </div>
+                      <div className="text-[10px] text-zinc-400 mt-1">
+                        ~{mins} min · {distanceKm} km
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Guest-first minimal contact (no registration required) */}
+              {!isSignedIn && (
+                <div className="grid grid-cols-2 gap-2">
                   <input
-                    type="range"
-                    min={2}
-                    max={40}
-                    value={distanceKm}
-                    onChange={e => setDistanceKm(Number(e.target.value))}
-                    style={{ width: '100%' }}
+                    value={guestName}
+                    onChange={e => setGuestName(e.target.value)}
+                    placeholder="Tu nombre"
+                    className="px-3 py-2.5 rounded-xl bg-zinc-900 border border-white/10 text-xs text-white outline-none focus:border-emerald-500"
+                  />
+                  <input
+                    value={guestContact}
+                    onChange={e => setGuestContact(e.target.value)}
+                    placeholder="Email o WhatsApp *"
+                    className="px-3 py-2.5 rounded-xl bg-zinc-900 border border-white/10 text-xs text-white outline-none focus:border-emerald-500"
                   />
                 </div>
+              )}
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                  {CATEGORIES.map(c => {
-                    const price = (c.baseUsd + distanceKm * c.perKm).toFixed(0)
-                    const active = category === c.id
-                    return (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => setCategory(c.id)}
-                        style={{
-                          textAlign: 'left', padding: 12, borderRadius: 10, cursor: 'pointer',
-                          border: `1.5px solid ${active ? '#10b981' : '#282b38'}`,
-                          background: active ? 'rgba(16,185,129,0.12)' : '#181b25',
-                          color: '#f0f2f5',
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 13.5 }}>
-                          <span>{c.name}</span>
-                          <span style={{ color: '#10b981' }}>${price}</span>
-                        </div>
-                        <div style={{ fontSize: 11, color: '#9ca0b0', marginTop: 3 }}>{c.desc}</div>
-                        <div style={{ fontSize: 10, color: '#646880', marginTop: 2 }}>Recogida: {c.eta}</div>
-                      </button>
-                    )
-                  })}
+              {error && (
+                <div className="px-3 py-2 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 text-xs">
+                  {error}
                 </div>
+              )}
 
-                <div style={{ padding: '10px 12px', borderRadius: 8, background: '#181b25', border: '1px solid #282b38', fontSize: 12, color: '#9ca0b0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span>💳 Método de pago aceptado</span>
-                  <strong style={{ color: '#f0f2f5' }}>Solo Tarjeta (USD)</strong>
-                </div>
-
-                {error && (
-                  <div style={{ padding: 10, borderRadius: 8, background: 'rgba(239,68,80,0.14)', color: '#ef4450', fontSize: 12.5 }}>
-                    {error}
-                  </div>
-                )}
-
-                <button
-                  onClick={handleRequestRide}
-                  disabled={!destination.trim() || isAirportDestination || submitting}
-                  style={{
-                    padding: '14px 20px', borderRadius: 10, border: 'none',
-                    background: (!destination.trim() || isAirportDestination) ? '#282b38' : '#10b981',
-                    color: (!destination.trim() || isAirportDestination) ? '#646880' : '#0b0d14',
-                    fontWeight: 800, fontSize: 15, cursor: (!destination.trim() || isAirportDestination) ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  {submitting ? 'Enviando solicitud...' : `Confirmar y Pedir ${selectedCat.name} · $${estimatedPrice} USD`}
-                </button>
-              </>
-            )}
-          </div>
-        </main>
-      )}
+              <button
+                onClick={handleRequestRide}
+                disabled={!destination.trim() || isAirportDestination || submitting}
+                className="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 disabled:bg-zinc-800 disabled:text-zinc-500 text-zinc-950 font-extrabold text-sm transition-all"
+              >
+                {submitting
+                  ? 'Procesando pago y buscando conductor...'
+                  : `Pagar con Tarjeta · $${estimatedPrice.toFixed(2)} USD (~${estimatedMinutes} min)`}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

@@ -13,7 +13,7 @@ export default function HeroCta() {
       </Link>
       <Link href="/ride">
         <Button variant="secondary" size="lg">
-          🚗 Pedir Viaje / App
+          Pedir Viaje / App
         </Button>
       </Link>
       <a href="#pricing">

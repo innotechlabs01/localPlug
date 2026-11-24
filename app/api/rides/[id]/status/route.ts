@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { getDb } from '@/lib/db'
+import { verifyRideToken } from '@/lib/ride-token'
 
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371
@@ -20,30 +21,34 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { userId } = await auth()
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
     const { id } = await params
+    const rideId = Number(id)
     const { searchParams } = new URL(request.url)
+    const token = searchParams.get('token')
     const pickupLat = Number(searchParams.get('lat') || 6.2088)
     const pickupLng = Number(searchParams.get('lng') || -75.567)
+
+    const { userId } = await auth().catch(() => ({ userId: null }))
+    const validGuestToken = verifyRideToken(token, rideId)
+
+    if (!validGuestToken && !userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
     const db = getDb()
     const res = await db.execute({
       sql: `SELECT
               o.id, o.booking_reference, o.status, o.dispatch_status, o.payment_status,
-              o.package_name, o.package_price, o.destination_address, o.assigned_to,
+              o.package_name, o.package_price, o.destination_address, o.assigned_to, o.clerk_user_id,
               d.name as driver_name, d.phone as driver_phone, d.vehicle as driver_vehicle,
               d.plate as driver_plate, d.rating as driver_rating,
               dl.lat as driver_lat, dl.lng as driver_lng, dl.updated_at as gps_updated_at
             FROM orders o
             LEFT JOIN drivers d ON o.assigned_to = d.id
             LEFT JOIN driver_locations dl ON dl.driver_id = d.id AND dl.gps_consent = 1
-            WHERE o.id = ? AND o.clerk_user_id = ?
+            WHERE o.id = ?
             LIMIT 1`,
-      args: [Number(id), userId],
+      args: [rideId],
     })
 
     if (res.rows.length === 0) {
@@ -51,6 +56,9 @@ export async function GET(
     }
 
     const row = res.rows[0] as any
+    if (!validGuestToken && row.clerk_user_id !== userId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
 
     // Auto-cascade queue: if still unassigned and last offer is >30s old or declined, offer to next closest driver
     let queueAttempt = 1
@@ -69,9 +77,9 @@ export async function GET(
           : 0
         waitSeconds = latestAgeSec
 
-        const needsNextDriver = !latest || latest.status === 'declined' || (latest.status === 'offered' && latestAgeSec >= 30)
+        const needsNextDriver = !latest || latest.status === 'declined' || (['offered', 'pending_acceptance'].includes(latest.status) && latestAgeSec >= 30)
         if (needsNextDriver) {
-          if (latest && latest.status === 'offered' && latestAgeSec >= 30) {
+          if (latest && ['offered', 'pending_acceptance'].includes(latest.status) && latestAgeSec >= 30) {
             await db.execute({ sql: `UPDATE assignments SET status = 'expired' WHERE id = ?`, args: [Number(latest.id)] })
           }
           const triedIds = offers.map(o => Number(o.driver_id))
@@ -95,7 +103,7 @@ export async function GET(
             queueAttempt = offers.length + 1
             await db.execute({
               sql: `INSERT INTO assignments (order_id, driver_id, status, pickup_date, pickup_time, notes, created_at)
-                    VALUES (?, ?, 'offered', date('now'), time('now'), ?, datetime('now'))`,
+                    VALUES (?, ?, 'pending_acceptance', date('now'), time('now'), ?, datetime('now'))`,
               args: [Number(id), nextCandidate.id, `ON-DEMAND · Cola #${queueAttempt} (cascada automática)`],
             })
           }
