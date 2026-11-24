@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth, clerkClient } from '@clerk/nextjs/server'
 import { getDb } from '@/lib/db'
-import { ensureRidePricingTable, calculateRideFare } from '@/app/api/admin/ride-pricing/route'
+import { ensureRidePricingTable, calculateRideFare } from '@/lib/ride-pricing'
 import { signRideToken } from '@/lib/ride-token'
 
 export async function POST(request: Request) {

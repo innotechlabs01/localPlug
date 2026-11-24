@@ -40,17 +40,34 @@ export async function GET() {
       args: [],
     })
 
+    await db.execute({
+      sql: `CREATE TABLE IF NOT EXISTS driver_panic_alerts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        driver_id INTEGER NOT NULL,
+        order_id INTEGER,
+        lat REAL,
+        lng REAL,
+        note TEXT,
+        status TEXT NOT NULL DEFAULT 'active',
+        created_at TEXT DEFAULT (datetime('now')),
+        resolved_at TEXT
+      )`,
+      args: [],
+    })
+
     const result = await db.execute({
       sql: `SELECT
               d.id, d.name, d.phone, d.vehicle, d.plate, d.category, d.status,
               dl.lat, dl.lng, dl.heading, dl.speed, dl.accuracy, dl.gps_consent, dl.updated_at as gps_updated_at,
               o.id as active_order_id, o.booking_reference, o.customer_name, o.flight_number,
-              o.arrival_date, o.arrival_time, o.destination_address, o.dispatch_status, o.status as order_status
+              o.arrival_date, o.arrival_time, o.destination_address, o.dispatch_status, o.status as order_status,
+              pa.id as panic_alert_id, pa.note as panic_note, pa.created_at as panic_created_at
             FROM drivers d
             LEFT JOIN driver_locations dl ON dl.driver_id = d.id AND dl.gps_consent = 1
             LEFT JOIN orders o ON o.assigned_to = d.id AND o.dispatch_status IN ('assigned', 'en_route', 'picked_up')
+            LEFT JOIN driver_panic_alerts pa ON pa.driver_id = d.id AND pa.status = 'active'
             WHERE d.status IN ('available', 'active', 'on_route', 'busy')
-            ORDER BY dl.updated_at DESC, d.name ASC`,
+            ORDER BY (pa.id IS NOT NULL) DESC, dl.updated_at DESC, d.name ASC`,
       args: [],
     })
 

@@ -90,6 +90,8 @@ export default function DriverPage() {
   const [togglingOnline, setTogglingOnline] = useState(false)
   const [coords, setCoords] = useState<{ lat: number; lng: number }>({ lat: 6.2088, lng: -75.567 })
   const [gpsStatus, setGpsStatus] = useState<string>('')
+  const [panicConfirm, setPanicConfirm] = useState(false)
+  const [panicSent, setPanicSent] = useState(false)
 
   const [form, setForm] = useState({
     name: '', phone: '', email: '', vehicle: '', plate: '', category: 'standard',
@@ -247,6 +249,30 @@ export default function DriverPage() {
 
   const pendingOffer = assignments.find(a => ['pending_acceptance', 'offered'].includes(a.status)) || null
   const activeTrip = assignments.find(a => ['accepted', 'confirmed', 'confirmed_to_client', 'en_route', 'in_progress'].includes(a.status)) || null
+
+  const handlePanicTrigger = async () => {
+    if (!panicConfirm) {
+      setPanicConfirm(true)
+      setTimeout(() => setPanicConfirm(false), 6000)
+      return
+    }
+    try {
+      const res = await fetch('/api/driver/panic', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: activeTrip?.order_id || null,
+          lat: coords.lat,
+          lng: coords.lng,
+          note: `Alerta SOS activada en viaje ${activeTrip?.booking_reference || ''}`,
+        }),
+      })
+      if (res.ok) {
+        setPanicSent(true)
+        setPanicConfirm(false)
+      }
+    } catch { /* ignore */ }
+  }
 
   const handleAction = async (assignmentId: number, action: 'accept' | 'decline') => {
     setActionLoading(assignmentId)
@@ -702,24 +728,44 @@ export default function DriverPage() {
                 <div style={{ fontSize: 12, color: '#9ca0b0', marginBottom: 12 }}>
                   📍 {activeTrip.destination_address || 'Destino confirmado'}
                 </div>
-                <a
-                  href="/driver/assignments"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: '100%',
-                    height: 48,
-                    borderRadius: 10,
-                    background: '#3b82f6',
-                    color: '#fff',
-                    fontWeight: 700,
-                    fontSize: 14,
-                    textDecoration: 'none',
-                  }}
-                >
-                  Gestionar Estado del Recorrido →
-                </a>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <a
+                    href="/driver/assignments"
+                    style={{
+                      flex: 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      height: 48,
+                      borderRadius: 10,
+                      background: '#3b82f6',
+                      color: '#fff',
+                      fontWeight: 700,
+                      fontSize: 14,
+                      textDecoration: 'none',
+                    }}
+                  >
+                    Gestionar Recorrido →
+                  </a>
+                  <button
+                    onClick={handlePanicTrigger}
+                    disabled={panicSent}
+                    style={{
+                      padding: '0 16px',
+                      height: 48,
+                      borderRadius: 10,
+                      border: '2px solid #ef4450',
+                      background: panicSent ? '#7f1d1d' : panicConfirm ? '#ef4450' : 'rgba(239,68,80,0.18)',
+                      color: '#fff',
+                      fontWeight: 800,
+                      fontSize: 13,
+                      cursor: panicSent ? 'default' : 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {panicSent ? 'SOS ENVIADO' : panicConfirm ? '¿CONFIRMAR SOS?' : '🚨 PÁNICO'}
+                  </button>
+                </div>
               </div>
             ) : (
               /* Central Uber-style INICIAR / STOP button (blocked if license expired) */

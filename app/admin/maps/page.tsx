@@ -30,6 +30,9 @@ interface LiveDriver {
   targetLng: number
   distanceKm: number | null
   etaMinutes: number | null
+  panic_alert_id?: number | null
+  panic_note?: string | null
+  panic_created_at?: string | null
 }
 
 const DEFAULT_CENTER = { lat: 6.2088, lng: -75.567 }
@@ -68,6 +71,18 @@ export default function AdminMapsPage() {
   const selected = drivers.find(d => d.id === selectedId) || null
   const withGps = drivers.filter(d => d.hasGps)
   const onTrip = drivers.filter(d => d.active_order_id != null)
+  const panicDrivers = drivers.filter(d => d.panic_alert_id != null)
+
+  const resolvePanic = async (alertId: number) => {
+    try {
+      const res = await fetch('/api/driver/panic', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ alertId }),
+      })
+      if (res.ok) fetchLive()
+    } catch { /* ignore */ }
+  }
 
   const mapLat = selected?.hasGps && selected.lat != null ? selected.lat : DEFAULT_CENTER.lat
   const mapLng = selected?.hasGps && selected.lng != null ? selected.lng : DEFAULT_CENTER.lng
@@ -92,6 +107,45 @@ export default function AdminMapsPage() {
           </button>
         </div>
       </div>
+
+      {/* Active SOS / Panic Alert Banner */}
+      {panicDrivers.length > 0 && (
+        <div style={{
+          padding: 16,
+          borderRadius: 12,
+          background: 'rgba(239, 68, 80, 0.16)',
+          border: '2px solid #ef4450',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10,
+        }}>
+          {panicDrivers.map(pd => (
+            <div key={pd.panic_alert_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: '#ef4450' }}>
+                  🚨 ALERTA DE PÁNICO (SOS) — {pd.name} ({pd.plate || 'Sin placa'})
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--ui-fg)' }}>
+                  {pd.panic_note || 'El conductor activó el botón de pánico'} · Tel: <strong>{pd.phone || '—'}</strong>
+                  {pd.customer_name ? ` · Pasajero: ${pd.customer_name}` : ''}
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button onClick={() => setSelectedId(pd.id)} className="admin-btn admin-btn-secondary admin-btn-sm">
+                  Ver en Mapa
+                </button>
+                <button
+                  onClick={() => pd.panic_alert_id && resolvePanic(pd.panic_alert_id)}
+                  className="admin-btn admin-btn-primary admin-btn-sm"
+                  style={{ background: '#ef4450', borderColor: '#ef4450' }}
+                >
+                  Marcar Atendida
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="admin-grid-4">
         <div className="admin-kpi-card">
@@ -142,8 +196,8 @@ export default function AdminMapsPage() {
                         {drv.vehicle || 'Vehículo'} {drv.plate ? `· ${drv.plate}` : ''}
                       </div>
                     </div>
-                    <span className={`admin-badge ${drv.hasGps ? 'accent' : 'neutral'}`}>
-                      {drv.hasGps ? '● GPS Live' : 'Sin GPS'}
+                    <span className={`admin-badge ${drv.panic_alert_id ? 'danger' : drv.hasGps ? 'accent' : 'neutral'}`}>
+                      {drv.panic_alert_id ? '🚨 SOS PÁNICO' : drv.hasGps ? '● GPS Live' : 'Sin GPS'}
                     </span>
                   </div>
                   {drv.customer_name && (
