@@ -37,6 +37,7 @@ export default function AdminOnDemandRidesPage() {
   const [pricing, setPricing] = useState<PricingRule[]>([])
   const [savingCat, setSavingCat] = useState<string | null>(null)
   const [pricingMsg, setPricingMsg] = useState<string | null>(null)
+  const [pricingError, setPricingError] = useState(false)
   const [loading, setLoading] = useState(true)
 
   const fetchRides = useCallback(async () => {
@@ -76,6 +77,7 @@ export default function AdminOnDemandRidesPage() {
   const savePricingRow = async (row: PricingRule) => {
     setSavingCat(row.category)
     setPricingMsg(null)
+    setPricingError(false)
     try {
       const res = await fetch('/api/admin/ride-pricing', {
         method: 'PUT',
@@ -83,12 +85,15 @@ export default function AdminOnDemandRidesPage() {
         body: JSON.stringify(row),
       })
       if (res.ok) {
+        setPricingError(false)
         setPricingMsg(`Tarifa de ${row.label} actualizada ✓`)
       } else {
         const err = await res.json().catch(() => ({}))
+        setPricingError(true)
         setPricingMsg(err.error || 'Solo Super Admin puede editar tarifas')
       }
     } catch {
+      setPricingError(true)
       setPricingMsg('Error de red al guardar tarifa')
     } finally {
       setSavingCat(null)
@@ -98,16 +103,20 @@ export default function AdminOnDemandRidesPage() {
   const syncRegulationDefaults = async () => {
     setSavingCat('__sync__')
     setPricingMsg(null)
+    setPricingError(false)
     try {
       const res = await fetch('/api/admin/ride-pricing', { method: 'POST' })
       if (res.ok) {
         const data = await res.json()
         if (Array.isArray(data.pricing)) setPricing(data.pricing)
+        setPricingError(false)
         setPricingMsg('Piso Res. 202650004167 sincronizado ✓')
       } else {
+        setPricingError(true)
         setPricingMsg('Solo Super Admin puede sincronizar tarifas')
       }
     } catch {
+      setPricingError(true)
       setPricingMsg('Error de red')
     } finally {
       setSavingCat(null)
@@ -165,7 +174,11 @@ export default function AdminOnDemandRidesPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {pricingMsg && <span className="admin-badge accent">{pricingMsg}</span>}
+            {pricingMsg && (
+              <span className={`admin-badge ${pricingError ? 'danger' : 'accent'}`} role={pricingError ? 'alert' : 'status'}>
+                {pricingMsg}
+              </span>
+            )}
             <button
               onClick={syncRegulationDefaults}
               disabled={savingCat === '__sync__'}
@@ -204,12 +217,12 @@ export default function AdminOnDemandRidesPage() {
                         <div style={{ fontWeight: 600 }}>{row.label}</div>
                         <div style={{ fontSize: 10, color: 'var(--ui-fg-muted)' }}>{row.regulation_ref || 'Res. 202650004167'}</div>
                       </td>
-                      <td><input type="number" step="0.25" className="admin-input" style={{ width: 68, padding: '4px 6px' }} value={row.base_usd} onChange={e => updatePricingField(row.category, 'base_usd', Number(e.target.value))} /></td>
-                      <td><input type="number" step="0.05" className="admin-input" style={{ width: 68, padding: '4px 6px' }} value={row.per_km_usd} onChange={e => updatePricingField(row.category, 'per_km_usd', Number(e.target.value))} /></td>
-                      <td><input type="number" step="0.02" className="admin-input" style={{ width: 68, padding: '4px 6px' }} value={row.per_min_usd} onChange={e => updatePricingField(row.category, 'per_min_usd', Number(e.target.value))} /></td>
-                      <td><input type="number" step="0.5" className="admin-input" style={{ width: 68, padding: '4px 6px' }} value={row.min_fare_usd} onChange={e => updatePricingField(row.category, 'min_fare_usd', Number(e.target.value))} /></td>
-                      <td><input type="number" step="1" className="admin-input" style={{ width: 62, padding: '4px 6px' }} value={row.avg_speed_kmh} onChange={e => updatePricingField(row.category, 'avg_speed_kmh', Number(e.target.value))} /></td>
-                      <td><input type="number" step="1" min="0" max="50" className="admin-input" style={{ width: 62, padding: '4px 6px' }} value={commPct} onChange={e => updatePricingField(row.category, 'platform_commission_pct', Number(e.target.value))} /></td>
+                      <td><input type="number" step="0.25" aria-label={`Tarifa base USD para ${row.label}`} className="admin-input" style={{ width: 68, padding: '4px 6px' }} value={row.base_usd} onChange={e => updatePricingField(row.category, 'base_usd', Number(e.target.value))} /></td>
+                      <td><input type="number" step="0.05" aria-label={`Tarifa por km USD para ${row.label}`} className="admin-input" style={{ width: 68, padding: '4px 6px' }} value={row.per_km_usd} onChange={e => updatePricingField(row.category, 'per_km_usd', Number(e.target.value))} /></td>
+                      <td><input type="number" step="0.02" aria-label={`Tarifa por minuto USD para ${row.label}`} className="admin-input" style={{ width: 68, padding: '4px 6px' }} value={row.per_min_usd} onChange={e => updatePricingField(row.category, 'per_min_usd', Number(e.target.value))} /></td>
+                      <td><input type="number" step="0.5" aria-label={`Tarifa mínima USD para ${row.label}`} className="admin-input" style={{ width: 68, padding: '4px 6px' }} value={row.min_fare_usd} onChange={e => updatePricingField(row.category, 'min_fare_usd', Number(e.target.value))} /></td>
+                      <td><input type="number" step="1" aria-label={`Velocidad promedio km/h para ${row.label}`} className="admin-input" style={{ width: 62, padding: '4px 6px' }} value={row.avg_speed_kmh} onChange={e => updatePricingField(row.category, 'avg_speed_kmh', Number(e.target.value))} /></td>
+                      <td><input type="number" step="1" min="0" max="50" aria-label={`Comisión de plataforma porcentaje para ${row.label}`} className="admin-input" style={{ width: 62, padding: '4px 6px' }} value={commPct} onChange={e => updatePricingField(row.category, 'platform_commission_pct', Number(e.target.value))} /></td>
                       <td style={{ fontSize: 11.5 }}>
                         <strong style={{ color: 'var(--ui-fg)' }}>${exTotal.toFixed(2)}</strong>
                         <span style={{ color: 'var(--ui-fg-muted)' }}> (~{exMin}m) · </span>
