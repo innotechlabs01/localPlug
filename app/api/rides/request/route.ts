@@ -11,8 +11,12 @@ export async function POST(request: Request) {
     const body = await request.json()
     const pickupAddress = String(body.pickupAddress || 'Ubicación GPS actual').trim()
     const destinationAddress = String(body.destinationAddress || '').trim()
+    const stops: string[] = Array.isArray(body.stops)
+      ? body.stops.map((s: unknown) => String(s || '').trim()).filter(Boolean).slice(0, 3)
+      : []
     const category = String(body.category || 'standard').toLowerCase()
-    const distanceKm = Math.max(1, Math.min(120, Number(body.distanceKm) || 6))
+    const baseKm = Math.max(1, Math.min(120, Number(body.distanceKm) || 6))
+    const distanceKm = Math.min(120, baseKm + stops.length * 2)
     const pickupLat = body.pickupLat != null ? Number(body.pickupLat) : 6.2088
     const pickupLng = body.pickupLng != null ? Number(body.pickupLng) : -75.567
 
@@ -47,15 +51,16 @@ export async function POST(request: Request) {
     const bookingRef = `RIDE-${Date.now().toString(36).toUpperCase()}`
     const orderNumber = `OD-${Math.floor(100000 + Math.random() * 900000)}`
 
+    const stopsSummary = stops.length > 0 ? ` · Paradas: ${stops.join(' → ')}` : ''
     const orderRes = await db.execute({
       sql: `INSERT INTO orders (
               order_number, booking_reference, clerk_user_id,
               customer_name, customer_email, customer_phone, customer_notes,
               package_id, package_name, package_price, currency,
-              destination_address, traveler_profile,
+              destination_address, additional_trips, traveler_profile,
               status, dispatch_status, payment_status,
               created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'USD', ?, 'on_demand', 'pending', 'pending', 'card_authorized', datetime('now'), datetime('now'))`,
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'USD', ?, ?, 'on_demand', 'pending', 'pending', 'card_authorized', datetime('now'), datetime('now'))`,
       args: [
         orderNumber,
         bookingRef,
@@ -63,11 +68,12 @@ export async function POST(request: Request) {
         customerName,
         customerEmail || '',
         customerPhone || '',
-        `Recogida: ${pickupAddress} (${pickupLat.toFixed(4)}, ${pickupLng.toFixed(4)}) · ${distanceKm} km · ~${estimatedMinutes} min (${speedKmh} km/h)`,
+        `Recogida: ${pickupAddress}${stopsSummary} · ${distanceKm} km · ~${estimatedMinutes} min (${speedKmh} km/h)`,
         `on_demand_${rule.category}`,
         `Viaje On-Demand (${rule.label})`,
         estimatedUsd,
         destinationAddress,
+        stops.length > 0 ? JSON.stringify(stops) : null,
       ],
     })
     const orderId = Number(orderRes.lastInsertRowid)
@@ -98,7 +104,7 @@ export async function POST(request: Request) {
         await db.execute({
           sql: `INSERT INTO assignments (order_id, driver_id, status, pickup_date, pickup_time, notes, created_at)
                 VALUES (?, ?, 'pending_acceptance', date('now'), time('now'), ?, datetime('now'))`,
-          args: [orderId, offeredDriverId, `ON-DEMAND · Cola #1/${queueSize} · Recogida: ${pickupAddress}`],
+          args: [orderId, offeredDriverId, `ON-DEMAND · Recogida: ${pickupAddress}${stopsSummary}`],
         })
       }
     } catch (e) {

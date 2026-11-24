@@ -70,6 +70,7 @@ export default function RideAppPage() {
   const [gpsReady, setGpsReady] = useState(false)
   const [pickupAddress, setPickupAddress] = useState('Mi ubicación actual (GPS)')
   const [destination, setDestination] = useState('')
+  const [stops, setStops] = useState<string[]>([])
   const [category, setCategory] = useState('standard')
   const [distanceKm, setDistanceKm] = useState(6)
   const [guestName, setGuestName] = useState('')
@@ -134,8 +135,10 @@ export default function RideAppPage() {
     return () => clearInterval(interval)
   }, [activeRideId, rideToken, pollRideStatus])
 
+  const validStops = stops.map(s => s.trim()).filter(Boolean)
+  const effectiveKm = distanceKm + validStops.length * 2
   const selectedRule = pricing.find(c => c.category === category) || pricing[0]
-  const { total: estimatedPrice, mins: estimatedMinutes } = calcFare(selectedRule, distanceKm)
+  const { total: estimatedPrice, mins: estimatedMinutes } = calcFare(selectedRule, effectiveKm)
 
   const handleRequestRide = async () => {
     if (!destination.trim() || isAirportDestination || submitting) return
@@ -153,6 +156,7 @@ export default function RideAppPage() {
         body: JSON.stringify({
           pickupAddress,
           destinationAddress: destination.trim(),
+          stops: validStops,
           category,
           distanceKm,
           pickupLat: coords.lat,
@@ -324,15 +328,44 @@ export default function RideAppPage() {
                 <input
                   value={pickupAddress}
                   onChange={e => setPickupAddress(e.target.value)}
-                  placeholder="Punto de recogida (GPS)"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-white/10 text-xs text-zinc-300 outline-none focus:border-emerald-500"
+                  placeholder="¿Dónde te recogemos? (GPS o dirección)"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-white/10 text-xs text-zinc-200 outline-none focus:border-emerald-500"
                 />
-                <input
-                  value={destination}
-                  onChange={e => setDestination(e.target.value)}
-                  placeholder="¿A dónde vas? (Ej: Provenza, Laureles...)"
-                  className="w-full px-3.5 py-3 rounded-xl bg-zinc-900 border border-white/15 text-sm text-white placeholder:text-zinc-500 outline-none focus:border-emerald-500"
-                />
+                {stops.map((stop, idx) => (
+                  <div key={idx} className="flex items-center gap-1.5">
+                    <input
+                      value={stop}
+                      onChange={e => setStops(prev => prev.map((s, i) => i === idx ? e.target.value : s))}
+                      placeholder={`Parada ${idx + 1} (Ej: Centro Comercial Santa Fe)`}
+                      className="flex-1 px-3.5 py-2 rounded-xl bg-zinc-900 border border-white/10 text-xs text-white placeholder:text-zinc-500 outline-none focus:border-emerald-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setStops(prev => prev.filter((_, i) => i !== idx))}
+                      className="px-2.5 py-2 rounded-xl bg-zinc-900 border border-white/10 text-xs text-zinc-400 hover:text-red-400"
+                      title="Quitar parada"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                <div className="flex items-center gap-2">
+                  <input
+                    value={destination}
+                    onChange={e => setDestination(e.target.value)}
+                    placeholder="¿A dónde vas? (Ej: Provenza, Laureles...)"
+                    className="flex-1 px-3.5 py-3 rounded-xl bg-zinc-900 border border-white/15 text-sm text-white placeholder:text-zinc-500 outline-none focus:border-emerald-500"
+                  />
+                  {stops.length < 3 && (
+                    <button
+                      type="button"
+                      onClick={() => setStops(prev => [...prev, ''])}
+                      className="px-3 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-emerald-400 whitespace-nowrap"
+                    >
+                      + Parada
+                    </button>
+                  )}
+                </div>
                 <div className="flex gap-1.5 flex-wrap">
                   {QUICK_DESTINATIONS.map(d => (
                     <button
@@ -363,7 +396,7 @@ export default function RideAppPage() {
               {/* Vehicle Categories with Dynamic Pricing (Base + Km + Min) */}
               <div className="grid grid-cols-2 gap-2">
                 {pricing.map(rule => {
-                  const { total, mins } = calcFare(rule, distanceKm)
+                  const { total, mins } = calcFare(rule, effectiveKm)
                   const active = category === rule.category
                   return (
                     <button
