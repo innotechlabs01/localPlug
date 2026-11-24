@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server'
 import { findAvailableAgent } from '@/lib/services/agent-service'
+import { requirePermission } from '@/lib/admin/permissions'
 
 export async function GET(request: Request) {
   try {
+    const authError = await requirePermission('support', 'view')
+    if (authError) return authError
+
     const { searchParams } = new URL(request.url)
     const topic = searchParams.get('topic') || undefined
 

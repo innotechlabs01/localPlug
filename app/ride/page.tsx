@@ -15,10 +15,10 @@ interface PricingRule {
 }
 
 const FALLBACK_PRICING: PricingRule[] = [
-  { category: 'standard', label: 'Standard', base_usd: 5, per_km_usd: 0.9, per_min_usd: 0.25, min_fare_usd: 8, avg_speed_kmh: 28 },
-  { category: 'suv', label: 'SUV', base_usd: 9, per_km_usd: 1.3, per_min_usd: 0.35, min_fare_usd: 14, avg_speed_kmh: 28 },
-  { category: 'vip', label: 'VIP', base_usd: 15, per_km_usd: 1.9, per_min_usd: 0.5, min_fare_usd: 22, avg_speed_kmh: 30 },
-  { category: 'luxury', label: 'Luxury', base_usd: 25, per_km_usd: 2.8, per_min_usd: 0.75, min_fare_usd: 35, avg_speed_kmh: 30 },
+  { category: 'standard', label: 'Standard (Básico)', base_usd: 1.5, per_km_usd: 0.65, per_min_usd: 0.1, min_fare_usd: 3, avg_speed_kmh: 28 },
+  { category: 'suv', label: 'SUV / Eléctrico', base_usd: 2.0, per_km_usd: 0.85, per_min_usd: 0.14, min_fare_usd: 4.5, avg_speed_kmh: 28 },
+  { category: 'vip', label: 'VIP (De Lujo)', base_usd: 3.0, per_km_usd: 1.15, per_min_usd: 0.2, min_fare_usd: 7, avg_speed_kmh: 30 },
+  { category: 'luxury', label: 'Luxury Ejecutivo', base_usd: 5.0, per_km_usd: 1.65, per_min_usd: 0.3, min_fare_usd: 12, avg_speed_kmh: 30 },
 ]
 
 const QUICK_DESTINATIONS = [
@@ -207,7 +207,7 @@ export default function RideAppPage() {
       </div>
 
       {/* Floating Glassmorphism Top Bar */}
-      <header className="relative z-20 flex items-center justify-between px-4 pt-3 pb-2 pointer-events-none">
+      <header className="relative z-20 flex items-center justify-between px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-2 pointer-events-none">
         <Link
           href="/"
           className="pointer-events-auto inline-flex items-center gap-2 px-3 py-2 rounded-full bg-zinc-950/85 backdrop-blur-xl border border-white/10 text-white text-xs font-semibold shadow-lg"
@@ -241,7 +241,7 @@ export default function RideAppPage() {
       </header>
 
       {/* Bottom Sheet Overlay */}
-      <div className="relative z-20 mt-auto w-full max-w-lg mx-auto px-2 pb-2">
+      <div className="relative z-20 mt-auto w-full max-w-lg mx-auto px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
         <div className="rounded-3xl bg-zinc-950/95 backdrop-blur-2xl border border-white/10 shadow-2xl p-5 max-h-[72dvh] overflow-y-auto space-y-4">
           {activeTab === 'airport' ? (
             <div className="text-center py-4 space-y-3">
@@ -438,7 +438,7 @@ export default function RideAppPage() {
               )}
 
               {error && (
-                <div className="px-3 py-2 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 text-xs">
+                <div role="alert" className="px-3 py-2 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 text-xs">
                   {error}
                 </div>
               )}

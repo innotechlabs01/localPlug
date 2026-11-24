@@ -71,7 +71,6 @@ export default clerkMiddleware(
       pathname.startsWith('/api/admin/') ||
       pathname.startsWith('/api/driver/') ||
       pathname.startsWith('/api/hotel/') ||
-      pathname.startsWith('/api/chat/') ||
       pathname.startsWith('/api/realtime/')
 
     if (!isOperationalPortalApi) {
