@@ -217,6 +217,7 @@ const polarHandler = Webhooks({
       }, { correlationId: bookingReference }).catch(() => {})
     } catch (err) {
       logger.error('[Polar Webhook] order.paid failed', err instanceof Error ? err : undefined)
+      throw err
     }
   },
   onOrderRefunded: async (payload) => {
@@ -291,6 +292,7 @@ const polarHandler = Webhooks({
       }
     } catch (err) {
       logger.error('[Polar Webhook] order.refunded failed', err instanceof Error ? err : undefined)
+      throw err
     }
   },
   onPayload: async (payload) => {

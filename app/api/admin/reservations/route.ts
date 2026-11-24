@@ -63,7 +63,11 @@ function transformOrderToReservation(order: any, isAdmin: boolean, hotelId: numb
     assignedAt: order.assigned_at,
     dispatchStatus: order.dispatch_status || 'pending',
     destinationAddress: order.destination_address,
-    additionalTrips: order.additional_trips ? (typeof order.additional_trips === 'string' ? JSON.parse(order.additional_trips) : order.additional_trips) : [],
+    additionalTrips: (() => {
+      if (!order.additional_trips) return []
+      if (typeof order.additional_trips !== 'string') return order.additional_trips
+      try { return JSON.parse(order.additional_trips) } catch { return [] }
+    })(),
     priority: order.priority,
     internalNotes: order.internal_notes,
     returnDate: order.return_date || '',

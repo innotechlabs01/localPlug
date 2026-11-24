@@ -1,12 +1,21 @@
 import { NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import { getDb } from '@/lib/db'
-import { requireSuperAdmin } from '@/lib/admin/permissions'
+import { requireSuperAdmin, isSuperAdminClerkUser } from '@/lib/admin/permissions'
 import { DEFAULT_RIDE_PRICING, ensureRidePricingTable } from '@/lib/ride-pricing'
 
 export async function GET() {
   try {
     const pricing = await ensureRidePricingTable()
-    return NextResponse.json({ success: true, pricing })
+    const { userId } = await auth().catch(() => ({ userId: null }))
+    const isSuper = userId ? await isSuperAdminClerkUser(userId) : false
+
+    // Hide internal platform commission percentage from non-super-admin callers
+    const safePricing = isSuper
+      ? pricing
+      : pricing.map(({ platform_commission_pct: _omit, ...pub }) => pub)
+
+    return NextResponse.json({ success: true, pricing: safePricing })
   } catch (err) {
     console.error('[Ride Pricing] GET error:', err)
     return NextResponse.json({ error: 'Failed to load ride pricing' }, { status: 500 })

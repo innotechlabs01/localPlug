@@ -111,10 +111,11 @@ export async function GET(
       } catch { /* non-critical */ }
     }
 
+    const isTerminal = ['completed', 'cancelled'].includes(String(row.status || '')) || row.dispatch_status === 'completed'
     let etaMinutes: number | null = null
     let distanceKm: number | null = null
 
-    if (row.driver_lat != null && row.driver_lng != null) {
+    if (!isTerminal && row.driver_lat != null && row.driver_lng != null) {
       const straight = haversineKm(Number(row.driver_lat), Number(row.driver_lng), pickupLat, pickupLng)
       distanceKm = Math.round(straight * 1.35 * 10) / 10
       etaMinutes = Math.max(2, Math.round((distanceKm / 30) * 60))
@@ -135,13 +136,13 @@ export async function GET(
           ? {
               id: row.assigned_to,
               name: row.driver_name,
-              phone: row.driver_phone,
+              phone: isTerminal ? null : row.driver_phone,
               vehicle: row.driver_vehicle,
               plate: row.driver_plate,
               rating: row.driver_rating,
-              lat: row.driver_lat,
-              lng: row.driver_lng,
-              gpsUpdatedAt: row.gps_updated_at,
+              lat: isTerminal ? null : row.driver_lat,
+              lng: isTerminal ? null : row.driver_lng,
+              gpsUpdatedAt: isTerminal ? null : row.gps_updated_at,
             }
           : null,
         distanceKm,
