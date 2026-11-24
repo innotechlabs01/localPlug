@@ -336,11 +336,11 @@ function DateNav() {
   return (
     <div className="date-nav">
       <div className="date-nav-left">
-        <button className="date-arrow" onClick={goPrev}>
+        <button className="date-arrow" onClick={goPrev} aria-label={`Previous ${view}`}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
         <button className="date-today-btn" onClick={goToday}>Today</button>
-        <button className="date-arrow" onClick={goNext}>
+        <button className="date-arrow" onClick={goNext} aria-label={`Next ${view}`}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
       </div>
@@ -356,7 +356,7 @@ function DateNav() {
             </button>
           ))}
         </div>
-        <button className="date-calendar-btn">
+        <button className="date-calendar-btn" aria-label="Open calendar">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
         </button>
       </div>
@@ -488,10 +488,11 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
     if (!isLoaded) return
     if (!isSignedIn) {
       setPermsLoading(false)
+      router.push('/sign-in/admin')
       return
     }
     loadPermissions()
-  }, [isLoaded, isSignedIn, user?.id, loadPermissions])
+  }, [isLoaded, isSignedIn, user?.id, loadPermissions, router])
 
   const filteredNavSections = navSections
     .map(s => {
@@ -516,7 +517,6 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
     .filter(s => s.items.length > 0)
 
   if (isLoaded && !isSignedIn) {
-    router.push('/sign-in/admin')
     return null
   }
 
@@ -673,6 +673,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="admin-menu-btn"
               aria-label="Toggle sidebar"
+              aria-expanded={sidebarOpen}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>
@@ -695,6 +696,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
             </div>
             <select
               className="input"
+              aria-label="Select language"
               style={{ width: 'auto', padding: '6px 10px', fontSize: 12, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--fg)', outline: 'none' }}
               value={lang}
               onChange={(e) => setLang(e.target.value as 'en' | 'es')}
@@ -702,7 +704,12 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
               <option value="en">EN</option>
               <option value="es">ES</option>
             </select>
-            <button className="icon-btn relative" onClick={() => { setNotifOpen(v => !v); setProfileOpen(false) }}>
+            <button
+              className="icon-btn relative"
+              aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications'}
+              aria-expanded={notifOpen}
+              onClick={() => { setNotifOpen(v => !v); setProfileOpen(false) }}
+            >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
               </svg>
@@ -750,6 +757,8 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
               <button
                 onClick={() => { setProfileOpen(v => !v); setNotifOpen(false) }}
                 className="avatar"
+                aria-label="Account menu"
+                aria-expanded={profileOpen}
               >
                 {user?.firstName?.charAt(0) || 'A'}{user?.lastName?.charAt(0) || 'D'}
               </button>

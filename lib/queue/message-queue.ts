@@ -43,6 +43,13 @@ export async function enqueueMessage(msg: {
 
 export async function dequeuePendingMessages(limit = 10): Promise<QueuedMessage[]> {
   const db = getDb()
+  await db.execute({
+    sql: `UPDATE outgoing_messages
+          SET status = 'pending', updated_at = datetime('now')
+          WHERE status = 'processing'
+            AND updated_at < datetime('now', '-5 minutes')`,
+    args: [],
+  })
   const now = new Date().toISOString()
   const result = await db.execute({
     sql: `UPDATE outgoing_messages
