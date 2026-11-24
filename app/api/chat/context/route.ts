@@ -15,7 +15,7 @@ export async function GET(request: Request) {
 
     const db = getDb()
     const convRes = await db.execute({
-      sql: 'SELECT id, user_identifier, user_name, user_email, user_phone, assigned_agent_id, status, is_flagged FROM conversations WHERE id = ? LIMIT 1',
+      sql: 'SELECT * FROM conversations WHERE id = ? LIMIT 1',
       args: [Number(conversationId)],
     })
     if (convRes.rows.length === 0) {
@@ -97,7 +97,7 @@ export async function PATCH(request: Request) {
       }
     }
     if (isFlagged !== undefined) {
-      updates.push('is_flagged = ?')
+      updates.push('flagged = ?')
       args.push(isFlagged ? 1 : 0)
     }
     if (status && ['ai_active', 'human_active', 'closed'].includes(status)) {

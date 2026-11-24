@@ -45,6 +45,28 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
           </svg>
         ),
       },
+      {
+        label: 'Maps',
+        href: '/admin/maps',
+        moduleSlug: 'dispatch',
+        icon: (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
+            <line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/>
+          </svg>
+        ),
+      },
+      {
+        label: 'On-Demand Rides',
+        href: '/admin/rides',
+        moduleSlug: 'dispatch',
+        icon: (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M5 17h14M5 17a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2"/>
+            <circle cx="7" cy="14" r="2"/><circle cx="17" cy="14" r="2"/>
+          </svg>
+        ),
+      },
     ],
   },
   {
@@ -554,6 +576,8 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
     const titleMap: Record<string, string> = {
       '/admin': t.admin.dashboard.title as string,
       '/admin/dispatch': t.admin.nav.dispatch as string,
+      '/admin/maps': 'Live GPS Map',
+      '/admin/rides': 'On-Demand Rides',
       '/admin/drivers': t.admin.nav.drivers as string,
       '/admin/fleet': t.admin.nav.fleet as string,
       '/admin/customers': t.admin.nav.customers as string,
