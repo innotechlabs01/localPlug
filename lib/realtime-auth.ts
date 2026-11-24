@@ -6,7 +6,7 @@ import { requirePermission } from '@/lib/admin/permissions'
  * (admin/staff, driver, or hotel manager) before streaming internal outbox events.
  */
 export async function canAccessRealtimeOutbox(userId: string): Promise<boolean> {
-  if ((await requirePermission('dashboard', 'view')) === null) return true
+  if (!(await requirePermission('dashboard', 'view'))) return true
   const db = getDb()
   const [driverRes, hotelRes] = await Promise.all([
     db.execute({ sql: `SELECT 1 FROM drivers WHERE clerk_user_id = ? LIMIT 1`, args: [userId] }),
