@@ -609,8 +609,13 @@ export default function DriverPage() {
                 color: '#fff',
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6, color: '#10b981' }}>
-                    ● Nueva Solicitud de Servicio
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6,
+                    color: (pendingOffer.package_name || '').toLowerCase().includes('on-demand') ? '#10b981' : '#d4a84b',
+                  }}>
+                    {(pendingOffer.package_name || '').toLowerCase().includes('on-demand')
+                      ? '🚗 VIAJE ON-DEMAND'
+                      : '✈️ SERVICIO DE AEROPUERTO'}
                   </span>
                   <span style={{ fontSize: 11, color: '#9ca0b0' }}>
                     {pendingOffer.booking_reference || `#${pendingOffer.order_id}`}

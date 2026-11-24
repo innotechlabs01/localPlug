@@ -1,0 +1,95 @@
+import { NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
+import { getDb } from '@/lib/db'
+
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371
+  const dLat = ((lat2 - lat1) * Math.PI) / 180
+  const dLng = ((lng2 - lng1) * Math.PI) / 180
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2)
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const { userId } = await auth()
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { id } = await params
+    const { searchParams } = new URL(request.url)
+    const pickupLat = Number(searchParams.get('lat') || 6.2088)
+    const pickupLng = Number(searchParams.get('lng') || -75.567)
+
+    const db = getDb()
+    const res = await db.execute({
+      sql: `SELECT
+              o.id, o.booking_reference, o.status, o.dispatch_status, o.payment_status,
+              o.package_name, o.package_price, o.destination_address, o.assigned_to,
+              d.name as driver_name, d.phone as driver_phone, d.vehicle as driver_vehicle,
+              d.plate as driver_plate, d.rating as driver_rating,
+              dl.lat as driver_lat, dl.lng as driver_lng, dl.updated_at as gps_updated_at
+            FROM orders o
+            LEFT JOIN drivers d ON o.assigned_to = d.id
+            LEFT JOIN driver_locations dl ON dl.driver_id = d.id AND dl.gps_consent = 1
+            WHERE o.id = ? AND o.clerk_user_id = ?
+            LIMIT 1`,
+      args: [Number(id), userId],
+    })
+
+    if (res.rows.length === 0) {
+      return NextResponse.json({ error: 'Ride not found' }, { status: 404 })
+    }
+
+    const row = res.rows[0] as any
+    let etaMinutes: number | null = null
+    let distanceKm: number | null = null
+
+    if (row.driver_lat != null && row.driver_lng != null) {
+      const straight = haversineKm(Number(row.driver_lat), Number(row.driver_lng), pickupLat, pickupLng)
+      distanceKm = Math.round(straight * 1.35 * 10) / 10
+      etaMinutes = Math.max(2, Math.round((distanceKm / 30) * 60))
+    }
+
+    return NextResponse.json({
+      success: true,
+      ride: {
+        id: row.id,
+        bookingReference: row.booking_reference,
+        status: row.status,
+        dispatchStatus: row.dispatch_status,
+        paymentStatus: row.payment_status,
+        packageName: row.package_name,
+        price: row.package_price,
+        destinationAddress: row.destination_address,
+        driver: row.assigned_to
+          ? {
+              id: row.assigned_to,
+              name: row.driver_name,
+              phone: row.driver_phone,
+              vehicle: row.driver_vehicle,
+              plate: row.driver_plate,
+              rating: row.driver_rating,
+              lat: row.driver_lat,
+              lng: row.driver_lng,
+              gpsUpdatedAt: row.gps_updated_at,
+            }
+          : null,
+        distanceKm,
+        etaMinutes,
+      },
+    })
+  } catch (err) {
+    console.error('[Ride Status] GET error:', err)
+    return NextResponse.json({ error: 'Failed to fetch ride status' }, { status: 500 })
+  }
+}

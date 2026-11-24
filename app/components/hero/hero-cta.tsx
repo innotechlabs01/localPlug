@@ -5,10 +5,15 @@ import { useI18n } from '@/lib/i18n'
 export default function HeroCta() {
   const { t } = useI18n()
   return (
-    <div className="flex flex-col sm:flex-row gap-4">
+    <div className="flex flex-col sm:flex-row gap-4 flex-wrap">
       <Link href="/booking?plan=smooth-landing">
         <Button variant="primary" size="lg">
           {t.hero.planNow}
+        </Button>
+      </Link>
+      <Link href="/ride">
+        <Button variant="secondary" size="lg">
+          🚗 Pedir Viaje / App
         </Button>
       </Link>
       <a href="#pricing">
