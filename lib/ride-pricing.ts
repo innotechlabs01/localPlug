@@ -60,50 +60,55 @@ export const DEFAULT_RIDE_PRICING: Omit<RidePricingRow, 'last_reviewed_at'>[] = 
   },
 ]
 
+let pricingInitialized = false
+
 export async function ensureRidePricingTable(): Promise<RidePricingRow[]> {
   const db = getDb()
-  await db.execute({
-    sql: `CREATE TABLE IF NOT EXISTS ride_pricing_config (
-      category TEXT PRIMARY KEY,
-      label TEXT NOT NULL,
-      base_usd REAL NOT NULL,
-      per_km_usd REAL NOT NULL,
-      per_min_usd REAL NOT NULL,
-      min_fare_usd REAL NOT NULL,
-      avg_speed_kmh REAL NOT NULL DEFAULT 28,
-      platform_commission_pct REAL NOT NULL DEFAULT 20,
-      regulation_ref TEXT NOT NULL DEFAULT 'Res. 202650004167 Medellín',
-      last_reviewed_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now'))
-    )`,
-    args: [],
-  })
-
-  for (const colSql of [
-    `ALTER TABLE ride_pricing_config ADD COLUMN platform_commission_pct REAL NOT NULL DEFAULT 20`,
-    `ALTER TABLE ride_pricing_config ADD COLUMN regulation_ref TEXT NOT NULL DEFAULT 'Res. 202650004167 Medellín'`,
-    `ALTER TABLE ride_pricing_config ADD COLUMN last_reviewed_at TEXT DEFAULT (datetime('now'))`,
-  ]) {
-    await db.execute({ sql: colSql, args: [] }).catch(() => {})
-  }
-
-  for (const row of DEFAULT_RIDE_PRICING) {
+  if (!pricingInitialized) {
     await db.execute({
-      sql: `INSERT OR IGNORE INTO ride_pricing_config
-              (category, label, base_usd, per_km_usd, per_min_usd, min_fare_usd, avg_speed_kmh, platform_commission_pct, regulation_ref, last_reviewed_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
-      args: [
-        row.category,
-        row.label,
-        row.base_usd,
-        row.per_km_usd,
-        row.per_min_usd,
-        row.min_fare_usd,
-        row.avg_speed_kmh,
-        row.platform_commission_pct,
-        row.regulation_ref,
-      ],
+      sql: `CREATE TABLE IF NOT EXISTS ride_pricing_config (
+        category TEXT PRIMARY KEY,
+        label TEXT NOT NULL,
+        base_usd REAL NOT NULL,
+        per_km_usd REAL NOT NULL,
+        per_min_usd REAL NOT NULL,
+        min_fare_usd REAL NOT NULL,
+        avg_speed_kmh REAL NOT NULL DEFAULT 28,
+        platform_commission_pct REAL NOT NULL DEFAULT 20,
+        regulation_ref TEXT NOT NULL DEFAULT 'Res. 202650004167 Medellín',
+        last_reviewed_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now'))
+      )`,
+      args: [],
     })
+
+    for (const colSql of [
+      `ALTER TABLE ride_pricing_config ADD COLUMN platform_commission_pct REAL NOT NULL DEFAULT 20`,
+      `ALTER TABLE ride_pricing_config ADD COLUMN regulation_ref TEXT NOT NULL DEFAULT 'Res. 202650004167 Medellín'`,
+      `ALTER TABLE ride_pricing_config ADD COLUMN last_reviewed_at TEXT DEFAULT (datetime('now'))`,
+    ]) {
+      await db.execute({ sql: colSql, args: [] }).catch(() => {})
+    }
+
+    for (const row of DEFAULT_RIDE_PRICING) {
+      await db.execute({
+        sql: `INSERT OR IGNORE INTO ride_pricing_config
+                (category, label, base_usd, per_km_usd, per_min_usd, min_fare_usd, avg_speed_kmh, platform_commission_pct, regulation_ref, last_reviewed_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+        args: [
+          row.category,
+          row.label,
+          row.base_usd,
+          row.per_km_usd,
+          row.per_min_usd,
+          row.min_fare_usd,
+          row.avg_speed_kmh,
+          row.platform_commission_pct,
+          row.regulation_ref,
+        ],
+      })
+    }
+    pricingInitialized = true
   }
 
   const res = await db.execute({

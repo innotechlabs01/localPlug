@@ -655,9 +655,14 @@ export default function DriverPage() {
                 <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>
                   {pendingOffer.customer_name || 'Pasajero'} · {pendingOffer.package_name || 'Traslado'}
                 </div>
-                <div style={{ fontSize: 12.5, color: '#9ca0b0', marginBottom: 12 }}>
-                  📍 {pendingOffer.destination_address || 'Aeropuerto JMC / Medellín'}
-                  {pendingOffer.flight_number ? ` · ✈️ ${pendingOffer.flight_number}` : ''}
+                <div style={{ fontSize: 12.5, color: '#9ca0b0', marginBottom: 12, lineHeight: 1.45 }}>
+                  <div>📍 Destino: <strong style={{ color: '#f0f2f5' }}>{pendingOffer.destination_address || 'Aeropuerto JMC / Medellín'}</strong></div>
+                  {pendingOffer.observations && (
+                    <div style={{ fontSize: 11.5, color: '#cbd5e1', marginTop: 2 }}>{pendingOffer.observations}</div>
+                  )}
+                  {pendingOffer.flight_number && (
+                    <div style={{ fontSize: 11.5, color: '#d4a84b', marginTop: 2 }}>✈️ Vuelo {pendingOffer.flight_number}</div>
+                  )}
                 </div>
                 <div style={{ display: 'flex', gap: 10 }}>
                   <button

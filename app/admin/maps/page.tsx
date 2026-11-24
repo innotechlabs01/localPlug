@@ -110,7 +110,7 @@ export default function AdminMapsPage() {
 
       {/* Active SOS / Panic Alert Banner */}
       {panicDrivers.length > 0 && (
-        <div style={{
+        <div role="alert" style={{
           padding: 16,
           borderRadius: 12,
           background: 'rgba(239, 68, 80, 0.16)',

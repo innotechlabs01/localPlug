@@ -15,10 +15,10 @@ interface PricingRule {
 }
 
 const FALLBACK_PRICING: PricingRule[] = [
-  { category: 'standard', label: 'Standard', base_usd: 5, per_km_usd: 0.9, per_min_usd: 0.25, min_fare_usd: 8, avg_speed_kmh: 28 },
-  { category: 'suv', label: 'SUV', base_usd: 9, per_km_usd: 1.3, per_min_usd: 0.35, min_fare_usd: 14, avg_speed_kmh: 28 },
-  { category: 'vip', label: 'VIP', base_usd: 15, per_km_usd: 1.9, per_min_usd: 0.5, min_fare_usd: 22, avg_speed_kmh: 30 },
-  { category: 'luxury', label: 'Luxury', base_usd: 25, per_km_usd: 2.8, per_min_usd: 0.75, min_fare_usd: 35, avg_speed_kmh: 30 },
+  { category: 'standard', label: 'Standard (Básico)', base_usd: 1.5, per_km_usd: 0.65, per_min_usd: 0.1, min_fare_usd: 3, avg_speed_kmh: 28 },
+  { category: 'suv', label: 'SUV / Eléctrico', base_usd: 2.0, per_km_usd: 0.85, per_min_usd: 0.14, min_fare_usd: 4.5, avg_speed_kmh: 28 },
+  { category: 'vip', label: 'VIP (De Lujo)', base_usd: 3.0, per_km_usd: 1.15, per_min_usd: 0.2, min_fare_usd: 7, avg_speed_kmh: 30 },
+  { category: 'luxury', label: 'Luxury Ejecutivo', base_usd: 5.0, per_km_usd: 1.65, per_min_usd: 0.3, min_fare_usd: 12, avg_speed_kmh: 30 },
 ]
 
 const QUICK_DESTINATIONS = [
@@ -70,6 +70,7 @@ export default function RideAppPage() {
   const [gpsReady, setGpsReady] = useState(false)
   const [pickupAddress, setPickupAddress] = useState('Mi ubicación actual (GPS)')
   const [destination, setDestination] = useState('')
+  const [stops, setStops] = useState<string[]>([])
   const [category, setCategory] = useState('standard')
   const [distanceKm, setDistanceKm] = useState(6)
   const [guestName, setGuestName] = useState('')
@@ -82,7 +83,7 @@ export default function RideAppPage() {
 
   const isAirportDestination = AIRPORT_KEYWORDS.test(destination)
 
-  // Load live Super Admin pricing + restore saved active ride from localStorage
+  // Load live Super Admin pricing + restore saved active ride from URL (?ride=&token=) or localStorage
   useEffect(() => {
     fetch('/api/admin/ride-pricing')
       .then(r => r.json())
@@ -90,6 +91,15 @@ export default function RideAppPage() {
       .catch(() => {})
 
     try {
+      const urlParams = new URLSearchParams(window.location.search)
+      const qRide = urlParams.get('ride')
+      const qToken = urlParams.get('token')
+      if (qRide && qToken) {
+        setActiveRideId(Number(qRide))
+        setRideToken(qToken)
+        localStorage.setItem('lp_active_ride', JSON.stringify({ rideId: Number(qRide), rideToken: qToken }))
+        return
+      }
       const saved = localStorage.getItem('lp_active_ride')
       if (saved) {
         const parsed = JSON.parse(saved)
@@ -100,6 +110,26 @@ export default function RideAppPage() {
       }
     } catch { /* ignore */ }
   }, [])
+
+  // Debounced real road distance estimate via OSRM/Nominatim
+  useEffect(() => {
+    if (!destination.trim() || destination.trim().length < 4 || isAirportDestination) return
+    const timer = setTimeout(() => {
+      fetch('/api/rides/estimate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pickupLat: coords.lat, pickupLng: coords.lng, destination: destination.trim() }),
+      })
+        .then(r => r.json())
+        .then(d => {
+          if (d.success && Number.isFinite(Number(d.distanceKm))) {
+            setDistanceKm(Number(d.distanceKm))
+          }
+        })
+        .catch(() => {})
+    }, 700)
+    return () => clearTimeout(timer)
+  }, [destination, coords.lat, coords.lng, isAirportDestination])
 
   useEffect(() => {
     if (typeof window === 'undefined' || !('geolocation' in navigator)) return
@@ -134,8 +164,10 @@ export default function RideAppPage() {
     return () => clearInterval(interval)
   }, [activeRideId, rideToken, pollRideStatus])
 
+  const validStops = stops.map(s => s.trim()).filter(Boolean)
+  const effectiveKm = distanceKm + validStops.length * 2
   const selectedRule = pricing.find(c => c.category === category) || pricing[0]
-  const { total: estimatedPrice, mins: estimatedMinutes } = calcFare(selectedRule, distanceKm)
+  const { total: estimatedPrice, mins: estimatedMinutes } = calcFare(selectedRule, effectiveKm)
 
   const handleRequestRide = async () => {
     if (!destination.trim() || isAirportDestination || submitting) return
@@ -153,6 +185,7 @@ export default function RideAppPage() {
         body: JSON.stringify({
           pickupAddress,
           destinationAddress: destination.trim(),
+          stops: validStops,
           category,
           distanceKm,
           pickupLat: coords.lat,
@@ -203,7 +236,7 @@ export default function RideAppPage() {
       </div>
 
       {/* Floating Glassmorphism Top Bar */}
-      <header className="relative z-20 flex items-center justify-between px-4 pt-3 pb-2 pointer-events-none">
+      <header className="relative z-20 flex items-center justify-between px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-2 pointer-events-none">
         <Link
           href="/"
           className="pointer-events-auto inline-flex items-center gap-2 px-3 py-2 rounded-full bg-zinc-950/85 backdrop-blur-xl border border-white/10 text-white text-xs font-semibold shadow-lg"
@@ -237,7 +270,7 @@ export default function RideAppPage() {
       </header>
 
       {/* Bottom Sheet Overlay */}
-      <div className="relative z-20 mt-auto w-full max-w-lg mx-auto px-2 pb-2">
+      <div className="relative z-20 mt-auto w-full max-w-lg mx-auto px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
         <div className="rounded-3xl bg-zinc-950/95 backdrop-blur-2xl border border-white/10 shadow-2xl p-5 max-h-[72dvh] overflow-y-auto space-y-4">
           {activeTab === 'airport' ? (
             <div className="text-center py-4 space-y-3">
@@ -324,15 +357,44 @@ export default function RideAppPage() {
                 <input
                   value={pickupAddress}
                   onChange={e => setPickupAddress(e.target.value)}
-                  placeholder="Punto de recogida (GPS)"
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-white/10 text-xs text-zinc-300 outline-none focus:border-emerald-500"
+                  placeholder="¿Dónde te recogemos? (GPS o dirección)"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-white/10 text-xs text-zinc-200 outline-none focus:border-emerald-500"
                 />
-                <input
-                  value={destination}
-                  onChange={e => setDestination(e.target.value)}
-                  placeholder="¿A dónde vas? (Ej: Provenza, Laureles...)"
-                  className="w-full px-3.5 py-3 rounded-xl bg-zinc-900 border border-white/15 text-sm text-white placeholder:text-zinc-500 outline-none focus:border-emerald-500"
-                />
+                {stops.map((stop, idx) => (
+                  <div key={idx} className="flex items-center gap-1.5">
+                    <input
+                      value={stop}
+                      onChange={e => setStops(prev => prev.map((s, i) => i === idx ? e.target.value : s))}
+                      placeholder={`Parada ${idx + 1} (Ej: Centro Comercial Santa Fe)`}
+                      className="flex-1 px-3.5 py-2 rounded-xl bg-zinc-900 border border-white/10 text-xs text-white placeholder:text-zinc-500 outline-none focus:border-emerald-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setStops(prev => prev.filter((_, i) => i !== idx))}
+                      className="px-2.5 py-2 rounded-xl bg-zinc-900 border border-white/10 text-xs text-zinc-400 hover:text-red-400"
+                      title="Quitar parada"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+                <div className="flex items-center gap-2">
+                  <input
+                    value={destination}
+                    onChange={e => setDestination(e.target.value)}
+                    placeholder="¿A dónde vas? (Ej: Provenza, Laureles...)"
+                    className="flex-1 px-3.5 py-3 rounded-xl bg-zinc-900 border border-white/15 text-sm text-white placeholder:text-zinc-500 outline-none focus:border-emerald-500"
+                  />
+                  {stops.length < 3 && (
+                    <button
+                      type="button"
+                      onClick={() => setStops(prev => [...prev, ''])}
+                      className="px-3 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-emerald-400 whitespace-nowrap"
+                    >
+                      + Parada
+                    </button>
+                  )}
+                </div>
                 <div className="flex gap-1.5 flex-wrap">
                   {QUICK_DESTINATIONS.map(d => (
                     <button
@@ -363,7 +425,7 @@ export default function RideAppPage() {
               {/* Vehicle Categories with Dynamic Pricing (Base + Km + Min) */}
               <div className="grid grid-cols-2 gap-2">
                 {pricing.map(rule => {
-                  const { total, mins } = calcFare(rule, distanceKm)
+                  const { total, mins } = calcFare(rule, effectiveKm)
                   const active = category === rule.category
                   return (
                     <button
@@ -405,7 +467,7 @@ export default function RideAppPage() {
               )}
 
               {error && (
-                <div className="px-3 py-2 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 text-xs">
+                <div role="alert" className="px-3 py-2 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 text-xs">
                   {error}
                 </div>
               )}

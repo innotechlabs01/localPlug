@@ -41,24 +41,24 @@ export default function AdminOnDemandRidesPage() {
 
   const fetchRides = useCallback(async () => {
     try {
-      const [res, prRes] = await Promise.all([
-        adminFetch('/api/admin/reservations?limit=200'),
-        fetch('/api/admin/ride-pricing'),
-      ])
+      const res = await adminFetch('/api/admin/reservations?limit=200')
       if (res.ok) {
         const data = await res.json()
         const all: RideOrder[] = data.reservations || []
         setRides(all.filter(r => r.travelerProfile === 'on_demand' || (r.bookingReference || '').startsWith('RIDE-')))
-      }
-      if (prRes.ok) {
-        const prData = await prRes.json()
-        if (Array.isArray(prData.pricing)) setPricing(prData.pricing)
       }
     } catch (err) {
       console.error('[Admin Rides] Fetch error:', err)
     } finally {
       setLoading(false)
     }
+  }, [])
+
+  useEffect(() => {
+    fetch('/api/admin/ride-pricing')
+      .then(r => r.json())
+      .then(prData => { if (Array.isArray(prData.pricing)) setPricing(prData.pricing) })
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
