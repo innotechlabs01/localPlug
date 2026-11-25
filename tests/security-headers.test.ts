@@ -9,7 +9,7 @@ describe('Security Headers Configuration', () => {
     expect(Array.isArray(headersConfig)).toBe(true)
 
     const globalRouteConfig = headersConfig.find(
-      (entry: { source: string }) => entry.source === '/:path*',
+      (entry: { source: string }) => entry.source === '/(.*)',
     )
     expect(globalRouteConfig).toBeDefined()
 
