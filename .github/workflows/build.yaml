@@ -39,7 +39,7 @@ jobs:
         run: |
           # Convertimos todo a minúsculas para cumplir con GHCR [cite: 37, 42]
           REPO_LOWER="${GITHUB_REPOSITORY,,}"
-          echo "full_image_name=${{ env.REGISTRY }}/${REPO_LOWER}-${{ matrix.image_suffix }}" >> $GITHUB_OUTPUT
+          echo "full_image_name=${{ env.REGISTRY }}/${REPO_LOWER}" >> $GITHUB_OUTPUT
 
       - name: Build and Push
         uses: docker/build-push-action@v7
