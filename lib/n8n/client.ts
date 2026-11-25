@@ -76,6 +76,7 @@ export async function sendN8nWebhook(
         ...(N8N_API_KEY ? { Authorization: `Bearer ${N8N_API_KEY}` } : {}),
       },
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(10000),
     })
 
     if (!response.ok) {
@@ -425,6 +426,7 @@ export async function sendWhatsAppDirect(data: {
         number: cleanNumber,
         text: data.message,
       }),
+      signal: AbortSignal.timeout(10000),
     })
 
     if (!response.ok) {
@@ -635,6 +637,7 @@ export async function sendWhatsAppButtons(data: {
         description: data.description,
         buttons: data.buttons,
       }),
+      signal: AbortSignal.timeout(10000),
     })
 
     if (!response.ok) {

@@ -113,30 +113,7 @@ export async function ensureDriverProfile(clerkId: string): Promise<DriverProfil
     return linked.rows[0] as unknown as DriverProfile
   }
 
-  // 4. No existing record — create new
-  const result = await db.execute({
-    sql: `INSERT INTO drivers (
-      clerk_user_id, name, email, phone, vehicle, plate, category,
-      status, rating, languages, experience_level, profile_complete,
-      created_at, updated_at
-    ) VALUES (
-      ?, ?, ?, NULL, 'Sin asignar', 'Sin asignar', 'standard',
-      'inactive', 5.0, 'Spanish', 'Standard', 0,
-      datetime('now'), datetime('now')
-    )`,
-    args: [clerkId, name, email],
-  })
-
-  const driverId = Number(result.lastInsertRowid)
-  console.log(`[Driver Auth] Auto-created driver profile: ${name} (${email}) id=${driverId}`)
-
-  // Ensure Clerk metadata has driver role
-  ensureClerkRole(clerkId, 'driver')
-
-  const newDriver = await db.execute({
-    sql: `SELECT d.* FROM drivers d WHERE d.id = ?`,
-    args: [driverId],
-  })
-
-  return newDriver.rows[0] as unknown as DriverProfile
+  // 4. Do NOT auto-create driver profiles for arbitrary Clerk users (prevents privilege escalation).
+  // Drivers must be pre-registered by an admin (matched by clerk_user_id or verified email).
+  throw new Error('DRIVER_NOT_FOUND')
 }

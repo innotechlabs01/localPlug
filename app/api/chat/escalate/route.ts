@@ -42,15 +42,10 @@ export async function POST(request: Request) {
     }
 
     const userId = userResult.rows[0].id as number
-    const roleId = userResult.rows[0].role_id
 
-    // Check if the user is an agent/admin (has a role_id assigned)
-    if (roleId === null) {
-      return NextResponse.json(
-        { error: 'Forbidden: insufficient permissions' },
-        { status: 403 }
-      )
-    }
+    const { requirePermission } = await import('@/lib/admin/permissions')
+    const authError = await requirePermission('support', 'update')
+    if (authError) return authError
 
     // Find the linked support_agents record via user_id
     const saResult = await db.execute({

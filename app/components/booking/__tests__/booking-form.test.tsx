@@ -3,6 +3,11 @@ import { render, screen, fireEvent, act } from '@testing-library/react'
 import { I18nProvider } from '@/lib/i18n'
 import BookingForm from '../booking-form'
 
+vi.mock('@clerk/nextjs', () => ({
+  useAuth: () => ({ isSignedIn: false, userId: null }),
+  useClerk: () => ({ openSignIn: vi.fn() }),
+}))
+
 beforeAll(() => {
   global.fetch = vi.fn((url: string) => {
     if (url === '/api/config') {

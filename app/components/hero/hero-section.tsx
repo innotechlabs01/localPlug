@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import HeroCta from './hero-cta'
 import { useI18n } from '@/lib/i18n'
-import { useState, useEffect } from 'react'
+import { useEvents } from '@/lib/api/hooks'
 
 interface HeroBannerEvent {
   id: number
@@ -15,17 +15,9 @@ interface HeroBannerEvent {
 }
 
 function FeriaBanner() {
-  const [event, setEvent] = useState<HeroBannerEvent | null | undefined>(undefined)
+  const { data } = useEvents()
+  const event = data?.hero_banner ?? null
 
-  useEffect(() => {
-    fetch('/api/events', { cache: 'no-store' })
-      .then(r => (r.ok ? r.json() : null))
-      .then(data => setEvent(data?.hero_banner ?? null))
-      .catch(() => setEvent(null))
-  }, [])
-
-  // Loading state: render nothing to avoid a flash of the old event
-  if (event === undefined) return null
   // No active hero banner event: hide the banner entirely
   if (!event) return null
 

@@ -22,13 +22,18 @@ const MODULES = [
   { name: 'Plans', slug: 'plans', icon: 'CreditCard', sort: 16 },
   { name: 'Trips', slug: 'trips', icon: 'Map', sort: 16.5 },
   { name: 'Booking', slug: 'booking', icon: 'Calendar', sort: 17 },
+  { name: 'Parking Proofs', slug: 'parking_proofs', icon: 'Receipt', sort: 18 },
+  { name: 'Payouts', slug: 'payouts', icon: 'Wallet', sort: 19 },
+  { name: 'Audit Log', slug: 'audit', icon: 'FileText', sort: 20 },
+  { name: 'Event Queue & DLQ', slug: 'queue', icon: 'Activity', sort: 21 },
 ]
 
 const DEFAULT_PERMISSIONS: Record<string, { view: boolean; create: boolean; update: boolean; delete: boolean }> = {
-  admin:     { view: true,  create: true,  update: true,  delete: true  },
-  manager:   { view: true,  create: true,  update: true,  delete: false },
-  concierge: { view: true,  create: true,  update: true,  delete: false },
-  viewer:    { view: true,  create: false, update: false, delete: false },
+  super_admin: { view: true,  create: true,  update: true,  delete: true  },
+  admin:       { view: true,  create: true,  update: true,  delete: true  },
+  manager:     { view: true,  create: true,  update: true,  delete: false },
+  concierge:   { view: true,  create: true,  update: true,  delete: false },
+  viewer:      { view: true,  create: false, update: false, delete: false },
 }
 
 const RESTRICTED_MODULES: Record<string, Record<string, { view: boolean; create: boolean; update: boolean; delete: boolean }>> = {
@@ -75,6 +80,16 @@ export async function ensureSchema(): Promise<void> {
   const needsMigration = tableCheck.rows.length === 0
 
   if (!needsMigration) {
+    // Sync any newly added roles (super_admin) or modules idempotently
+    await db.execute(
+      `INSERT OR IGNORE INTO roles (name, description) VALUES ('super_admin', 'Super Administrator with unrestricted access to all modules, employees, roles and financial KPIs')`,
+    ).catch(() => {})
+    for (const mod of MODULES) {
+      await db.execute({
+        sql: `INSERT OR IGNORE INTO modules (name, slug, description, icon, sort_order) VALUES (?, ?, ?, ?, ?)`,
+        args: [mod.name, mod.slug, `${mod.name} module`, mod.icon, mod.sort],
+      }).catch(() => {})
+    }
     _migrated = true
     return
   }
@@ -112,6 +127,9 @@ export async function ensureSchema(): Promise<void> {
     roleMap[row.name as string] = row.id as number
   }
 
+  if (!roleMap.super_admin) {
+    await db.execute("INSERT OR IGNORE INTO roles (name, description) VALUES ('super_admin', 'Super Administrator with unrestricted access to all modules, employees, roles and financial KPIs')")
+  }
   if (!roleMap.admin) {
     await db.execute("INSERT INTO roles (name, description) VALUES ('admin', 'Super administrator with full access')")
     roleMap.admin = 1

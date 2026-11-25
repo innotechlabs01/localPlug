@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { closeConversation, releaseToAIMode } from '@/lib/services/chat-service'
 import { auth } from '@clerk/nextjs/server'
+import { requirePermission } from '@/lib/admin/permissions'
 
 export async function POST(request: Request) {
   try {
@@ -16,6 +17,9 @@ export async function POST(request: Request) {
     let conversation
 
     if (releaseToAi) {
+      const authError = await requirePermission('support', 'update')
+      if (authError) return authError
+
       const { userId } = await auth()
       if (!userId) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -32,10 +36,8 @@ export async function POST(request: Request) {
       const agentId = Number(userResult.rows[0].id)
       conversation = await releaseToAIMode(conversationId, agentId, closedBy)
     } else if (closedBy !== 'user') {
-      const { userId } = await auth()
-      if (!userId) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-      }
+      const authError = await requirePermission('support', 'update')
+      if (authError) return authError
 
       conversation = await closeConversation(conversationId, closedBy || 'agent')
     } else {

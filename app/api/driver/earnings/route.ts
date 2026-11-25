@@ -22,17 +22,23 @@ export async function GET() {
     ])
     const fare = categoryFare ?? 0
 
-    // Get completed/active assignments with earnings (per-order: category fare)
+    // Get completed/active assignments with earnings (preferring real payout_ledger entries)
     const assignmentsResult = await db.execute({
       sql: `SELECT
               a.id, a.order_id, a.status, a.created_at AS pickup_date,
               o.customer_name, o.package_name, o.package_price, o.currency,
               o.destination_address, o.arrival_date, o.arrival_time,
-              o.booking_reference, o.order_number, o.airport_parking, o.parking_proof_status
+              o.booking_reference, o.order_number, o.airport_parking, o.parking_proof_status,
+              pl.earned_at AS ledger_earned_at, pl.amount_usd AS ledger_amount_usd
             FROM assignments a
             JOIN orders o ON a.order_id = o.id
+            LEFT JOIN payout_ledger pl
+              ON pl.booking_reference = o.booking_reference
+              AND pl.payee_type = 'driver'
+              AND pl.payee_id = a.driver_id
+              AND pl.status != 'written_off'
             WHERE a.driver_id = ? AND a.status IN ('completed', 'accepted', 'confirmed_to_client')
-            ORDER BY a.created_at DESC
+            ORDER BY COALESCE(pl.earned_at, a.created_at) DESC
             LIMIT 50`,
       args: [driverId],
     })
@@ -40,13 +46,14 @@ export async function GET() {
     const assignments = (assignmentsResult.rows || []).map((row: any) => {
       const packagePrice = Number(row.package_price) || 0
       const isCompleted = row.status === 'completed'
-      const earned = isCompleted ? Math.round(fare * 100) / 100 : 0
+      const ledgerAmount = row.ledger_amount_usd != null ? Number(row.ledger_amount_usd) : null
+      const earned = isCompleted ? Math.round((ledgerAmount ?? fare) * 100) / 100 : 0
 
       return {
         id: row.id,
         order_id: row.order_id,
         status: row.status,
-        date: row.pickup_date || row.arrival_date || '',
+        date: row.ledger_earned_at || row.pickup_date || row.arrival_date || '',
         time: row.arrival_time || '',
         customer_name: row.customer_name || 'Cliente',
         package_name: row.package_name || 'Servicio',
@@ -91,9 +98,9 @@ export async function GET() {
       d.setDate(now.getDate() - i)
       const dateStr = d.toISOString().split('T')[0]
       const dayEarnings = assignments
-        .filter(a => a.date === dateStr && a.status === 'completed')
+        .filter(a => String(a.date).startsWith(dateStr) && a.status === 'completed')
         .reduce((s, a) => s + a.earned, 0)
-      dailyEarnings.push({ date: dateStr, amount: dayEarnings })
+      dailyEarnings.push({ date: dateStr, amount: Math.round(dayEarnings * 100) / 100 })
     }
 
     return NextResponse.json({

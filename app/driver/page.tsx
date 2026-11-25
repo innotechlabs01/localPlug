@@ -62,15 +62,18 @@ interface Assignment {
 type Tab = 'pending' | 'active' | 'history'
 
 const STATUS_STYLES: Record<string, { label: string; bg: string; fg: string; border: string }> = {
-  pending: { label: 'Pendiente', bg: 'rgba(250, 204, 21, 0.12)', fg: '#facc15', border: 'rgba(250, 204, 21, 0.25)' },
-  pending_acceptance: { label: 'Pendiente aceptación', bg: 'rgba(250, 204, 21, 0.12)', fg: '#facc15', border: 'rgba(250, 204, 21, 0.25)' },
-  offered: { label: 'Ofrecido', bg: 'rgba(96, 165, 250, 0.12)', fg: '#60a5fa', border: 'rgba(96, 165, 250, 0.25)' },
-  accepted: { label: 'Aceptado', bg: 'rgba(74, 222, 128, 0.12)', fg: '#4ade80', border: 'rgba(74, 222, 128, 0.25)' },
-  confirmed: { label: 'Confirmado', bg: 'rgba(74, 222, 128, 0.12)', fg: '#4ade80', border: 'rgba(74, 222, 128, 0.25)' },
-  completed: { label: 'Completado', bg: 'rgba(100, 100, 100, 0.12)', fg: '#9ca3af', border: 'rgba(100, 100, 100, 0.25)' },
-  cancelled: { label: 'Cancelado', bg: 'rgba(248, 113, 113, 0.12)', fg: '#f87171', border: 'rgba(248, 113, 113, 0.25)' },
-  expired: { label: 'Expirado', bg: 'rgba(248, 113, 113, 0.12)', fg: '#f87171', border: 'rgba(248, 113, 113, 0.25)' },
-  declined: { label: 'Rechazado', bg: 'rgba(248, 113, 113, 0.12)', fg: '#f87171', border: 'rgba(248, 113, 113, 0.25)' },
+  pending: { label: 'Pendiente', bg: 'var(--ui-warning-soft)', fg: 'var(--ui-warning)', border: 'rgba(250, 204, 21, 0.25)' },
+  pending_acceptance: { label: 'Pendiente aceptación', bg: 'var(--ui-warning-soft)', fg: 'var(--ui-warning)', border: 'rgba(250, 204, 21, 0.25)' },
+  offered: { label: 'Ofrecido', bg: 'var(--ui-info-soft)', fg: 'var(--ui-info)', border: 'rgba(96, 165, 250, 0.25)' },
+  accepted: { label: 'Aceptado', bg: 'var(--ui-accent-soft)', fg: 'var(--ui-accent)', border: 'rgba(74, 222, 128, 0.25)' },
+  confirmed: { label: 'Confirmado', bg: 'var(--ui-accent-soft)', fg: 'var(--ui-accent)', border: 'rgba(74, 222, 128, 0.25)' },
+  confirmed_to_client: { label: 'Confirmada', bg: 'var(--ui-accent-soft)', fg: 'var(--ui-accent)', border: 'rgba(74, 222, 128, 0.25)' },
+  en_route: { label: 'En camino', bg: 'var(--ui-info-soft)', fg: 'var(--ui-info)', border: 'rgba(96, 165, 250, 0.25)' },
+  in_progress: { label: 'En progreso', bg: 'var(--ui-accent-soft)', fg: 'var(--ui-accent)', border: 'rgba(74, 222, 128, 0.25)' },
+  completed: { label: 'Completado', bg: 'rgba(100, 100, 100, 0.12)', fg: 'var(--ui-fg-secondary)', border: 'rgba(100, 100, 100, 0.25)' },
+  cancelled: { label: 'Cancelado', bg: 'var(--ui-danger-soft)', fg: 'var(--ui-danger)', border: 'rgba(248, 113, 113, 0.25)' },
+  expired: { label: 'Expirado', bg: 'var(--ui-danger-soft)', fg: 'var(--ui-danger)', border: 'rgba(248, 113, 113, 0.25)' },
+  declined: { label: 'Rechazado', bg: 'var(--ui-danger-soft)', fg: 'var(--ui-danger)', border: 'rgba(248, 113, 113, 0.25)' },
 }
 
 export default function DriverPage() {
@@ -83,6 +86,12 @@ export default function DriverPage() {
   const [actionLoading, setActionLoading] = useState<number | null>(null)
   const [editMode, setEditMode] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isOnline, setIsOnline] = useState(false)
+  const [togglingOnline, setTogglingOnline] = useState(false)
+  const [coords, setCoords] = useState<{ lat: number; lng: number }>({ lat: 6.2088, lng: -75.567 })
+  const [gpsStatus, setGpsStatus] = useState<string>('')
+  const [panicConfirm, setPanicConfirm] = useState(false)
+  const [panicSent, setPanicSent] = useState(false)
 
   const [form, setForm] = useState({
     name: '', phone: '', email: '', vehicle: '', plate: '', category: 'standard',
@@ -102,6 +111,7 @@ export default function DriverPage() {
         }
         const d = data.driver
         setDriver(d)
+        setIsOnline(d.status === 'available' || d.status === 'on_route')
         setForm({
           name: d.name || '', phone: d.phone || '', email: d.email || '',
           vehicle: d.vehicle || '', plate: d.plate || '', category: d.category || 'standard',
@@ -176,13 +186,105 @@ export default function DriverPage() {
     }
   }
 
+  // Live GPS tracking while driver is ONLINE (Uber Driver mode)
+  useEffect(() => {
+    if (!isOnline || typeof window === 'undefined' || !('geolocation' in navigator)) return
+    let lastSent = 0
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const lat = pos.coords.latitude
+        const lng = pos.coords.longitude
+        setCoords({ lat, lng })
+        setGpsStatus('GPS en vivo')
+        const now = Date.now()
+        if (now - lastSent < 8000) return
+        lastSent = now
+        fetch('/api/driver/location', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lat,
+            lng,
+            heading: pos.coords.heading,
+            speed: pos.coords.speed,
+            accuracy: pos.coords.accuracy,
+          }),
+        }).catch(() => {})
+      },
+      (err) => {
+        setGpsStatus(err.code === 1 ? 'Permiso GPS denegado' : 'Buscando señal GPS...')
+      },
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 },
+    )
+    return () => navigator.geolocation.clearWatch(watchId)
+  }, [isOnline])
+
+  const handleToggleOnline = async () => {
+    if (togglingOnline) return
+    setTogglingOnline(true)
+    try {
+      const nextOnline = !isOnline
+      const res = await fetch('/api/driver/status', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: nextOnline ? 'available' : 'inactive' }),
+      })
+      if (res.ok) {
+        setIsOnline(nextOnline)
+        if (!nextOnline) {
+          setGpsStatus('')
+          fetch('/api/driver/location', { method: 'DELETE' }).catch(() => {})
+        }
+      }
+    } catch {
+      // ignore
+    } finally {
+      setTogglingOnline(false)
+    }
+  }
+
+  const isLicenseExpired = Boolean(
+    driver?.license_expiry && new Date(driver.license_expiry).getTime() < Date.now(),
+  )
+
+  const pendingOffer = assignments.find(a => ['pending_acceptance', 'offered'].includes(a.status)) || null
+  const activeTrip = assignments.find(a => ['accepted', 'confirmed', 'confirmed_to_client', 'en_route', 'in_progress'].includes(a.status)) || null
+
+  const handlePanicTrigger = async () => {
+    if (!panicConfirm) {
+      setPanicConfirm(true)
+      setTimeout(() => setPanicConfirm(false), 6000)
+      return
+    }
+    try {
+      const res = await fetch('/api/driver/panic', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: activeTrip?.order_id || null,
+          lat: coords.lat,
+          lng: coords.lng,
+          note: `Alerta SOS activada en viaje ${activeTrip?.booking_reference || ''}`,
+        }),
+      })
+      if (res.ok) {
+        setPanicSent(true)
+        setPanicConfirm(false)
+      }
+    } catch { /* ignore */ }
+  }
+
   const handleAction = async (assignmentId: number, action: 'accept' | 'decline') => {
     setActionLoading(assignmentId)
     try {
       const endpoint = action === 'accept'
         ? `/api/assignments/${assignmentId}/accept`
         : `/api/assignments/${assignmentId}/decline`
-      await fetch(endpoint, { method: 'POST' })
+      const res = await fetch(endpoint, { method: 'POST' })
+      if (!res.ok) {
+        console.error(`Failed to ${action}`)
+        return
+      }
       await fetchAssignments()
       fetchMetrics()
     } catch (err) {
@@ -194,13 +296,13 @@ export default function DriverPage() {
 
   const filteredAssignments = assignments.filter(a => {
     if (activeTab === 'pending') return ['pending_acceptance', 'offered'].includes(a.status)
-    if (activeTab === 'active') return ['accepted', 'confirmed'].includes(a.status)
+    if (activeTab === 'active') return ['accepted', 'confirmed', 'confirmed_to_client', 'en_route', 'in_progress'].includes(a.status)
     return ['declined', 'completed', 'cancelled', 'expired'].includes(a.status)
   })
 
   const tabCounts = {
     pending: assignments.filter(a => ['pending_acceptance', 'offered'].includes(a.status)).length,
-    active: assignments.filter(a => ['accepted', 'confirmed'].includes(a.status)).length,
+    active: assignments.filter(a => ['accepted', 'confirmed', 'confirmed_to_client', 'en_route', 'in_progress'].includes(a.status)).length,
     history: assignments.filter(a => ['declined', 'completed', 'cancelled', 'expired'].includes(a.status)).length,
   }
 
@@ -230,7 +332,7 @@ export default function DriverPage() {
     return (
       <div style={{ padding: 24 }}>
         <div style={{ maxWidth: 800, margin: '0 auto', textAlign: 'center', padding: '80px 0' }}>
-          <div style={{ fontSize: 18, marginBottom: 16, color: isNotFound ? '#facc15' : '#f87171' }}>
+          <div style={{ fontSize: 18, marginBottom: 16, color: isNotFound ? 'var(--warning)' : 'var(--danger)' }}>
             {isNotFound
               ? 'No se encontró tu perfil de conductor. Contacte al administrador para que te registre.'
               : error}
@@ -240,7 +342,7 @@ export default function DriverPage() {
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 8,
               padding: '10px 20px', borderRadius: 8,
-              background: 'var(--accent-gold)', color: '#000',
+              background: 'var(--accent-gold)', color: 'var(--bg-dark)',
               border: 'none', fontSize: 14, fontWeight: 600,
               cursor: 'pointer',
               transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
@@ -414,7 +516,7 @@ export default function DriverPage() {
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 8,
                   padding: '10px 20px', borderRadius: 8,
-                  background: 'var(--accent-gold)', color: '#000',
+                  background: 'var(--accent-gold)', color: 'var(--bg-dark)',
                   border: 'none', fontSize: 14, fontWeight: 600,
                   cursor: saving ? 'not-allowed' : 'pointer',
                   opacity: saving ? 0.6 : 1,
@@ -454,6 +556,273 @@ export default function DriverPage() {
         </div>
       ) : (
         <>
+          {/* ── UBER DRIVER LIVE MAP HERO ── */}
+          <div style={{
+            position: 'relative',
+            borderRadius: 16,
+            overflow: 'hidden',
+            border: '1px solid var(--border)',
+            height: 440,
+            marginBottom: 24,
+            background: 'var(--bg-secondary)',
+          }}>
+            <iframe
+              title="Uber Driver Live Map"
+              src={`https://www.openstreetmap.org/export/embed.html?bbox=${(coords.lng - 0.025).toFixed(5)},${(coords.lat - 0.025).toFixed(5)},${(coords.lng + 0.025).toFixed(5)},${(coords.lat + 0.025).toFixed(5)}&layer=mapnik&marker=${coords.lat.toFixed(5)},${coords.lng.toFixed(5)}`}
+              style={{ width: '100%', height: '100%', border: 0 }}
+              loading="lazy"
+            />
+
+            {/* Top floating status bar */}
+            <div style={{
+              position: 'absolute',
+              top: 14,
+              left: 14,
+              right: 14,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 10,
+              pointerEvents: 'none',
+            }}>
+              <div style={{
+                pointerEvents: 'auto',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '8px 14px',
+                borderRadius: 999,
+                background: 'rgba(11, 13, 20, 0.88)',
+                border: `1px solid ${isOnline ? 'rgba(16,185,129,0.5)' : 'rgba(255,255,255,0.12)'}`,
+                color: '#fff',
+                fontSize: 12.5,
+                fontWeight: 600,
+                backdropFilter: 'blur(8px)',
+              }}>
+                <span style={{
+                  width: 9,
+                  height: 9,
+                  borderRadius: '50%',
+                  background: isOnline ? '#10b981' : '#9ca3af',
+                  boxShadow: isOnline ? '0 0 10px #10b981' : 'none',
+                }} />
+                {isOnline ? (gpsStatus || 'EN LÍNEA · Listo para servicios') : 'DESCONECTADO'}
+              </div>
+              {stats && (
+                <div style={{
+                  pointerEvents: 'auto',
+                  padding: '8px 14px',
+                  borderRadius: 999,
+                  background: 'rgba(11, 13, 20, 0.88)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  color: '#4ade80',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  backdropFilter: 'blur(8px)',
+                }}>
+                  ${Number(stats.earnings || 0).toFixed(0)}
+                </div>
+              )}
+            </div>
+
+            {/* Incoming Service Offer Bottom Sheet (Uber-style) */}
+            {isOnline && pendingOffer ? (
+              <div style={{
+                position: 'absolute',
+                left: 14,
+                right: 14,
+                bottom: 14,
+                padding: 16,
+                borderRadius: 14,
+                background: 'rgba(17, 19, 24, 0.96)',
+                border: '1px solid rgba(16, 185, 129, 0.5)',
+                boxShadow: '0 12px 32px rgba(0,0,0,0.55)',
+                color: '#fff',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.6,
+                    color: (pendingOffer.package_name || '').toLowerCase().includes('on-demand') ? '#10b981' : '#d4a84b',
+                  }}>
+                    {(pendingOffer.package_name || '').toLowerCase().includes('on-demand')
+                      ? '🚗 VIAJE ON-DEMAND'
+                      : '✈️ SERVICIO DE AEROPUERTO'}
+                  </span>
+                  <span style={{ fontSize: 11, color: '#9ca0b0' }}>
+                    {pendingOffer.booking_reference || `#${pendingOffer.order_id}`}
+                  </span>
+                </div>
+                <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>
+                  {pendingOffer.customer_name || 'Pasajero'} · {pendingOffer.package_name || 'Traslado'}
+                </div>
+                <div style={{ fontSize: 12.5, color: '#9ca0b0', marginBottom: 12, lineHeight: 1.45 }}>
+                  <div>📍 Destino: <strong style={{ color: '#f0f2f5' }}>{pendingOffer.destination_address || 'Aeropuerto JMC / Medellín'}</strong></div>
+                  {pendingOffer.observations && (
+                    <div style={{ fontSize: 11.5, color: '#cbd5e1', marginTop: 2 }}>{pendingOffer.observations}</div>
+                  )}
+                  {pendingOffer.flight_number && (
+                    <div style={{ fontSize: 11.5, color: '#d4a84b', marginTop: 2 }}>✈️ Vuelo {pendingOffer.flight_number}</div>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button
+                    onClick={() => handleAction(pendingOffer.id, 'accept')}
+                    disabled={actionLoading === pendingOffer.id}
+                    style={{
+                      flex: 1,
+                      padding: '11px 16px',
+                      borderRadius: 10,
+                      border: 'none',
+                      background: '#10b981',
+                      color: '#0b0d14',
+                      fontWeight: 700,
+                      fontSize: 14,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {actionLoading === pendingOffer.id ? 'Aceptando...' : 'Aceptar Servicio'}
+                  </button>
+                  <button
+                    onClick={() => handleAction(pendingOffer.id, 'decline')}
+                    disabled={actionLoading === pendingOffer.id}
+                    style={{
+                      padding: '11px 16px',
+                      borderRadius: 10,
+                      border: '1px solid rgba(239,68,80,0.5)',
+                      background: 'rgba(239,68,80,0.12)',
+                      color: '#ef4450',
+                      fontWeight: 600,
+                      fontSize: 13,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Rechazar
+                  </button>
+                </div>
+              </div>
+            ) : activeTrip ? (
+              /* Active Trip 1-Thumb Progression Sheet */
+              <div style={{
+                position: 'absolute',
+                left: 14,
+                right: 14,
+                bottom: 14,
+                padding: 16,
+                borderRadius: 14,
+                background: 'rgba(17, 19, 24, 0.96)',
+                border: '1px solid rgba(59, 130, 246, 0.5)',
+                boxShadow: '0 12px 32px rgba(0,0,0,0.55)',
+                color: '#fff',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#60a5fa' }}>
+                    ● Viaje Activo ({activeTrip.status})
+                  </span>
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(activeTrip.destination_address || 'Medellín')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ fontSize: 12, fontWeight: 600, color: '#10b981', textDecoration: 'none' }}
+                  >
+                    Navegar ↗
+                  </a>
+                </div>
+                <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 2 }}>
+                  {activeTrip.customer_name || 'Pasajero'} · {activeTrip.package_name || 'Servicio'}
+                </div>
+                <div style={{ fontSize: 12, color: '#9ca0b0', marginBottom: 12 }}>
+                  📍 {activeTrip.destination_address || 'Destino confirmado'}
+                </div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <a
+                    href="/driver/assignments"
+                    style={{
+                      flex: 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      height: 48,
+                      borderRadius: 10,
+                      background: '#3b82f6',
+                      color: '#fff',
+                      fontWeight: 700,
+                      fontSize: 14,
+                      textDecoration: 'none',
+                    }}
+                  >
+                    Gestionar Recorrido →
+                  </a>
+                  <button
+                    onClick={handlePanicTrigger}
+                    disabled={panicSent}
+                    style={{
+                      padding: '0 16px',
+                      height: 48,
+                      borderRadius: 10,
+                      border: '2px solid #ef4450',
+                      background: panicSent ? '#7f1d1d' : panicConfirm ? '#ef4450' : 'rgba(239,68,80,0.18)',
+                      color: '#fff',
+                      fontWeight: 800,
+                      fontSize: 13,
+                      cursor: panicSent ? 'default' : 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {panicSent ? 'SOS ENVIADO' : panicConfirm ? '¿CONFIRMAR SOS?' : '🚨 PÁNICO'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* Central Uber-style INICIAR / STOP button (blocked if license expired) */
+              <div style={{
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                bottom: 20,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 8,
+                pointerEvents: 'none',
+              }}>
+                {isLicenseExpired && (
+                  <div style={{
+                    pointerEvents: 'auto',
+                    padding: '6px 14px',
+                    borderRadius: 8,
+                    background: 'rgba(239,68,80,0.92)',
+                    color: '#fff',
+                    fontSize: 12,
+                    fontWeight: 600,
+                  }}>
+                    Licencia vencida — actualiza tus documentos en Configuración para iniciar
+                  </div>
+                )}
+                <button
+                  onClick={handleToggleOnline}
+                  disabled={togglingOnline || isLicenseExpired}
+                  style={{
+                    pointerEvents: 'auto',
+                    minWidth: 168,
+                    padding: '14px 32px',
+                    borderRadius: 999,
+                    border: `2px solid ${isLicenseExpired ? '#646880' : isOnline ? '#ef4450' : '#10b981'}`,
+                    background: isLicenseExpired ? '#282b38' : isOnline ? '#ef4450' : '#10b981',
+                    color: isLicenseExpired ? '#9ca0b0' : isOnline ? '#fff' : '#0b0d14',
+                    fontSize: 16,
+                    fontWeight: 800,
+                    letterSpacing: 0.8,
+                    boxShadow: isLicenseExpired ? 'none' : isOnline ? '0 8px 28px rgba(239,68,80,0.45)' : '0 8px 28px rgba(16,185,129,0.45)',
+                    cursor: (togglingOnline || isLicenseExpired) ? 'not-allowed' : 'pointer',
+                    transition: 'transform 150ms ease',
+                  }}
+                >
+                  {togglingOnline ? '...' : isOnline ? '■ STOP' : '▶ INICIAR'}
+                </button>
+              </div>
+            )}
+          </div>
+
           {stats && (
             <div style={{
               display: 'grid',
@@ -560,7 +929,7 @@ export default function DriverPage() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {filteredAssignments.map(a => {
-                  const statusInfo = STATUS_STYLES[a.status] || { label: a.status, bg: 'rgba(100,100,100,0.12)', fg: '#9ca3af', border: 'rgba(100,100,100,0.25)' }
+                  const statusInfo = STATUS_STYLES[a.status] || { label: a.status, bg: 'rgba(100,100,100,0.12)', fg: 'var(--ui-fg-secondary)', border: 'rgba(100,100,100,0.25)' }
                   return (
                     <div
                       key={a.id}
@@ -602,13 +971,13 @@ export default function DriverPage() {
                                 style={{
                                   padding: '5px 12px', borderRadius: 6,
                                   fontSize: 12, fontWeight: 500,
-                                  background: 'var(--accent)', color: '#fff',
+                                  background: 'var(--ui-accent)', color: 'var(--ui-bg)',
                                   border: 'none', cursor: 'pointer',
                                   opacity: actionLoading === a.id ? 0.5 : 1,
                                   transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',
                                 }}
-                                onMouseEnter={(e) => { if (actionLoading !== a.id) e.currentTarget.style.background = '#059669' }}
-                                onMouseLeave={(e) => { if (actionLoading !== a.id) e.currentTarget.style.background = 'var(--accent)' }}
+                                onMouseEnter={(e) => { if (actionLoading !== a.id) e.currentTarget.style.background = 'var(--ui-accent)' }}
+                                onMouseLeave={(e) => { if (actionLoading !== a.id) e.currentTarget.style.background = 'var(--ui-accent)' }}
                               >
                                 {actionLoading === a.id ? '...' : 'Aceptar'}
                               </button>
@@ -618,9 +987,9 @@ export default function DriverPage() {
                                 style={{
                                   padding: '5px 12px', borderRadius: 6,
                                   fontSize: 12, fontWeight: 500,
-                                  background: 'var(--danger-soft, rgba(248, 113, 113, 0.12))',
-                                  color: '#f87171',
-                                  border: '1px solid var(--danger-soft, rgba(248, 113, 113, 0.2))',
+                                  background: 'var(--ui-danger-soft)',
+                                  color: 'var(--ui-danger)',
+                                  border: '1px solid var(--ui-danger-soft)',
                                   cursor: 'pointer',
                                   opacity: actionLoading === a.id ? 0.5 : 1,
                                   transition: 'all 200ms cubic-bezier(0.4, 0, 0.2, 1)',

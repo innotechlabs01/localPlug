@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useScrollReveal } from '@/app/hooks/use-scroll-reveal'
+import { useEvents } from '@/lib/api/hooks'
 
 interface PromoEvent {
   id: number
@@ -23,19 +23,10 @@ interface PromoEvent {
  * event exists, renders nothing — allowing admin to show/hide without a deploy.
  */
 export default function FeriaSection() {
-  const [event, setEvent] = useState<PromoEvent | null>(null)
-  const [checked, setChecked] = useState(false)
+  const { data } = useEvents()
+  const event = data?.section ?? null
   const { ref, isVisible } = useScrollReveal({ threshold: 0.15 })
 
-  useEffect(() => {
-    fetch('/api/events', { cache: 'no-store' })
-      .then(r => (r.ok ? r.json() : null))
-      .then(data => setEvent(data?.section ?? null))
-      .catch(() => setEvent(null))
-      .finally(() => setChecked(true))
-  }, [])
-
-  if (!checked) return null
   if (!event) return null
 
   const highlights = event.highlights ?? []
@@ -76,7 +67,7 @@ export default function FeriaSection() {
 
             {highlights.length > 0 && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-                {highlights.map((h) => (
+                {highlights.map((h: string) => (
                   <div key={h} className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-[rgba(212,165,116,0.15)] flex items-center justify-center shrink-0">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent-gold)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -108,18 +99,18 @@ export default function FeriaSection() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-4">
                 <div className="relative rounded-[var(--radius-xl)] overflow-hidden aspect-[3/4]">
-                  <Image src={image} alt={event.title} fill className="object-cover" sizes="300px" />
+                  <Image src={image} alt={`Feria de las Flores - ${event.title}`} fill className="object-cover" sizes="300px" />
                 </div>
                 <div className="relative rounded-[var(--radius-xl)] overflow-hidden aspect-square">
-                  <Image src="/images/experiences-8.jpg" alt="" fill className="object-cover" sizes="300px" />
+                  <Image src="/images/experiences-8.jpg" alt="Experiencia Feria de las Flores - detalle" fill className="object-cover" sizes="300px" />
                 </div>
               </div>
               <div className="space-y-4 pt-8">
                 <div className="relative rounded-[var(--radius-xl)] overflow-hidden aspect-square">
-                  <Image src="/images/experiences-15.jpg" alt="" fill className="object-cover" sizes="300px" />
+                  <Image src="/images/experiences-15.jpg" alt="Experiencia Feria de las Flores - paisaje" fill className="object-cover" sizes="300px" />
                 </div>
                 <div className="relative rounded-[var(--radius-xl)] overflow-hidden aspect-[3/4]">
-                  <Image src="/images/experiences-12.jpg" alt="" fill className="object-cover" sizes="300px" />
+                  <Image src="/images/experiences-12.jpg" alt="Experiencia Feria de las Flores - detalle" fill className="object-cover" sizes="300px" />
                 </div>
               </div>
             </div>

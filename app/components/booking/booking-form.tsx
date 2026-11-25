@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useAuth, useClerk } from '@clerk/nextjs'
 import Link from 'next/link'
 import StepProgress from './step-progress'
 import StepFlightLogistics from './step-flight-logistics'
@@ -101,6 +102,8 @@ function DesktopStepProgress({ currentStep, stepDetails }: { currentStep: number
 
 function BookingFormInner() {
   const { t } = useI18n()
+  const { isSignedIn, isLoaded } = useAuth()
+  const { openSignIn } = useClerk()
 
   interface BookingConfig {
     packages: Record<string, {
@@ -176,6 +179,10 @@ function BookingFormInner() {
             !!flightData.arrivalDate &&
             !!flightData.arrivalTime
           if (!fieldsFilled) return false
+          if (flightData.needReturn) {
+            if (!flightData.returnDate || !flightData.returnTime) return false
+            if (flightData.returnDate < flightData.arrivalDate) return false
+          }
           const today = new Date()
           const target = new Date(today.getFullYear(), today.getMonth(), today.getDate())
           target.setDate(target.getDate() + (bookingConfig?.advanceBookingDays ?? CONFIG_DEFAULTS.advanceBookingDays))
@@ -188,7 +195,7 @@ function BookingFormInner() {
           if (destination.hasPlace) {
             return !!destination.address.trim()
           }
-          return true
+          return !!destination.selectedHotelId && !!destination.selectedRoomId
          case 3:
           // Must select a package and specify at least 1 traveler.
           return !!selectedPackage && (destination.numPeople && destination.numPeople >= 1)
@@ -204,6 +211,16 @@ function BookingFormInner() {
   }
 
   const handlePaymentSuccess = async () => {
+    if (!isLoaded) return
+    if (!isSignedIn) {
+      try {
+        openSignIn({ redirectUrl: typeof window !== 'undefined' ? window.location.href : '/booking' } as any)
+      } catch {
+        // fallback
+      }
+      return
+    }
+
     const booking = {
       id: bookingReference,
       flight: flightData,
@@ -243,6 +260,16 @@ function BookingFormInner() {
   }
 
   const handleConfirm = async () => {
+    if (!isLoaded) return
+    if (!isSignedIn) {
+      try {
+        openSignIn({ redirectUrl: typeof window !== 'undefined' ? window.location.href : '/booking' } as any)
+      } catch {
+        // fallback
+      }
+      return
+    }
+
     setIsSubmitting(true)
 
     const booking = {
@@ -335,7 +362,7 @@ function BookingFormInner() {
         <main className="flex-1 flex items-center justify-center px-4">
           <div className="text-center p-8 max-w-md">
             <div className="w-16 h-16 rounded-full bg-[rgba(239,68,68,0.12)] flex items-center justify-center mx-auto mb-4">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--ui-danger)" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
             </div>
             <h2 className="text-display-lg text-white mb-2">Service Temporarily Unavailable</h2>
             <p className="text-body-md text-[var(--text-secondary)]">We are unable to process bookings at this moment. Please try again shortly.</p>
@@ -466,6 +493,7 @@ function BookingFormInner() {
                     flightData={flightData}
                     destinationAddress={destination.address}
                     needReturn={flightData.needReturn}
+                    travelerProfile={profile}
                     onPaymentSuccess={handlePaymentSuccess}
                     onPaymentError={(message) => {
                       showToast({ type: 'error', message })

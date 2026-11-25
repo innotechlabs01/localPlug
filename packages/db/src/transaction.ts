@@ -1,15 +1,25 @@
 import { getDb } from './client'
 import { eq, and, or, like, ilike, desc, asc, sql, inArray, gte, lte, count } from 'drizzle-orm'
 
-// Transaction helper using Drizzle's built-in transaction support
+// Transaction helper supporting both Drizzle ORM and raw @libsql/client
 export async function withTransaction<T>(fn: (tx: any) => Promise<T>): Promise<T> {
-  const db = getDb()
-  return db.transaction(fn)
+  const db = getDb() as any
+  if (db.drizzle && typeof db.drizzle.transaction === 'function') {
+    return db.drizzle.transaction(fn)
+  }
+  const tx = await db.transaction('write')
+  try {
+    const result = await fn(tx)
+    await tx.commit()
+    return result
+  } catch (err) {
+    await tx.rollback().catch(() => {})
+    throw err
+  }
 }
 
 export async function runInTransaction<T>(callback: (tx: any) => Promise<T>): Promise<T> {
-  const db = getDb()
-  return db.transaction(callback)
+  return withTransaction(callback)
 }
 
 // Helper for batch operations

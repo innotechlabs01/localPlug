@@ -1,12 +1,20 @@
 node_modules
+**/node_modules
 .next
 .git
 .gitignore
+.env
+.env.*
 .env.local
 .env*.local
 *.md
 .vscode
 .idea
+.cursor
+.claude
+.opencode
+.superpowers
+.vercel
 coverage
 .nyc_output
 dist
@@ -21,3 +29,6 @@ __tests__
 *.test.*
 *.spec.*
 vitest.config.*
+tsconfig.tsbuildinfo
+*.sqlite
+*.db

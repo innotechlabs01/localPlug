@@ -1,9 +1,10 @@
 // @lp/events — Event Bus Runtime
 // Part of B10. Typed event bus + outbox for decoupled domain communication.
 
-// Types
+// Types & Canonical Domain Catalog
 export { EventType, createEvent } from './types'
 export type { DomainEvent, CreateEventOptions } from './types'
+export type { DomainEventType, DomainEventEnvelope } from './catalog'
 
 // Handler contract
 export type { EventHandler, HandlerRegistration, EventBus, EventBusMetrics } from './handler'

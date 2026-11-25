@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server'
 import { getDb, buildSafeUpdate } from '@/lib/db'
-import { auth } from '@clerk/nextjs/server'
+import { requirePermission } from '@/lib/admin/permissions'
 
 const ALLOWED_TASK_COLUMNS = ['title', 'assignee', 'status', 'due_date', 'case_id']
 
 export async function POST(req: Request) {
   try {
-    const { userId } = await auth()
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const authError = await requirePermission('cases', 'create')
+    if (authError) return authError
 
     const body = await req.json()
     const { case_id, title, assignee, status, due_date } = body
@@ -38,8 +38,8 @@ export async function POST(req: Request) {
 
 export async function PUT(req: Request) {
   try {
-    const { userId } = await auth()
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const authError = await requirePermission('cases', 'update')
+    if (authError) return authError
 
     const body = await req.json()
     const { id, status, ...updates } = body
@@ -73,8 +73,8 @@ export async function PUT(req: Request) {
 
 export async function DELETE(req: Request) {
   try {
-    const { userId } = await auth()
-    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const authError = await requirePermission('cases', 'delete')
+    if (authError) return authError
 
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')

@@ -424,7 +424,7 @@ export default function ChatWidget() {
         }))
 
         // Fetch welcome message from DB to avoid duplication
-        const msgRes = await fetch(`/api/chat/messages?conversationId=${data.conversationId}`)
+        const msgRes = await fetch(`/api/chat/messages?conversationId=${data.conversationId}&userIdentifier=${encodeURIComponent(data.userIdentifier || userId.current)}`)
         const msgData = await msgRes.json()
         if (msgData.success && msgData.messages.length > 0) {
           setState(prev => ({ ...prev, messages: msgData.messages }))
@@ -626,7 +626,7 @@ export default function ChatWidget() {
     if (state.isOpen && state.conversationId && !state.isClosed) {
       pollingRef.current = setInterval(async () => {
         try {
-          const res = await fetch(`/api/chat/messages?conversationId=${state.conversationId}`)
+          const res = await fetch(`/api/chat/messages?conversationId=${state.conversationId}&userIdentifier=${encodeURIComponent(userId.current)}`)
           const data = await res.json()
           if (data.success) {
             setState(prev => {

@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server'
 import { triggerDriverAssigned } from '@/lib/n8n/client'
+import { requirePermission } from '@/lib/admin/permissions'
 
 export async function POST(req: Request) {
   try {
+    const authError = await requirePermission('dispatch', 'update')
+    if (authError) return authError
     const body = await req.json()
     const { bookingReference, customerName, customerPhone, driverName, vehicle, licensePlate, eta } = body
 

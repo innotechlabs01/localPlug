@@ -10,14 +10,14 @@ interface AnalyticsResponse {
     totalRevenue: number
     totalBookings: number
     avgBookingValue: number
-    cac: number
-    ltv: number
+    cac: number | null
+    ltv: number | null
     conversionRate: string
     revenueGrowth: string
     bookingGrowth: string
     avgGrowth: string
-    cacChange: string
-    ltvGrowth: string
+    cacChange: string | null
+    ltvGrowth: string | null
     conversionGrowth: string
     uniqueCustomers: number
     totalPayments: number
@@ -212,10 +212,10 @@ export default function AnalyticsPage() {
           </div>
 
           {/* Total Bookings */}
-          <div className="kpi-card bg-[var(--surface)] border border-[var(--border)] rounded-[10px] p-4 relative overflow-hidden hover:border-[#3b82f6] hover:shadow-[0_0_0_1px_rgba(59,130,246,0.3)] transition-all">
-            <div className="absolute top-0 left-0 right-0 h-[3px] bg-[#3b82f6]" />
+          <div className="kpi-card bg-[var(--ui-surface)] border border-[var(--ui-border)] rounded-[var(--ui-radius-md)] p-4 relative overflow-hidden hover:border-[var(--ui-info)] hover:shadow-[0_0_0_1px_rgba(59,130,246,0.3)] transition-all">
+            <div className="absolute top-0 left-0 right-0 h-[3px] bg-[var(--ui-info)]" />
             <div className="kpi-top flex items-start justify-between mb-2.5">
-              <div className="kpi-icon w-[38px] h-[38px] rounded-[6px] bg-[rgba(59,130,246,0.12)] flex items-center justify-center text-[#3b82f6]">
+              <div className="kpi-icon w-[38px] h-[38px] rounded-[var(--ui-radius-sm)] bg-[var(--ui-info-soft)] flex items-center justify-center text-[var(--ui-info)]">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <rect x="2" y="3" width="20" height="14" rx="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" />
                 </svg>
@@ -262,12 +262,12 @@ export default function AnalyticsPage() {
               </div>
             </div>
             <div className="kpi-label text-[11px] font-medium text-[var(--fg-secondary)] mb-0.5">{d.customerAcqCost || 'Customer Acq. Cost'}</div>
-            <div className="kpi-value text-[24px] font-bold text-[var(--fg)] leading-[1.1]">{formatCurrency(kpis?.cac || 0)}</div>
+            <div className="kpi-value text-[24px] font-bold text-[var(--fg)] leading-[1.1]">{kpis?.cac != null ? formatCurrency(kpis.cac) : '—'}</div>
             <div className="kpi-sub down flex items-center gap-1 mt-1.5 text-[12px] font-medium text-[var(--danger)]">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="6 9 12 15 18 9" />
               </svg>
-              {kpis?.cacChange || '0'}%
+              {kpis?.cacChange != null ? `${kpis.cacChange}%` : '—'}
             </div>
           </div>
 
@@ -282,12 +282,12 @@ export default function AnalyticsPage() {
               </div>
             </div>
             <div className="kpi-label text-[11px] font-medium text-[var(--fg-secondary)] mb-0.5">{d.customerLTV || 'Customer LTV'}</div>
-            <div className="kpi-value text-[24px] font-bold text-[var(--fg)] leading-[1.1]">{formatCurrency(kpis?.ltv || 0)}</div>
+            <div className="kpi-value text-[24px] font-bold text-[var(--fg)] leading-[1.1]">{kpis?.ltv != null ? formatCurrency(kpis.ltv) : '—'}</div>
             <div className="kpi-sub up flex items-center gap-1 mt-1.5 text-[12px] font-medium text-[var(--accent)]">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="18 15 12 9 6 15" />
               </svg>
-              {kpis?.ltvGrowth || '0'}%
+              {kpis?.ltvGrowth != null ? `${kpis.ltvGrowth}%` : '—'}
             </div>
           </div>
 
@@ -424,7 +424,7 @@ export default function AnalyticsPage() {
             <div className="chart-body overflow-x-auto" style={{ padding: 0 }}>
               <table className="data-table w-full">
                 <thead>
-                  <tr className="bg-[#111318] border-b border-[var(--border)]">
+                  <tr className="bg-[var(--ui-bg-secondary)] border-b border-[var(--border)]">
                     <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[var(--fg-secondary)] px-4 py-2.5">{d.country || 'Country'}</th>
                     <th className="text-right text-[11px] font-semibold uppercase tracking-[0.6px] text-[var(--fg-secondary)] px-4 py-2.5">{d.tourists || 'Tourists'}</th>
                     <th className="text-right text-[11px] font-semibold uppercase tracking-[0.6px] text-[var(--fg-secondary)] px-4 py-2.5">{d.share || 'Share'}</th>
@@ -439,7 +439,7 @@ export default function AnalyticsPage() {
                     const trendVal = pct > 20 ? Math.floor(pct / 5) : pct > 10 ? Math.floor(pct / 3) : Math.floor(pct / 2)
                     const trendColor = trendVal >= 0 ? 'var(--accent)' : 'var(--danger)'
                     return (
-                      <tr key={i} className="border-b border-[var(--border)] hover:bg-[#202330] transition-colors">
+                      <tr key={i} className="border-b border-[var(--border)] hover:bg-[var(--ui-surface-hover)] transition-colors">
                         <td className="px-4 py-2.5 text-[13px] text-[var(--fg)]"><span className="flag-icon text-[15px] leading-none">{countryFlag(c.country)}</span> {c.country}</td>
                         <td className="px-4 py-2.5 text-[13px] text-right text-[var(--fg)]">{c.count}</td>
                         <td className="px-4 py-2.5 text-[13px] text-right text-[var(--fg-secondary)]">{c.share}%</td>
@@ -529,7 +529,7 @@ export default function AnalyticsPage() {
           <div className="chart-body overflow-x-auto" style={{ padding: 0 }}>
             <table className="data-table w-full">
               <thead>
-                <tr className="bg-[#111318] border-b border-[var(--border)]">
+                <tr className="bg-[var(--ui-bg-secondary)] border-b border-[var(--border)]">
                   <th className="text-left text-[11px] font-semibold uppercase tracking-[0.6px] text-[var(--fg-secondary)] px-4 py-2.5">{d.driverCol || 'Driver'}</th>
                   <th className="text-right text-[11px] font-semibold uppercase tracking-[0.6px] text-[var(--fg-secondary)] px-4 py-2.5">{d.tripsCol || 'Trips'}</th>
                   <th className="text-center text-[11px] font-semibold uppercase tracking-[0.6px] text-[var(--fg-secondary)] px-4 py-2.5">{d.ratingCol || 'Rating'}</th>
@@ -551,7 +551,7 @@ export default function AnalyticsPage() {
                   const satisfaction = Math.round(drv.rating * 20)
                   const satisfactionColor = drv.rating >= 4.5 ? 'var(--accent)' : drv.rating >= 4.0 ? 'var(--warning)' : 'var(--danger)'
                   return (
-                    <tr key={i} className="border-b border-[var(--border)] hover:bg-[#202330] transition-colors">
+                    <tr key={i} className="border-b border-[var(--border)] hover:bg-[var(--ui-surface-hover)] transition-colors">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2.5">
                           <span

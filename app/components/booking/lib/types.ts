@@ -46,8 +46,8 @@ export interface PaymentRecord {
   amount: number
   currency: string
   status: PaymentStatus
-  paddleTransactionId: string
-  paddleWebhookEventId?: string
+  polarTransactionId: string
+  polarWebhookEventId?: string
   customerEmail: string
   customerName: string
   customerPhone?: string
@@ -75,7 +75,7 @@ export interface PaymentStatusResponse {
   amount: number
   currency: string
   status: PaymentStatus
-  paddleTransactionId: string
+  polarTransactionId: string
   customerEmail: string
   customerName: string
   createdAt: string

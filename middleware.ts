@@ -15,12 +15,14 @@ const isPublicRoute = createRouteMatcher([
   '/',
   '/booking',
   '/booking/confirmation',
+  '/mis-reservas',
+  '/terms',
+  '/privacy',
+  '/refund-policy',
+  '/feedback',
+  '/driver/offline',
   '/api/booking',
-  '/api/payments/status',
-  '/api/payments/create-intent',
-  '/api/payments/confirm',
   '/api/flights/validate',
-  '/api/bookings/search',
   '/api/webhooks/(.*)',
   '/api/checkout/(.*)',
   '/api/admin/lookup',
@@ -65,13 +67,21 @@ export default clerkMiddleware(
 
   const { pathname } = new URL(req.url)
   if (pathname.startsWith('/api/')) {
-    // Check IP ban first (escalating bans from repeated violations)
-    const ip = extractIp(req)
-    const banResponse = await checkIpBanned(ip)
-    if (banResponse) return banResponse
+    const isOperationalPortalApi =
+      pathname.startsWith('/api/admin/') ||
+      pathname.startsWith('/api/driver/') ||
+      pathname.startsWith('/api/hotel/') ||
+      pathname.startsWith('/api/realtime/')
 
-    const rateLimitRes = await applyRateLimit(req)
-    if (rateLimitRes) return rateLimitRes
+    if (!isOperationalPortalApi) {
+      // Check IP ban first (escalating bans from repeated violations on public APIs)
+      const ip = extractIp(req)
+      const banResponse = await checkIpBanned(ip)
+      if (banResponse) return banResponse
+
+      const rateLimitRes = await applyRateLimit(req)
+      if (rateLimitRes) return rateLimitRes
+    }
 
     if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
       const contentLength = parseInt(req.headers.get('content-length') || '0', 10)
@@ -90,12 +100,15 @@ export default clerkMiddleware(
 
   // Redirect authenticated users from landing page to their portal dashboard
   if (pathname === '/') {
-    const authResult = await auth() as { userId: string | null }
+    const authResult = await auth() as { userId: string | null; sessionClaims?: Record<string, any> }
     if (authResult.userId) {
       try {
-        const client = await clerkClient()
-        const clerkUser = await client.users.getUser(authResult.userId)
-        const role = clerkUser.privateMetadata?.role as string | undefined
+        let role = (authResult.sessionClaims?.metadata?.role || authResult.sessionClaims?.publicMetadata?.role) as string | undefined
+        if (!role) {
+          const client = await clerkClient()
+          const clerkUser = await client.users.getUser(authResult.userId)
+          role = clerkUser.privateMetadata?.role as string | undefined
+        }
         const portalMap: Record<string, string> = { admin: '/admin', hotel_manager: '/hotel', driver: '/driver' }
         if (role && portalMap[role]) {
           return NextResponse.redirect(new URL(portalMap[role], req.url))
@@ -110,7 +123,7 @@ export default clerkMiddleware(
     !pathname.startsWith('/api/')
 
   if (isPortalPage && !isPublicRoute(req)) {
-    const authResult = await auth() as { userId: string | null }
+    const authResult = await auth() as { userId: string | null; sessionClaims?: Record<string, any> }
     const userId = authResult.userId
     if (!userId) {
       const signInUrl = pathname.startsWith('/admin')
@@ -120,9 +133,12 @@ export default clerkMiddleware(
     }
 
     try {
-      const client = await clerkClient()
-      const clerkUser = await client.users.getUser(userId)
-      const role = clerkUser.privateMetadata?.role as string | undefined
+      let role = (authResult.sessionClaims?.metadata?.role || authResult.sessionClaims?.publicMetadata?.role) as string | undefined
+      if (!role) {
+        const client = await clerkClient()
+        const clerkUser = await client.users.getUser(userId)
+        role = clerkUser.privateMetadata?.role as string | undefined
+      }
 
       const portalForRole: Record<string, string> = {
         admin: '/admin',
@@ -167,7 +183,7 @@ function corsHeaders(req: Request): Record<string, string> {
     process.env.VERCEL_BRANCH_URL ? `https://${process.env.VERCEL_BRANCH_URL}` : undefined,
   ].filter(Boolean) as string[]
 
-  const isAllowed = allowedOrigins.some(o => origin.startsWith(o))
+  const isAllowed = allowedOrigins.includes(origin)
   return {
     'Access-Control-Allow-Origin': isAllowed ? origin : allowedOrigins[0] || '',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',

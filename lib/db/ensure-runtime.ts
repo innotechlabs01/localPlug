@@ -34,7 +34,7 @@ const DDL: string[] = [
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   )`,
-  `CREATE INDEX IF NOT EXISTS idx_payout_ledger_unique
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_payout_ledger_unique
     ON payout_ledger(booking_reference, payee_type, payee_id)`,
   `CREATE INDEX IF NOT EXISTS idx_payout_ledger_payee
     ON payout_ledger(payee_type, payee_id, settlement_period)`,
@@ -83,6 +83,12 @@ const DDL: string[] = [
     ON events_outbox(status, created_at)`,
   `CREATE INDEX IF NOT EXISTS idx_events_outbox_correlation
     ON events_outbox(correlation_id)`,
+  `CREATE TABLE IF NOT EXISTS processed_events (
+    event_id INTEGER NOT NULL,
+    consumer_name TEXT NOT NULL,
+    processed_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (event_id, consumer_name)
+  )`,
 ]
 
 async function ensureColumns(db: DatabaseClient, columnSql: Array<{ table: string; add: string }>): Promise<void> {
@@ -112,6 +118,7 @@ export async function ensureRuntimeSchema(db: DatabaseClient): Promise<void> {
     { table: 'events_outbox', add: 'max_retries INTEGER NOT NULL DEFAULT 5' },
     { table: 'events_outbox', add: 'error_message TEXT' },
     { table: 'events_outbox', add: 'processed_at TEXT' },
+    { table: 'events_outbox', add: 'locked_at TEXT' },
     { table: 'payments', add: 'provider_transaction_id TEXT' },
     { table: 'payments', add: 'provider_webhook_event_id TEXT' },
   ])

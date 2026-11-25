@@ -20,13 +20,15 @@ async function handleProcess(req: Request) {
     const authHeader = req.headers.get('authorization')
     const cronSecret = process.env.CRON_SECRET
 
-    if (cronSecret) {
-      const token = authHeader?.replace(/^Bearer\s+/i, '') || ''
-      const a = Buffer.from(token)
-      const b = Buffer.from(cronSecret)
-      if (a.length !== b.length || !timingSafeEqual(a, b)) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-      }
+    if (!cronSecret) {
+      return NextResponse.json({ error: 'CRON_SECRET not configured' }, { status: 500 })
+    }
+
+    const token = authHeader?.replace(/^Bearer\s+/i, '') || ''
+    const a = Buffer.from(token)
+    const b = Buffer.from(cronSecret)
+    if (a.length !== b.length || !timingSafeEqual(a, b)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { searchParams } = new URL(req.url)

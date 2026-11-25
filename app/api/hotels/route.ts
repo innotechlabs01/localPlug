@@ -26,52 +26,70 @@ export async function GET(req: Request) {
     const hotelsResult = await db.execute({ sql: hotelSql, args: hotelArgs })
     const hotels = hotelsResult.rows || []
 
+    if (hotels.length === 0) {
+      return NextResponse.json({ hotels: [] })
+    }
+
     // Get available rooms for each hotel (exclude rooms with overlapping bookings)
     const checkIn = searchParams.get('checkIn') || searchParams.get('arrivalDate') || null
     const checkOut = searchParams.get('checkOut') || searchParams.get('returnDate') || null
 
-    const hotelsWithRooms = await Promise.all(
-      hotels.map(async (hotel: any) => {
-        let roomsResult
-        if (checkIn && checkOut) {
-          try {
-            roomsResult = await db.execute({
-              sql: `SELECT * FROM rooms WHERE hotel_id = ? AND status != 'maintenance'
-                    AND NOT EXISTS (
-                      SELECT 1 FROM room_bookings rb
-                      WHERE rb.room_id = rooms.id AND rb.status IN ('confirmed', 'checked_in')
-                      AND rb.check_in < ? AND rb.check_out > ?
-                    ) ORDER BY price_per_night ASC`,
-              args: [hotel.id, checkOut, checkIn],
-            })
-          } catch {
-            roomsResult = await db.execute({
-              sql: `SELECT * FROM rooms WHERE hotel_id = ? AND status = 'available' ORDER BY price_per_night ASC`,
-              args: [hotel.id],
-            })
-          }
-        } else {
-          roomsResult = await db.execute({
-            sql: `SELECT * FROM rooms WHERE hotel_id = ? AND status = 'available' ORDER BY price_per_night ASC`,
-            args: [hotel.id],
-          })
-        }
-        const commissionRate = Number(hotel.commission_rate) || 0
+    const hotelIds = hotels.map((h: any) => h.id)
+    const placeholders = hotelIds.map(() => '?').join(',')
 
-        const rooms = (roomsResult.rows || []).map((room: any) => {
-          const basePrice = Number(room.price_per_night) || 0
-          return {
-            ...room,
-            display_price: Math.round((basePrice + (basePrice * commissionRate)) * 100) / 100,
-          }
+    let roomsResult
+    if (checkIn && checkOut) {
+      try {
+        roomsResult = await db.execute({
+          sql: `SELECT * FROM rooms WHERE hotel_id IN (${placeholders}) AND status != 'maintenance'
+                AND NOT EXISTS (
+                  SELECT 1 FROM room_bookings rb
+                  WHERE rb.room_id = rooms.id AND rb.status IN ('confirmed', 'checked_in')
+                  AND rb.check_in < ? AND rb.check_out > ?
+                ) ORDER BY price_per_night ASC`,
+          args: [...hotelIds, checkOut, checkIn],
         })
+      } catch {
+        roomsResult = await db.execute({
+          sql: `SELECT * FROM rooms WHERE hotel_id IN (${placeholders}) AND status = 'available' ORDER BY price_per_night ASC`,
+          args: hotelIds,
+        })
+      }
+    } else {
+      roomsResult = await db.execute({
+        sql: `SELECT * FROM rooms WHERE hotel_id IN (${placeholders}) AND status = 'available' ORDER BY price_per_night ASC`,
+        args: hotelIds,
+      })
+    }
 
+    const roomsByHotelId = new Map<string, any[]>()
+    for (const room of (roomsResult.rows || [])) {
+      const hId = String((room as any).hotel_id)
+      const list = roomsByHotelId.get(hId)
+      if (list) {
+        list.push(room)
+      } else {
+        roomsByHotelId.set(hId, [room])
+      }
+    }
+
+    const hotelsWithRooms = hotels.map((hotel: any) => {
+      const commissionRate = Number(hotel.commission_rate) || 0
+      const hotelRooms = roomsByHotelId.get(String(hotel.id)) || []
+
+      const rooms = hotelRooms.map((room: any) => {
+        const basePrice = Number(room.price_per_night) || 0
         return {
-          ...hotel,
-          rooms,
+          ...room,
+          display_price: Math.round((basePrice + (basePrice * commissionRate)) * 100) / 100,
         }
       })
-    )
+
+      return {
+        ...hotel,
+        rooms,
+      }
+    })
 
     return NextResponse.json({ hotels: hotelsWithRooms })
   } catch (error) {

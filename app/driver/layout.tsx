@@ -78,7 +78,17 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
   // Register PWA service worker (driver portal)
   useEffect(() => {
     if ('serviceWorker' in navigator && typeof window !== 'undefined') {
-      navigator.serviceWorker.register('/sw.js', { scope: '/driver' }).catch(() => {})
+      navigator.serviceWorker.register('/sw.js', { scope: '/driver' }).then((reg) => {
+        reg.addEventListener('updatefound', () => {
+          const next = reg.installing
+          if (!next) return
+          next.addEventListener('statechange', () => {
+            if (next.state === 'installed' && navigator.serviceWorker.controller) {
+              next.postMessage({ type: 'SKIP_WAITING' })
+            }
+          })
+        })
+      }).catch(() => {})
     }
     // Ensure the manifest link exists for installability
     if (!document.querySelector('link[rel="manifest"]')) {
@@ -226,7 +236,7 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
               borderRadius: 8,
               fontSize: 13,
               fontWeight: 500,
-              color: driverStatus === 'available' ? '#4ade80' : 'var(--text-muted)',
+              color: driverStatus === 'available' ? 'var(--ui-accent)' : 'var(--ui-fg-muted)',
               background: driverStatus === 'available' ? 'rgba(74,222,128,0.1)' : 'transparent',
               border: `1px solid ${driverStatus === 'available' ? 'rgba(74,222,128,0.2)' : 'var(--border)'}`,
               cursor: toggling ? 'wait' : 'pointer',
@@ -237,7 +247,7 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
             <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{
                 width: 8, height: 8, borderRadius: '50%',
-                background: driverStatus === 'available' ? '#4ade80' : 'var(--text-muted)',
+                background: driverStatus === 'available' ? 'var(--ui-accent)' : 'var(--ui-fg-muted)',
                 boxShadow: driverStatus === 'available' ? '0 0 8px rgba(74,222,128,0.5)' : 'none',
               }} />
               {driverStatus === 'available' ? 'Activo' : 'Inactivo'}
@@ -253,7 +263,15 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
 
         <div style={{ padding: '12px 8px', borderTop: '1px solid var(--border)' }}>
           <button
-            onClick={() => signOut({ redirectUrl: '/sign-in/driver' })}
+            onClick={async () => {
+              if ('caches' in window) {
+                try {
+                  const keys = await caches.keys()
+                  await Promise.all(keys.map((k) => caches.delete(k)))
+                } catch {}
+              }
+              signOut({ redirectUrl: '/sign-in/driver' })
+            }}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -287,7 +305,7 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
         </div>
       </aside>
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', marginLeft: 'var(--nav-width)' }}>
+      <div className="driver-main" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <header
           style={{
             display: 'flex',
@@ -327,9 +345,9 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
             <div
               style={{
                 width: 36, height: 36, borderRadius: '50%',
-                background: 'linear-gradient(135deg, var(--accent-gold), var(--accent-gold-dark, #b8956a))',
+                background: 'linear-gradient(135deg, var(--ui-accent-gold), var(--ui-gold))',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: '#fff', fontWeight: 600, fontSize: 13,
+                color: 'var(--ui-bg)', fontWeight: 600, fontSize: 13,
                 cursor: 'pointer',
                 transition: 'opacity 200ms cubic-bezier(0.4, 0, 0.2, 1)',
               }}
@@ -352,6 +370,9 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
       <InactivityGuard signOutRedirectUrl="/sign-in/driver" />
 
       <style>{`
+        .driver-main {
+          margin-left: var(--nav-width);
+        }
         @media (max-width: 1023px) {
           .driver-sidebar {
             transform: translateX(-100%) !important;
@@ -361,6 +382,9 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
           }
           .driver-mobile-menu-btn {
             display: flex !important;
+          }
+          .driver-main {
+            margin-left: 0 !important;
           }
         }
       `}</style>

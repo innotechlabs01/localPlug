@@ -16,36 +16,26 @@ interface Vehicle {
 }
 
 const categories = [
-  { key: 'all', emoji: '\u{1F697}', name: 'All' },
-  { key: 'standard', emoji: '\u{1F697}', name: 'Standard' },
-  { key: 'suv', emoji: '\u{1F699}', name: 'SUV' },
-  { key: 'vip-suv', emoji: '\u2B50', name: 'VIP SUV' },
-  { key: 'luxury', emoji: '\u{1F451}', name: 'Luxury' },
-  { key: 'van', emoji: '\u{1F690}', name: 'Van' },
+  { key: 'all', emoji: '🚙', name: 'Todos' },
+  { key: 'standard', emoji: '🚙', name: 'Estándar' },
+  { key: 'suv', emoji: '🚙', name: 'SUV' },
+  { key: 'vip-suv', emoji: '⭐', name: 'VIP SUV' },
+  { key: 'luxury', emoji: '🚗', name: 'Lujo' },
+  { key: 'van', emoji: '🚐', name: 'Van' },
 ]
 
-const catColors: Record<string, string> = {
-  standard: 'var(--border)', suv: 'var(--info-soft)',
-  'vip-suv': 'var(--gold-soft)', luxury: 'var(--gold-soft)', van: 'var(--border)',
-}
-
 const catTextColors: Record<string, string> = {
-  standard: 'var(--fg-muted)', suv: 'var(--info)',
-  'vip-suv': 'var(--gold)', luxury: 'var(--gold)', van: 'var(--fg-muted)',
+  standard: 'var(--ui-fg-muted)', suv: 'var(--ui-info)',
+  'vip-suv': 'var(--ui-gold)', luxury: 'var(--ui-gold)', van: 'var(--ui-fg-muted)',
 }
 
 const statusEmoji: Record<string, string> = {
-  available: '\u2705', in_service: '\u{1F504}', maintenance: '\u{1F527}', offline: '\u23F8\uFE0F',
+  available: '✅', in_service: '🔧', maintenance: '🛠️', offline: '⏳',
 }
 
 const statusMapToFleet: Record<string, string> = {
   available: 'available', busy: 'in_service', maintenance: 'maintenance',
   offline: 'offline', suspended: 'offline', inactive: 'offline', pending: 'offline',
-}
-
-const getEmojiForCategory = (cat: string): string => {
-  const found = categories.find(c => c.key === cat)
-  return found ? found.emoji : '\u{1F697}'
 }
 
 const getInit = (name: string | null): string => {
@@ -63,7 +53,7 @@ const getNextService = (items: (string | null)[]): string | null => {
   }
   if (!nearest) return null
   const diff = Math.ceil((nearest.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-  return diff <= 30 ? nearest.toLocaleDateString() + ' (soon)' : nearest.toLocaleDateString()
+  return diff <= 30 ? nearest.toLocaleDateString() + ' (pronto)' : nearest.toLocaleDateString()
 }
 
 export default function FleetPage() {
@@ -150,232 +140,244 @@ export default function FleetPage() {
 
   const getBadgeClass = (status: string) => {
     switch (status) {
-      case 'available': return 'badge badge-accent'
-      case 'in_service': return 'badge badge-info'
-      case 'maintenance': return 'badge badge-warning'
-      default: return 'badge'
+      case 'available': return 'admin-badge accent'
+      case 'in_service': return 'admin-badge info'
+      case 'maintenance': return 'admin-badge warning'
+      default: return 'admin-badge neutral'
     }
-  }
-
-  const kpiIcons = {
-    total: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px"><path d="M5 17h14M5 17a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2"/><circle cx="7" cy="14" r="2"/><circle cx="17" cy="14" r="2"/></svg>`,
-    available: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px"><polyline points="20 6 9 17 4 12"/></svg>`,
-    inService: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>`,
-    maintenance: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
-    offline: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-[#646880]">Loading fleet data...</div>
+      <div className="admin-page">
+        <div className="admin-empty" style={{ padding: '48px 24px' }}>
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.3"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/></svg>
+          <h3>Cargando flota...</h3>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="fleet-page">
-      {/* ── KPI ROW ── */}
-      <div>
-        <div className="section-title">Fleet Overview</div>
-        <div className="kpi-fleet-grid">
-          {[
-            { label: d.kpiTotal || 'Total Vehicles', value: kpi.total, sub: 'Entire fleet', icon: kpiIcons.total, iconClass: 'green' },
-            { label: d.kpiAvailable || 'Available', value: kpi.available, sub: 'Ready for dispatch', icon: kpiIcons.available, iconClass: 'green', up: true },
-            { label: d.kpiInService || 'In Service', value: kpi.inService, sub: 'Active transfers', icon: kpiIcons.inService, iconClass: 'blue' },
-            { label: d.kpiMaintenance || 'Under Maintenance', value: kpi.maintenance, sub: 'Out of service', icon: kpiIcons.maintenance, iconClass: 'amber' },
-            { label: d.kpiOffline || 'Offline', value: kpi.offline, sub: 'Inactive or pending', icon: kpiIcons.offline, iconClass: 'gray' },
-          ].map((card, idx) => (
-            <div key={idx} className="kpi-fleet-card">
-              <div className="kpi-top">
-                <div className={`kpi-icon ${card.iconClass}`} dangerouslySetInnerHTML={{ __html: card.icon }} />
-              </div>
-              <div className="kpi-label">{card.label}</div>
-              <div className="kpi-value">{card.value}</div>
-              <div className={`kpi-sub${card.up ? ' up' : ''}`} style={{ color: card.up ? 'var(--accent)' : 'var(--fg-muted)' }}>{card.sub}</div>
-            </div>
-          ))}
+    <div className="admin-page space-y-6">
+      <section className="admin-section-header">
+        <div>
+          <h1 className="admin-page-title">Flota</h1>
+          <p className="admin-section-desc">Supervisa vehículos, categorías, estado y cumplimiento documental.</p>
         </div>
+      </section>
+      <div className="admin-grid-6 admin-mb-4">
+        {[
+          { label: 'Vehículos Totales', value: kpi.total, sub: 'Flota completa', icon: 'green' },
+          { label: 'Disponibles', value: kpi.available, sub: 'Listos para despacho', icon: 'green', up: true },
+          { label: 'En Servicio', value: kpi.inService, sub: 'Trasferencias activas', icon: 'blue' },
+          { label: 'Mantenimiento', value: kpi.maintenance, sub: 'Fuera de servicio', icon: 'amber' },
+          { label: 'Desconectados', value: kpi.offline, sub: 'Inactivos o pendientes', icon: 'gray' },
+        ].map((card, idx) => (
+          <div key={idx} className="admin-kpi-card">
+            <div className="admin-kpi-label">{card.label}</div>
+            <div className="admin-kpi-value">{card.value}</div>
+            <div className="admin-kpi-sub neutral">{card.sub}</div>
+          </div>
+        ))}
       </div>
 
-      {/* ── VEHICLE CATEGORIES ── */}
-      <div>
-        <div className="section-title">Vehicle Categories</div>
-        <div className="category-grid">
-          {categories.map(cat => {
-            const count = cat.key === 'all' ? vehicles.length : vehicles.filter(v => v.category === cat.key).length
-            return (
-              <div
-                key={cat.key}
-                className={`category-card ${selectedCategory === cat.key ? 'active' : ''}`}
-                onClick={() => setSelectedCategory(cat.key)}
-              >
-                <span className="category-emoji">{cat.emoji}</span>
-                <div className="category-name">{cat.name}</div>
-                <div className="category-count">{count}</div>
-              </div>
-            )
-          })}
+      {/* Categories */}
+      <section className="admin-card">
+        <div className="admin-card-header">
+          <h2 className="admin-card-title">Categorías de Vehículo</h2>
         </div>
-      </div>
-
-      {/* ── VEHICLE CARDS ── */}
-      <div>
-        <div className="section-title">
-          All Vehicles
-          <div className="dp-search-bar" style={{ margin: 0, marginLeft: 'auto' }}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            <input
-              placeholder={d.searchPlaceholder || 'Search vehicles...'}
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              style={{ fontSize: 12 }}
-            />
+        <div className="admin-card-body">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 10 }}>
+            {categories.map(cat => {
+              const count = cat.key === 'all' ? vehicles.length : vehicles.filter(v => v.category === cat.key).length
+              return (
+                <div
+                  key={cat.key}
+                  className="admin-card" style={{ padding: 14, cursor: 'pointer' }}
+                  onClick={() => setSelectedCategory(cat.key)}
+                >
+                  <div style={{ fontSize: 24 }}>{cat.emoji}</div>
+                  <div style={{ fontWeight: 600, color: 'var(--ui-fg)', marginTop: 4 }}>{cat.name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--ui-fg-muted)', marginTop: 2 }}>{count}</div>
+                </div>
+              )
+            })}
           </div>
         </div>
-        <div className="vehicle-grid">
-          {filtered.length === 0 ? (
-            <div className="text-fg-muted text-center py-12" style={{ gridColumn: '1 / -1' }}>{d.noResults || 'No vehicles found'}</div>
-          ) : filtered.map(v => (
-            <div
-              key={v.id}
-              className="vehicle-card"
-              onClick={() => setSelectedVehicle(v)}
-            >
-              <div className="vehicle-image">{statusEmoji[v.status] || '\u{1F697}'}</div>
-              <div className="vehicle-name">{v.name}</div>
-              <div className="vehicle-plate">{v.plate}</div>
-              <div className="vehicle-meta">
-                <span className="badge" style={{ fontSize: 9, background: catColors[v.category] || 'var(--border)', color: catTextColors[v.category] || 'var(--fg-muted)' }}>
-                  {v.category === 'vip-suv' ? 'VIP SUV' : v.category.charAt(0).toUpperCase() + v.category.slice(1)}
-                </span>
-                <span className={getBadgeClass(v.status)} style={{ fontSize: 9 }}>
-                  {v.status === 'in_service' ? 'In Service' : v.status.charAt(0).toUpperCase() + v.status.slice(1)}
-                </span>
-              </div>
-              <div className="vehicle-footer">
-                <div className="vehicle-driver">
-                  {v.driver ? (
-                    <>
-                      <span className="av">{v.driverInit}</span>
-                      <span>{v.driver}</span>
-                    </>
-                  ) : (
-                    <span style={{ color: 'var(--fg-muted)' }}>Unassigned</span>
-                  )}
-                </div>
-                <div>
-                  <span className={`health-dot ${v.soatOk ? 'ok' : 'bad'}`} style={{ marginRight: 3 }}></span>
-                  SOAT · <span className={`health-dot ${v.inspOk ? 'ok' : 'bad'}`} style={{ marginRight: 3 }}></span>
-                  Insp
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      </section>
 
-      {/* ── FLEET ANALYTICS ── */}
-      <div>
-        <div className="section-title">Fleet Analytics</div>
-        <div className="fleet-analytics" style={{ gridTemplateColumns: '1fr 1fr' }}>
-          <div className="analytics-card">
-            <div className="card-header"><span className="card-title">Fleet Utilization</span></div>
-            <div className="card-body">
-              <div className="util-number">{analytics.utilization}%</div>
-              <div className="util-label">Active fleet rate</div>
-              <div className="util-gauge">
-                <div className="ring">{analytics.utilization}</div>
-                <div>
-                  <div style={{ fontSize: 12, color: 'var(--fg-secondary)' }}>{analytics.activeCount} of {vehicles.length} vehicles</div>
-                  <div style={{ fontSize: 11, color: 'var(--fg-muted)', marginTop: 2 }}>available or in service today</div>
+      {/* Vehicles */}
+      <section className="admin-card admin-mt-4">
+        <div className="admin-card-header admin-flex-between">
+          <h2 className="admin-card-title">Vehículos</h2>
+          <div className="admin-field" style={{ minWidth: 200 }}>
+            <label className="admin-field-label">Buscar vehículos</label>
+            <input className="admin-input" placeholder={d.searchPlaceholder || 'Buscar vehículos...'} value={search} onChange={e => setSearch(e.target.value)} />
+          </div>
+        </div>
+        <div className="admin-card-body">
+          <div className="admin-grid-responsive">
+            {filtered.length === 0 ? (
+              <div className="admin-empty" style={{ padding: '24px 24px', gridColumn: '1 / -1' }}>
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.3"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/></svg>
+                <h3>{d.noResults || 'No hay vehículos'}</h3>
+              </div>
+            ) : (
+              filtered.map(v => (
+                <div key={v.id} className="admin-res-card" onClick={() => setSelectedVehicle(v)} style={{ cursor: 'pointer' }}>
+                  <div className="admin-res-card-header">
+                    <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'var(--ui-surface-hover)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>
+                      {statusEmoji[v.status] || '🚙'}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, color: 'var(--ui-fg)' }}>{v.name}</div>
+                      <div style={{ fontSize: 11, color: 'var(--ui-fg-muted)' }}>{v.plate}</div>
+                    </div>
+                    <span className={`admin-badge ${getBadgeClass(v.status)}`}>
+                      {v.status === 'in_service' ? 'En Servicio' : v.status.charAt(0).toUpperCase() + v.status.slice(1)}
+                    </span>
+                  </div>
+                  <div className="admin-res-body">
+                    <div className="admin-res-row">
+                      <span className="admin-res-label">Categoría</span>
+                      <span style={{ fontSize: 12, color: catTextColors[v.category] || 'var(--ui-fg-muted)', fontWeight: 600 }}>
+                        {v.category === 'vip-suv' ? 'VIP SUV' : v.category.charAt(0).toUpperCase() + v.category.slice(1)}
+                      </span>
+                    </div>
+                    <div className="admin-res-row">
+                      <span className="admin-res-label">Conductor</span>
+                      <span>{v.driver ? `${v.driverInit} · ${v.driver}` : 'Sin asignar'}</span>
+                    </div>
+                    <div className="admin-res-row">
+                      <span className="admin-res-label">Documentos</span>
+                      <span>
+                        <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: v.soatOk ? 'var(--ui-accent)' : 'var(--ui-danger)', marginRight: 4 }} />
+                        SOAT ·
+                        <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: v.inspOk ? 'var(--ui-accent)' : 'var(--ui-danger)', marginRight: 4 }} />
+                        Insp
+                      </span>
+                    </div>
+                    <div className="admin-res-row">
+                      <span className="admin-res-label">Viajes</span>
+                      <span style={{ fontFamily: 'var(--ui-font-mono)', fontWeight: 600 }}>{v.trips}</span>
+                    </div>
+                    <div className="admin-res-row">
+                      <span className="admin-res-label">Año / Capacidad</span>
+                      <span>{v.year || '—'} · {v.capacity || '—'}</span>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* Analytics */}
+      <section className="admin-card admin-mt-4">
+        <div className="admin-card-header">
+          <h2 className="admin-card-title">Análisis de Flota</h2>
+        </div>
+        <div className="admin-card-body">
+          <div className="admin-grid-2">
+            <div className="admin-card" style={{ padding: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ui-fg)', marginBottom: 8 }}>Utilización de Flota</div>
+              <div style={{ fontSize: 24, fontWeight: 700, fontFamily: 'var(--ui-font-mono)', color: 'var(--ui-accent)' }}>{analytics.utilization}%</div>
+              <div style={{ fontSize: 12, color: 'var(--ui-fg-muted)', marginTop: 4 }}>{analytics.activeCount} de {vehicles.length} vehículos disponibles o en servicio</div>
+            </div>
+            <div className="admin-card" style={{ padding: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ui-fg)', marginBottom: 8 }}>Métricas Clave</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                  <span style={{ color: 'var(--ui-fg-muted)' }}>Viajes totales</span>
+                  <span style={{ fontWeight: 600 }}>{analytics.totalTrips.toLocaleString()}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                  <span style={{ color: 'var(--ui-fg-muted)' }}>Utilización conductores</span>
+                  <span style={{ fontWeight: 600 }}>{analytics.driverUtil}%</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                  <span style={{ color: 'var(--ui-fg-muted)' }}>Alertas cumplimiento</span>
+                  <span style={{ fontWeight: 600 }}>{analytics.expiredDocs}</span>
                 </div>
               </div>
             </div>
           </div>
-          <div className="analytics-card">
-            <div className="card-header"><span className="card-title">Key Metrics</span></div>
-            <div className="card-body">
-              <div className="metric-item"><span className="label">Total trips</span><span className="value">{analytics.totalTrips.toLocaleString()}</span></div>
-              <div className="metric-item"><span className="label">Driver utilization</span><span className="value">{analytics.driverUtil}%</span></div>
-              <div className="metric-item"><span className="label">Compliance alerts</span><span className="value">{analytics.expiredDocs}</span></div>
-              <div className="metric-item"><span className="label">Active vehicles</span><span className="value">{analytics.activeCount}</span></div>
-            </div>
-          </div>
         </div>
-      </div>
+      </section>
 
-      {/* ── VEHICLE DETAIL MODAL ── */}
+      {/* Detail Modal */}
       {selectedVehicle && (
-        <div className="modal-overlay open" onClick={() => setSelectedVehicle(null)}>
-          <div className="modal modal-wide" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <span className="modal-title">{selectedVehicle.name}</span>
-              <button className="icon-btn" onClick={() => setSelectedVehicle(null)}>
+        <div className="admin-modal-overlay open" onClick={() => setSelectedVehicle(null)}>
+          <div className="admin-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 640 }}>
+            <div className="admin-modal-header">
+              <h2 className="admin-modal-title">{selectedVehicle.name}</h2>
+              <button className="admin-btn admin-btn-ghost admin-btn-sm" onClick={() => setSelectedVehicle(null)}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>
-            <div className="modal-body">
-              {/* Vehicle Detail Header */}
-              <div className="vehicle-detail-header">
-                <div className="vehicle-detail-image">{getEmojiForCategory(selectedVehicle.category)}</div>
-                <div className="vehicle-detail-info">
-                  <h3>{selectedVehicle.name}</h3>
-                  <div className="plate">{selectedVehicle.plate}</div>
-                  <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
-                    <span className={getBadgeClass(selectedVehicle.status)}>
-                      {selectedVehicle.status === 'in_service' ? 'In Service' : selectedVehicle.status.charAt(0).toUpperCase() + selectedVehicle.status.slice(1)}
+            <div className="admin-modal-body">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--ui-surface-hover)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
+                  {getEmojiForCategory(selectedVehicle.category)}
+                </div>
+                <div>
+                  <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--ui-fg)' }}>{selectedVehicle.name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--ui-fg-muted)', fontFamily: 'var(--ui-font-mono)' }}>{selectedVehicle.plate}</div>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                    <span className={`admin-badge ${getBadgeClass(selectedVehicle.status)}`}>
+                      {selectedVehicle.status === 'in_service' ? 'En Servicio' : selectedVehicle.status.charAt(0).toUpperCase() + selectedVehicle.status.slice(1)}
                     </span>
-                    <span className="badge badge-gold">{selectedVehicle.category === 'vip-suv' ? 'VIP SUV' : selectedVehicle.category.charAt(0).toUpperCase() + selectedVehicle.category.slice(1)}</span>
+                    <span className="admin-badge gold">{selectedVehicle.category === 'vip-suv' ? 'VIP SUV' : selectedVehicle.category.charAt(0).toUpperCase() + selectedVehicle.category.slice(1)}</span>
                   </div>
                 </div>
               </div>
-
-              {/* Info Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+              <div style={{ marginTop: 20, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 {[
-                  { label: 'Driver', value: selectedVehicle.driver || 'Unassigned' },
-                  { label: 'Year', value: selectedVehicle.year || '—' },
-                  { label: 'Capacity', value: selectedVehicle.capacity || '—' },
-                  { label: 'Trips', value: selectedVehicle.trips?.toLocaleString() || '0' },
-                  { label: 'Next Service', value: selectedVehicle.nextService || 'Not scheduled' },
+                  { label: 'Conductor', value: selectedVehicle.driver || 'Sin asignar' },
+                  { label: 'Año', value: selectedVehicle.year || '—' },
+                  { label: 'Capacidad', value: selectedVehicle.capacity || '—' },
+                  { label: 'Viajes', value: selectedVehicle.trips?.toLocaleString() || '0' },
+                  { label: 'Próximo servicio', value: selectedVehicle.nextService || 'No programado' },
                 ].map(f => (
-                  <div key={f.label} style={{ padding: '6px 0', borderBottom: '1px solid var(--border-light)' }}>
-                    <div style={{ fontSize: 11, color: 'var(--fg-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: 0.4 }}>{f.label}</div>
-                    <div style={{ fontSize: 13, color: 'var(--fg)', fontWeight: 500, marginTop: 2 }}>{f.value}</div>
+                  <div key={f.label} style={{ padding: '8px 0', borderBottom: '1px solid var(--ui-border-light)' }}>
+                    <div style={{ fontSize: 11, color: 'var(--ui-fg-muted)', fontWeight: 500, textTransform: 'uppercase', letterSpacing: 0.4 }}>{f.label}</div>
+                    <div style={{ fontSize: 13, color: 'var(--ui-fg)', fontWeight: 500, marginTop: 2 }}>{f.value}</div>
                   </div>
                 ))}
               </div>
-
-              {/* Documents & Compliance */}
-              <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.6, color: 'var(--fg-muted)', marginBottom: 8 }}>Documents & Compliance</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+              <div style={{ marginTop: 16, fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.6, color: 'var(--ui-fg-muted)' }}>Documentos y Cumplimiento</div>
+              <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {[
-                  { name: 'SOAT Insurance', status: selectedVehicle.soatExpiry || '—', state: selectedVehicle.soatOk ? 'ok' : 'bad' },
-                  { name: 'Technical Inspection', status: selectedVehicle.inspExpiry || '—', state: selectedVehicle.inspOk ? 'ok' : 'bad' },
-                  { name: 'Vehicle Insurance', status: selectedVehicle.insuranceExpiry || '—', state: 'ok' },
-                  { name: 'Driver License', status: selectedVehicle.licenseExpiry || '—', state: 'ok' },
-                ].map((doc, i) => {
-                  const icon = doc.state === 'ok' ? '\u2705' : '\u274C'
-                  const cls = doc.state === 'ok' ? 'green' : 'blue'
-                  return (
-                    <div key={i} className="detail-doc">
-                      <div className={`detail-doc-icon ${cls}`}>{icon}</div>
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--fg)' }}>{doc.name}</div>
-                        <div style={{ fontSize: 11, color: 'var(--fg-muted)' }}>{doc.status}</div>
-                      </div>
+                  { name: 'SOAT', status: selectedVehicle.soatExpiry || '—', state: selectedVehicle.soatOk ? 'ok' : 'bad' },
+                  { name: 'Inspección Técnica', status: selectedVehicle.inspExpiry || '—', state: selectedVehicle.inspOk ? 'ok' : 'bad' },
+                  { name: 'Seguro Vehículo', status: selectedVehicle.insuranceExpiry || '—', state: 'ok' },
+                  { name: 'Licencia Conductor', status: selectedVehicle.licenseExpiry || '—', state: 'ok' },
+                ].map((doc, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 8, background: 'var(--ui-surface)', borderRadius: 'var(--ui-radius-sm)', border: '1px solid var(--ui-border)' }}>
+                    <span style={{ width: 24, height: 24, borderRadius: '50%', background: doc.state === 'ok' ? 'var(--ui-accent-soft)' : 'var(--ui-danger-soft)', color: doc.state === 'ok' ? 'var(--ui-accent)' : 'var(--ui-danger)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>
+                      {doc.state === 'ok' ? '✅' : '❌'}
+                    </span>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--ui-fg)' }}>{doc.name}</div>
+                      <div style={{ fontSize: 11, color: 'var(--ui-fg-muted)' }}>{doc.status}</div>
                     </div>
-                  )
-                })}
+                  </div>
+                ))}
               </div>
             </div>
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setSelectedVehicle(null)}>{d.close || 'Close'}</button>
+            <div className="admin-modal-footer">
+              <button className="admin-btn admin-btn-secondary admin-btn-sm" onClick={() => setSelectedVehicle(null)}>{d.close || 'Cerrar'}</button>
             </div>
           </div>
         </div>
       )}
     </div>
   )
+}
+
+function getEmojiForCategory(cat: string): string {
+  const map: Record<string, string> = { standard: '🚙', suv: '🚙', 'vip-suv': '⭐', luxury: '🚗', van: '🚐' }
+  return map[cat] || '🚙'
 }

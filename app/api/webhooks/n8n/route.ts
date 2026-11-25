@@ -1,23 +1,8 @@
-import { timingSafeEqual } from 'crypto'
 import { NextResponse } from 'next/server'
+import crypto from 'crypto'
 import { getDb } from '@/lib/db'
 import { timingSafeEqual } from '@/lib/string-utils'
 import { emitEvent } from '@/lib/events-outbox'
-
-// Security: Verify Bearer token from n8n webhook requests using timing-safe comparison
-function isValidWebhookAuth(req: Request): boolean {
-  const expectedKey = process.env.N8N_API_KEY
-  if (!expectedKey) return true // Allow unauthenticated in environments without configured key
-
-  const authHeader = req.headers.get('authorization')
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return false
-
-  const token = authHeader.slice(7)
-  const tokenBuf = Buffer.from(token)
-  const expectedBuf = Buffer.from(expectedKey)
-
-  return tokenBuf.length === expectedBuf.length && timingSafeEqual(tokenBuf, expectedBuf)
-}
 
 interface N8nWebhookEvent {
   event: string
@@ -25,25 +10,36 @@ interface N8nWebhookEvent {
   timestamp: string
 }
 
+function verifyWebhookSignature(header: string, secret: string, rawBody: string): boolean {
+  const trimmed = header.trim()
+  const isHex = /^sha256=[0-9a-fA-F]{64}$/.test(trimmed) || /^[0-9a-fA-F]{64}$/.test(trimmed)
+  if (isHex) {
+    const sigHex = trimmed.startsWith('sha256=') ? trimmed.slice(7) : trimmed
+    const expectedHex = crypto.createHmac('sha256', secret).update(rawBody).digest('hex')
+    const sigBuf = Buffer.from(sigHex, 'hex')
+    const expectedBuf = Buffer.from(expectedHex, 'hex')
+    if (sigBuf.length === expectedBuf.length && crypto.timingSafeEqual(sigBuf, expectedBuf)) {
+      return true
+    }
+  }
+  return timingSafeEqual(header, secret)
+}
+
 /**
  * Handle incoming webhooks from n8n
  * This endpoint receives workflow results and updates the app accordingly
  */
 export async function POST(request: Request) {
-  // Enforce webhook authorization to prevent forged n8n workflow events
-  if (!isValidWebhookAuth(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
   try {
+    const rawBody = await request.text()
     const signature = request.headers.get('x-n8n-signature')
     const secret = process.env.N8N_WEBHOOK_SECRET
-    if (!signature || !secret || !timingSafeEqual(signature, secret)) {
+    if (!signature || !secret || !verifyWebhookSignature(signature, secret, rawBody)) {
       console.error('[n8n Webhook] Invalid or missing signature')
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
     }
 
-    const body: N8nWebhookEvent = await request.json()
+    const body: N8nWebhookEvent = JSON.parse(rawBody)
     const { event, data, timestamp } = body
 
     console.log(`[n8n Webhook] Received event: ${event}`, { timestamp })

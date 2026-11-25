@@ -4,7 +4,7 @@
 // stream /api/realtime/events/stream (both authenticated).
 import { getDb } from '@/lib/db'
 
-export type OutboxEventStatus = 'pending' | 'published' | 'failed'
+export type OutboxEventStatus = 'pending' | 'processing' | 'published' | 'failed'
 
 export interface OutboxEvent {
   id: number
@@ -37,14 +37,18 @@ export async function emitEvent(
 ): Promise<number | null> {
   try {
     const db = getDb()
-    const status = opts.status || 'published'
+    const status = opts.status || 'pending'
     const maxRetries = opts.maxRetries ?? 5
     const result = await db.execute({
       sql: `INSERT INTO events_outbox (type, payload, correlation_id, status, max_retries)
             VALUES (?, ?, ?, ?, ?)`,
       args: [type, JSON.stringify(payload), opts.correlationId || null, status, maxRetries],
     })
-    return Number(result.lastInsertRowid)
+    const insertedId = Number(result.lastInsertRowid)
+    if (status === 'pending' && process.env.NODE_ENV !== 'test') {
+      void processOutboxEvents(10).catch(() => {})
+    }
+    return insertedId
   } catch (err) {
     // The event bus must never break the business write that calls it.
     console.error('[events-outbox] emit failed:', err)
@@ -115,6 +119,7 @@ async function dispatchOutboxEvent(event: OutboxEvent): Promise<void> {
         correlation_id: event.correlation_id,
         timestamp: new Date().toISOString(),
       }),
+      signal: AbortSignal.timeout(10000),
     })
     if (!res.ok) {
       throw new Error(`n8n webhook error: HTTP ${res.status}`)
@@ -123,11 +128,49 @@ async function dispatchOutboxEvent(event: OutboxEvent): Promise<void> {
 }
 
 /**
- * Background worker relay: polls pending outbox events, processes their external actions,
- * and updates their status to 'published' or 'failed' with retry tracking.
+ * Idempotent consumer guard backed by `processed_events`.
+ * Ensures a consumer never executes side-effects twice for the same outbox event.
+ */
+export async function runIdempotentConsumer(
+  eventId: number,
+  consumerName: string,
+  fn: () => Promise<void>,
+): Promise<boolean> {
+  const db = getDb()
+  const claim = await db.execute({
+    sql: `INSERT OR IGNORE INTO processed_events (event_id, consumer_name) VALUES (?, ?)`,
+    args: [eventId, consumerName],
+  })
+  if (claim.rowsAffected === 0) return false
+  try {
+    await fn()
+    return true
+  } catch (err) {
+    // Release claim so retries can re-execute the consumer
+    await db.execute({
+      sql: `DELETE FROM processed_events WHERE event_id = ? AND consumer_name = ?`,
+      args: [eventId, consumerName],
+    }).catch(() => {})
+    throw err
+  }
+}
+
+/**
+ * Background worker relay: polls pending outbox events with optimistic locking,
+ * processes their domain consumers and external endpoints, and updates status.
  */
 export async function processOutboxEvents(batchSize = 20): Promise<{ processed: number; succeeded: number; failed: number }> {
+  const { registerDefaultOutboxConsumers } = await import('@/lib/events/consumers')
+  registerDefaultOutboxConsumers()
+
   const db = getDb()
+
+  // Recover stale processing locks older than 5 minutes
+  await db.execute(
+    `UPDATE events_outbox SET status = 'pending', locked_at = NULL
+     WHERE status = 'processing' AND locked_at < datetime('now', '-5 minutes')`,
+  ).catch(() => {})
+
   const result = await db.execute({
     sql: `SELECT id, type, payload, correlation_id, retry_count, max_retries, created_at
           FROM events_outbox
@@ -141,6 +184,15 @@ export async function processOutboxEvents(batchSize = 20): Promise<{ processed: 
 
   for (const row of result.rows) {
     const eventId = Number(row.id)
+
+    // Optimistic lock claim
+    const lockRes = await db.execute({
+      sql: `UPDATE events_outbox SET status = 'processing', locked_at = datetime('now')
+            WHERE id = ? AND status = 'pending'`,
+      args: [eventId],
+    })
+    if (lockRes.rowsAffected === 0) continue
+
     const eventType = String(row.type)
     const retryCount = Number(row.retry_count || 0)
     const maxRetries = Number(row.max_retries || 5)
@@ -156,19 +208,18 @@ export async function processOutboxEvents(batchSize = 20): Promise<{ processed: 
       type: eventType,
       payload: parsedPayload,
       correlation_id: (row.correlation_id as string) || null,
-      status: 'pending',
+      status: 'processing',
       retry_count: retryCount,
       max_retries: maxRetries,
       created_at: String(row.created_at),
     }
 
     try {
-      // Execute genuine dispatch to listeners and external endpoints
       await dispatchOutboxEvent(outboxEvent)
 
       await db.execute({
         sql: `UPDATE events_outbox
-              SET status = 'published', processed_at = datetime('now')
+              SET status = 'published', locked_at = NULL, processed_at = datetime('now')
               WHERE id = ?`,
         args: [eventId],
       })
@@ -183,11 +234,12 @@ export async function processOutboxEvents(batchSize = 20): Promise<{ processed: 
         sql: `UPDATE events_outbox
               SET retry_count = ?,
                   status = ?,
+                  locked_at = NULL,
                   error_message = ?,
                   processed_at = datetime('now')
               WHERE id = ?`,
         args: [newRetry, isExhausted ? 'failed' : 'pending', errorMsg.slice(0, 500), eventId],
-      }).catch(e => console.error('[events-outbox] failed to record error state:', e))
+      }).catch((e: unknown) => console.error('[events-outbox] failed to record error state:', e))
     }
   }
 
@@ -202,7 +254,7 @@ export async function listEventsSince(sinceId: number, limit = 200): Promise<Out
           FROM events_outbox WHERE id > ? ORDER BY id ASC LIMIT ?`,
     args: [sinceId, limit],
   })
-  return result.rows.map(row => ({
+  return result.rows.map((row: Record<string, unknown>) => ({
     id: row.id as number,
     type: row.type as string,
     payload: JSON.parse((row.payload as string) || '{}'),

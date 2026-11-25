@@ -41,6 +41,10 @@ export async function POST(req: Request) {
 }
 
 export async function GET() {
+  const { requirePermission } = await import('@/lib/admin/permissions')
+  const authError = await requirePermission('dashboard', 'view')
+  if (authError) return authError
+
   const [queueStats, circuits] = await Promise.all([
     getQueueStats(),
     Promise.resolve(getAllCircuitStats()),

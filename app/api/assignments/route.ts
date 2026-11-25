@@ -138,7 +138,7 @@ export async function POST(req: Request) {
     }, { status: 201 })
   } catch (err) {
     console.error('[assignments POST]', err)
-    return NextResponse.json({ error: 'Internal server error', detail: String(err) }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
@@ -178,6 +178,6 @@ export async function GET(req: Request) {
     return NextResponse.json({ assignments: result.rows })
   } catch (err) {
     console.error('[assignments GET]', err)
-    return NextResponse.json({ error: 'Internal server error', detail: String(err) }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

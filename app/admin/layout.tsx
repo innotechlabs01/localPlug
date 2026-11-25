@@ -9,10 +9,13 @@ import { RealtimeProvider, useRealtime } from '@/lib/admin/realtime-context'
 import { InactivityGuard } from '@/app/admin/components/InactivityGuard'
 import { ToastProvider, useToast } from '@/lib/admin/toast-context'
 import { DateFilterProvider, useDateFilter } from '@/lib/admin/date-filter-context'
+import './ui.css'
 
 interface NavItem {
-  labelKey: string
+  labelKey?: string
+  label?: string
   href: string
+  moduleSlug: string
   icon: React.ReactNode
   badge?: string
 }
@@ -24,6 +27,7 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
       {
         labelKey: 'dashboard',
         href: '/admin',
+        moduleSlug: 'dashboard',
         icon: (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
@@ -34,12 +38,34 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
       {
         labelKey: 'dispatch',
         href: '/admin/dispatch',
+        moduleSlug: 'dispatch',
         icon: (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
           </svg>
         ),
-        badge: '0',
+      },
+      {
+        label: 'Maps',
+        href: '/admin/maps',
+        moduleSlug: 'dispatch',
+        icon: (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/>
+            <line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/>
+          </svg>
+        ),
+      },
+      {
+        label: 'On-Demand Rides',
+        href: '/admin/rides',
+        moduleSlug: 'dispatch',
+        icon: (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M5 17h14M5 17a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2"/>
+            <circle cx="7" cy="14" r="2"/><circle cx="17" cy="14" r="2"/>
+          </svg>
+        ),
       },
     ],
   },
@@ -49,6 +75,7 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
       {
         labelKey: 'reservations',
         href: '/admin/reservations',
+        moduleSlug: 'reservations',
         icon: (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M8 2v4M16 2v4"/><rect x="3" y="4" width="18" height="18" rx="2"/>
@@ -59,6 +86,7 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
       {
         labelKey: 'drivers',
         href: '/admin/drivers',
+        moduleSlug: 'drivers',
         icon: (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
@@ -69,6 +97,7 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
       {
         labelKey: 'fleet',
         href: '/admin/fleet',
+        moduleSlug: 'fleet',
         icon: (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M5 17h14M5 17a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2M8 21h8"/>
@@ -79,6 +108,7 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
       {
         labelKey: 'customers',
         href: '/admin/customers',
+        moduleSlug: 'customers',
         icon: (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
@@ -88,12 +118,32 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
       {
         labelKey: 'support',
         href: '/admin/ia-chat',
+        moduleSlug: 'support',
         icon: (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
           </svg>
         ),
-        badge: '3',
+      },
+      {
+        label: 'Auditoría',
+        href: '/admin/auditoria',
+        moduleSlug: 'audit',
+        icon: (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="21"/>
+          </svg>
+        ),
+      },
+      {
+        label: 'Event Queue',
+        href: '/admin/outbox',
+        moduleSlug: 'queue',
+        icon: (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+          </svg>
+        ),
       },
     ],
   },
@@ -103,6 +153,7 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
       {
         labelKey: 'employees',
         href: '/admin/employees',
+        moduleSlug: 'employees',
         icon: (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
@@ -113,6 +164,7 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
       {
         labelKey: 'analytics',
         href: '/admin/analytics',
+        moduleSlug: 'analytics',
         icon: (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
@@ -122,6 +174,7 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
       {
         labelKey: 'payments',
         href: '/admin/payments',
+        moduleSlug: 'payments',
         icon: (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <line x1="12" y1="1" x2="12" y2="23"/>
@@ -132,6 +185,7 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
       {
         labelKey: 'settlements',
         href: '/admin/settlements',
+        moduleSlug: 'payouts',
         icon: (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M12 1v22"/>
@@ -142,6 +196,7 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
       {
         labelKey: 'parking',
         href: '/admin/parking-proofs',
+        moduleSlug: 'parking_proofs',
         icon: (          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
             <path d="M2 12h6"/>
@@ -152,6 +207,7 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
       {
         labelKey: 'plans',
         href: '/admin/plans',
+        moduleSlug: 'plans',
         icon: (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
@@ -167,6 +223,7 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
       {
         labelKey: 'hotels',
         href: '/admin/hotels',
+        moduleSlug: 'hotels',
         icon: (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M3 21h18"/>
@@ -187,6 +244,7 @@ const navSections: { labelKey: string; items: NavItem[] }[] = [
       {
         labelKey: 'events',
         href: '/admin/events',
+        moduleSlug: 'events',
         icon: (
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <rect x="3" y="4" width="18" height="18" rx="2"/>
@@ -278,11 +336,11 @@ function DateNav() {
   return (
     <div className="date-nav">
       <div className="date-nav-left">
-        <button className="date-arrow" onClick={goPrev}>
+        <button className="date-arrow" onClick={goPrev} aria-label={`Previous ${view}`}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
         <button className="date-today-btn" onClick={goToday}>Today</button>
-        <button className="date-arrow" onClick={goNext}>
+        <button className="date-arrow" onClick={goNext} aria-label={`Next ${view}`}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
       </div>
@@ -298,7 +356,7 @@ function DateNav() {
             </button>
           ))}
         </div>
-        <button className="date-calendar-btn">
+        <button className="date-calendar-btn" aria-label="Open calendar">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
         </button>
       </div>
@@ -343,49 +401,130 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
   const { signOut } = useClerk()
   const pathname = usePathname()
   const router = useRouter()
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [isMobile, setIsMobile] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const [accessDenied, setAccessDenied] = useState(false)
   const [permsLoading, setPermsLoading] = useState(true)
+  const [userPerms, setUserPerms] = useState<Record<string, { can_view?: boolean }>>({})
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
   const { t, lang, setLang } = useI18n()
   const { notifications, unreadCount, markAsRead, markAllAsRead, stats } = useRealtime()
 
   useEffect(() => {
-    fetch('/api/admin/permissions/mine')
-      .then(r => {
-        if (r.status === 401 || r.status === 403) {
+    const checkMobile = () => {
+      const mobile = window.innerWidth <= 768
+      setIsMobile(mobile)
+      if (mobile) setSidebarOpen(false)
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
+
+  useEffect(() => {
+    setNotifOpen(false)
+    setProfileOpen(false)
+  }, [pathname])
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setNotifOpen(false)
+        setProfileOpen(false)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
+  const [permError, setPermError] = useState<string | null>(null)
+
+  const loadPermissions = useCallback(() => {
+    if (!isLoaded || !isSignedIn) return
+    setPermsLoading(true)
+    setAccessDenied(false)
+    setPermError(null)
+    fetch('/api/admin/permissions/mine', { cache: 'no-store' })
+      .then(async r => {
+        if (r.status === 401) {
+          router.push('/sign-in/admin')
+          return null
+        }
+        if (r.status === 403) {
+          const err = await r.json().catch(() => ({}))
+          setPermError(err.error || 'Sin permisos asignados para el panel admin.')
           setAccessDenied(true)
-          setPermsLoading(false)
+          return null
+        }
+        if (!r.ok) {
+          setPermError(`Error ${r.status} verificando permisos.`)
+          setAccessDenied(true)
           return null
         }
         return r.json()
       })
       .then(data => {
         if (!data) return
-        const perms = data.permissions || {}
-        if (Object.keys(perms).length === 0) {
+        const perms: Record<string, { can_view?: boolean }> = data.permissions || {}
+        const superAdmin = Boolean(data.isSuperAdmin)
+        setUserPerms(perms)
+        setIsSuperAdmin(superAdmin)
+        const hasAnyView = superAdmin || Object.values(perms).some(p => Boolean(p?.can_view))
+        if (!hasAnyView) {
+          setPermError('Tu rol no tiene módulos activos (Menu/View) en el panel admin.')
           setAccessDenied(true)
         }
       })
       .catch(() => {
+        setPermError('Error de red al verificar permisos.')
         setAccessDenied(true)
       })
       .finally(() => setPermsLoading(false))
-  }, [])
+  }, [isLoaded, isSignedIn, router])
 
-  const filteredNavSections = navSections // Admin sees all menu items
+  useEffect(() => {
+    if (!isLoaded) return
+    if (!isSignedIn) {
+      setPermsLoading(false)
+      router.push('/sign-in/admin')
+      return
+    }
+    loadPermissions()
+  }, [isLoaded, isSignedIn, user?.id, loadPermissions, router])
+
+  const filteredNavSections = navSections
+    .map(s => {
+      const items = [...s.items]
+      if (s.labelKey === 'sectionManagement' && isSuperAdmin) {
+        items.push({
+          labelKey: 'roles',
+          href: '/admin/roles',
+          moduleSlug: 'roles',
+          icon: (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+          ),
+        })
+      }
+      const visibleItems = isSuperAdmin
+        ? items
+        : items.filter(item => Boolean(userPerms[item.moduleSlug]?.can_view))
+      return { ...s, items: visibleItems }
+    })
+    .filter(s => s.items.length > 0)
 
   if (isLoaded && !isSignedIn) {
-    router.push('/sign-in')
     return null
   }
 
   if (!isLoaded || permsLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen" style={{ background: '#0b0d14' }}>
-        <div className="text-center" style={{ color: '#9ca0b0' }}>
-          <div className="animate-spin w-8 h-8 border-2 border-t-transparent rounded-full mx-auto mb-4" style={{ borderColor: '#282b38', borderTopColor: '#10b981' }} />
+      <div className="flex items-center justify-center min-h-screen" style={{ background: 'var(--ui-bg)' }}>
+        <div className="text-center" style={{ color: 'var(--ui-fg-secondary)' }}>
+          <div className="animate-spin w-8 h-8 border-2 border-t-transparent rounded-full mx-auto mb-4" style={{ borderColor: 'var(--ui-border)', borderTopColor: 'var(--ui-accent)' }} />
           Loading...
         </div>
       </div>
@@ -394,27 +533,40 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
 
   if (accessDenied) {
     return (
-      <div className="flex items-center justify-center min-h-screen" style={{ background: '#0b0d14' }}>
+      <div className="flex items-center justify-center min-h-screen" style={{ background: 'var(--ui-bg)' }}>
         <div className="text-center max-w-md px-6">
           <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6" style={{ background: 'rgba(239,68,68,0.1)' }}>
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--ui-danger)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="10"/>
               <line x1="12" y1="8" x2="12" y2="12"/>
               <line x1="12" y1="16" x2="12.01" y2="16"/>
             </svg>
           </div>
           <h1 className="text-[20px] font-bold text-white mb-2">Access Restricted</h1>
-          <p className="text-[14px] text-[#9ca0b0] leading-relaxed mb-6">
-            Your account does not have the necessary permissions to access the admin panel. 
-            Please contact the platform administrator to request access.
+          <p className="text-[14px] text-[var(--ui-fg-secondary)] leading-relaxed mb-3">
+            {permError || 'Your account does not have the necessary permissions to access the admin panel.'}
           </p>
-          <button
-            onClick={() => signOut({ redirectUrl: '/sign-in/admin' })}
-            className="px-6 py-2.5 rounded-lg text-[13px] font-medium transition-all"
-            style={{ background: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}
-          >
-            Sign Out
-          </button>
+          {user?.primaryEmailAddress?.emailAddress && (
+            <p className="text-[12px] text-[var(--ui-fg-muted)] mb-6">
+              Cuenta actual: <strong className="text-[var(--ui-fg)]">{user.primaryEmailAddress.emailAddress}</strong>
+            </p>
+          )}
+          <div className="flex items-center justify-center gap-3">
+            <button
+              onClick={loadPermissions}
+              className="px-5 py-2.5 rounded-lg text-[13px] font-medium transition-all"
+              style={{ background: 'var(--ui-surface)', color: 'var(--ui-fg)', border: '1px solid var(--ui-border)' }}
+            >
+              Reintentar
+            </button>
+            <button
+              onClick={() => signOut({ redirectUrl: '/sign-in/admin' })}
+              className="px-6 py-2.5 rounded-lg text-[13px] font-medium transition-all"
+              style={{ background: 'rgba(239,68,68,0.15)', color: 'var(--ui-danger)', border: '1px solid var(--ui-danger)' }}
+            >
+              Sign Out
+            </button>
+          </div>
         </div>
       </div>
     )
@@ -424,6 +576,8 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
     const titleMap: Record<string, string> = {
       '/admin': t.admin.dashboard.title as string,
       '/admin/dispatch': t.admin.nav.dispatch as string,
+      '/admin/maps': 'Live GPS Map',
+      '/admin/rides': 'On-Demand Rides',
       '/admin/drivers': t.admin.nav.drivers as string,
       '/admin/fleet': t.admin.nav.fleet as string,
       '/admin/customers': t.admin.nav.customers as string,
@@ -432,65 +586,67 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
       '/admin/analytics': t.admin.nav.analytics as string,
       '/admin/payments': t.admin.nav.payments as string,
       '/admin/parking-proofs': t.admin.nav.parking as string,
+      '/admin/auditoria': 'Auditoría',
+      '/admin/outbox': 'Event Queue & Outbox',
       '/admin/agenda': 'Agenda',
       '/admin/cases': 'Cases',
       '/admin/roles': t.admin.nav.roles as string,
       '/admin/reservations': t.admin.nav.reservations as string,
+      '/admin/plans': (t.admin.nav.plans as string) || 'Plans',
+      '/admin/hotels': (t.admin.nav.hotels as string) || 'Hotels',
+      '/admin/events': (t.admin.nav.events as string) || 'Events',
+      '/admin/settlements': (t.admin.nav.settlements as string) || 'Settlements',
+      '/admin/settings': 'Settings',
     }
     return titleMap[pathname] || t.admin.dashboard.title as string
   }
 
   return (
-    <div className="app-layout">
+    <div className="admin-app admin-layout">
       {/* Mobile overlay */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setSidebarOpen(false)} />
+      {isMobile && sidebarOpen && (
+        <div className="admin-sidebar-overlay open" onClick={() => setSidebarOpen(false)} />
       )}
 
       {/* Sidebar */}
-      <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
-        <div className="sidebar-header">
-          <div className="sidebar-logo">M</div>
-          <div className="sidebar-brand">
+      <aside className={`admin-sidebar ${sidebarOpen ? 'open' : 'collapsed'}`}>
+        <div className="admin-sidebar-header">
+          <div className="admin-sidebar-logo">M</div>
+          <div className="admin-sidebar-brand">
             {t.admin.layout?.sidebarBrandTitle || 'Medellín Admin'}
             <small>{t.admin.layout?.sidebarBrandSubtitle || 'Operations Platform'}</small>
           </div>
         </div>
 
-        <nav className="sidebar-nav">
-          {filteredNavSections.map(s => {
-            const section = { ...s, items: [...s.items] }
-            if (section.labelKey === 'sectionManagement') {
-              section.items.push({
-                labelKey: 'roles',
-                href: '/admin/roles',
-                icon: (
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                  </svg>
-                ),
-              })
-            }
-            return section
-          }).map((section) => (
+        <nav className="admin-sidebar-nav">
+          {filteredNavSections.map((section) => (
             <div key={section.labelKey}>
-              <div className="nav-section-label">
+              <div className="admin-nav-section-label">
                 {t.admin.nav[section.labelKey as keyof typeof t.admin.nav] as string}
               </div>
               {section.items.map((item) => {
                 const isActive = pathname === item.href
+                const itemLabel = item.label || (t.admin.nav[item.labelKey as keyof typeof t.admin.nav] as string)
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
-                    onClick={() => setSidebarOpen(false)}
-                    className={`nav-item ${isActive ? 'active' : ''}`}
+                    title={!sidebarOpen ? itemLabel : undefined}
+                    onClick={() => { if (isMobile) setSidebarOpen(false) }}
+                    className={`admin-nav-item ${isActive ? 'active' : ''}`}
                   >
                     {item.icon}
-                    <span>{t.admin.nav[item.labelKey as keyof typeof t.admin.nav] as string}</span>
-                    {item.badge !== undefined && (
-                      <span className="nav-badge">{item.href === '/admin/dispatch' ? stats.pending_dispatch : item.href === '/admin/ia-chat' ? stats.pending_user_reply : item.badge}</span>
-                    )}
+                    <span>{itemLabel}</span>
+                    {(() => {
+                      const dynamicBadge = item.href === '/admin/dispatch'
+                        ? (stats.pending_dispatch > 0 ? stats.pending_dispatch : null)
+                        : item.href === '/admin/ia-chat'
+                        ? (stats.pending_user_reply > 0 ? stats.pending_user_reply : null)
+                        : (item.badge && item.badge !== '0' ? item.badge : null)
+                      return dynamicBadge != null ? (
+                        <span className="admin-nav-badge">{dynamicBadge}</span>
+                      ) : null
+                    })()}
                   </Link>
                 )
               })}
@@ -498,35 +654,37 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
 
-        <div className="sidebar-footer">
-          <button onClick={() => signOut({ redirectUrl: '/sign-in/admin' })} className="nav-item" style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', textAlign: 'left' }}>
+        <div className="admin-sidebar-footer">
+          <button onClick={() => signOut({ redirectUrl: '/sign-in/admin' })} title={!sidebarOpen ? (t.admin.nav.signOut as string) : undefined} className="admin-nav-item" style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit', textAlign: 'left' }}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
               <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
             </svg>
-            {t.admin.nav.signOut as string}
+            <span className="admin-sidebar-footer-label">{t.admin.nav.signOut as string}</span>
           </button>
         </div>
       </aside>
 
       {/* Main area */}
-      <div className="main-area">
-        <header className="topbar">
-          <div className="topbar-left">
+      <div className={`admin-main ${sidebarOpen ? '' : 'admin-main-collapsed'}`}>
+        <header className="admin-topbar">
+          <div className="admin-topbar-left">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="icon-btn md:hidden"
+              className="admin-menu-btn"
+              aria-label="Toggle sidebar"
+              aria-expanded={sidebarOpen}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>
               </svg>
             </button>
-            <span className="page-title">{getPageTitle()}</span>
+            <span className="admin-page-title">{getPageTitle()}</span>
             <span className="badge badge-accent" style={{ fontSize: 10 }}>
               {t.admin.dashboard.live as string}
             </span>
           </div>
-          <div className="topbar-right">
+          <div className="admin-topbar-right">
             <div className="search-input" style={{ width: 200 }}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
@@ -538,6 +696,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
             </div>
             <select
               className="input"
+              aria-label="Select language"
               style={{ width: 'auto', padding: '6px 10px', fontSize: 12, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', color: 'var(--fg)', outline: 'none' }}
               value={lang}
               onChange={(e) => setLang(e.target.value as 'en' | 'es')}
@@ -545,7 +704,12 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
               <option value="en">EN</option>
               <option value="es">ES</option>
             </select>
-            <button className="icon-btn relative" onClick={() => setNotifOpen(!notifOpen)}>
+            <button
+              className="icon-btn relative"
+              aria-label={unreadCount > 0 ? `Notifications (${unreadCount} unread)` : 'Notifications'}
+              aria-expanded={notifOpen}
+              onClick={() => { setNotifOpen(v => !v); setProfileOpen(false) }}
+            >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
               </svg>
@@ -591,8 +755,10 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
             )}
             <div className="relative">
               <button
-                onClick={() => setProfileOpen(!profileOpen)}
+                onClick={() => { setProfileOpen(v => !v); setNotifOpen(false) }}
                 className="avatar"
+                aria-label="Account menu"
+                aria-expanded={profileOpen}
               >
                 {user?.firstName?.charAt(0) || 'A'}{user?.lastName?.charAt(0) || 'D'}
               </button>
@@ -618,7 +784,7 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
         {/* ── Global Date Navigation ── */}
         <DateNav />
 
-        <div className="content">
+        <div className="admin-content">
           {children}
         </div>
       </div>

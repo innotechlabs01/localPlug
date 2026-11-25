@@ -1,12 +1,22 @@
 import { NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import { getDb } from '@/lib/db'
-import { requirePermission } from '@/lib/admin/permissions'
+import { requirePermission, requireSuperAdmin, isSuperAdminClerkUser } from '@/lib/admin/permissions'
 
 export async function GET() {
   const authError = await requirePermission('roles', 'view')
   if (authError) return authError
 
+  const { userId: clerkId } = await auth()
+  const isSuperAdmin = clerkId ? await isSuperAdminClerkUser(clerkId) : false
+
   const db = getDb()
+
+  // Ensure 'events' sidebar module exists in modules table
+  await db.execute({
+    sql: `INSERT OR IGNORE INTO modules (name, slug, icon, sort_order) VALUES ('Events', 'events', 'calendar', 25)`,
+    args: [],
+  }).catch(() => {})
 
   const roles = await db.execute('SELECT id, name, description FROM roles ORDER BY id')
   const modules = await db.execute('SELECT id, name, slug FROM modules ORDER BY sort_order')
@@ -32,11 +42,12 @@ export async function GET() {
     roles: roles.rows,
     modules: modules.rows,
     permissions: permMap,
+    isSuperAdmin,
   })
 }
 
 export async function PUT(req: Request) {
-  const authError = await requirePermission('roles', 'update')
+  const authError = await requireSuperAdmin()
   if (authError) return authError
 
   const body = await req.json()
@@ -49,18 +60,19 @@ export async function PUT(req: Request) {
   const db = getDb()
 
   const existing = await db.execute({
-    sql: 'SELECT id FROM role_permissions WHERE role_id = ? AND module_id = ?',
+    sql: 'SELECT id, can_view, can_create, can_update, can_delete FROM role_permissions WHERE role_id = ? AND module_id = ?',
     args: [role_id, module_id],
   })
 
   if (existing.rows.length > 0) {
+    const cur = existing.rows[0] as any
     await db.execute({
       sql: `UPDATE role_permissions SET can_view = ?, can_create = ?, can_update = ?, can_delete = ? WHERE role_id = ? AND module_id = ?`,
       args: [
-        can_view ? 1 : 0,
-        can_create ? 1 : 0,
-        can_update ? 1 : 0,
-        can_delete ? 1 : 0,
+        can_view !== undefined ? (can_view ? 1 : 0) : Number(cur.can_view || 0),
+        can_create !== undefined ? (can_create ? 1 : 0) : Number(cur.can_create || 0),
+        can_update !== undefined ? (can_update ? 1 : 0) : Number(cur.can_update || 0),
+        can_delete !== undefined ? (can_delete ? 1 : 0) : Number(cur.can_delete || 0),
         role_id,
         module_id,
       ],
@@ -80,5 +92,68 @@ export async function PUT(req: Request) {
     })
   }
 
+  return NextResponse.json({ success: true })
+}
+
+export async function POST(req: Request) {
+  const authError = await requireSuperAdmin()
+  if (authError) return authError
+
+  const body = await req.json()
+  const rawName = String(body.name || '').trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '_')
+  const description = String(body.description || '').trim()
+  const allowedModules: string[] = Array.isArray(body.allowedModules) ? body.allowedModules : []
+
+  if (!rawName) {
+    return NextResponse.json({ error: 'Role name is required' }, { status: 400 })
+  }
+
+  const db = getDb()
+  const dup = await db.execute({ sql: 'SELECT id FROM roles WHERE name = ?', args: [rawName] })
+  if (dup.rows.length > 0) {
+    return NextResponse.json({ error: 'Role already exists' }, { status: 409 })
+  }
+
+  const res = await db.execute({
+    sql: 'INSERT INTO roles (name, description) VALUES (?, ?)',
+    args: [rawName, description || `${rawName} role`],
+  })
+  const roleId = Number(res.lastInsertRowid)
+
+  // Initialize module permissions row for each module
+  const mods = await db.execute('SELECT id, slug FROM modules')
+  for (const mod of mods.rows) {
+    const enabled = allowedModules.includes(String(mod.slug)) ? 1 : 0
+    await db.execute({
+      sql: `INSERT OR IGNORE INTO role_permissions (role_id, module_id, can_view, can_create, can_update, can_delete)
+            VALUES (?, ?, ?, ?, ?, 0)`,
+      args: [roleId, mod.id as number, enabled, enabled, enabled],
+    })
+  }
+
+  return NextResponse.json({ success: true, role: { id: roleId, name: rawName, description: description || `${rawName} role` } }, { status: 201 })
+}
+
+export async function DELETE(req: Request) {
+  const authError = await requireSuperAdmin()
+  if (authError) return authError
+
+  const { searchParams } = new URL(req.url)
+  const id = Number(searchParams.get('id'))
+  if (!id) {
+    return NextResponse.json({ error: 'Role id is required' }, { status: 400 })
+  }
+
+  const db = getDb()
+  const roleRes = await db.execute({ sql: 'SELECT name FROM roles WHERE id = ?', args: [id] })
+  if (!roleRes.rows.length) {
+    return NextResponse.json({ error: 'Role not found' }, { status: 404 })
+  }
+  const roleName = String(roleRes.rows[0].name)
+  if (['super_admin', 'admin', 'viewer'].includes(roleName)) {
+    return NextResponse.json({ error: 'Cannot delete core system role' }, { status: 400 })
+  }
+
+  await db.execute({ sql: 'DELETE FROM roles WHERE id = ?', args: [id] })
   return NextResponse.json({ success: true })
 }

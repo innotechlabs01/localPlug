@@ -1,10 +1,8 @@
 'use client'
 
 // Client hook that consumes the realtime outbox.
-// Uses /api/events?since=<id> cursor polling (cheap, Vercel-friendly). Each
-// event is dispatched to the matching handler by type. Most contributors here
-// just trigger a refetch of the existing polling data so the UI stays fresh
-// without a big rewrite.
+// Uses native SSE (/api/realtime/events/stream?since=<id>) when EventSource is
+// available, with automatic fallback to cursor polling (/api/realtime/events).
 import { useEffect, useRef } from 'react'
 
 interface StreamEvent {
@@ -27,40 +25,130 @@ export function useEventStream(
     let cursor = 0
     let initialized = false
     let disposed = false
+    let timer: ReturnType<typeof setInterval> | null = null
+    let es: EventSource | null = null
 
-    const poll = async () => {
-      if (disposed) return
-      // Skip polling while the tab is hidden; catch up on the next visible poll.
-      if (typeof document !== 'undefined' && document.hidden) return
-      try {
-        const res = await fetch(`/api/realtime/events?since=${cursor}`, { cache: 'no-store' })
-        if (!res.ok) return
-        const data = await res.json()
-        // On first connect, jump to the current tail so we only receive NEW
-        // events from now on (avoids replaying the whole history on mount;
-        // the page already loaded its current state via its own fetch).
-        if (!initialized) {
-          initialized = true
-          cursor = Number(data.cursor ?? cursor)
-          return
-        }
-        for (const ev of (data.events as StreamEvent[] | undefined) || []) {
-          if (disposed) return
-          cursor = ev.id
-          onAnyRef.current?.(ev)
-          const handler = handlersRef.current[ev.type]
-          if (handler) handler(ev.payload, ev)
-        }
-      } catch {
-        // transient — next poll retries
+    const dispatchEvents = (events: StreamEvent[]) => {
+      for (const ev of events) {
+        if (disposed) return
+        cursor = ev.id
+        onAnyRef.current?.(ev)
+        const handler = handlersRef.current[ev.type]
+        if (handler) handler(ev.payload, ev)
       }
     }
 
-    poll()
-    const timer = setInterval(poll, pollMs)
+    const startPolling = () => {
+      if (disposed || timer) return
+      const poll = async () => {
+        if (disposed) return
+        if (typeof document !== 'undefined' && document.hidden) return
+        try {
+          const res = await fetch(`/api/realtime/events?since=${cursor}`, { cache: 'no-store' })
+          if (res.status === 401 || res.status === 403) {
+            disposed = true
+            if (timer) clearInterval(timer)
+            return
+          }
+          if (!res.ok) return
+          const data = await res.json()
+          if (!initialized) {
+            initialized = true
+            cursor = Number(data.cursor ?? cursor)
+            return
+          }
+          dispatchEvents((data.events as StreamEvent[] | undefined) || [])
+        } catch {
+          // transient — next poll retries
+        }
+      }
+      poll()
+      timer = setInterval(poll, pollMs)
+    }
+
+    // Prefer native SSE when available in browser
+    if (typeof window !== 'undefined' && typeof EventSource !== 'undefined') {
+      let sseErrors = 0
+      const connectSse = async () => {
+        // Initialize cursor at current tail first so we only stream new events
+        try {
+          const res = await fetch(`/api/realtime/events?since=0`, { cache: 'no-store' })
+          if (res.status === 401 || res.status === 403) {
+            disposed = true
+            return
+          }
+          if (res.ok) {
+            const data = await res.json()
+            cursor = Number(data.cursor ?? 0)
+            initialized = true
+          }
+        } catch {}
+
+        if (disposed) return
+        es = new EventSource(`/api/realtime/events/stream?since=${cursor}`)
+
+        const handleIncoming = (raw: string) => {
+          if (disposed) return
+          sseErrors = 0
+          try {
+            const ev = JSON.parse(raw) as StreamEvent
+            if (ev && typeof ev.id === 'number') {
+              dispatchEvents([ev])
+            }
+          } catch {}
+        }
+
+        // Default message events (without custom `event:` field)
+        es.onmessage = (msg) => handleIncoming(msg.data)
+
+        // Named events emitted by /api/realtime/events/stream (`event: <ev.type>`)
+        for (const eventType of Object.keys(handlersRef.current)) {
+          es.addEventListener(eventType, (msg) => handleIncoming((msg as MessageEvent).data))
+        }
+
+        // Server intentionally closes stream after ~55s (`event: done`); reconnect cleanly
+        es.addEventListener('done', () => {
+          if (disposed) return
+          es?.close()
+          es = null
+          connectSse()
+        })
+
+        es.onerror = () => {
+          sseErrors++
+          if (sseErrors >= 3) {
+            es?.close()
+            es = null
+            startPolling()
+          }
+        }
+      }
+      connectSse()
+    } else {
+      startPolling()
+    }
+
+    const onVisibility = () => {
+      if (!document.hidden && !disposed && !es && timer) {
+        fetch(`/api/realtime/events?since=${cursor}`, { cache: 'no-store' })
+          .then(r => (r.ok ? r.json() : null))
+          .then(data => {
+            if (data?.events) dispatchEvents(data.events)
+          })
+          .catch(() => {})
+      }
+    }
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', onVisibility)
+    }
+
     return () => {
       disposed = true
-      clearInterval(timer)
+      es?.close()
+      if (timer) clearInterval(timer)
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', onVisibility)
+      }
     }
   }, [pollMs])
 }
