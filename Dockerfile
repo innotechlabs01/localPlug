@@ -8,7 +8,7 @@ RUN corepack enable && corepack prepare pnpm@10.30.1 --activate
 FROM base AS deps
 WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile --prod=true
+RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
 # Build stage
 FROM base AS builder
