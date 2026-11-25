@@ -1,5 +1,3 @@
-ENV NODE_ENV=production
-
 # Multi-stage build for Next.js
 FROM node:20-alpine AS base
 
@@ -23,7 +21,7 @@ RUN pnpm build
 FROM base AS runner
 WORKDIR /app
 
-
+ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV TZ=America/Bogota
 ENV GUID=1001
