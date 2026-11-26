@@ -25,7 +25,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Re-link workspace packages after copying full source tree
-RUN pnpm install --frozen-lockfile --offline --ignore-scripts
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 # Build-time public environment values. NEXT_PUBLIC_* vars are inlined into the
 # browser bundle at build time, so set them via --build-arg for real deployments.
