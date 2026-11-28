@@ -36,14 +36,6 @@ type ClerkEvent = {
   }
 }
 
-function isAdminEmail(email: string): boolean {
-  const adminEmails = (process.env.ADMIN_EMAILS || '')
-    .split(',')
-    .map(e => e.trim().toLowerCase())
-    .filter(Boolean)
-  return adminEmails.includes(email.toLowerCase())
-}
-
 export async function POST(req: Request) {
   try {
     if (!CLERK_WEBHOOK_SECRET) {
@@ -79,12 +71,10 @@ export async function POST(req: Request) {
     const email = email_addresses?.[0]?.email_address || ''
     const name = [first_name, last_name].filter(Boolean).join(' ').trim() || email
 
-    const adminRole = await db.execute({ sql: "SELECT id FROM roles WHERE name = 'admin' LIMIT 1", args: [] })
-    const adminRoleId = adminRole.rows[0]?.id || 1
+    // Los nuevos usuarios se registran siempre como viewer. El rol (incluido
+    // super_admin/admin) lo configura el Super Admin vía BD/UI; nunca por email.
     const viewerRole = await db.execute({ sql: "SELECT id FROM roles WHERE name = 'viewer' LIMIT 1", args: [] })
     const viewerRoleId = viewerRole.rows[0]?.id || 4
-
-    const isAdmin = isAdminEmail(email)
 
     if (evt.type === 'user.created' || evt.type === 'user.updated') {
       const existing = await db.execute({
@@ -93,37 +83,23 @@ export async function POST(req: Request) {
       })
 
       if (existing.rows.length === 0) {
-        // New user — assign admin if email matches, otherwise viewer
-        const roleId = isAdmin ? adminRoleId : viewerRoleId
-
+        // New user — always viewer by default
         await db.execute({
           sql: `INSERT OR IGNORE INTO users (clerk_id, name, email, password_hash, role_id, status, created_at, updated_at)
                 VALUES (?, ?, ?, '', ?, 'active', datetime('now'), datetime('now'))`,
-          args: [clerkId, name, email, roleId],
+          args: [clerkId, name, email, viewerRoleId],
         })
 
         // Sync role into Clerk metadata
-        await setClerkMetadata(clerkId, { role: isAdmin ? 'admin' : 'viewer' })
+        await setClerkMetadata(clerkId, { role: 'viewer' })
 
-        console.log(`[Clerk Webhook] Created user ${isAdmin ? 'ADMIN' : 'viewer'}: ${email}`)
+        console.log(`[Clerk Webhook] Created user as viewer: ${email}`)
       } else {
-        // Existing user — update info and promote to admin if email matches ADMIN_EMAILS
-        const currentRoleId = existing.rows[0].role_id as number
-        const targetRoleId = isAdmin ? adminRoleId : currentRoleId
-
-        if (isAdmin && currentRoleId !== adminRoleId) {
-          await db.execute({
-            sql: `UPDATE users SET name = ?, email = ?, role_id = ?, updated_at = datetime('now') WHERE clerk_id = ?`,
-            args: [name, email, adminRoleId, clerkId],
-          })
-          await setClerkMetadata(clerkId, { role: 'admin' })
-          console.log(`[Clerk Webhook] Promoted user to ADMIN: ${email}`)
-        } else {
-          await db.execute({
-            sql: `UPDATE users SET name = ?, email = ?, updated_at = datetime('now') WHERE clerk_id = ?`,
-            args: [name, email, clerkId],
-          })
-        }
+        // Existing user — update info only. Role changes are done by Super Admin via DB/UI.
+        await db.execute({
+          sql: `UPDATE users SET name = ?, email = ?, updated_at = datetime('now') WHERE clerk_id = ?`,
+          args: [name, email, clerkId],
+        })
       }
     }
 

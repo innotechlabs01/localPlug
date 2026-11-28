@@ -6,6 +6,7 @@ import { requirePermission } from '@/lib/admin/permissions'
 
 vi.mock('@/lib/admin/permissions', () => ({
   requirePermission: vi.fn(() => Promise.resolve(undefined)),
+  syncClerkUserRole: vi.fn(() => Promise.resolve()),
 }))
 
 vi.mock('@/lib/db', () => ({
@@ -53,6 +54,9 @@ describe('admin team API', () => {
       const mockExecute = vi.fn()
         .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ lastInsertRowid: 42 })
+        .mockResolvedValueOnce({ rows: [] })
+        .mockResolvedValueOnce({ rows: [{ name: 'viewer' }] })
+        .mockResolvedValueOnce({ rows: [] })
         .mockResolvedValueOnce({ rows: [] })
       vi.mocked(getDb).mockReturnValue({ execute: mockExecute } as any)
 
