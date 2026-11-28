@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { getDb } from '@/lib/db'
-import { sendWhatsAppDirect, sendOrQueueWhatsApp } from '@/lib/n8n/client'
+import { sendOrQueueWhatsApp } from '@/lib/n8n/client'
 import { generateOpenAIResponse } from '@/lib/services/openai-service'
 import { generateOllamaResponse } from '@/lib/services/ollama-service'
 import { timingSafeEqual } from '@/lib/string-utils'

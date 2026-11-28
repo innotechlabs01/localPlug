@@ -15,35 +15,17 @@ RUN corepack enable && corepack prepare pnpm@10.30.1 --activate
 # Dependencies stage
 FROM base AS deps
 WORKDIR /app
-
-# Copy root and workspace manifests so pnpm resolves all workspace packages
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY apps/worker/package.json ./apps/worker/package.json
-COPY packages/auth/package.json ./packages/auth/package.json
-COPY packages/communication/package.json ./packages/communication/package.json
-COPY packages/config/package.json ./packages/config/package.json
-COPY packages/db/package.json ./packages/db/package.json
-COPY packages/domains/_services/package.json ./packages/domains/_services/package.json
-COPY packages/events/package.json ./packages/events/package.json
-COPY packages/shared/package.json ./packages/shared/package.json
-COPY packages/types/package.json ./packages/types/package.json
-COPY packages/validation/package.json ./packages/validation/package.json
-
-# Install dependencies ignoring husky prepare hook
+COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile --ignore-scripts
-
-# Rebuild native/allowed dependencies (sharp, unrs-resolver)
-RUN pnpm rebuild
 
 # Build stage
 FROM base AS builder
 WORKDIR /app
-
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Re-link workspace packages after copying full source tree
-RUN pnpm install --frozen-lockfile --offline --ignore-scripts
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 # Build-time public environment values. NEXT_PUBLIC_* vars are inlined into the
 # browser bundle at build time, so set them via --build-arg for real deployments.
