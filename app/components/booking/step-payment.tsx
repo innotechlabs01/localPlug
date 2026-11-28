@@ -86,8 +86,68 @@ export default function StepPayment({
     setError(null)
 
     try {
+      // ── 1. Crear la orden en la BD antes de iniciar el pago ──
+      // Esto hace que la reserva quede registrada (fuente de verdad) y que el
+      // webhook de Polar, al confirmar el pago, la encuentre y la pase a
+      // 'confirmed' / 'paid' para que admin y conductor la vean.
       const hotelId = destination?.selectedHotelId ?? null
       const roomId = destination?.selectedRoomId ?? null
+      const needReturnFlag = needReturn ?? flightData.needReturn ?? false
+      const numPeople = Math.max(1, Math.floor(destination?.numPeople || 1))
+
+      const orderRes = await fetch('/api/booking', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: bookingReference,
+          package: packageId,
+          customer: {
+            name: customerName,
+            email: customerEmail,
+            phone: customerPhone,
+            country: customerCountry || '',
+            language: 'es',
+            language_code: 'es',
+            notes: customerNotes || '',
+          },
+          flight: {
+            flightNumber: flightData.flightNumber,
+            airline: flightData.airline,
+            arrivalDate: flightData.arrivalDate,
+            arrivalTime: flightData.arrivalTime,
+            returnDate: flightData.returnDate || '',
+            returnTime: flightData.returnTime || '',
+            needReturn: needReturnFlag,
+          },
+          destination: {
+            address: destinationAddress,
+            hasPlace: destination?.hasPlace ?? true,
+            additionalTrips: destination?.additionalTrips ?? [],
+            numPeople,
+            selectedHotelId: hotelId,
+            selectedRoomId: roomId,
+          },
+          profile: travelerProfile || '',
+          consents: {
+            terms: consents.terms,
+            privacy: consents.privacy,
+            refund: consents.refund,
+            acceptedAt: new Date().toISOString(),
+            termsVersion: '1.0',
+            privacyVersion: '1.0',
+            refundVersion: '1.0',
+          },
+        }),
+      })
+
+      if (!orderRes.ok) {
+        const data = await orderRes.json().catch(() => ({}))
+        setError(data.message || 'No se pudo crear la reserva. Inténtalo de nuevo.')
+        setPhase('ready')
+        return
+      }
+      await orderRes.json()
+
       let numNights = 0
       if (hotelId) {
         if (flightData.arrivalDate && flightData.returnDate) {

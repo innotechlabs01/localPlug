@@ -15,7 +15,6 @@ import Button from '@/app/components/ui/button'
 import LangToggle from '@/app/components/ui/lang-toggle'
 import { ToastProvider, useToast } from './lib/toast'
 import { ErrorBoundary } from './lib/error-boundary'
-import { createPersistence } from './lib/persistence'
 import { useI18n } from '@/lib/i18n'
 import type { Booking, DestinationData } from './lib/types'
 import { logBookingEvent, logBookingError } from './lib/logger'
@@ -24,8 +23,6 @@ import { CONFIG_DEFAULTS } from './lib/config-defaults'
 type Step = 0 | 1 | 2 | 3 | 4
 
 const TOTAL_STEPS = 5
-
-const persistence = createPersistence()
 
 function getStepDetails(t: ReturnType<typeof useI18n>['t']) {
   return [
@@ -210,7 +207,7 @@ function BookingFormInner() {
     if (step > 0) setStep((step - 1) as Step)
   }
 
-  const handlePaymentSuccess = async () => {
+  const handlePaymentSuccess = () => {
     if (!isLoaded) return
     if (!isSignedIn) {
       try {
@@ -221,42 +218,8 @@ function BookingFormInner() {
       return
     }
 
-    const booking = {
-      id: bookingReference,
-      flight: flightData,
-      profile,
-      destination,
-      package: selectedPackage,
-      status: 'submitted' as const,
-      createdAt: new Date().toISOString(),
-      submittedAt: new Date().toISOString(),
-      customer: {
-        name: customerName,
-        email: customerEmail,
-        phone: customerPhone,
-        country: customerCountry,
-        language: customerLanguage,
-        notes: customerNotes,
-      },
-    }
-
-    logBookingEvent('Submitting booking after payment', { id: booking.id })
-
-    try {
-      await persistence.submit(booking)
-      logBookingEvent('Booking confirmed after payment', { id: booking.id })
-      setSubmitted(true)
-    } catch (err) {
-      logBookingError('Payment submission', err)
-      const toastId = showToast({
-        type: 'warning',
-        message: t.booking.toast.offline,
-        action: {
-          label: t.common.dismiss,
-          onClick: () => dismissToast(toastId),
-        },
-      })
-    }
+    logBookingEvent('Payment succeeded; order already in database', { id: bookingReference })
+    setSubmitted(true)
   }
 
   const handleConfirm = async () => {
@@ -294,21 +257,17 @@ function BookingFormInner() {
     logBookingEvent('Submitting booking', { id: booking.id })
 
     try {
-      await persistence.submit(booking)
+      const res = await fetch('/api/booking', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(booking),
+      })
+      if (!res.ok) throw new Error(`Booking failed: ${res.status}`)
       logBookingEvent('Booking confirmed', { id: booking.id })
       showToast({ type: 'success', message: t.booking.toast.success })
       setSubmitted(true)
     } catch (err) {
       logBookingError('Submission', err)
-
-      await persistence.enqueueRetry({
-        id: `retry-${Date.now()}`,
-        booking,
-        timestamp: new Date().toISOString(),
-        retryCount: 0,
-        lastError: err instanceof Error ? err.message : String(err),
-      })
-
       const toastId = showToast({
         type: 'error',
         message: t.booking.toast.offline,
