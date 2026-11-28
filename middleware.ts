@@ -1,15 +1,47 @@
 import { NextResponse } from 'next/server'
-import { clerkMiddleware, createRouteMatcher, clerkClient } from '@clerk/nextjs/server'
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 import { applyRateLimit, checkIpBanned, extractIp } from '@/lib/rate-limit'
 
-const AUTHORIZED_PARTIES = [
-  process.env.NEXT_PUBLIC_SITE_URL,
-  'https://local-plug.vercel.app',
-  'http://localhost:3000',
-  process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : undefined,
-  process.env.VERCEL_BRANCH_URL ? `https://${process.env.VERCEL_BRANCH_URL}` : undefined,
-  process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
-].filter(Boolean) as string[]
+function normalizeOrigin(raw?: string): string | undefined {
+  if (!raw) return undefined
+  const trimmed = raw.trim().replace(/\/+$/, '')
+  if (!trimmed) return undefined
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    try {
+      return new URL(trimmed).origin
+    } catch {
+      return undefined
+    }
+  }
+  const scheme = trimmed.startsWith('localhost') || trimmed.startsWith('127.0.0.1') ? 'http' : 'https'
+  try {
+    return new URL(`${scheme}://${trimmed}`).origin
+  } catch {
+    return undefined
+  }
+}
+
+function getAuthorizedParties(): string[] {
+  const extra = (process.env.CLERK_AUTHORIZED_PARTIES || '')
+    .split(',')
+    .map((s) => normalizeOrigin(s))
+    .filter(Boolean) as string[]
+
+  return Array.from(
+    new Set(
+      [
+        normalizeOrigin(process.env.NEXT_PUBLIC_SITE_URL),
+        'https://localplug.citocafecito.work',
+        'https://local-plug.vercel.app',
+        'http://localhost:3000',
+        normalizeOrigin(process.env.VERCEL_PROJECT_PRODUCTION_URL),
+        normalizeOrigin(process.env.VERCEL_BRANCH_URL),
+        normalizeOrigin(process.env.VERCEL_URL),
+        ...extra,
+      ].filter(Boolean) as string[],
+    ),
+  )
+}
 
 const isPublicRoute = createRouteMatcher([
   '/',
@@ -41,8 +73,11 @@ const isPublicRoute = createRouteMatcher([
   '/api/plans',
   '/api/trm',
   '/api/geocode',
+  '/api/places/(.*)',
+  '/api/rides/(.*)',
   '/sign-in(.*)',
   '/sign-up(.*)',
+  '/auth/callback',
 ])
 
 const isAdminApiRoute = createRouteMatcher([
@@ -98,64 +133,35 @@ export default clerkMiddleware(
     return NextResponse.next()
   }
 
-  // Redirect authenticated users from landing page to their portal dashboard
-  if (pathname === '/') {
-    const authResult = await auth() as { userId: string | null; sessionClaims?: Record<string, any> }
-    if (authResult.userId) {
-      try {
-        let role = (authResult.sessionClaims?.metadata?.role || authResult.sessionClaims?.publicMetadata?.role) as string | undefined
-        if (!role) {
-          const client = await clerkClient()
-          const clerkUser = await client.users.getUser(authResult.userId)
-          role = clerkUser.privateMetadata?.role as string | undefined
-        }
-        const portalMap: Record<string, string> = { admin: '/admin', hotel_manager: '/hotel', driver: '/driver' }
-        if (role && portalMap[role]) {
-          return NextResponse.redirect(new URL(portalMap[role], req.url))
-        }
-      } catch { /* fall through */ }
+  // An authenticated visitor must never sit on the landing page or on a
+  // sign-in form. The callback resolves the DB role and picks the portal.
+  // The `auth` query param is the callback's error landing, so it is exempt
+  // to avoid a redirect loop.
+  const isLanding = pathname === '/'
+  const isSignInPage = pathname.startsWith('/sign-in/')
+  if (isLanding || isSignInPage) {
+    const hasAuthStatus = new URL(req.url).searchParams.has('auth')
+    if (!hasAuthStatus) {
+      const authResult = await auth() as { userId: string | null }
+      if (authResult.userId) {
+        return NextResponse.redirect(new URL('/auth/callback', req.url))
+      }
     }
   }
 
-  // Strict role-based portal separation (page routes only, not /api/)
+  // Clerk handles authentication ONLY (session verification).
+  // Roles and permissions are resolved strictly against the Database in each portal/API.
   const isPortalPage =
     (pathname.startsWith('/admin') || pathname.startsWith('/hotel') || pathname.startsWith('/driver')) &&
     !pathname.startsWith('/api/')
 
   if (isPortalPage && !isPublicRoute(req)) {
-    const authResult = await auth() as { userId: string | null; sessionClaims?: Record<string, any> }
-    const userId = authResult.userId
-    if (!userId) {
+    const authResult = await auth() as { userId: string | null }
+    if (!authResult.userId) {
       const signInUrl = pathname.startsWith('/admin')
         ? '/sign-in/admin'
         : pathname.startsWith('/hotel') ? '/sign-in/hotel' : '/sign-in/driver'
       return NextResponse.redirect(new URL(signInUrl, req.url))
-    }
-
-    try {
-      let role = (authResult.sessionClaims?.metadata?.role || authResult.sessionClaims?.publicMetadata?.role) as string | undefined
-      if (!role) {
-        const client = await clerkClient()
-        const clerkUser = await client.users.getUser(userId)
-        role = clerkUser.privateMetadata?.role as string | undefined
-      }
-
-      const portalForRole: Record<string, string> = {
-        admin: '/admin',
-        hotel_manager: '/hotel',
-        driver: '/driver',
-      }
-
-      if (role && portalForRole[role]) {
-        const expectedPortal = portalForRole[role]
-        if (!pathname.startsWith(expectedPortal)) {
-          return NextResponse.redirect(new URL(expectedPortal, req.url))
-        }
-      }
-      // If no role or unrecognized role, let through — the portal layout
-      // will show "Access Restricted" if the user lacks permissions.
-    } catch {
-      // Clerk fetch failed — let through; API handlers will reject
     }
     return NextResponse.next()
   } else if (isAdminApiRoute(req)) {
@@ -169,19 +175,29 @@ export default clerkMiddleware(
     await auth.protect()
   }
 },
-{
-  authorizedParties: AUTHORIZED_PARTIES,
+(req) => {
+  // Forwarded host behind reverse proxy (Cloudflare Tunnel / Traefik / EasyPanel)
+  // is allowed only for *.citocafecito.work or *.vercel.app or explicit allowlist
+  const proto = req.headers.get('x-forwarded-proto')?.split(',')[0]?.trim() || 'https'
+  const host = req.headers.get('x-forwarded-host')?.split(',')[0]?.trim() || req.headers.get('host')?.trim() || ''
+  const reqOrigin = normalizeOrigin(host ? `${proto}://${host}` : req.url)
+  const isTrustedDynamicOrigin =
+    reqOrigin &&
+    (reqOrigin.endsWith('.citocafecito.work') ||
+      reqOrigin.endsWith('.vercel.app') ||
+      reqOrigin.endsWith('.innotechlabssas.lat') ||
+      reqOrigin.startsWith('http://localhost:'))
+
+  const parties = getAuthorizedParties()
+  if (isTrustedDynamicOrigin && !parties.includes(reqOrigin)) {
+    parties.push(reqOrigin)
+  }
+  return { authorizedParties: parties }
 })
 
 function corsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get('origin') || ''
-  const allowedOrigins = [
-    process.env.NEXT_PUBLIC_SITE_URL,
-    'https://local-plug.vercel.app',
-    'http://localhost:3000',
-    process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : undefined,
-    process.env.VERCEL_BRANCH_URL ? `https://${process.env.VERCEL_BRANCH_URL}` : undefined,
-  ].filter(Boolean) as string[]
+  const allowedOrigins = getAuthorizedParties()
 
   const isAllowed = allowedOrigins.includes(origin)
   return {

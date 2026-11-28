@@ -8,6 +8,8 @@ export interface KnownEnv {
   TURSO_API_KEY?: string
   CLERK_SECRET_KEY?: string
   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?: string
+  CLERK_AUTHORIZED_PARTIES?: string
+  NEXT_PUBLIC_SITE_URL?: string
   N8N_BASE_URL?: string
   N8N_API_KEY?: string
   N8N_WEBHOOK_SECRET?: string

@@ -63,11 +63,9 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
   const [driverStatus, setDriverStatus] = useState<string>('inactive')
   const [toggling, setToggling] = useState(false)
 
-  // Auto-create driver profile + fix role mismatch on first load
+  // Load or auto-onboard driver profile from DB on mount (Clerk is auth-only)
   useEffect(() => {
     fetch('/api/driver/ensure')
-      .then(() => fetch('/api/driver/claim-role'))
-      .then(() => fetch('/api/driver/profile'))
       .then(r => r.json())
       .then(data => {
         if (data.driver?.status) setDriverStatus(data.driver.status)

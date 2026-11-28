@@ -126,7 +126,6 @@ export async function POST(req: Request) {
         firstName,
         lastName,
         password: driver_password,
-        privateMetadata: { role: 'driver', driver_id: driverId },
       })
 
       // Link Clerk user to driver record

@@ -1,7 +1,20 @@
 'use client'
-import { SignIn } from '@clerk/nextjs'
+import { SignIn, useAuth } from '@clerk/nextjs'
+import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
 
 export default function AdminSignInPage() {
+  const { isLoaded, isSignedIn } = useAuth()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (isLoaded && isSignedIn) {
+      router.replace('/auth/callback?portal=admin')
+    }
+  }, [isLoaded, isSignedIn, router])
+
+  if (isLoaded && isSignedIn) return null
+
   return (
     <div
       style={{
@@ -50,7 +63,7 @@ export default function AdminSignInPage() {
           <SignIn
             routing="path"
             path="/sign-in/admin"
-            forceRedirectUrl="/admin"
+            forceRedirectUrl="/auth/callback?portal=admin"
             appearance={{
               variables: {
                 colorPrimary: 'var(--admin-accent)',

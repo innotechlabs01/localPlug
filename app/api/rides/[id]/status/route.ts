@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { getDb } from '@/lib/db'
 import { verifyRideToken } from '@/lib/ride-token'
+import { ensureRideDispatchSchema, sweepStaleRideOffers } from '@/lib/rides/offer-lifecycle'
+import { dispatchPaidRide } from '@/lib/rides/dispatch'
 
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371
@@ -36,6 +38,9 @@ export async function GET(
     }
 
     const db = getDb()
+    await ensureRideDispatchSchema(db)
+    await sweepStaleRideOffers(db)
+
     const res = await db.execute({
       sql: `SELECT
               o.id, o.booking_reference, o.status, o.dispatch_status, o.payment_status,
@@ -60,54 +65,16 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    // Auto-cascade queue: if still unassigned and last offer is >30s old or declined, offer to next closest driver
+    // Paid rides cascade through the shared dispatch helper. Unpaid rides never
+    // reach a driver, even if someone polls with a valid ride token.
     let queueAttempt = 1
     let waitSeconds = 0
-    if (!row.assigned_to && row.status !== 'cancelled' && row.status !== 'completed') {
+    if (String(row.payment_status) === 'paid' && !row.assigned_to &&
+        !['cancelled', 'completed'].includes(String(row.status))) {
       try {
-        const offersRes = await db.execute({
-          sql: `SELECT id, driver_id, status, created_at FROM assignments WHERE order_id = ? ORDER BY id DESC`,
-          args: [Number(id)],
-        })
-        const offers = offersRes.rows as any[]
-        queueAttempt = Math.max(1, offers.length)
-        const latest = offers[0]
-        const latestAgeSec = latest?.created_at
-          ? Math.max(0, Math.floor((Date.now() - new Date(String(latest.created_at) + 'Z').getTime()) / 1000))
-          : 0
-        waitSeconds = latestAgeSec
-
-        const needsNextDriver = !latest || latest.status === 'declined' || (['offered', 'pending_acceptance'].includes(latest.status) && latestAgeSec >= 30)
-        if (needsNextDriver) {
-          if (latest && ['offered', 'pending_acceptance'].includes(latest.status) && latestAgeSec >= 30) {
-            await db.execute({ sql: `UPDATE assignments SET status = 'expired' WHERE id = ?`, args: [Number(latest.id)] })
-          }
-          const triedIds = offers.map(o => Number(o.driver_id))
-          const availRes = await db.execute({
-            sql: `SELECT d.id, dl.lat, dl.lng, d.rating
-                  FROM drivers d
-                  LEFT JOIN driver_locations dl ON dl.driver_id = d.id AND dl.gps_consent = 1
-                  WHERE d.status = 'available'`,
-            args: [],
-          })
-          const nextCandidate = (availRes.rows as any[])
-            .filter(d => !triedIds.includes(Number(d.id)))
-            .map(d => ({
-              id: Number(d.id),
-              dist: (d.lat != null && d.lng != null) ? haversineKm(Number(d.lat), Number(d.lng), pickupLat, pickupLng) : 999,
-              rating: Number(d.rating || 0),
-            }))
-            .sort((a, b) => a.dist - b.dist || b.rating - a.rating)[0]
-
-          if (nextCandidate) {
-            queueAttempt = offers.length + 1
-            await db.execute({
-              sql: `INSERT INTO assignments (order_id, driver_id, status, pickup_date, pickup_time, notes, created_at)
-                    VALUES (?, ?, 'pending_acceptance', date('now'), time('now'), ?, datetime('now'))`,
-              args: [Number(id), nextCandidate.id, `ON-DEMAND · Cola #${queueAttempt} (cascada automática)`],
-            })
-          }
-        }
+        const dispatch = await dispatchPaidRide(db, rideId, pickupLat, pickupLng)
+        queueAttempt = dispatch.queueAttempt
+        waitSeconds = dispatch.waitSeconds
       } catch { /* non-critical */ }
     }
 

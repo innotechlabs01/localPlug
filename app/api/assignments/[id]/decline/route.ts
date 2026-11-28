@@ -5,6 +5,7 @@ import { getDriverFromSession } from '@/lib/driver/auth'
 import { sendOrQueueWhatsApp } from '@/lib/n8n/client'
 import { logger } from '@/lib/logger'
 import { emitEvent } from '@/lib/events-outbox'
+import { isStaleOffer, sweepStaleRideOffers, type OfferState } from '@/lib/rides/offer-lifecycle'
 
 export async function POST(
   req: Request,
@@ -28,9 +29,14 @@ export async function POST(
     }
 
     const db = getDb()
+    await sweepStaleRideOffers()
 
     const assignmentResult = await db.execute({
-      sql: 'SELECT * FROM assignments WHERE id = ?',
+      sql: `SELECT a.*, o.status as order_status, o.dispatch_status, o.assigned_to, o.package_id,
+                   o.booking_reference, o.customer_phone, o.customer_name
+            FROM assignments a
+            LEFT JOIN orders o ON a.order_id = o.id
+            WHERE a.id = ?`,
       args: [assignmentId],
     })
 
@@ -51,6 +57,12 @@ export async function POST(
       }, { status: 409 })
     }
 
+    // Never let a late response cancel a ride that is already closed or handed
+    // to another driver. The rider's status poll expires the stale offer.
+    if (isStaleOffer(assignment as unknown as OfferState)) {
+      return NextResponse.json({ error: 'Offer expired', status: 'expired' }, { status: 409 })
+    }
+
     let declineReason = ''
     try {
       const body = await req.json()
@@ -69,8 +81,13 @@ export async function POST(
         args: [now, declineReason, now, assignmentId],
       },
       {
-        sql: "UPDATE orders SET dispatch_status = 'pending', assigned_to = NULL, assigned_at = NULL, updated_at = ? WHERE id = ?",
-        args: [now, assignment.order_id],
+        sql: `UPDATE orders
+              SET dispatch_status = 'pending', assigned_to = NULL, assigned_at = NULL, updated_at = ?
+              WHERE id = ?
+                AND assigned_to = ?
+                AND dispatch_status IN ('pending_acceptance', 'assigned')
+                AND status NOT IN ('cancelled', 'completed')`,
+        args: [now, assignment.order_id, assignment.driver_id],
       },
     ])
 

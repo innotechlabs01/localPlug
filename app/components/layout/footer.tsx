@@ -1,10 +1,15 @@
 'use client'
 
+import { useAuth } from '@clerk/nextjs'
 import { useI18n } from '@/lib/i18n'
+import { useMyReservasVisibility } from '@/app/hooks/use-my-reservas-visibility'
 import QuickContact from '../footer/quick-contact'
 
 function FooterInner() {
   const { t } = useI18n()
+  const { isLoaded, isSignedIn } = useAuth()
+  const canViewMyReservas = useMyReservasVisibility()
+  const showMyReservas = isLoaded && (!isSignedIn || canViewMyReservas)
 
   return (
     <footer className="bg-[var(--bg-card)] border-t border-[var(--border)]">
@@ -83,7 +88,9 @@ function FooterInner() {
               <li><a href="/politica-de-privacidad" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors duration-200">{t.footer.privacy || 'Política de privacidad'}</a></li>
               <li><a href="/politica-de-reembolsos" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors duration-200">{t.footer.refundPolicy || 'Política de reembolsos'}</a></li>
               <li><a href="/faq" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors duration-200">'FAQ'</a></li>
-              <li><a href="/mis-reservas" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors duration-200">Mis reservas</a></li>
+              {showMyReservas && (
+                <li><a href="/mis-reservas" className="text-sm text-[var(--text-muted)] hover:text-[var(--accent-gold)] transition-colors duration-200">Mis reservas</a></li>
+              )}
             </ul>
           </nav>
         </div>

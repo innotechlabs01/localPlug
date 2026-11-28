@@ -123,14 +123,52 @@ export async function POST(req: Request) {
         firstName,
         lastName,
         password: manager_password,
-        privateMetadata: { role: 'hotel_manager' },
       })
 
-      // Create user in local DB linked to Clerk and hotel
+      // Upsert the local user. Webhook delivery is async, so it may already
+      // have created a viewer row with the same email. Never blind-insert here.
+      const roles = await db.execute({
+        sql: `SELECT id, name FROM roles WHERE name IN ('viewer', 'hotel_manager')`,
+        args: [],
+      })
+      const hotelManagerRoleId = Number(roles.rows.find((row) => row.name === 'hotel_manager')?.id ?? 5)
+      const viewerRoleId = Number(roles.rows.find((row) => row.name === 'viewer')?.id ?? 4)
+
+      const existingManager = await db.execute({
+        sql: `SELECT id FROM users
+              WHERE clerk_id = ? OR (email <> '' AND LOWER(email) = LOWER(?))
+              ORDER BY CASE WHEN clerk_id = ? THEN 0 ELSE 1 END
+              LIMIT 1`,
+        args: [clerkUser.id, manager_email, clerkUser.id],
+      })
+
+      let managerUserId: number
+      if (existingManager.rows.length > 0) {
+        managerUserId = Number(existingManager.rows[0].id)
+        await db.execute({
+          sql: `UPDATE users
+                SET clerk_id = ?, name = ?, email = ?, role_id = ?, hotel_id = ?,
+                    status = 'active', updated_at = datetime('now')
+                WHERE id = ?`,
+          args: [clerkUser.id, manager_name, manager_email, hotelManagerRoleId, hotelId, managerUserId],
+        })
+      } else {
+        const managerResult = await db.execute({
+          sql: `INSERT INTO users (clerk_id, name, email, password_hash, role_id, hotel_id, status, created_at, updated_at)
+                VALUES (?, ?, ?, '', ?, ?, 'active', datetime('now'), datetime('now'))`,
+          args: [clerkUser.id, manager_name, manager_email, hotelManagerRoleId, hotelId],
+        })
+        managerUserId = Number(managerResult.lastInsertRowid)
+      }
+
+      // Keep the role table consistent with users.role_id.
       await db.execute({
-        sql: `INSERT INTO users (clerk_id, name, email, role_id, hotel_id, status, created_at)
-              VALUES (?, ?, ?, 5, ?, 'active', datetime('now'))`,
-        args: [clerkUser.id, manager_name, manager_email, hotelId],
+        sql: `DELETE FROM user_roles WHERE user_id = ? AND role_id = ?`,
+        args: [managerUserId, viewerRoleId],
+      })
+      await db.execute({
+        sql: `INSERT OR IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)`,
+        args: [managerUserId, hotelManagerRoleId],
       })
 
       // Link Clerk user to hotel record

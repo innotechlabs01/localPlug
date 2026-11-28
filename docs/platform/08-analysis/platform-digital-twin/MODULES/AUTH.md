@@ -43,7 +43,7 @@
   - **Problem (real):** This generic helper is **NOT used** by the actual webhook routes — `app/api/webhooks/evolution` and `app/api/webhooks/n8n` each do their own `timingSafeEqual` signature check against their own env var (`EVOLUTION_WEBHOOK_SECRET` / `N8N_WEBHOOK_SECRET`), and `clerk` webhook uses Svix. So `webhook-auth.ts` is effectively dead/duplicate code with a weaker default (allow-when-unconfigured).
 
 - **File:** `app/api/webhooks/clerk/route.ts`
-  - **Responsibilities (real):** ✔ `POST` — verifies Svix signature (`svix-id/timestamp/signature` + `CLERK_WEBHOOK_SECRET`); on `user.created`/`user.updated` creates/updates local `users` as `viewer` (sets Clerk `public_metadata.role`); on `user.deleted` sets `status='inactive'`.
+  - **Responsibilities (real):** ✔ `POST` — verifies Svix signature via `verifyWebhook()` + `CLERK_WEBHOOK_SECRET`; on `user.created`/`user.updated` creates local `users` as `viewer` or relinks by email while preserving the DB role (no Clerk metadata writes); on `user.deleted` sets `status='inactive'`.
   - **Problem (real):** User provisioning from Clerk is implemented here AND in `auth.ts`/`permissions.ts` (auto-register) — four places that can create a `viewer` user. The webhook and the lazy auto-register can race/diverge.
 
 - **File:** `app/api/admin/permissions/route.ts`

@@ -48,11 +48,27 @@ export async function getUserPermissions(clerkId: string): Promise<ModulePermiss
   const db = getDb()
 
   let user = await db.execute({
-    sql: `SELECT u.id, u.role_id, r.name as role_name, u.email
+    sql: `SELECT u.id, u.role_id, u.status, r.name as role_name, u.email
           FROM users u LEFT JOIN roles r ON u.role_id = r.id
-          WHERE u.clerk_id = ? AND u.status = 'active'`,
+          WHERE u.clerk_id = ? LIMIT 1`,
     args: [clerkId],
   })
+
+  // A deleted/recreated Clerk account may leave the DB row inactive. The
+  // webhook heals it asynchronously; heal it here as well so login is not
+  // blocked while the webhook is pending.
+  if (user.rows.length > 0 && user.rows[0].status === 'inactive') {
+    await db.execute({
+      sql: `UPDATE users SET status = 'active', updated_at = datetime('now') WHERE id = ?`,
+      args: [user.rows[0].id as number],
+    })
+    user = await db.execute({
+      sql: `SELECT u.id, u.role_id, u.status, r.name as role_name, u.email
+            FROM users u LEFT JOIN roles r ON u.role_id = r.id
+            WHERE u.clerk_id = ? AND u.status = 'active'`,
+      args: [clerkId],
+    })
+  }
 
   if (!user.rows.length) {
     const roles = await db.execute("SELECT id FROM roles WHERE name = 'viewer'")
@@ -72,7 +88,7 @@ export async function getUserPermissions(clerkId: string): Promise<ModulePermiss
     // Link pre-created employee record by email if present (preserves role assigned by Super Admin)
     const preCreated = email
       ? await db.execute({
-          sql: 'SELECT id, role_id FROM users WHERE LOWER(email) = ? LIMIT 1',
+          sql: 'SELECT id, role_id, status FROM users WHERE LOWER(email) = ? LIMIT 1',
           args: [email.trim().toLowerCase()],
         })
       : { rows: [] }
@@ -80,9 +96,13 @@ export async function getUserPermissions(clerkId: string): Promise<ModulePermiss
     let roleId = viewerRoleId
     if (preCreated.rows.length > 0) {
       roleId = (preCreated.rows[0].role_id as number | null) ?? viewerRoleId
+      const nextStatus = preCreated.rows[0].status === 'inactive' ? 'active' : preCreated.rows[0].status
       await db.execute({
-        sql: `UPDATE users SET clerk_id = ?, name = COALESCE(NULLIF(name, ''), ?), updated_at = datetime('now') WHERE id = ?`,
-        args: [clerkId, name, preCreated.rows[0].id as number],
+        sql: `UPDATE users
+              SET clerk_id = ?, name = COALESCE(NULLIF(name, ''), ?), email = ?, status = ?,
+                  updated_at = datetime('now')
+              WHERE id = ?`,
+        args: [clerkId, name, email, nextStatus, preCreated.rows[0].id as number],
       })
     } else {
       await db.execute({
@@ -104,17 +124,6 @@ export async function getUserPermissions(clerkId: string): Promise<ModulePermiss
     }
 
     console.log(`[Permissions] Auto-registered user ${clerkId} (${name}) as viewer`)
-
-    // Also set Clerk private_metadata so role is visible in Clerk Dashboard
-    const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY || ''
-    if (CLERK_SECRET_KEY) {
-      try {
-        const client = await clerkClient()
-        await client.users.updateUserMetadata(clerkId, {
-          privateMetadata: { role: 'viewer' },
-        })
-      } catch { /* non-critical */ }
-    }
 
     user = await db.execute({
       sql: `SELECT u.id, u.role_id, r.name as role_name, u.email
@@ -188,18 +197,8 @@ export async function requirePermission(
   }
 }
 
-// Sincroniza el rol del usuario en Clerk privateMetadata, para que el rol
-// configurado en BD quede reflejado también en el token/sesión de Clerk.
-// Se usa cuando el Super Admin asigna o cambia un rol desde la UI de admin.
-export async function syncClerkUserRole(clerkId: string, roleName: string): Promise<void> {
-  const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY || ''
-  if (!CLERK_SECRET_KEY || !clerkId) return
-  try {
-    const client = await clerkClient()
-    await client.users.updateUserMetadata(clerkId, {
-      privateMetadata: { role: roleName },
-    })
-  } catch {
-    // non-critical: la BD es la fuente de verdad; Clerk metadata es solo cache
-  }
+// No-op mantenido por compatibilidad: Clerk se usa únicamente para inicio de sesión
+// y la Base de Datos (users + roles + role_permissions) es la única fuente de verdad.
+export async function syncClerkUserRole(_clerkId: string, _roleName: string): Promise<void> {
+  return
 }

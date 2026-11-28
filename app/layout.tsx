@@ -196,7 +196,7 @@ export default async function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
         <ClerkProvider
-          afterSignOutUrl="/"
+          afterSignOutUrl="/?auth=signed_out"
         >
           <I18nProvider initialLang={initialLang}>
             <Providers>{children}</Providers>
