@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
+import { applySecurity } from '@/lib/rate-limit'
 
 export async function GET(request: NextRequest) {
+  const security = await applySecurity(request)
+  if (security) return security
+
   const { searchParams } = new URL(request.url)
   const airline = searchParams.get('airline')
   const flightNumber = searchParams.get('flightNumber')

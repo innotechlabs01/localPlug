@@ -395,3 +395,23 @@ export async function applyRateLimit(req: Request): Promise<Response | null> {
 
   return null
 }
+
+/**
+ * applySecurity — aplica control de seguridad por route handler individual.
+ * Combina: (1) check de IP baneada (403) + (2) rate limit (429).
+ * Devuelve null si la petición puede continuar, o un Response de error si debe bloquearse.
+ *
+ * Usar al inicio de cada route handler público que necesite protección:
+ *   const sec = await applySecurity(req)
+ *   if (sec) return sec
+ */
+export async function applySecurity(req: Request): Promise<Response | null> {
+  const ip = extractIp(req)
+
+  // 1. IP ban check (fail-open si la BD no responde)
+  const banRes = await checkIpBanned(ip)
+  if (banRes) return banRes
+
+  // 2. Rate limit
+  return rateLimitMiddleware(req)
+}
