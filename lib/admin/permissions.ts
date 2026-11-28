@@ -12,35 +12,20 @@ export type ModulePermissions = Record<string, {
   can_delete: boolean
 }>
 
-// TODO: Remove hardcoded super-admin email once ADMIN_EMAILS is configured across all environments.
-export const BUILTIN_SUPER_ADMINS = ['anthonyrivera51@gmail.com']
-
-export function isSuperAdminEmail(email: string): boolean {
-  const normalized = email.trim().toLowerCase()
-  return BUILTIN_SUPER_ADMINS.includes(normalized)
-}
+// Todos los permisos provienen de la tabla role_permissions (configurables por BD/UI).
+// No existen emails hardcodeados ni bypass por rol nombre. El rol super_admin se
+// resuelve exclusivamente contra la tabla roles.
 
 export async function isSuperAdminClerkUser(clerkId: string): Promise<boolean> {
   await ensureSchema()
   const db = getDb()
   const res = await db.execute({
-    sql: `SELECT u.email, r.name as role_name
+    sql: `SELECT r.name as role_name
           FROM users u LEFT JOIN roles r ON u.role_id = r.id
           WHERE u.clerk_id = ? AND u.status = 'active' LIMIT 1`,
     args: [clerkId],
   })
-  if (res.rows.length > 0) {
-    const email = String(res.rows[0].email || '')
-    if (isSuperAdminEmail(email)) return true
-  }
-  try {
-    const client = await clerkClient()
-    const clerkUser = await client.users.getUser(clerkId)
-    const email = clerkUser.primaryEmailAddress?.emailAddress || ''
-    return isSuperAdminEmail(email)
-  } catch {
-    return false
-  }
+  return res.rows.length > 0 && String(res.rows[0].role_name) === 'super_admin'
 }
 
 export async function requireSuperAdmin(): Promise<NextResponse | undefined> {
@@ -51,20 +36,10 @@ export async function requireSuperAdmin(): Promise<NextResponse | undefined> {
   const ok = await isSuperAdminClerkUser(clerkId)
   if (!ok) {
     return NextResponse.json(
-      { error: 'Forbidden: Only Super Admin (anthonyrivera51@gmail.com) can manage roles and permissions' },
+      { error: 'Forbidden: Only Super Admin can manage roles and permissions' },
       { status: 403 },
     )
   }
-}
-
-function isAdminEmail(email: string): boolean {
-  const normalized = email.trim().toLowerCase()
-  if (BUILTIN_SUPER_ADMINS.includes(normalized)) return true
-  const adminEmails = (process.env.ADMIN_EMAILS || '')
-    .split(',')
-    .map(e => e.trim().toLowerCase())
-    .filter(Boolean)
-  return adminEmails.includes(normalized)
 }
 
 export async function getUserPermissions(clerkId: string): Promise<ModulePermissions | null> {
@@ -94,10 +69,6 @@ export async function getUserPermissions(clerkId: string): Promise<ModulePermiss
       email = clerkUser.primaryEmailAddress?.emailAddress || ''
     } catch { /* clerk fetch may fail */ }
 
-    const targetRoleName = isSuperAdminEmail(email) ? 'super_admin' : isAdminEmail(email) ? 'admin' : 'viewer'
-    const targetRoleRes = await db.execute({ sql: 'SELECT id FROM roles WHERE name = ? LIMIT 1', args: [targetRoleName] })
-    const roleId = (targetRoleRes.rows[0]?.id as number | undefined) ?? (isAdminEmail(email) ? 1 : viewerRoleId)
-
     // Link pre-created employee record by email if present (preserves role assigned by Super Admin)
     const preCreated = email
       ? await db.execute({
@@ -106,7 +77,9 @@ export async function getUserPermissions(clerkId: string): Promise<ModulePermiss
         })
       : { rows: [] }
 
+    let roleId = viewerRoleId
     if (preCreated.rows.length > 0) {
+      roleId = (preCreated.rows[0].role_id as number | null) ?? viewerRoleId
       await db.execute({
         sql: `UPDATE users SET clerk_id = ?, name = COALESCE(NULLIF(name, ''), ?), updated_at = datetime('now') WHERE id = ?`,
         args: [clerkId, name, preCreated.rows[0].id as number],
@@ -130,7 +103,7 @@ export async function getUserPermissions(clerkId: string): Promise<ModulePermiss
       })
     }
 
-    console.log(`[Permissions] Auto-registered user ${clerkId} (${name}) as ${isAdminEmail(email) ? 'admin' : 'viewer'}`)
+    console.log(`[Permissions] Auto-registered user ${clerkId} (${name}) as viewer`)
 
     // Also set Clerk private_metadata so role is visible in Clerk Dashboard
     const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY || ''
@@ -138,7 +111,7 @@ export async function getUserPermissions(clerkId: string): Promise<ModulePermiss
       try {
         const client = await clerkClient()
         await client.users.updateUserMetadata(clerkId, {
-          privateMetadata: { role: isAdminEmail(email) ? 'admin' : 'viewer' },
+          privateMetadata: { role: 'viewer' },
         })
       } catch { /* non-critical */ }
     }
@@ -154,60 +127,10 @@ export async function getUserPermissions(clerkId: string): Promise<ModulePermiss
   }
 
   const userRow = user.rows[0] as any
-  const roleName = userRow.role_name as string
-  const currentRoleId = userRow.role_id as number
-  const userEmail = userRow.email as string
+  const roleId = userRow.role_id as number
 
-  // Promote to super_admin / admin if email matches BUILTIN_SUPER_ADMINS or ADMIN_EMAILS
-  const desiredRoleName = isSuperAdminEmail(userEmail) ? 'super_admin' : 'admin'
-  const adminRole = await db.execute({ sql: 'SELECT id FROM roles WHERE name = ? LIMIT 1', args: [desiredRoleName] })
-  const adminRoleId = (adminRole.rows[0]?.id as number | undefined) || 1
-
-  if (isAdminEmail(userEmail) && currentRoleId !== adminRoleId) {
-    await db.execute({
-      sql: `UPDATE users SET role_id = ?, updated_at = datetime('now') WHERE clerk_id = ?`,
-      args: [adminRoleId, clerkId],
-    })
-    const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY || ''
-    if (CLERK_SECRET_KEY) {
-      try {
-        const client = await clerkClient()
-        await client.users.updateUserMetadata(clerkId, {
-          privateMetadata: { role: 'admin' },
-        })
-      } catch { /* non-critical */ }
-    }
-    console.log(`[Permissions] Promoted user to ${desiredRoleName.toUpperCase()}: ${userEmail}`)
-  }
-
-  if (roleName === 'super_admin' || roleName === 'admin' || isAdminEmail(userEmail)) {
-    const allModules = await db.execute(
-      'SELECT slug FROM modules ORDER BY sort_order'
-    )
-    const result: ModulePermissions = {}
-    for (const mod of allModules.rows) {
-      result[mod.slug as string] = {
-        can_view: true,
-        can_create: true,
-        can_update: true,
-        can_delete: true,
-      }
-    }
-    // Guarantee core admin modules even if the modules table is not yet seeded
-    for (const coreSlug of [
-      'dashboard', 'dispatch', 'reservations', 'drivers', 'fleet', 'customers',
-      'support', 'audit', 'queue', 'employees', 'analytics', 'payments',
-      'payouts', 'parking_proofs', 'plans', 'hotels', 'events', 'roles', 'settings', 'orders',
-    ]) {
-      if (!result[coreSlug]) {
-        result[coreSlug] = { can_view: true, can_create: true, can_update: true, can_delete: true }
-      }
-    }
-    return result
-  }
-
-  const roleId = user.rows[0].role_id as number
-
+  // Siempre consultar role_permissions de la BD según el role_id del usuario.
+  // No hay bypass CRUD total por rol nombre ni por email.
   const perms = await db.execute({
     sql: `SELECT m.slug, rp.can_view, rp.can_create, rp.can_update, rp.can_delete
           FROM role_permissions rp
@@ -262,5 +185,21 @@ export async function requirePermission(
   const allowed = await checkPermission(clerkId, moduleSlug, action)
   if (!allowed) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+}
+
+// Sincroniza el rol del usuario en Clerk privateMetadata, para que el rol
+// configurado en BD quede reflejado también en el token/sesión de Clerk.
+// Se usa cuando el Super Admin asigna o cambia un rol desde la UI de admin.
+export async function syncClerkUserRole(clerkId: string, roleName: string): Promise<void> {
+  const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY || ''
+  if (!CLERK_SECRET_KEY || !clerkId) return
+  try {
+    const client = await clerkClient()
+    await client.users.updateUserMetadata(clerkId, {
+      privateMetadata: { role: roleName },
+    })
+  } catch {
+    // non-critical: la BD es la fuente de verdad; Clerk metadata es solo cache
   }
 }

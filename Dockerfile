@@ -79,6 +79,14 @@ RUN addgroup --system --gid 1001 nodejs && \
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# Copy only @libsql/* native platform bindings and libsql@* symlinks into standalone's
+# pnpm virtual store (Next.js NFT cannot trace dynamic require(`@libsql/${target}`)).
+RUN --mount=type=bind,from=deps,source=/app/node_modules/.pnpm,target=/tmp/pnpm-deps \
+    set -eux; \
+    mkdir -p /app/node_modules/.pnpm; \
+    cp -a /tmp/pnpm-deps/@libsql+* /app/node_modules/.pnpm/; \
+    cp -a /tmp/pnpm-deps/libsql@* /app/node_modules/.pnpm/; \
+    chown -R nextjs:nodejs /app/node_modules/.pnpm/@libsql+* /app/node_modules/.pnpm/libsql@*
 
 USER nextjs
 

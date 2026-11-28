@@ -8,6 +8,12 @@ const cspHeader = `default-src 'self'; script-src 'self' 'unsafe-inline' https:/
 
 const nextConfig = {
   output: 'standalone',
+  outputFileTracingIncludes: {
+    '/*': [
+      './node_modules/.pnpm/@libsql+*@*/node_modules/@libsql/**/*',
+      './node_modules/.pnpm/libsql@*/node_modules/**/*',
+    ],
+  },
   typescript: { ignoreBuildErrors: false },
   transpilePackages: ['@lp/shared', '@lp/config', '@lp/auth', '@lp/validation', '@lp/types', '@lp/db', '@lp/domains', '@lp/domains/*', '@lp/events', '@lp/communication'],
   webpack: (config) => {
