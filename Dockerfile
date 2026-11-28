@@ -84,6 +84,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 RUN --mount=type=bind,from=deps,source=/app/node_modules/.pnpm,target=/tmp/pnpm-deps \
     set -eux; \
     mkdir -p /app/node_modules/.pnpm; \
+    rm -rf /app/node_modules/.pnpm/@libsql+* /app/node_modules/.pnpm/libsql@* 2>/dev/null || true; \
     cp -a /tmp/pnpm-deps/@libsql+* /app/node_modules/.pnpm/; \
     cp -a /tmp/pnpm-deps/libsql@* /app/node_modules/.pnpm/; \
     chown -R nextjs:nodejs /app/node_modules/.pnpm/@libsql+* /app/node_modules/.pnpm/libsql@*
