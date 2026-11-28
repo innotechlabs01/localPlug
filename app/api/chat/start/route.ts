@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
+import { applySecurity } from '@/lib/rate-limit'
 import { triggerAiChatMessage } from '@/lib/n8n/client'
 import { t } from '@/lib/i18n/server'
 
 export async function POST(request: Request) {
+  const security = await applySecurity(request)
+  if (security) return security
+
   try {
     const body = await request.json()
     const { name, email, phone, country, countryCode, locale } = body

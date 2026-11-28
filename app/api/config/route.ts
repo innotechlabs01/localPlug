@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server'
 import { getAllPublicConfig, ConfigLoadError } from '@/lib/config'
+import { applySecurity } from '@/lib/rate-limit'
 
-export async function GET() {
+export async function GET(request: Request) {
+  const security = await applySecurity(request)
+  if (security) return security
+
   try {
     const config = await getAllPublicConfig()
     return NextResponse.json(config, {

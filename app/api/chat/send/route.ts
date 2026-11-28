@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
+import { applySecurity } from '@/lib/rate-limit'
 import { triggerAiChatMessage, triggerFraudDetection, sendOrQueueWhatsApp } from '@/lib/n8n/client'
 import { generateOpenAIResponse } from '@/lib/services/openai-service'
 import { generateOllamaResponse } from '@/lib/services/ollama-service'
@@ -56,6 +57,9 @@ function isBlockedTopic(message: string): { blocked: boolean; topic?: string } {
 }
 
 export async function POST(request: Request) {
+  const security = await applySecurity(request)
+  if (security) return security
+
   try {
     const body: SendMessageRequest = await request.json()
     const { conversationId, message, userIdentifier, userName, userEmail, senderType, agentId, locale } = body
