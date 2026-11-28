@@ -55,6 +55,8 @@ const isPublicRoute = createRouteMatcher([
   '/driver/offline',
   '/api/booking',
   '/api/flights/validate',
+  '/api/flights/status',
+  '/api/orders/(.*)',
   '/api/webhooks/(.*)',
   '/api/checkout/(.*)',
   '/api/admin/lookup',
