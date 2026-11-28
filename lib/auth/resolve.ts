@@ -1,7 +1,15 @@
 import { auth, clerkClient } from '@clerk/nextjs/server'
 import { getDb } from '@/lib/db'
 
-export type PortalRole = 'admin' | 'hotel_manager' | 'driver'
+export type PortalRole =
+  | 'super_admin'
+  | 'admin'
+  | 'manager'
+  | 'concierge'
+  | 'viewer'
+  | 'hotel_manager'
+  | 'driver'
+  | 'customer'
 
 export interface ResolvedUser {
   id: number
@@ -53,7 +61,7 @@ export async function resolveCurrentUser(): Promise<ResolveResult | { error: str
     try {
       const client = await clerkClient()
       const clerkUser = await client.users.getUser(clerkId)
-      email = clerkUser.primaryEmailAddress?.emailAddress || ''
+      email = (clerkUser.primaryEmailAddress?.emailAddress || '').trim().toLowerCase()
     } catch {
       // Clerk fetch failed — can't link
     }
@@ -64,18 +72,27 @@ export async function resolveCurrentUser(): Promise<ResolveResult | { error: str
                      r.name AS role_name
               FROM users u
               JOIN roles r ON u.role_id = r.id
-              WHERE u.email = ? AND u.status = 'active'`,
-        args: [email],
+              WHERE LOWER(u.email) = ? LIMIT 1`,
+        args: [email.trim().toLowerCase()],
       })
 
       if (byEmail.rows.length > 0) {
-        // Link the new Clerk account to the existing DB row
+        // Link the new Clerk account to the existing DB row and reactivate it
+        // when the previous Clerk account was deleted.
+        const nextStatus = byEmail.rows[0].status === 'inactive' ? 'active' : byEmail.rows[0].status
         await db.execute({
-          sql: `UPDATE users SET clerk_id = ?, updated_at = datetime('now') WHERE id = ?`,
-          args: [clerkId, byEmail.rows[0].id as number],
+          sql: `UPDATE users SET clerk_id = ?, status = ?, updated_at = datetime('now') WHERE id = ?`,
+          args: [clerkId, nextStatus, byEmail.rows[0].id as number],
         })
         console.log(`[Auth] Linked new Clerk account ${clerkId} to existing user ${byEmail.rows[0].id} via email ${email}`)
-        rows = byEmail
+        rows = await db.execute({
+          sql: `SELECT u.id, u.clerk_id, u.name, u.email, u.role_id, u.hotel_id, u.status,
+                       r.name AS role_name
+                FROM users u
+                JOIN roles r ON u.role_id = r.id
+                WHERE u.clerk_id = ? AND u.status = 'active'`,
+          args: [clerkId],
+        })
       }
     }
   }
@@ -107,7 +124,9 @@ export async function requirePortalRole(expected: PortalRole): Promise<ResolveRe
   const result = await resolveCurrentUser()
   if ('error' in result) return result
 
-  if (result.user.role_name !== expected) {
+  const roleName = result.user.role_name
+  const matches = roleName === expected || (expected === 'admin' && roleName === 'super_admin')
+  if (!matches) {
     return { error: 'wrong_portal', status: 403 }
   }
 

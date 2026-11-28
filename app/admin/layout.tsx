@@ -449,7 +449,9 @@ function AdminLayoutInner({ children }: { children: React.ReactNode }) {
     fetch('/api/admin/permissions/mine', { cache: 'no-store' })
       .then(async r => {
         if (r.status === 401) {
-          router.push('/sign-in/admin')
+          // Session is stale or the DB role points to another portal. The
+          // callback resolves that without trapping the user in sign-in.
+          router.replace('/auth/callback?portal=admin')
           return null
         }
         if (r.status === 403) {

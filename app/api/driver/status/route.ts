@@ -19,6 +19,13 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: 'Status must be "available" or "inactive"' }, { status: 400 })
     }
 
+    if (status === 'available' && !result.driver.profile_complete) {
+      return NextResponse.json(
+        { error: 'Completa los datos de tu vehículo y placa antes de conectarte.' },
+        { status: 400 },
+      )
+    }
+
     const db = getDb()
     await db.execute({
       sql: `UPDATE drivers SET status = ?, updated_at = datetime('now') WHERE id = ?`,

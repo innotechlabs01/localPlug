@@ -4,6 +4,7 @@ import { getDriverFromSession } from '@/lib/driver/auth'
 import { recordAudit } from '@/lib/driver/audit'
 import { accrueDriverPayout } from '@/lib/payout'
 import { emitEvent } from '@/lib/events-outbox'
+import { ensureRideDispatchSchema, isStaleOffer, sweepStaleRideOffers, type OfferState } from '@/lib/rides/offer-lifecycle'
 
 export const dynamic = 'force-dynamic'
 
@@ -82,10 +83,13 @@ export async function POST(
     }
 
     const db = getDb()
+    await ensureRideDispatchSchema(db)
+    await sweepStaleRideOffers(db)
 
     const existing = await db.execute({
-      sql: `SELECT a.id, a.status, a.order_id, o.dispatch_status, o.customer_name,
-                 o.customer_email, o.customer_phone, o.customer_language,
+      sql: `SELECT a.id, a.status, a.created_at, a.observations,
+                  a.order_id, o.status as order_status, o.dispatch_status, o.customer_name,
+                 o.customer_email, o.customer_phone, o.payment_status,
                  o.package_name, o.package_price, o.currency, o.order_number,
                  o.booking_reference, o.arrival_date, o.arrival_time,
                  o.destination_address
@@ -100,6 +104,18 @@ export async function POST(
     }
 
     const row = existing.rows[0] as any
+
+    // A delayed driver tap must not occupy the driver: cancelled/timed-out,
+    // unpaid, or already-claimed offers stay inert.
+    if (String(row.payment_status || '') !== 'paid' || isStaleOffer(row as unknown as OfferState)) {
+      await db.execute({
+        sql: `UPDATE assignments SET status = 'expired', updated_at = datetime('now')
+              WHERE id = ? AND driver_id = ? AND status = 'pending_acceptance'`,
+        args: [assignmentId, driverId],
+      })
+      return NextResponse.json({ error: 'Offer expired', status: 'expired' }, { status: 409 })
+    }
+
     const fromStatus = row.status as string
     const orderId = Number(row.order_id)
     const toStatus = ACTION_TO_STATUS[action]
@@ -188,9 +204,14 @@ export async function POST(
       const orderDispatch = updateStatus === 'accepted' ? 'assigned' : updateStatus
       await db.execute({
         sql: `UPDATE orders
-              SET dispatch_status = ?, updated_at = datetime('now')
+              SET dispatch_status = ?, assigned_to = ?, assigned_at = ?, updated_at = datetime('now')
               WHERE id = ?`,
-        args: [orderDispatch, orderId],
+        args: [
+          orderDispatch,
+          updateStatus === 'accepted' ? driverId : null,
+          updateStatus === 'accepted' ? new Date().toISOString() : null,
+          orderId,
+        ],
       })
       if (updateStatus === 'accepted') {
         await db.execute({

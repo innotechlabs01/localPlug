@@ -5,6 +5,7 @@ import { triggerClientDriverConfirmed } from '@/lib/n8n/client'
 import { getEstimatedDurationMinutes } from '@/lib/dispatch/availability'
 import { getDriverFromSession } from '@/lib/driver/auth'
 import { emitEvent } from '@/lib/events-outbox'
+import { isStaleOffer, sweepStaleRideOffers, type OfferState } from '@/lib/rides/offer-lifecycle'
 
 export async function POST(
   req: Request,
@@ -30,11 +31,12 @@ export async function POST(
     }
 
     const db = getDb()
+    await sweepStaleRideOffers()
 
     const assignmentResult = await db.execute({
       sql: `SELECT a.*, o.order_number, o.booking_reference, o.customer_name, o.customer_phone,
                    o.customer_email, o.package_name, o.flight_number, o.arrival_date, o.arrival_time,
-                   o.destination_address, o.status as order_status,
+                   o.destination_address, o.status as order_status, o.dispatch_status, o.assigned_to, o.package_id,
                    d.name as driver_name, d.vehicle, d.plate, d.phone as driver_phone, d.photo_url
             FROM assignments a
             LEFT JOIN orders o ON a.order_id = o.id
@@ -62,6 +64,18 @@ export async function POST(
     }
 
     const now = new Date().toISOString()
+
+    // A cancelled or timed-out offer may still sit in a driver's cached UI.
+    // Expire it locally and leave the order and the driver's availability alone.
+    if (isStaleOffer(assignment as unknown as OfferState)) {
+      await db.execute({
+        sql: `UPDATE assignments SET status = 'expired', updated_at = ?
+              WHERE id = ? AND status = 'pending_acceptance'`,
+        args: [now, assignmentId],
+      })
+      return NextResponse.json({ error: 'Offer expired', status: 'expired' }, { status: 409 })
+    }
+
     const durationMinutes = getEstimatedDurationMinutes(
       (assignment.package_name as string) || '',
       assignment.service_type === 'dropoff' || assignment.service_type === 'return',
@@ -87,18 +101,29 @@ export async function POST(
       {
         sql: `UPDATE orders
               SET assigned_to = ?, dispatch_status = 'assigned', assigned_at = ?, updated_at = ?
-              WHERE id = ?`,
-        args: [assignment.driver_id, now, now, assignment.order_id],
+              WHERE id = ?
+                AND status NOT IN ('cancelled', 'completed')
+                AND dispatch_status NOT IN ('cancelled', 'completed')
+                AND (assigned_to IS NULL OR assigned_to = ?)`,
+        args: [assignment.driver_id, now, now, assignment.order_id, assignment.driver_id],
       },
       {
-        sql: "UPDATE drivers SET status = 'busy', updated_at = ? WHERE id = ?",
-        args: [now, assignment.driver_id],
+        sql: `UPDATE drivers SET status = 'busy', updated_at = ?
+              WHERE id = ?
+                AND EXISTS (
+                  SELECT 1 FROM orders o
+                  WHERE o.id = ?
+                    AND o.assigned_to = ?
+                    AND o.status NOT IN ('cancelled', 'completed')
+                )`,
+        args: [now, assignment.driver_id, assignment.order_id, assignment.driver_id],
       },
     ])
 
-    if (batchRes[0].rowsAffected === 0) {
+    if (batchRes[0].rowsAffected === 0 || batchRes[1].rowsAffected === 0) {
       return NextResponse.json({
-        error: 'Assignment was already accepted or declined.',
+        error: 'Assignment was already accepted, declined or the ride was cancelled.',
+        status: 'expired',
       }, { status: 409 })
     }
 

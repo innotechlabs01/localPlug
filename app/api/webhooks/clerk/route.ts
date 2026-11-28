@@ -1,129 +1,119 @@
-import { Webhook } from 'svix'
-import { headers } from 'next/headers'
-import { NextResponse } from 'next/server'
+import { verifyWebhook } from '@clerk/nextjs/webhooks'
+import { NextRequest, NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
-
-const CLERK_WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET
-const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY || ''
-const CLERK_API_URL = 'https://api.clerk.com/v1'
-
-async function setClerkMetadata(clerkId: string, metadata: Record<string, unknown>) {
-  if (!CLERK_SECRET_KEY) return
-  try {
-    await fetch(`${CLERK_API_URL}/users/${clerkId}`, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `Bearer ${CLERK_SECRET_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ private_metadata: metadata }),
-    })
-  } catch (e) {
-    console.error('[Clerk Webhook] Failed to set metadata:', e)
-  }
-}
+import type { DatabaseClient } from '@lp/db/factory'
 
 type ClerkEvent = {
   type: string
   data: {
-    id: string
+    id?: string | null
     email_addresses?: { email_address: string }[]
     first_name?: string | null
     last_name?: string | null
-    public_metadata?: Record<string, unknown>
-    private_metadata?: Record<string, unknown>
     [key: string]: unknown
   }
 }
 
-function isAdminEmail(email: string): boolean {
-  const adminEmails = (process.env.ADMIN_EMAILS || '')
-    .split(',')
-    .map(e => e.trim().toLowerCase())
-    .filter(Boolean)
-  return adminEmails.includes(email.toLowerCase())
+/** DB role is authoritative: mirror users.role_id into user_roles without removing other grants. */
+async function syncUserRoles(
+  db: DatabaseClient,
+  userId: number,
+  roleId: number,
+  viewerRoleId: number,
+): Promise<void> {
+  if (roleId !== viewerRoleId) {
+    await db.execute({
+      sql: `DELETE FROM user_roles WHERE user_id = ? AND role_id = ?`,
+      args: [userId, viewerRoleId],
+    })
+  }
+  await db.execute({
+    sql: `INSERT OR IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)`,
+    args: [userId, roleId],
+  })
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
-    if (!CLERK_WEBHOOK_SECRET) {
+    const signingSecret = process.env.CLERK_WEBHOOK_SECRET
+    if (!signingSecret) {
       console.error('[Clerk Webhook] CLERK_WEBHOOK_SECRET is not configured — rejecting all webhooks')
       return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 })
     }
 
-    const headerPayload = await headers()
-    const svixId = headerPayload.get('svix-id')
-    const svixTimestamp = headerPayload.get('svix-timestamp')
-    const svixSignature = headerPayload.get('svix-signature')
-
-    if (!svixId || !svixTimestamp || !svixSignature) {
-      return NextResponse.json({ error: 'Missing svix headers' }, { status: 400 })
-    }
-
-    const body = await req.text()
-
     let evt: ClerkEvent
     try {
-      const wh = new Webhook(CLERK_WEBHOOK_SECRET)
-      evt = wh.verify(body, {
-        'svix-id': svixId,
-        'svix-timestamp': svixTimestamp,
-        'svix-signature': svixSignature,
-      }) as ClerkEvent
+      evt = await verifyWebhook(req, { signingSecret }) as unknown as ClerkEvent
     } catch {
       return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
     }
 
-    const db = getDb()
     const { id: clerkId, email_addresses, first_name, last_name } = evt.data
+    if (!clerkId) {
+      return NextResponse.json({ error: 'Missing Clerk user id' }, { status: 400 })
+    }
+
+    const db = getDb()
     const email = email_addresses?.[0]?.email_address || ''
     const name = [first_name, last_name].filter(Boolean).join(' ').trim() || email
 
-    const adminRole = await db.execute({ sql: "SELECT id FROM roles WHERE name = 'admin' LIMIT 1", args: [] })
-    const adminRoleId = adminRole.rows[0]?.id || 1
+    // Los nuevos usuarios se registran siempre como viewer. El rol (incluido
+    // super_admin/admin) lo configura el Super Admin vía BD/UI; nunca por email.
     const viewerRole = await db.execute({ sql: "SELECT id FROM roles WHERE name = 'viewer' LIMIT 1", args: [] })
     const viewerRoleId = viewerRole.rows[0]?.id || 4
 
-    const isAdmin = isAdminEmail(email)
-
     if (evt.type === 'user.created' || evt.type === 'user.updated') {
+      // Heal deleted/recreated Clerk accounts: match the new clerk_id to the
+      // existing DB row by email so the user keeps role, history and profile.
       const existing = await db.execute({
-        sql: 'SELECT id, role_id FROM users WHERE clerk_id = ?',
-        args: [clerkId],
+        sql: `SELECT id, status FROM users
+              WHERE clerk_id = ? OR (email <> '' AND LOWER(email) = LOWER(?))
+              ORDER BY CASE WHEN clerk_id = ? THEN 0 ELSE 1 END
+              LIMIT 1`,
+        args: [clerkId, email, clerkId],
       })
+      const row = existing.rows[0]
 
-      if (existing.rows.length === 0) {
-        // New user — assign admin if email matches, otherwise viewer
-        const roleId = isAdmin ? adminRoleId : viewerRoleId
-
+      if (!row) {
+        // New user — always viewer by default in DB (Clerk is auth-only, no metadata written)
         await db.execute({
           sql: `INSERT OR IGNORE INTO users (clerk_id, name, email, password_hash, role_id, status, created_at, updated_at)
                 VALUES (?, ?, ?, '', ?, 'active', datetime('now'), datetime('now'))`,
-          args: [clerkId, name, email, roleId],
+          args: [clerkId, name, email, viewerRoleId],
         })
 
-        // Sync role into Clerk metadata
-        await setClerkMetadata(clerkId, { role: isAdmin ? 'admin' : 'viewer' })
-
-        console.log(`[Clerk Webhook] Created user ${isAdmin ? 'ADMIN' : 'viewer'}: ${email}`)
+        console.log(`[Clerk Webhook] Created user as viewer in DB: ${email}`)
       } else {
-        // Existing user — update info and promote to admin if email matches ADMIN_EMAILS
-        const currentRoleId = existing.rows[0].role_id as number
-        const targetRoleId = isAdmin ? adminRoleId : currentRoleId
+        // Existing user — sync identity only. Role is owned by DB/UI and is never downgraded here.
+        const nextStatus = row.status === 'inactive' ? 'active' : row.status
+        await db.execute({
+          sql: `UPDATE users
+                SET clerk_id = ?,
+                    name = CASE WHEN ? = '' THEN name ELSE ? END,
+                    email = CASE WHEN ? = '' THEN email ELSE ? END,
+                    status = ?,
+                    updated_at = datetime('now')
+                WHERE id = ?`,
+          args: [clerkId, name, name, email, email, nextStatus, Number(row.id)],
+        })
 
-        if (isAdmin && currentRoleId !== adminRoleId) {
-          await db.execute({
-            sql: `UPDATE users SET name = ?, email = ?, role_id = ?, updated_at = datetime('now') WHERE clerk_id = ?`,
-            args: [name, email, adminRoleId, clerkId],
-          })
-          await setClerkMetadata(clerkId, { role: 'admin' })
-          console.log(`[Clerk Webhook] Promoted user to ADMIN: ${email}`)
-        } else {
-          await db.execute({
-            sql: `UPDATE users SET name = ?, email = ?, updated_at = datetime('now') WHERE clerk_id = ?`,
-            args: [name, email, clerkId],
-          })
-        }
+        console.log(`[Clerk Webhook] Synced user ${clerkId} in DB (role preserved)`)
+      }
+
+      // Re-read authoritative role after the upsert: a concurrent admin update
+      // may have changed it, and user_roles must follow users.role_id.
+      const current = await db.execute({
+        sql: `SELECT id, role_id FROM users WHERE clerk_id = ? LIMIT 1`,
+        args: [clerkId],
+      })
+      const currentRow = current.rows[0]
+      if (currentRow) {
+        await syncUserRoles(
+          db,
+          Number(currentRow.id),
+          Number(currentRow.role_id ?? viewerRoleId),
+          Number(viewerRoleId),
+        )
       }
     }
 

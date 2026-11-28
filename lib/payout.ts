@@ -115,7 +115,7 @@ function monthlyPeriod(date: Date): string {
 export async function accrueDriverPayout(orderId: number, driverId: number): Promise<void> {
   const db = getDb()
   const res = await db.execute({
-    sql: `SELECT o.booking_reference, d.vehicle_category_id, vc.name AS cat_name, vc.trip_fare_usd
+    sql: `SELECT o.*, d.vehicle_category_id, vc.name AS cat_name, vc.trip_fare_usd
           FROM orders o
           JOIN assignments a ON a.order_id = o.id AND a.driver_id = ? AND a.status = 'completed'
           JOIN drivers d ON d.id = ?
@@ -125,9 +125,13 @@ export async function accrueDriverPayout(orderId: number, driverId: number): Pro
   })
   const row = res.rows[0]
   const bookingReference = row?.booking_reference as string | undefined
-  const fare = Number(row?.trip_fare_usd)
+  // On-demand rides persist the regulated fare at checkout time. Prefer that quote
+  // over the current category fare, which may have changed since the trip was sold.
+  const quotedFare = Number(row?.driver_payout_usd)
+  const categoryFare = Number(row?.trip_fare_usd)
+  const fare = quotedFare > 0 && Number.isFinite(quotedFare) ? quotedFare : categoryFare
   if (!bookingReference || !Number.isFinite(fare) || fare <= 0) {
-    // No category fare configured — skip accrual (admin hasn't set up categories yet).
+    // No quoted or category fare configured — skip accrual (admin hasn't set up fares yet).
     return
   }
   await db.execute({

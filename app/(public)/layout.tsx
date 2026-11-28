@@ -1,3 +1,5 @@
+import { Suspense } from 'react'
+import AuthStatusBanner from '@/app/components/auth/auth-status-banner'
 import LazyChatWidget from '@/app/components/chat/lazy-chat-widget'
 
 export default function PublicLayout({
@@ -7,6 +9,9 @@ export default function PublicLayout({
 }) {
   return (
     <>
+      <Suspense fallback={null}>
+        <AuthStatusBanner />
+      </Suspense>
       {children}
       <LazyChatWidget />
     </>

@@ -1,7 +1,20 @@
 'use client'
-import { SignIn } from '@clerk/nextjs'
+import { SignIn, useAuth } from '@clerk/nextjs'
+import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
 
 export default function HotelSignInPage() {
+  const { isLoaded, isSignedIn } = useAuth()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (isLoaded && isSignedIn) {
+      router.replace('/auth/callback?portal=hotel')
+    }
+  }, [isLoaded, isSignedIn, router])
+
+  if (isLoaded && isSignedIn) return null
+
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-dark)' }}>
       <div style={{
@@ -141,7 +154,7 @@ export default function HotelSignInPage() {
           <SignIn
             routing="path"
             path="/sign-in/hotel"
-            forceRedirectUrl="/hotel"
+            forceRedirectUrl="/auth/callback?portal=hotel"
             appearance={{
               variables: {
                 colorPrimary: 'var(--accent-gold)',

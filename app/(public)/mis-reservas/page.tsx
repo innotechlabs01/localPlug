@@ -25,7 +25,6 @@ type Booking = {
   customer_email: string | null
   customer_phone: string | null
   customer_country: string | null
-  customer_language: string | null
   destination_address: string | null
   additional_trips: any
   num_people: number | null
@@ -107,7 +106,6 @@ function BookingDetail({ b }: { b: Booking }) {
           <p className="text-white/60">Email: {b.customer_email || '-'}</p>
           <p className="text-white/60">Tel: {b.customer_phone || '-'}</p>
           <p className="text-white/60">País: {b.customer_country || '-'}</p>
-          <p className="text-white/60">Idioma: {b.customer_language || '-'}</p>
         </div>
         <div className="space-y-1">
           <p className="text-white/80 font-semibold">Viaje</p>
