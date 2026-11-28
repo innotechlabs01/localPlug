@@ -1,14 +1,14 @@
 import { getDb } from '@/lib/db'
+import type { RideFareRule } from '@/lib/rides/fare'
 
-export interface RidePricingRow {
-  category: string
-  label: string
-  base_usd: number
-  per_km_usd: number
-  per_min_usd: number
-  min_fare_usd: number
-  avg_speed_kmh: number
-  platform_commission_pct: number
+export {
+  calculateRideFare,
+  calculateRideQuote,
+  validateRideTaxRate,
+} from '@/lib/rides/fare'
+export type { RideFare, RideQuote, RideFareRule } from '@/lib/rides/fare'
+
+export interface RidePricingRow extends RideFareRule {
   regulation_ref: string
   last_reviewed_at: string | null
 }
@@ -123,16 +123,3 @@ export async function ensureRidePricingTable(): Promise<RidePricingRow[]> {
   return res.rows as unknown as RidePricingRow[]
 }
 
-export function calculateRideFare(rule: RidePricingRow, distanceKm: number) {
-  const speed = Math.max(10, Number(rule.avg_speed_kmh) || 28)
-  const estimatedMinutes = Math.max(4, Math.round((distanceKm / speed) * 60))
-  const raw =
-    Number(rule.base_usd) +
-    distanceKm * Number(rule.per_km_usd) +
-    estimatedMinutes * Number(rule.per_min_usd)
-  const totalUsd = Math.round(Math.max(Number(rule.min_fare_usd), raw) * 100) / 100
-  const commPct = Math.max(0, Math.min(50, Number(rule.platform_commission_pct ?? 20)))
-  const platformFeeUsd = Math.round(totalUsd * (commPct / 100) * 100) / 100
-  const driverNetUsd = Math.round((totalUsd - platformFeeUsd) * 100) / 100
-  return { totalUsd, estimatedMinutes, speedKmh: speed, platformFeeUsd, driverNetUsd, commPct }
-}

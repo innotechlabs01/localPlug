@@ -6,10 +6,12 @@ import Link from 'next/link'
 import Button from '@/app/components/ui/button'
 import LangToggle from '@/app/components/ui/lang-toggle'
 import { useI18n } from '@/lib/i18n'
+import { useMyReservasVisibility } from '@/app/hooks/use-my-reservas-visibility'
 
 function HeaderInner() {
   const { t } = useI18n()
   const { isSignedIn } = useAuth()
+  const canViewMyReservas = useMyReservasVisibility()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
 
@@ -61,16 +63,16 @@ function HeaderInner() {
                 {link.label}
               </a>
             ))}
-            {isSignedIn && (
+            {canViewMyReservas && (
               <Link href="/mis-reservas" className="text-sm font-medium text-[var(--text-secondary)] hover:text-white transition-colors duration-200">
                 Mis reservas
               </Link>
             )}
             <LangToggle />
             {!isSignedIn && (
-              <SignInButton mode="modal">
+              <SignInButton mode="modal" forceRedirectUrl="/auth/callback">
                 <button className="text-sm font-medium text-[var(--text-secondary)] hover:text-white transition-colors duration-200">
-                  'Iniciar sesión'
+                  Iniciar sesión
                 </button>
               </SignInButton>
             )}
@@ -115,15 +117,15 @@ function HeaderInner() {
                   {link.label}
                 </a>
               ))}
-              {isSignedIn && (
+              {canViewMyReservas && (
                 <Link href="/mis-reservas" className="text-body-md text-[var(--text-secondary)] hover:text-white hover:bg-white/5 transition-colors duration-200 rounded-lg px-3 py-2.5 min-h-[44px] flex items-center" onClick={() => setMobileOpen(false)}>
                   Mis reservas
                 </Link>
               )}
               {!isSignedIn && (
-                <SignInButton mode="modal">
+                <SignInButton mode="modal" forceRedirectUrl="/auth/callback">
                   <button className="w-full text-left text-body-md text-[var(--text-secondary)] hover:text-white hover:bg-white/5 transition-colors duration-200 rounded-lg px-3 py-2.5 min-h-[44px] flex items-center">
-                    'Iniciar sesión'
+                    Iniciar sesión
                   </button>
                 </SignInButton>
               )}

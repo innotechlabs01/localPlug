@@ -2,18 +2,26 @@
 const path = require('path')
 
 const isDev = process.env.NODE_ENV !== 'production'
+const isVercel = process.env.VERCEL === '1'
 const vercelLive = isDev ? ' https://vercel.live' : ''
+const unsafeEval = isDev ? " 'unsafe-eval'" : ''
 
-const cspHeader = `default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://*.clerk.accounts.dev https://*.clerk.com https://cdn.paddle.com https://*.paddle.com${vercelLive}; style-src 'self' 'unsafe-inline' https://sandbox-cdn.paddle.com https://cdn.paddle.com https://*.clerk.com https://*.clerk.accounts.dev; img-src 'self' data: https: blob:; font-src 'self'; connect-src 'self' https://api.clerk.com https://*.clerk.accounts.dev https://*.clerk.com https://*.turso.io https://api-message.innotechlabssas.lat https://api.upstash.com https://api.paddle.com https://sandbox-api.paddle.com https://sandbox-checkout-service.paddle.com https://clerk-telemetry.com https://analytics.paddle.com https://cdn.paddle.com; worker-src 'self' blob:; frame-src 'self' https://challenges.cloudflare.com https://*.accounts.dev https://*.clerk.accounts.dev https://*.clerk.com https://sandbox-checkout.paddle.com https://checkout.paddle.com https://sandbox-buy.paddle.com${vercelLive}; frame-ancestors 'none'; form-action 'self'; base-uri 'self'; object-src 'none'`
+const cspHeader = `default-src 'self'; script-src 'self' 'unsafe-inline'${unsafeEval} https://challenges.cloudflare.com https://static.cloudflareinsights.com https://*.clerk.accounts.dev https://*.clerk.com https://cdn.paddle.com https://*.paddle.com${vercelLive}; style-src 'self' 'unsafe-inline' https://sandbox-cdn.paddle.com https://cdn.paddle.com https://*.clerk.com https://*.clerk.accounts.dev; img-src 'self' data: https: blob:; font-src 'self' data:; connect-src 'self' https://api.clerk.com https://*.clerk.accounts.dev https://*.clerk.com https://cloudflareinsights.com https://*.turso.io https://api-message.innotechlabssas.lat https://api.upstash.com https://api.paddle.com https://sandbox-api.paddle.com https://sandbox-checkout-service.paddle.com https://clerk-telemetry.com https://analytics.paddle.com https://cdn.paddle.com; worker-src 'self' blob:; frame-src 'self' https://challenges.cloudflare.com https://www.openstreetmap.org https://*.accounts.dev https://*.clerk.accounts.dev https://*.clerk.com https://sandbox-checkout.paddle.com https://checkout.paddle.com https://sandbox-buy.paddle.com${vercelLive}; frame-ancestors 'none'; form-action 'self'; base-uri 'self'; object-src 'none'`
 
 const nextConfig = {
-  output: 'standalone',
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
+  // Vercel builds its own serverless output. Standalone tracing rules are only
+  // needed for the Docker image; leaving them enabled on Vercel breaks the
+  // output packer with "vhs task failed: no such file or directory".
+  ...(isVercel ? {} : { output: 'standalone' }),
+  ...(isVercel ? {} : {
+    outputFileTracingIncludes: {
+      '/*': [
+        './node_modules/.pnpm/@libsql+*@*/node_modules/@libsql/**/*',
+        './node_modules/.pnpm/libsql@*/node_modules/**/*',
+      ],
+    },
+  }),
+  typescript: { ignoreBuildErrors: false },
   transpilePackages: ['@lp/shared', '@lp/config', '@lp/auth', '@lp/validation', '@lp/types', '@lp/db', '@lp/domains', '@lp/domains/*', '@lp/events', '@lp/communication'],
   webpack: (config) => {
     config.resolve.alias = {

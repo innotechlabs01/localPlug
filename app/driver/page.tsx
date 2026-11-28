@@ -57,6 +57,8 @@ interface Assignment {
   arrival_time: string | null
   destination_address: string | null
   airline: string | null
+  order_status: string | null
+  order_dispatch_status: string | null
 }
 
 type Tab = 'pending' | 'active' | 'history'
@@ -247,7 +249,14 @@ export default function DriverPage() {
     driver?.license_expiry && new Date(driver.license_expiry).getTime() < Date.now(),
   )
 
-  const pendingOffer = assignments.find(a => ['pending_acceptance', 'offered'].includes(a.status)) || null
+  const isOfferCancelled = (a: Assignment) =>
+    ['cancelled', 'completed'].includes(a.order_status || '') ||
+    ['cancelled', 'completed'].includes(a.order_dispatch_status || '')
+
+  const isPendingOffer = (a: Assignment) =>
+    ['pending_acceptance', 'offered'].includes(a.status) && !isOfferCancelled(a)
+
+  const pendingOffer = assignments.find(isPendingOffer) || null
   const activeTrip = assignments.find(a => ['accepted', 'confirmed', 'confirmed_to_client', 'en_route', 'in_progress'].includes(a.status)) || null
 
   const handlePanicTrigger = async () => {
@@ -295,13 +304,13 @@ export default function DriverPage() {
   }
 
   const filteredAssignments = assignments.filter(a => {
-    if (activeTab === 'pending') return ['pending_acceptance', 'offered'].includes(a.status)
+    if (activeTab === 'pending') return isPendingOffer(a)
     if (activeTab === 'active') return ['accepted', 'confirmed', 'confirmed_to_client', 'en_route', 'in_progress'].includes(a.status)
     return ['declined', 'completed', 'cancelled', 'expired'].includes(a.status)
   })
 
   const tabCounts = {
-    pending: assignments.filter(a => ['pending_acceptance', 'offered'].includes(a.status)).length,
+    pending: assignments.filter(isPendingOffer).length,
     active: assignments.filter(a => ['accepted', 'confirmed', 'confirmed_to_client', 'en_route', 'in_progress'].includes(a.status)).length,
     history: assignments.filter(a => ['declined', 'completed', 'cancelled', 'expired'].includes(a.status)).length,
   }

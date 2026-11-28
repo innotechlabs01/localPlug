@@ -4,6 +4,8 @@ import { getDb } from '@/lib/db'
 import { logger } from '@/lib/logger'
 import { processBookingRefund } from '@/lib/payout'
 import { emitEvent } from '@/lib/events-outbox'
+import { dispatchPaidRide } from '@/lib/rides/dispatch'
+import { refundPaidRide } from '@/lib/rides/refund'
 
 const polarHandler = Webhooks({
   webhookSecret: process.env.POLAR_WEBHOOK_SECRET || '',
@@ -24,7 +26,7 @@ const polarHandler = Webhooks({
       // Deduplication: skip if this webhook event was already processed
       if (webhookEventId) {
         const existingEvent = await db.execute({
-          sql: `SELECT 1 FROM payments WHERE polar_webhook_event_id = ? AND status = 'completed' LIMIT 1`,
+          sql: `SELECT 1 FROM payments WHERE polar_webhook_event_id = ? AND status IN ('completed', 'refunded') LIMIT 1`,
           args: [webhookEventId],
         })
         if (existingEvent.rows.length > 0) {
@@ -64,9 +66,11 @@ const polarHandler = Webhooks({
         sql: `UPDATE payments SET
           status = 'completed',
           polar_webhook_event_id = ?,
+          provider_transaction_id = ?,
           updated_at = ?
         WHERE booking_reference = ? AND status = 'pending'`,
         args: [
+          (order.id as string),
           (order.id as string),
           now,
           bookingReference,
@@ -85,7 +89,7 @@ const polarHandler = Webhooks({
 
       // Create order if it doesn't exist yet (race condition: webhook fires before POST /api/booking)
       const existingOrder = await db.execute({
-        sql: `SELECT id FROM orders WHERE booking_reference = ?`,
+        sql: `SELECT id, status, payment_status FROM orders WHERE booking_reference = ?`,
         args: [bookingReference],
       })
 
@@ -148,47 +152,110 @@ const polarHandler = Webhooks({
         })
         logger.info('[Polar Webhook] Order created from webhook', { bookingReference, orderNumber })
       } else {
-        // Order exists — confirm it and BACKFILL fields the webhook can contribute
-        // when the race left them empty (package_price 0, missing phone/country/clerk_user_id).
-        // Do NOT overwrite values POST /api/booking already wrote correctly.
+        const isOnDemandRide = bookingReference.startsWith('RIDE-') || metadata.traveler_profile === 'on_demand'
         const customerPhone = metadata?.customer_phone || storedPhone || null
         const invoicePriceUsd = totalAmount > 0 ? totalAmount / 100 : null
-        await db.execute({
-          sql: `UPDATE orders SET
-            status = 'confirmed',
-            payment_status = 'paid',
-            clerk_user_id = CASE
-              WHEN clerk_user_id IS NULL OR clerk_user_id = '' THEN ?
-              ELSE clerk_user_id END,
-            package_price = CASE
-              WHEN package_price IS NULL OR package_price = 0 THEN ?
-              ELSE package_price END,
-            customer_phone = CASE
-              WHEN customer_phone IS NULL OR customer_phone = '' THEN ?
-              ELSE customer_phone END,
-            customer_country = CASE
-              WHEN customer_country IS NULL OR customer_country = '' THEN ?
-              ELSE customer_country END,
-            customer_notes = CASE
-              WHEN customer_notes IS NULL OR customer_notes = '' THEN ?
-              ELSE customer_notes END,
-            traveler_profile = CASE
-              WHEN traveler_profile IS NULL OR traveler_profile = '' THEN ?
-              ELSE traveler_profile END,
-            updated_at = ?
-          WHERE booking_reference = ?`,
-          args: [
-            metadata?.clerk_user_id || null,
-            invoicePriceUsd,
-            customerPhone,
-            (metadata?.customer_country as string) || null,
-            (metadata?.customer_notes as string) || null,
-            metadata?.traveler_profile || null,
-            now,
-            bookingReference,
-          ],
+        if (isOnDemandRide) {
+          // On-demand rides stay searching until a driver accepts. Dispatch begins
+          // ONLY after the provider confirms captured funds.
+          await db.execute({
+            sql: `UPDATE orders SET
+              status = 'searching',
+              payment_status = 'paid',
+              dispatch_status = 'pending',
+              updated_at = ?
+              WHERE booking_reference = ? AND status = 'awaiting_payment'`,
+            args: [now, bookingReference],
+          })
+        } else {
+          // Regular bookings become confirmed immediately on payment.
+          // BACKFILL fields the webhook can contribute when the race left them
+          // empty; do NOT overwrite values POST /api/booking wrote correctly.
+          await db.execute({
+            sql: `UPDATE orders SET
+              status = 'confirmed',
+              payment_status = 'paid',
+              clerk_user_id = CASE
+                WHEN clerk_user_id IS NULL OR clerk_user_id = '' THEN ?
+                ELSE clerk_user_id END,
+              package_price = CASE
+                WHEN package_price IS NULL OR package_price = 0 THEN ?
+                ELSE package_price END,
+              customer_phone = CASE
+                WHEN customer_phone IS NULL OR customer_phone = '' THEN ?
+                ELSE customer_phone END,
+              customer_country = CASE
+                WHEN customer_country IS NULL OR customer_country = '' THEN ?
+                ELSE customer_country END,
+              customer_notes = CASE
+                WHEN customer_notes IS NULL OR customer_notes = '' THEN ?
+                ELSE customer_notes END,
+              traveler_profile = CASE
+                WHEN traveler_profile IS NULL OR traveler_profile = '' THEN ?
+                ELSE traveler_profile END,
+              updated_at = ?
+            WHERE booking_reference = ?`,
+            args: [
+              metadata?.clerk_user_id || null,
+              invoicePriceUsd,
+              customerPhone,
+              (metadata?.customer_country as string) || null,
+              (metadata?.customer_notes as string) || null,
+              metadata?.traveler_profile || null,
+              now,
+              bookingReference,
+            ],
+          })
+        }
+        logger.info('[Polar Webhook] Order confirmed and backfilled', { bookingReference, invoicePriceUsd, customerPhone, isOnDemandRide })
+      }
+
+      if (bookingReference.startsWith('RIDE-')) {
+        const rideRow = await db.execute({
+          sql: `SELECT id, status, dispatch_status FROM orders WHERE booking_reference = ?`,
+          args: [bookingReference],
         })
-        logger.info('[Polar Webhook] Order confirmed and backfilled', { bookingReference, invoicePriceUsd, customerPhone })
+        const ride = rideRow.rows[0] as Record<string, unknown> | undefined
+        const rideId = Number(ride?.id)
+        const rideMetadata = metadata as Record<string, string> | undefined
+
+        // Payment can arrive after the auto-cancel sweep closed the ride. Never
+        // keep money for a ride nobody can use; refund immediately on late capture.
+        if (ride && ['cancelled', 'completed'].includes(String(ride.status))) {
+          const refund = await refundPaidRide(db, { bookingReference })
+          if (refund.ok) {
+            await db.execute({
+              sql: `UPDATE payments SET status = 'refunded', updated_at = ? WHERE booking_reference = ?`,
+              args: [now, bookingReference],
+            })
+            await db.execute({
+              sql: `UPDATE orders SET payment_status = 'refunded', updated_at = ? WHERE id = ? AND payment_status = 'paid'`,
+              args: [now, rideId],
+            })
+          }
+          logger.info('[Polar Webhook] late paid ride refunded', {
+            bookingReference,
+            rideId,
+            refundId: refund.refundId,
+            ok: refund.ok,
+          })
+          return
+        }
+
+        if (Number.isFinite(rideId)) {
+          const dispatch = await dispatchPaidRide(
+            db,
+            rideId,
+            Number(rideMetadata?.pickup_lat) || 6.2088,
+            Number(rideMetadata?.pickup_lng) || -75.567,
+          )
+          logger.info('[Polar Webhook] on-demand dispatch result', {
+            bookingReference,
+            rideId,
+            offeredDriverId: dispatch.offeredDriverId,
+            queueAttempt: dispatch.queueAttempt,
+          })
+        }
       }
 
       logger.info('[Polar Webhook] order.paid processed', {

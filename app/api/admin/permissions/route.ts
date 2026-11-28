@@ -59,6 +59,17 @@ export async function PUT(req: Request) {
 
   const db = getDb()
 
+  // Guardia de auto-bloqueo: el rol super_admin debe conservar al menos 'view'
+  // para que ningún Super Admin pueda quedarse sin permisos desde esta UI.
+  const roleRes = await db.execute({ sql: 'SELECT name FROM roles WHERE id = ?', args: [role_id] })
+  const roleName = roleRes.rows.length ? String(roleRes.rows[0].name) : ''
+  if (roleName === 'super_admin' && can_view === false) {
+    return NextResponse.json(
+      { error: 'Cannot remove view permission from super_admin role (self-lockout protection)' },
+      { status: 400 },
+    )
+  }
+
   const existing = await db.execute({
     sql: 'SELECT id, can_view, can_create, can_update, can_delete FROM role_permissions WHERE role_id = ? AND module_id = ?',
     args: [role_id, module_id],
@@ -150,6 +161,9 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: 'Role not found' }, { status: 404 })
   }
   const roleName = String(roleRes.rows[0].name)
+  // Los roles del sistema (super_admin, admin, viewer) no se pueden borrar desde
+  // la UI. super_admin en particular nunca debe eliminarse ni desactivarse, ya que
+  // es el único rol capaz de configurar la matriz de permisos.
   if (['super_admin', 'admin', 'viewer'].includes(roleName)) {
     return NextResponse.json({ error: 'Cannot delete core system role' }, { status: 400 })
   }

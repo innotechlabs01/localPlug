@@ -18,6 +18,16 @@ const plusJakartaSans = Plus_Jakarta_Sans({
   display: 'swap',
 })
 
+function getSafeSiteUrl(): string {
+  const raw = (process.env.NEXT_PUBLIC_SITE_URL || '').trim()
+  if (!raw) return 'http://localhost:3000'
+  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw
+  const scheme = raw.startsWith('localhost') || raw.startsWith('127.0.0.1') ? 'http' : 'https'
+  return `${scheme}://${raw}`
+}
+
+const SITE_URL = getSafeSiteUrl()
+
 export const metadata: Metadata = {
   title: {
     default: 'Medellín Premium Experience | Luxury Tourism Platform',
@@ -25,7 +35,7 @@ export const metadata: Metadata = {
   },
   description:
     'Premium airport transfers, personalized concierge, and unforgettable experiences across the most vibrant city in Colombia.',
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
+  metadataBase: new URL(SITE_URL),
   icons: {
     icon: '/images/icon/icon.png',
     apple: '/images/icon/icon.png',
@@ -185,7 +195,9 @@ export default async function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
-        <ClerkProvider>
+        <ClerkProvider
+          afterSignOutUrl="/?auth=signed_out"
+        >
           <I18nProvider initialLang={initialLang}>
             <Providers>{children}</Providers>
           </I18nProvider>

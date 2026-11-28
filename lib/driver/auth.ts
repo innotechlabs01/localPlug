@@ -1,24 +1,6 @@
 import { auth, clerkClient } from '@clerk/nextjs/server'
 import { getDb } from '@/lib/db'
-
-const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY || ''
-const CLERK_API_URL = 'https://api.clerk.com/v1'
-
-async function ensureClerkRole(clerkId: string, role: string) {
-  if (!CLERK_SECRET_KEY) return
-  try {
-    const client = await clerkClient()
-    const user = await client.users.getUser(clerkId)
-    if (user.privateMetadata?.role !== role) {
-      await client.users.updateUser(clerkId, {
-        privateMetadata: { ...user.privateMetadata, role },
-      })
-      console.log(`[Driver Auth] Set Clerk role for ${clerkId}: ${role}`)
-    }
-  } catch {
-    // Non-critical — role will be fixed by claim-role endpoint
-  }
-}
+import type { DatabaseClient } from '@lp/db/factory'
 
 export interface DriverProfile {
   id: number
@@ -51,19 +33,118 @@ export async function getDriverFromSession(): Promise<{ driver: DriverProfile; c
     return { error: 'Unauthorized', status: 401 }
   }
 
-  const db = getDb()
-  const result = await db.execute({
-    sql: `SELECT d.* FROM drivers d WHERE d.clerk_user_id = ?`,
-    args: [clerkId],
-  })
-
-  if (result.rows.length === 0) {
+  try {
+    const driver = await ensureDriverProfile(clerkId)
+    return { driver, clerkId }
+  } catch {
     return { error: 'Driver profile not found', status: 404 }
   }
-
-  return { driver: result.rows[0] as unknown as DriverProfile, clerkId }
 }
 
+interface DriverIdentity {
+  email?: string | null
+  name?: string | null
+}
+
+const CURRENT_USER_SQL = `SELECT u.id, r.name AS role_name
+                          FROM users u LEFT JOIN roles r ON u.role_id = r.id
+                          WHERE u.clerk_id = ?`
+
+/**
+ * Promotes a viewer to the driver role once a driver profile exists.
+ * Never downgrades an explicitly assigned role (admin, hotel_manager, ...).
+ */
+async function assignDriverRole(
+  db: DatabaseClient,
+  clerkId: string,
+  identity: DriverIdentity = {},
+): Promise<void> {
+  const roles = await db.execute({
+    sql: `SELECT id, name FROM roles WHERE name IN ('viewer', 'driver')`,
+    args: [],
+  })
+
+  const driverRoleRow = roles.rows.find((row) => row.name === 'driver')
+  if (!driverRoleRow) {
+    console.warn('[Driver Auth] driver role missing in roles table')
+    return
+  }
+  const driverRoleId = Number(driverRoleRow.id)
+  const viewerRoleRow = roles.rows.find((row) => row.name === 'viewer')
+  const viewerRoleId = Number(viewerRoleRow?.id ?? 4)
+
+  let currentUser = await db.execute({ sql: CURRENT_USER_SQL, args: [clerkId] })
+  let user = currentUser.rows[0]
+
+  // The webhook is asynchronous. If it has not created the users row yet,
+  // relink/reactivate by email or create it here; otherwise the driver would
+  // stay viewer until the next page load.
+  if (!user && identity.email) {
+    const email = identity.email.trim().toLowerCase()
+    const byEmail = await db.execute({
+      sql: `SELECT id, status FROM users WHERE LOWER(email) = ? LIMIT 1`,
+      args: [email],
+    })
+    const linked = byEmail.rows[0]
+    if (linked) {
+      const nextStatus = linked.status === 'inactive' ? 'active' : linked.status
+      await db.execute({
+        sql: `UPDATE users
+              SET clerk_id = ?, name = COALESCE(NULLIF(name, ''), ?), email = ?, status = ?,
+                  updated_at = datetime('now')
+              WHERE id = ?`,
+        args: [clerkId, identity.name || '', email, nextStatus, Number(linked.id)],
+      })
+      currentUser = await db.execute({ sql: CURRENT_USER_SQL, args: [clerkId] })
+      user = currentUser.rows[0]
+    }
+  }
+
+  if (!user && viewerRoleRow) {
+    await db.execute({
+      sql: `INSERT OR IGNORE INTO users (clerk_id, name, email, password_hash, role_id, status, created_at, updated_at)
+            VALUES (?, ?, ?, '', ?, 'active', datetime('now'), datetime('now'))`,
+      args: [clerkId, identity.name || 'Conductor', identity.email?.trim().toLowerCase() || '', viewerRoleId],
+    })
+    currentUser = await db.execute({ sql: CURRENT_USER_SQL, args: [clerkId] })
+    user = currentUser.rows[0]
+  }
+
+  if (!user) {
+    console.warn(`[Driver Auth] No users row for ${clerkId}; role sync deferred to webhook`)
+    return
+  }
+  if (user.role_name && user.role_name !== 'viewer') {
+    return
+  }
+
+  const userId = Number(user.id)
+
+  await db.execute({
+    sql: `UPDATE users SET role_id = ?, updated_at = datetime('now') WHERE id = ?`,
+    args: [driverRoleId, userId],
+  })
+  // Remove only the obsolete viewer grant; explicit roles assigned by an admin
+  // in user_roles must survive the promotion.
+  await db.execute({
+    sql: `DELETE FROM user_roles WHERE user_id = ? AND role_id = ?`,
+    args: [userId, viewerRoleId],
+  })
+  await db.execute({
+    sql: `INSERT OR IGNORE INTO user_roles (user_id, role_id) VALUES (?, ?)`,
+    args: [userId, driverRoleId],
+  })
+
+  console.log(`[Driver Auth] Assigned driver role to ${clerkId}`)
+}
+
+/**
+ * Resolves or auto-onboards a driver record in the database using Clerk ONLY as identity provider.
+ * - Matches by `clerk_user_id` first.
+ * - Links existing pre-registered `drivers` row by verified email if present.
+ * - Otherwise creates an onboarding record (`status = 'inactive'`, `profile_complete = 0`)
+ *   so the driver can fill out vehicle/plate/license details on `/driver` before going online.
+ */
 export async function ensureDriverProfile(clerkId: string): Promise<DriverProfile> {
   const db = getDb()
 
@@ -74,46 +155,74 @@ export async function ensureDriverProfile(clerkId: string): Promise<DriverProfil
   })
 
   if (existing.rows.length > 0) {
-    // Ensure Clerk metadata has driver role
-    ensureClerkRole(clerkId, 'driver')
-    return existing.rows[0] as unknown as DriverProfile
+    const row = existing.rows[0]
+    await assignDriverRole(db, clerkId, {
+      email: row.email as string | null | undefined,
+      name: row.name as string | null | undefined,
+    })
+    return row as unknown as DriverProfile
   }
 
-  // 2. Get Clerk user data
-  let clerkUser
+  // 2. Get Clerk user identity (email, name, phone) — no Clerk metadata used
+  let email = ''
+  let name = 'Conductor'
+  let phone: string | null = null
   try {
     const client = await clerkClient()
-    clerkUser = await client.users.getUser(clerkId)
-  } catch {
+    const clerkUser = await client.users.getUser(clerkId)
+    email = (clerkUser.primaryEmailAddress?.emailAddress || clerkUser.emailAddresses?.[0]?.emailAddress || '').trim().toLowerCase()
+    name = [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ').trim() || email || 'Conductor'
+    phone = clerkUser.primaryPhoneNumber?.phoneNumber || clerkUser.phoneNumbers?.[0]?.phoneNumber || null
+  } catch (err) {
+    console.warn('[Driver Auth] Failed to fetch Clerk user details, using fallback defaults:', err)
+  }
+
+  // 3. Check if a driver with this email already exists (e.g. pre-created by admin)
+  if (email) {
+    const byEmail = await db.execute({
+      sql: `SELECT d.* FROM drivers d WHERE LOWER(d.email) = ? LIMIT 1`,
+      args: [email],
+    })
+
+    if (byEmail.rows.length > 0) {
+      await db.execute({
+        sql: `UPDATE drivers SET clerk_user_id = ?, updated_at = datetime('now') WHERE id = ?`,
+        args: [clerkId, Number(byEmail.rows[0].id)],
+      })
+      console.log(`[Driver Auth] Linked existing driver (${email}) to Clerk user ${clerkId}`)
+      const linked = await db.execute({
+        sql: `SELECT d.* FROM drivers d WHERE d.clerk_user_id = ?`,
+        args: [clerkId],
+      })
+      await assignDriverRole(db, clerkId, {
+        email: linked.rows[0]?.email as string | null | undefined,
+        name: linked.rows[0]?.name as string | null | undefined,
+      })
+      return linked.rows[0] as unknown as DriverProfile
+    }
+  }
+
+  // 4. Auto-create onboarding driver profile in DB (status='inactive', profile_complete=0).
+  // Dispatch queries require status='available', so incomplete profiles never receive trips until completed.
+  await db.execute({
+    sql: `INSERT OR IGNORE INTO drivers (
+            clerk_user_id, name, phone, email, vehicle, plate, category,
+            status, rating, languages, experience_level, profile_complete,
+            created_at, updated_at
+          ) VALUES (?, ?, ?, ?, '', '', 'standard', 'inactive', 5.0, 'Spanish', 'Standard', 0, datetime('now'), datetime('now'))`,
+    args: [clerkId, name, phone, email || null],
+  })
+
+  const created = await db.execute({
+    sql: `SELECT d.* FROM drivers d WHERE d.clerk_user_id = ?`,
+    args: [clerkId],
+  })
+
+  if (created.rows.length === 0) {
     throw new Error('DRIVER_NOT_FOUND')
   }
 
-  const email = clerkUser.emailAddresses?.[0]?.emailAddress || ''
-  const name = [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ').trim() || email || 'Conductor'
-
-  // 3. Check if a driver with this email already exists (e.g. created by admin/webhook)
-  const byEmail = await db.execute({
-    sql: `SELECT d.* FROM drivers d WHERE d.email = ?`,
-    args: [email],
-  })
-
-  if (byEmail.rows.length > 0) {
-    // Link existing driver record to this Clerk user
-    await db.execute({
-      sql: `UPDATE drivers SET clerk_user_id = ?, updated_at = datetime('now') WHERE id = ?`,
-      args: [clerkId, (byEmail.rows[0] as any).id],
-    })
-    console.log(`[Driver Auth] Linked existing driver (${email}) to Clerk user ${clerkId}`)
-    // Ensure Clerk metadata has driver role
-    ensureClerkRole(clerkId, 'driver')
-    const linked = await db.execute({
-      sql: `SELECT d.* FROM drivers d WHERE d.clerk_user_id = ?`,
-      args: [clerkId],
-    })
-    return linked.rows[0] as unknown as DriverProfile
-  }
-
-  // 4. Do NOT auto-create driver profiles for arbitrary Clerk users (prevents privilege escalation).
-  // Drivers must be pre-registered by an admin (matched by clerk_user_id or verified email).
-  throw new Error('DRIVER_NOT_FOUND')
+  console.log(`[Driver Auth] Auto-registered onboarding driver profile for Clerk user ${clerkId} (${email || name})`)
+  await assignDriverRole(db, clerkId, { email, name })
+  return created.rows[0] as unknown as DriverProfile
 }

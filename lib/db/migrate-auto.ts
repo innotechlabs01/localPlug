@@ -71,6 +71,41 @@ const RESTRICTED_MODULES: Record<string, Record<string, { view: boolean; create:
   },
 }
 
+async function syncRolePermissions(db: ReturnType<typeof getDb>): Promise<void> {
+  const roles = await db.execute('SELECT id, name FROM roles')
+  const roleMap: Record<string, number> = {}
+  for (const row of roles.rows) {
+    roleMap[String(row.name)] = Number(row.id)
+  }
+
+  const modules = await db.execute('SELECT id, slug FROM modules')
+  const moduleMap = new Map<string, number>()
+  for (const row of modules.rows) {
+    moduleMap.set(String(row.slug), Number(row.id))
+  }
+
+  for (const [roleName, perms] of Object.entries(DEFAULT_PERMISSIONS)) {
+    const roleId = roleMap[roleName]
+    if (!roleId) continue
+
+    for (const [slug, modId] of moduleMap) {
+      const effectivePerms = RESTRICTED_MODULES[slug]?.[roleName] ?? perms
+      await db.execute({
+        sql: `INSERT OR IGNORE INTO role_permissions (role_id, module_id, can_view, can_create, can_update, can_delete)
+              VALUES (?, ?, ?, ?, ?, ?)`,
+        args: [
+          roleId,
+          modId,
+          effectivePerms.view ? 1 : 0,
+          effectivePerms.create ? 1 : 0,
+          effectivePerms.update ? 1 : 0,
+          effectivePerms.delete ? 1 : 0,
+        ],
+      }).catch(() => {})
+    }
+  }
+}
+
 export async function ensureSchema(): Promise<void> {
   if (_migrated) return
 
@@ -90,6 +125,9 @@ export async function ensureSchema(): Promise<void> {
         args: [mod.name, mod.slug, `${mod.name} module`, mod.icon, mod.sort],
       }).catch(() => {})
     }
+    // Existing databases predate the super_admin role and its module permissions.
+    // Backfill only missing rows so customized permissions are never overwritten.
+    await syncRolePermissions(db)
     _migrated = true
     return
   }
@@ -176,32 +214,7 @@ export async function ensureSchema(): Promise<void> {
     moduleMap[row.slug as string] = row.id as number
   }
 
-  for (const [roleName, perms] of Object.entries(DEFAULT_PERMISSIONS)) {
-    const roleId = roleMap[roleName]
-    if (!roleId) continue
-
-    for (const [slug, modId] of Object.entries(moduleMap)) {
-      const restricted = RESTRICTED_MODULES[slug]?.[roleName]
-      let effectivePerms = perms
-
-      if (restricted) {
-        effectivePerms = restricted
-      }
-
-      await db.execute({
-        sql: `INSERT OR IGNORE INTO role_permissions (role_id, module_id, can_view, can_create, can_update, can_delete)
-              VALUES (?, ?, ?, ?, ?, ?)`,
-        args: [
-          roleId,
-          modId,
-          effectivePerms.view ? 1 : 0,
-          effectivePerms.create ? 1 : 0,
-          effectivePerms.update ? 1 : 0,
-          effectivePerms.delete ? 1 : 0,
-        ],
-      })
-    }
-  }
+  await syncRolePermissions(db)
 
   console.log('[Schema] Auto-migration complete')
 

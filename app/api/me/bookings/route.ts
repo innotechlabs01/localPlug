@@ -38,7 +38,6 @@ export async function GET() {
           o.customer_email,
           o.customer_phone,
           o.customer_country,
-          o.customer_language,
           o.hotel_id,
           o.room_id,
           o.num_nights,

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { getDb } from '@/lib/db'
+import { ensureRideDispatchSchema, sweepStaleRideOffers } from '@/lib/rides/offer-lifecycle'
 
 export async function GET() {
   try {
@@ -10,6 +11,8 @@ export async function GET() {
     }
 
     const db = getDb()
+    await ensureRideDispatchSchema(db)
+    await sweepStaleRideOffers(db)
 
     // Resolve driver profile from clerk_user_id
     const driverRes = await db.execute({
@@ -23,18 +26,15 @@ export async function GET() {
 
     const driverId = Number(driverRes.rows[0].id)
 
-    const { searchParams } = new URL('') // placeholder, no search needed
-    const statusFilter = '' // no filter for now
-
     const sql = `
       SELECT
         a.id, a.order_id, a.driver_id, a.status, a.pickup_date, a.pickup_time,
-        a.block_until, a.accepted_at, a.completed_at, a.notes as assignment_notes,
+        a.block_until, a.driver_accepted_at, a.completed_at, a.observations as assignment_notes,
         o.order_number, o.booking_reference, o.customer_name, o.customer_phone,
         o.customer_email, o.package_name, o.package_price, o.currency,
         o.arrival_date, o.arrival_time, o.return_date, o.return_time,
         o.flight_number, o.airline, o.destination_address, o.num_people,
-        o.return_trip, o.special_requests, o.status as order_status,
+        o.customer_notes as special_requests, o.status as order_status,
         h.name as hotel_name, r.name as room_name
       FROM assignments a
       JOIN orders o ON a.order_id = o.id
@@ -42,6 +42,7 @@ export async function GET() {
       LEFT JOIN rooms r ON o.room_id = r.id
       WHERE a.driver_id = ?
         AND a.status IN ('pending_acceptance', 'accepted', 'confirmed_to_client', 'enroute', 'pickedup')
+        AND o.payment_status = 'paid'
       ORDER BY
         CASE a.status
           WHEN 'pending_acceptance' THEN 1
@@ -65,7 +66,7 @@ export async function GET() {
       pickupDate: row.pickup_date || '',
       pickupTime: row.pickup_time || '',
       blockUntil: row.block_until || '',
-      acceptedAt: row.accepted_at || '',
+      acceptedAt: row.driver_accepted_at || '',
       completedAt: row.completed_at || '',
       assignmentNotes: row.assignment_notes || '',
       customer: {
@@ -87,7 +88,7 @@ export async function GET() {
         : row.flight_number || 'Not provided',
       destinationAddress: row.destination_address || '',
       numPeople: row.num_people || 1,
-      returnTrip: row.return_trip ? 1 : 0,
+      returnTrip: row.return_date ? 1 : 0,
       specialRequests: row.special_requests || '',
       orderStatus: row.order_status || 'pending',
       hotel: row.hotel_name ? { name: row.hotel_name, roomName: row.room_name || '' } : null,

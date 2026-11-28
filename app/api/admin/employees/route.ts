@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
-import { clerkClient } from '@clerk/nextjs/server'
 import { getDb, buildSafeUpdate } from '@/lib/db'
-import { requirePermission } from '@/lib/admin/permissions'
+import { requirePermission, syncClerkUserRole } from '@/lib/admin/permissions'
 
 const ALLOWED_EMPLOYEE_COLUMNS = ['name', 'email', 'phone', 'role_id', 'avatar_url', 'vehicle_info', 'license_number', 'vehicle_plate', 'employee_status', 'verification_status', 'status', 'notes']
 
@@ -122,11 +121,7 @@ export async function PUT(req: Request) {
       const clerkId = userRow.rows[0]?.clerk_id as string | undefined
       const roleName = userRow.rows[0]?.role_name as string | undefined
       if (clerkId && roleName) {
-        const clerkRole = roleName === 'hotel_manager' ? 'hotel_manager' : roleName === 'viewer' ? 'viewer' : 'admin'
-        try {
-          const client = await clerkClient()
-          await client.users.updateUserMetadata(clerkId, { privateMetadata: { role: clerkRole } })
-        } catch {}
+        await syncClerkUserRole(clerkId, roleName)
       }
     }
 
