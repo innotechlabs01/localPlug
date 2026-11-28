@@ -14,3 +14,7 @@ node_modules/
 .env.*
 .vercel
 db.sqlite
+
+# TypeScript build info artifacts (avoid branch-switch conflicts)
+*.tsbuildinfo
+tsconfig.tsbuildinfo
